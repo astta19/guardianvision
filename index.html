@@ -1121,10 +1121,181 @@
     @media (min-width: 769px) {
       .mobile-only { display: none !important; }
     }
+
+    /* ====== AUTH SCREEN ====== */
+    #authScreen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #authScreen.hidden { display: none; }
+
+    .auth-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    }
+
+    .auth-logo { text-align: center; margin-bottom: 24px; }
+    .auth-logo h2 { font-size: 22px; font-weight: 700; margin-top: 10px; }
+    .auth-logo p { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+    .auth-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+
+    .auth-tab.active {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .auth-field { margin-bottom: 14px; }
+    .auth-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text-light);
+    }
+    .auth-field input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .auth-field input:focus { border-color: var(--accent); }
+
+    .auth-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: var(--user-text);
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: opacity 0.2s;
+    }
+    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .auth-msg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+    .auth-msg.error { background: #fee2e2; color: #991b1b; display: block; }
+    .auth-msg.success { background: #d1fae5; color: #065f46; display: block; }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-light);
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      max-width: 140px;
+      overflow: hidden;
+    }
+    .user-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    @media (max-width: 480px) { .user-info span { display: none; } }
   </style>
 </head>
 
 <body>
+
+  <!-- TELA DE AUTENTICAÇÃO -->
+  <div id="authScreen">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <i data-lucide="shield-check" style="width:40px;height:40px;color:var(--accent)"></i>
+        <h2>Chat Fiscal Pro</h2>
+        <p>Acesso exclusivo para colaboradores</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">Criar conta</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="loginForm">
+        <div class="auth-field">
+          <label>E-mail</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label>Senha</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
+            onkeypress="if(event.key==='Enter') doLogin()">
+        </div>
+        <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
+        <div class="auth-msg" id="loginMsg"></div>
+      </div>
+
+      <!-- CADASTRO -->
+      <div id="registerForm" style="display:none">
+        <div class="auth-field">
+          <label>Nome completo</label>
+          <input type="text" id="regName" placeholder="Seu nome">
+        </div>
+        <div class="auth-field">
+          <label>E-mail</label>
+          <input type="email" id="regEmail" placeholder="seu@email.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label>Senha</label>
+          <input type="password" id="regPassword" placeholder="Mín. 6 caracteres" autocomplete="new-password"
+            onkeypress="if(event.key==='Enter') doRegister()">
+        </div>
+        <button class="auth-btn" onclick="doRegister()" id="registerBtn">Criar conta</button>
+        <div class="auth-msg" id="registerMsg"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="overlay" onclick="closeSidebar()"></div>
 
   <aside id="sidebar">
@@ -1204,6 +1375,10 @@
             <button class="menu-item" onclick="toggleFullscreen(); closeDropdowns()">
               <i data-lucide="maximize-2"></i> Tela cheia
             </button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" onclick="doLogout()" style="color:var(--error)">
+              <i data-lucide="log-out"></i> Sair
+            </button>
           </div>
         </div>
 
@@ -1220,6 +1395,12 @@
         <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
           <i data-lucide="maximize-2"></i>
         </button>
+
+        <!-- Usuário logado + logout -->
+        <div class="user-info" onclick="doLogout()" title="Clique para sair">
+          <i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i>
+          <span id="userEmail">—</span>
+        </div>
       </div>
     </div>
 
@@ -1352,6 +1533,7 @@
     const GK = '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';
 
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
+    let currentUser = null;
     let allChats = [];
     let currentChat = {
       id: null,
@@ -1438,6 +1620,7 @@
             tags_pergunta: tags.length > 0 ? tags : null,
             tokens_utilizados: tokens || null,
             modelo_utilizado: modelo || null,
+            user_id: currentUser?.id || null,
             data_interacao: new Date().toISOString()
           };
 
@@ -1518,6 +1701,7 @@
               resposta: interacao.resposta,
               fonte: 'chat_com_feedback',
               qualidade: 5,
+              user_id: currentUser?.id || null,
               data_criacao: new Date().toISOString()
             });
 
@@ -1638,7 +1822,8 @@
               tamanho_bytes: fileData.size || null,
               conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
               resumo: fileData.summary || null,
-              tags_extraidas: tags.length > 0 ? tags : null
+              tags_extraidas: tags.length > 0 ? tags : null,
+              user_id: currentUser?.id || null
             })
             .select('id')
             .single();
@@ -1836,11 +2021,119 @@
     window.onload = async () => {
       lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
-      await checkConnection();
-      await loadChats();
+
+      // Verificar sessão existente
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        showApp();
+      }
+
+      // Listener de mudança de estado de auth
+      sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          currentUser = session.user;
+          showApp();
+        } else if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          showAuthScreen();
+        }
+      });
+    };
+
+    function showApp() {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('userEmail').textContent =
+        currentUser?.email?.split('@')[0] || 'usuário';
+      checkConnection();
+      loadChats();
       checkDeadlines();
       updateBadges();
-    };
+    }
+
+    function showAuthScreen() {
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('userEmail').textContent = '—';
+      // Limpar estado do chat
+      allChats = [];
+      currentChat = { id: null, title: 'Nova Conversa', messages: [] };
+      document.getElementById('hList').innerHTML = '';
+      document.getElementById('msgs').innerHTML = `
+        <div class="empty">
+          <i data-lucide="message-circle"></i>
+          <h3>Olá! Sou seu especialista fiscal</h3>
+          <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
+        </div>`;
+      lucide.createIcons();
+    }
+
+    // ====== FUNÇÕES DE AUTENTICAÇÃO ======
+    function switchAuthTab(tab) {
+      document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+      document.querySelectorAll('.auth-tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0) === (tab === 'login'));
+      });
+    }
+
+    function setAuthMsg(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = `auth-msg ${type}`;
+    }
+
+    async function doLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      if (!email || !password) return setAuthMsg('loginMsg', 'Preencha e-mail e senha.', 'error');
+
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+
+      if (error) {
+        const msg = error.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : error.message;
+        setAuthMsg('loginMsg', msg, 'error');
+      }
+    }
+
+    async function doRegister() {
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+
+      if (!name || !email || !password) return setAuthMsg('registerMsg', 'Preencha todos os campos.', 'error');
+      if (password.length < 6) return setAuthMsg('registerMsg', 'Senha deve ter mínimo 6 caracteres.', 'error');
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      btn.textContent = 'Criando conta...';
+
+      const { error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: { name } }
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Criar conta';
+
+      if (error) {
+        setAuthMsg('registerMsg', error.message, 'error');
+      } else {
+        setAuthMsg('registerMsg', 'Conta criada! Verifique seu e-mail para confirmar.', 'success');
+      }
+    }
+
+    async function doLogout() {
+      if (!confirm('Tem certeza que deseja sair?')) return;
+      await sb.auth.signOut();
+    }
 
     async function checkConnection() {
       try {
@@ -1958,6 +2251,7 @@
             .insert({
               title: chatData.title,
               messages: chatData.messages,
+              user_id: currentUser?.id || null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
