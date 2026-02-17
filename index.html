@@ -2,17 +2,25 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Chat Fiscal Pro</title>
+  
+  <!-- Meta tags -->
+  <meta name="netlify" content="true">
+  <meta name="description" content="Chat Fiscal Pro - Especialista em tributos brasileiros">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  
+  <!-- Ícones e bibliotecas -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
     :root {
@@ -29,7 +37,8 @@
       --success: #10b981;
       --warning: #f59e0b;
       --error: #ef4444;
-      --info: #3b82f6;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
     }
 
     [data-theme="dark"] {
@@ -54,21 +63,11 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      height: 100vh;
+      height: 100dvh;
       display: flex;
-      transition: all 0.3s;
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
+      transition: background 0.3s, color 0.3s;
       overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border-width: 0;
+      width: 100%;
     }
 
     .container {
@@ -76,21 +75,65 @@
       width: 100%;
       max-width: 1600px;
       margin: 0 auto;
-      height: 100vh;
+      height: 100dvh;
+      position: relative;
     }
 
+    /* Sidebar Mobile */
     .sidebar {
-      width: 300px;
+      width: 85%;
+      max-width: 320px;
       background: var(--card);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      transition: all 0.3s;
+      transition: transform 0.3s ease;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 1000;
+      transform: translateX(-100%);
+      box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.active {
+      transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      backdrop-filter: blur(2px);
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+
+    @media (min-width: 769px) {
+      .sidebar {
+        position: relative;
+        transform: none;
+        width: 280px;
+        box-shadow: none;
+      }
+      
+      .sidebar-overlay {
+        display: none !important;
+      }
     }
 
     .sidebar-header {
       padding: 20px;
       border-bottom: 1px solid var(--border);
+      padding-top: max(20px, env(safe-area-inset-top));
     }
 
     .sidebar-header h2 {
@@ -115,11 +158,12 @@
       justify-content: center;
       gap: 8px;
       transition: all 0.2s;
+      font-size: 16px;
+      min-height: 48px;
     }
 
-    .new-chat-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    .new-chat-btn:active {
+      transform: scale(0.98);
     }
 
     .history-search {
@@ -129,32 +173,35 @@
 
     .history-search input {
       width: 100%;
-      padding: 8px 12px 8px 35px;
+      padding: 12px 12px 12px 40px;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--bg);
       color: var(--text);
-      font-size: 13px;
+      font-size: 16px;
+      min-height: 48px;
     }
 
     .history-search i {
       position: absolute;
-      left: 10px;
+      left: 12px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-light);
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
     }
 
     .history-list {
       flex: 1;
       overflow-y: auto;
       padding: 10px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .history-item {
-      padding: 12px;
+      padding: 15px;
       margin-bottom: 8px;
       background: var(--bg);
       border: 1px solid var(--border);
@@ -163,7 +210,7 @@
       transition: all 0.2s;
     }
 
-    .history-item:hover {
+    .history-item:active {
       background: var(--card);
       border-color: var(--accent);
     }
@@ -175,7 +222,7 @@
     }
 
     .history-title {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 500;
       margin-bottom: 4px;
       white-space: nowrap;
@@ -195,15 +242,16 @@
     }
 
     .history-btn {
-      padding: 4px 8px;
+      padding: 8px 12px;
       background: transparent;
       border: 1px solid var(--border);
       border-radius: 4px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 14px;
       display: flex;
       align-items: center;
       gap: 4px;
+      min-height: 36px;
     }
 
     .chat {
@@ -211,34 +259,49 @@
       display: flex;
       flex-direction: column;
       background: var(--bg);
+      height: 100dvh;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .chat-header {
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: 15px 20px;
+      padding: 12px 16px;
+      padding-top: max(12px, env(safe-area-inset-top));
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     .chat-title {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 18px;
+      gap: 8px;
+      font-size: 16px;
       font-weight: 600;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chat-title span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .chat-controls {
       display: flex;
-      gap: 10px;
+      gap: 6px;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .icon-btn {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -247,41 +310,28 @@
       align-items: center;
       justify-content: center;
       transition: all 0.2s;
+      flex-shrink: 0;
     }
 
-    .icon-btn:hover {
+    .icon-btn:active {
       background: var(--card);
       border-color: var(--accent);
+      transform: scale(0.95);
     }
 
-    .deadline-alerts {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 10px 20px;
-    }
-
-    .alert {
-      padding: 8px 12px;
-      margin: 5px 0;
-      border-radius: 6px;
+    .connection-status {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 13px;
-    }
-
-    .alert-high {
-      background: var(--error);
-      color: white;
-    }
-
-    .alert-medium {
-      background: var(--warning);
-      color: white;
+      gap: 4px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 20px;
+      background: var(--bg);
+      white-space: nowrap;
     }
 
     .templates-section {
-      padding: 15px 20px;
+      padding: 12px 16px;
       background: var(--card);
       border-bottom: 1px solid var(--border);
     }
@@ -298,74 +348,53 @@
       color: var(--text-light);
     }
 
-    .add-template-btn {
-      padding: 4px 8px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
     .template-grid {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+
+    .template-grid::-webkit-scrollbar {
+      display: none;
     }
 
     .template-btn {
-      padding: 8px 15px;
+      padding: 10px 16px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 25px;
       cursor: pointer;
       white-space: nowrap;
-      font-size: 13px;
+      font-size: 14px;
       display: flex;
       align-items: center;
       gap: 6px;
       transition: all 0.2s;
+      min-height: 44px;
     }
 
-    .template-btn:hover {
+    .template-btn:active {
       background: var(--accent);
       color: var(--user-text);
       border-color: var(--accent);
     }
 
-    .badges-container {
-      display: flex;
-      gap: 5px;
-      margin-top: 5px;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      font-size: 11px;
-      cursor: help;
-    }
-
     .messages {
       flex: 1;
-      padding: 20px;
+      padding: 16px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .message {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       animation: slideIn 0.3s;
     }
 
@@ -381,8 +410,8 @@
     }
 
     .avatar {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       background: var(--bg);
       border: 1px solid var(--border);
@@ -397,284 +426,59 @@
       border-color: var(--user-bg);
     }
 
-    .user .avatar svg {
-      color: var(--user-text);
-    }
-
-    .assistant .avatar svg {
-      color: var(--text);
-    }
-
     .message-content {
-      max-width: 70%;
-      padding: 15px;
-      border-radius: 12px;
-      line-height: 1.6;
+      max-width: 85%;
+      padding: 12px;
+      border-radius: 16px;
+      line-height: 1.5;
       border: 1px solid var(--border);
       position: relative;
+      font-size: 15px;
+      word-break: break-word;
+    }
+
+    @media (min-width: 769px) {
+      .message-content {
+        max-width: 70%;
+      }
     }
 
     .user .message-content {
       background: var(--user-bg);
       color: var(--user-text);
       border-color: var(--user-bg);
-      border-bottom-right-radius: 4px;
     }
 
     .assistant .message-content {
       background: var(--assistant-bg);
       color: var(--assistant-text);
       border-color: var(--border);
-      border-bottom-left-radius: 4px;
-    }
-
-    .priority-high {
-      border-left: 4px solid var(--error);
-    }
-
-    .file-attachment {
-      margin-top: 10px;
-      padding: 10px;
-      background: var(--bg);
-      border-radius: 8px;
-      border: 1px dashed var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-    }
-
-    .file-attachment i {
-      color: var(--accent);
-    }
-
-    .file-preview {
-      max-width: 100%;
-      max-height: 200px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-
-    .file-content-preview {
-      margin-top: 10px;
-      padding: 10px;
-      background: var(--bg);
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 12px;
-      max-height: 200px;
-      overflow: auto;
-      white-space: pre-wrap;
-      border: 1px solid var(--border);
-    }
-
-    .multiple-files {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .progress-bar {
-      width: 100%;
-      height: 4px;
-      background: var(--border);
-      border-radius: 2px;
-      margin: 5px 0;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--accent);
-      transition: width 0.3s;
-    }
-
-    .message-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
-    }
-
-    .msg-btn {
-      padding: 6px 12px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: all 0.2s;
-    }
-
-    .msg-btn:hover {
-      background: var(--accent);
-      color: var(--user-text);
-    }
-
-    .confidence-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .confidence-high {
-      background: #d1fae5;
-      color: #065f46;
-    }
-
-    .confidence-medium {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .confidence-low {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    [data-theme="dark"] .confidence-high {
-      background: #065f46;
-      color: #d1fae5;
-    }
-
-    [data-theme="dark"] .confidence-medium {
-      background: #92400e;
-      color: #fef3c7;
-    }
-
-    [data-theme="dark"] .confidence-low {
-      background: #991b1b;
-      color: #fee2e2;
-    }
-
-    .suggestions {
-      margin-top: 15px;
-      padding: 10px;
-      background: var(--bg);
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-
-    .suggestions-title {
-      font-weight: 600;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-
-    .suggestions-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .suggestion-btn {
-      padding: 6px 12px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: var(--text);
-    }
-
-    .suggestion-btn:hover {
-      background: var(--accent);
-      color: var(--user-text);
-    }
-
-    .invoice-analysis {
-      background: var(--bg);
-      border-radius: 8px;
-      padding: 15px;
-      margin-top: 10px;
-      border: 1px solid var(--border);
-    }
-
-    .analysis-section {
-      margin-bottom: 15px;
-    }
-
-    .analysis-section h4 {
-      color: var(--accent);
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-
-    .typing-indicator {
-      display: flex;
-      gap: 4px;
-      padding: 8px;
-    }
-
-    .typing-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--text-light);
-      border-radius: 50%;
-      animation: typing 1.4s infinite;
-    }
-
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes typing {
-      0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.6;
-      }
-      30% {
-        transform: translateY(-4px);
-        opacity: 1;
-      }
-    }
-
-    .stats-card {
-      padding: 15px;
-      background: var(--bg);
-      border-radius: 8px;
-      margin: 10px;
-    }
-
-    .stats-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .stats-item:last-child {
-      border-bottom: none;
     }
 
     .input-area {
-      padding: 20px;
+      padding: 12px 16px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
       background: var(--card);
       border-top: 1px solid var(--border);
+      flex-shrink: 0;
     }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+      30% { transform: translateY(-8px); opacity: 1; }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .input-wrapper {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 5px 10px;
+      border-radius: 25px;
+      padding: 4px 4px 4px 12px;
       transition: all 0.2s;
+      align-items: center;
     }
 
     .input-wrapper:focus-within {
@@ -682,67 +486,23 @@
       background: var(--card);
     }
 
-    .input-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
     input {
+      flex: 1;
       border: none;
       background: transparent;
-      padding: 10px 15px;
-      font-size: 15px;
+      padding: 12px 0;
+      font-size: 16px;
       outline: none;
       color: var(--text);
-      width: 100%;
-    }
-
-    .file-input-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 5px 15px;
-      border-top: 1px solid var(--border);
-    }
-
-    .file-info {
-      font-size: 12px;
-      color: var(--text-light);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      width: 100%;
-    }
-
-    .file-tag {
-      background: var(--accent);
-      color: var(--user-text);
-      padding: 4px 10px;
-      border-radius: 16px;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .remove-file {
-      cursor: pointer;
-      color: var(--text-light);
-      margin-left: auto;
-    }
-
-    .remove-file:hover {
-      color: var(--error);
+      min-height: 48px;
     }
 
     .send-btn {
       background: var(--accent);
       color: var(--user-text);
       border: none;
-      width: 45px;
-      height: 45px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       cursor: pointer;
       display: flex;
@@ -752,13 +512,12 @@
       flex-shrink: 0;
     }
 
-    .send-btn:hover {
-      transform: scale(1.05);
+    .send-btn:active {
+      transform: scale(0.95);
     }
 
     .send-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
+      opacity: 0.5;
     }
 
     .modal {
@@ -769,9 +528,15 @@
       right: 0;
       bottom: 0;
       background: rgba(0,0,0,0.5);
-      z-index: 1000;
-      align-items: center;
+      z-index: 1100;
+      align-items: flex-end;
       justify-content: center;
+    }
+
+    @media (min-width: 769px) {
+      .modal {
+        align-items: center;
+      }
     }
 
     .modal.active {
@@ -780,12 +545,29 @@
 
     .modal-content {
       background: var(--card);
-      border-radius: 16px;
-      padding: 30px;
+      border-radius: 20px 20px 0 0;
+      padding: 24px 20px 30px;
       max-width: 600px;
-      width: 90%;
+      width: 100%;
       max-height: 80vh;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      animation: slideUp 0.3s;
+    }
+
+    @media (min-width: 769px) {
+      .modal-content {
+        border-radius: 16px;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+      }
+      to {
+        transform: translateY(0);
+      }
     }
 
     .modal-header {
@@ -795,28 +577,28 @@
       margin-bottom: 20px;
     }
 
-    .modal-title {
-      font-size: 20px;
-      font-weight: 600;
-    }
-
     .close-btn {
       background: none;
       border: none;
-      font-size: 24px;
+      font-size: 28px;
       cursor: pointer;
       color: var(--text);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .calc-input {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       margin-bottom: 15px;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--bg);
       color: var(--text);
-      font-size: 14px;
+      font-size: 16px;
     }
 
     .calc-result {
@@ -829,178 +611,88 @@
     .calc-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
+      padding: 12px 0;
       border-bottom: 1px solid var(--border);
-    }
-
-    .calc-row:last-child {
-      border-bottom: none;
-      font-weight: 600;
-      font-size: 18px;
-    }
-
-    .share-link {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
-    }
-
-    .share-link input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--bg);
-      color: var(--text);
-    }
-
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--text-light);
-    }
-
-    @media (max-width: 768px) {
-      .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        z-index: 100;
-        transform: translateX(-100%);
-      }
-
-      .sidebar.active {
-        transform: translateX(0);
-      }
-
-      .message-content {
-        max-width: 85%;
-      }
     }
 
     .empty {
       text-align: center;
-      padding: 60px 20px;
+      padding: 40px 20px;
       color: var(--text-light);
     }
 
     .empty svg {
-      width: 80px;
-      height: 80px;
-      margin-bottom: 20px;
+      width: 60px;
+      height: 60px;
+      margin-bottom: 15px;
       color: var(--text);
     }
 
     .empty h3 {
       margin-bottom: 10px;
-      font-size: 24px;
+      font-size: 20px;
     }
   </style>
 </head>
 <body>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <div class="container">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <h2>
-          <i data-lucide="history"></i>
-          Conversas
-        </h2>
-        <button class="new-chat-btn" onclick="newChat()" aria-label="Nova conversa">
-          <i data-lucide="plus"></i>
-          Nova Conversa
+        <h2><i data-lucide="history"></i> Conversas</h2>
+        <button class="new-chat-btn" onclick="newChat()">
+          <i data-lucide="plus"></i> Nova Conversa
         </button>
         <div class="history-search">
           <i data-lucide="search"></i>
-          <input 
-            type="text" 
-            id="historySearch" 
-            placeholder="Buscar conversas..."
-            onkeyup="filterHistory()"
-            aria-label="Buscar no histórico"
-          >
+          <input type="text" id="historySearch" placeholder="Buscar..." onkeyup="filterHistory()">
         </div>
       </div>
-      <div class="history-list" id="historyList"></div>
+      <div class="history-list" id="historyList">
+        <div style="padding: 20px; text-align: center; color: var(--text-light);">
+          <i data-lucide="loader" style="width: 24px; height: 24px; animation: spin 1s linear infinite;"></i><br>
+          Carregando...
+        </div>
+      </div>
     </aside>
 
     <main class="chat">
       <div class="chat-header">
         <div class="chat-title">
-          <i data-lucide="calculator"></i>
-          Chat Fiscal Pro
-          <div class="badges-container" id="badgesContainer"></div>
-        </div>
-        <div class="chat-controls">
-          <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia" aria-label="Tela cheia">
-            <i data-lucide="maximize-2"></i>
-          </button>
-          <button class="icon-btn" onclick="exportChat()" title="Exportar conversa" aria-label="Exportar conversa">
-            <i data-lucide="download"></i>
-          </button>
-          <button class="icon-btn" onclick="exportToPDF()" title="Exportar como PDF" aria-label="Exportar como PDF">
-            <i data-lucide="file-text"></i>
-          </button>
-          <button class="icon-btn" onclick="shareChat()" title="Compartilhar" aria-label="Compartilhar">
-            <i data-lucide="share-2"></i>
-          </button>
-          <button class="icon-btn" onclick="showStats()" title="Estatísticas" aria-label="Ver estatísticas">
-            <i data-lucide="bar-chart-2"></i>
-          </button>
-          <button class="icon-btn" onclick="openCalculator()" title="Calculadora" aria-label="Abrir calculadora">
-            <i data-lucide="calculator"></i>
-          </button>
-          <button class="icon-btn" onclick="toggleSidebar()" title="Histórico" aria-label="Alternar histórico">
+          <button class="icon-btn" onclick="toggleSidebar()" style="display: flex; @media (min-width: 769px) { display: none; }">
             <i data-lucide="menu"></i>
           </button>
-          <button class="icon-btn" onclick="toggleTheme()" title="Tema" aria-label="Alternar tema">
+          <i data-lucide="calculator"></i>
+          <span>Chat Fiscal Pro</span>
+          <span class="connection-status" id="connectionStatus">
+            <i data-lucide="cloud-off"></i>
+            <span>Conectando...</span>
+          </span>
+        </div>
+        <div class="chat-controls">
+          <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
+            <i data-lucide="calculator"></i>
+          </button>
+          <button class="icon-btn" onclick="toggleTheme()" title="Tema">
             <i data-lucide="moon"></i>
           </button>
         </div>
       </div>
 
-      <div id="deadlineAlerts" class="deadline-alerts"></div>
-
       <div class="templates-section">
         <div class="templates-header">
           <h3>Perguntas Rápidas</h3>
-          <button class="add-template-btn" onclick="openAddTemplateModal()">
-            <i data-lucide="plus"></i>
-            Adicionar Template
-          </button>
         </div>
-        <div class="template-grid" id="templateGrid">
-          <button class="template-btn" onclick="useTemplate('Como calcular ICMS de R$ 10.000 com alíquota 18%?')">
-            <i data-lucide="calculator"></i>
-            Calcular ICMS
+        <div class="template-grid">
+          <button class="template-btn" onclick="useTemplate('Como calcular ICMS?')">
+            <i data-lucide="calculator"></i> ICMS
           </button>
-          <button class="template-btn" onclick="useTemplate('Como funciona o ICMS-ST?')">
-            <i data-lucide="shield"></i>
-            ICMS-ST
+          <button class="template-btn" onclick="useTemplate('O que é ICMS-ST?')">
+            <i data-lucide="shield"></i> ICMS-ST
           </button>
-          <button class="template-btn" onclick="useTemplate('Diferença entre Lucro Real e Presumido')">
-            <i data-lucide="bar-chart-2"></i>
-            Regimes
-          </button>
-          <button class="template-btn" onclick="useTemplate('Quando usar CFOP 5102?')">
-            <i data-lucide="file-text"></i>
-            CFOPs
-          </button>
-          <button class="template-btn" onclick="useTemplate('Prazo SPED Fiscal 2024')">
-            <i data-lucide="clock"></i>
-            Prazos
+          <button class="template-btn" onclick="useTemplate('Diferença entre Lucro Real e Presumido?')">
+            <i data-lucide="bar-chart-2"></i> Regimes
           </button>
         </div>
       </div>
@@ -1009,36 +701,17 @@
         <div class="empty">
           <i data-lucide="message-circle"></i>
           <h3>Olá! Sou seu especialista fiscal</h3>
-          <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
+          <p>Faça perguntas sobre tributos, CFOPs e muito mais!</p>
         </div>
       </div>
 
       <div class="input-area">
         <div class="input-wrapper">
-          <div class="input-container">
-            <input 
-              type="text" 
-              id="input" 
-              placeholder="Digite sua dúvida fiscal..."
-              onkeypress="handleKey(event)"
-              aria-label="Digite sua pergunta"
-            >
-            <div class="file-input-container" id="fileContainer" style="display: none;">
-              <div class="file-info" id="fileInfo"></div>
-            </div>
-            <div class="multiple-files" id="multipleFiles"></div>
-          </div>
-          <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos (máx 10MB cada)" aria-label="Anexar arquivos">
-            <i data-lucide="paperclip"></i>
-          </button>
-          <button class="icon-btn" onclick="compareFiles()" title="Comparar documentos" aria-label="Comparar documentos">
-            <i data-lucide="git-compare"></i>
-          </button>
-          <button class="send-btn" id="sendBtn" onclick="send()" aria-label="Enviar mensagem">
+          <input type="text" id="input" placeholder="Digite sua dúvida..." onkeypress="handleKey(event)">
+          <button class="send-btn" id="sendBtn" onclick="send()">
             <i data-lucide="send"></i>
           </button>
         </div>
-        <input type="file" id="fileInput" style="display: none;" multiple accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" onchange="handleMultipleFiles(event)">
       </div>
     </main>
   </div>
@@ -1049,1580 +722,287 @@
         <h3 class="modal-title">Calculadora Fiscal</h3>
         <button class="close-btn" onclick="closeCalculator()">&times;</button>
       </div>
-      
-      <label>Valor Base (R$)</label>
-      <input type="number" class="calc-input" id="calcValor" placeholder="Ex: 10000">
-      
-      <label>Alíquota ICMS (%)</label>
-      <input type="number" class="calc-input" id="calcICMS" value="18">
-      
-      <label>Alíquota PIS (%)</label>
-      <input type="number" class="calc-input" id="calcPIS" value="1.65">
-      
-      <label>Alíquota COFINS (%)</label>
-      <input type="number" class="calc-input" id="calcCOFINS" value="7.6">
-      
-      <label>Estado (para ICMS)</label>
-      <select class="calc-input" id="calcState">
-        <option value="SP">São Paulo</option>
-        <option value="RJ">Rio de Janeiro</option>
-        <option value="MG">Minas Gerais</option>
-        <option value="RS">Rio Grande do Sul</option>
-        <option value="PR">Paraná</option>
-      </select>
-      
-      <label>Tipo de Produto</label>
-      <select class="calc-input" id="calcProductType">
-        <option value="geral">Geral</option>
-        <option value="alimentos">Alimentos</option>
-        <option value="medicamentos">Medicamentos</option>
-        <option value="combustiveis">Combustíveis</option>
-      </select>
-      
-      <button class="new-chat-btn" onclick="calculateFullTaxes()">
-        <i data-lucide="calculator"></i>
-        Calcular Impostos Completos
-      </button>
-      
+      <input type="number" class="calc-input" id="calcValor" placeholder="Valor R$">
+      <button class="new-chat-btn" onclick="calculate()">Calcular</button>
       <div class="calc-result" id="calcResult" style="display: none;">
-        <div class="calc-row">
-          <span>ICMS:</span>
-          <span id="resultICMS">R$ 0,00</span>
-        </div>
-        <div class="calc-row">
-          <span>PIS:</span>
-          <span id="resultPIS">R$ 0,00</span>
-        </div>
-        <div class="calc-row">
-          <span>COFINS:</span>
-          <span id="resultCOFINS">R$ 0,00</span>
-        </div>
-        <div class="calc-row">
-          <span>IPI:</span>
-          <span id="resultIPI">R$ 0,00</span>
-        </div>
-        <div class="calc-row">
-          <span>Total de Impostos:</span>
-          <span id="resultTotal">R$ 0,00</span>
-        </div>
+        <div class="calc-row"><span>ICMS (18%):</span><span id="resultICMS">R$ 0,00</span></div>
+        <div class="calc-row"><span>Total:</span><span id="resultTotal">R$ 0,00</span></div>
       </div>
     </div>
   </div>
-
-  <div class="modal" id="statsModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">Estatísticas de Uso</h3>
-        <button class="close-btn" onclick="closeStats()">&times;</button>
-      </div>
-      <div id="statsContent"></div>
-    </div>
-  </div>
-
-  <div class="modal" id="templateModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">Adicionar Template Personalizado</h3>
-        <button class="close-btn" onclick="closeTemplateModal()">&times;</button>
-      </div>
-      
-      <label>Nome do Template</label>
-      <input type="text" class="calc-input" id="templateName" placeholder="Ex: Consulta ICMS">
-      
-      <label>Pergunta</label>
-      <textarea class="calc-input" id="templateQuestion" rows="3" placeholder="Digite a pergunta..."></textarea>
-      
-      <button class="new-chat-btn" onclick="addCustomTemplate()">
-        <i data-lucide="save"></i>
-        Salvar Template
-      </button>
-    </div>
-  </div>
-
-  <div class="modal" id="shareModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">Compartilhar Conversa</h3>
-        <button class="close-btn" onclick="closeShareModal()">&times;</button>
-      </div>
-      
-      <p>Link para compartilhar:</p>
-      <div class="share-link">
-        <input type="text" id="shareLink" readonly>
-        <button class="icon-btn" onclick="copyShareLink()">
-          <i data-lucide="copy"></i>
-        </button>
-      </div>
-      
-      <p style="margin-top: 15px; font-size: 12px; color: var(--text-light);">
-        ⚠️ Link válido por 24 horas
-      </p>
-    </div>
-  </div>
-
-  <div class="modal" id="compareModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">Comparar Documentos</h3>
-        <button class="close-btn" onclick="closeCompareModal()">&times;</button>
-      </div>
-      
-      <div id="compareResult"></div>
-    </div>
-  </div>
-
-  <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <script>
-    // Configuração do PDF.js
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    const SUPABASE_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
+    const GROQ_KEY = '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';
+    const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    const SYSTEM_PROMPT = `Você é um especialista fiscal brasileiro. Responda de forma clara sobre: ICMS, ISS, PIS, COFINS, IPI, regimes tributários (Simples, Presumido, Real), SPED, GIA, DCTF, CFOPs, ICMS-ST, DIFAL e legislação tributária. Use **negrito** para conceitos-chave. Seja direto e prático.`;
 
-    const API_KEY = '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';
-    const messages = document.getElementById('messages');
-    const input = document.getElementById('input');
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
     const sendBtn = document.getElementById('sendBtn');
-    const fileInput = document.getElementById('fileInput');
-    const fileContainer = document.getElementById('fileContainer');
-    const fileInfo = document.getElementById('fileInfo');
-    const multipleFilesDiv = document.getElementById('multipleFiles');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-    let currentChat = {
-      id: Date.now(),
-      title: 'Nova Conversa',
-      messages: [],
-      date: new Date()
-    };
-
-    let currentFiles = [];
-    let isProcessingFile = false;
-    let typingIndicator = null;
-    
-    // Cache para respostas
-    const responseCache = new Map();
-    const semanticCache = new Map();
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
-
+    let currentChat = { id: null, title: 'Nova Conversa', messages: [] };
     let chats = [];
-    try {
-      chats = JSON.parse(localStorage.getItem('fiscalChats') || '[]');
-    } catch (e) {
-      chats = [];
-    }
 
-    let customTemplates = JSON.parse(localStorage.getItem('customTemplates') || '[]');
-
-    // Estatísticas do usuário
-    let userStats = JSON.parse(localStorage.getItem('userStats') || JSON.stringify({
-      questions: 0,
-      filesAnalyzed: 0,
-      correctAnswers: 0,
-      badges: []
-    }));
-
-    const badges = {
-      'primeira_pergunta': { name: 'Primeiros Passos', icon: '🌟', condition: (s) => s.questions >= 1 },
-      'analista_10': { name: 'Analista Experiente', icon: '📊', condition: (s) => s.questions >= 10 },
-      'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '📄', condition: (s) => s.filesAnalyzed >= 5 },
-      'fiscal_pro': { name: 'Fiscal Pro', icon: '👑', condition: (s) => s.correctAnswers >= 20 }
-    };
-
-    const fiscalDeadlines = {
-      'sped_fiscal': { day: 15, month: 'monthly', description: 'Entrega SPED Fiscal' },
-      'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
-      'ecf': { day: 31, month: 7, description: 'Entrega ECF' } // 31 de julho
-    };
-
-    // PROMPT melhorado com contexto fiscal mais específico
-    const PROMPT = `Você é um especialista fiscal brasileiro sênior com mais de 15 anos de experiência. Responda de forma clara, técnica e precisa sobre:
-
-    TRIBUTOS:
-    - ICMS: Regras gerais, substituição tributária (ICMS-ST), diferencial de alíquotas (DIFAL), regimes especiais
-    - ISS: Lista de serviços, alíquotas mínimas e máximas, retenção na fonte
-    - PIS/COFINS: Regimes cumulativo e não-cumulativo, créditos, base de cálculo
-    - IPI: Classificação fiscal (TIPI), alíquotas, créditos
-
-    REGIMES TRIBUTÁRIOS:
-    - Simples Nacional: Anexos, tabelas, sublimites, exclusão
-    - Lucro Presumido: Percentuais de presunção, distribuição de lucros
-    - Lucro Real: Apuração trimestral/anual, adições e exclusões
-
-    OBRIGAÇÕES ACESSÓRIAS:
-    - SPED Fiscal, SPED Contribuições, EFD-Reinf, DCTF, GIA, ECD, ECF
-    - Prazos de entrega, multas por atraso, retificações
-
-    DOCUMENTOS FISCAIS:
-    - CFOPs: Entradas e saídas, operações interestaduais
-    - CST, CSOSN: Códigos de situação tributária
-    - NFe, NFCe, CT-e: Regras de emissão, contingência
-
-    LEGISLAÇÃO:
-    - Lei Kandir (LC 87/96), Lei do Simples (LC 123/06), Convênios ICMS
-    - Atualizações recentes, jurisprudência relevante
-
-    Ao responder:
-    1. Cite os fundamentos legais (leis, artigos, convênios)
-    2. Destaque **termos importantes** em negrito
-    3. Forneça exemplos práticos quando possível
-    4. Indique cuidados especiais e riscos
-    5. Se aplicável, mostre cálculos passo a passo
-    6. Mencione prazos e obrigações relacionadas
-
-    Quando o usuário enviar arquivos, analise o conteúdo e forneça insights específicos sobre questões fiscais encontradas.`;
-
-    function init() {
-      loadHistory();
+    window.onload = async function() {
       lucide.createIcons();
-      
       const theme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', theme);
-      
-      if (currentChat.messages && currentChat.messages.length > 0) {
-        clearMessages();
-        currentChat.messages.forEach(msg => {
-          addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData);
-        });
-      }
-      
-      // Compactar chats antigos
-      compressOldChats();
-      
-      // Adicionar observer para acessibilidade
-      addAriaObserver();
-      
-      // Detectar tema do sistema
-      detectSystemTheme();
-      
-      // Renderizar templates customizados
-      renderCustomTemplates();
-      
-      // Verificar prazos
-      checkDeadlines();
-      
-      // Atualizar badges
-      updateBadges();
-    }
+      updateConnectionStatus('Conectando...', 'loader', 'var(--warning)');
+      await checkConnection();
+      await loadChats();
+    };
 
-    function detectSystemTheme() {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const savedTheme = localStorage.getItem('theme');
-      
-      if (!savedTheme) {
-        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    async function checkConnection() {
+      try {
+        const { error } = await sb.from('chats').select('id').limit(1);
+        if (error) throw error;
+        updateConnectionStatus('Online', 'cloud', 'var(--success)');
+      } catch (e) {
+        updateConnectionStatus('Offline', 'cloud-off', 'var(--error)');
+        console.error('Supabase erro:', e.message);
       }
     }
 
-    // Ouvir mudanças no tema do sistema
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem('theme')) {
-        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-      }
-    });
-
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    }
-
-    function renderCustomTemplates() {
-      const templateGrid = document.getElementById('templateGrid');
-      
-      customTemplates.forEach(template => {
-        const btn = document.createElement('button');
-        btn.className = 'template-btn';
-        btn.onclick = () => useTemplate(template.question);
-        btn.innerHTML = `<i data-lucide="star"></i> ${template.name}`;
-        templateGrid.appendChild(btn);
-      });
-      
+    function updateConnectionStatus(text, icon, color) {
+      const el = document.getElementById('connectionStatus');
+      if (!el) return;
+      el.innerHTML = `<i data-lucide="${icon}" style="width:12px;height:12px;color:${color}"></i><span>${text}</span>`;
       lucide.createIcons();
     }
 
-    function openAddTemplateModal() {
-      document.getElementById('templateModal').classList.add('active');
-    }
-
-    function closeTemplateModal() {
-      document.getElementById('templateModal').classList.remove('active');
-    }
-
-    function addCustomTemplate() {
-      const name = document.getElementById('templateName').value.trim();
-      const question = document.getElementById('templateQuestion').value.trim();
-      
-      if (!name || !question) {
-        alert('Preencha todos os campos');
-        return;
-      }
-      
-      customTemplates.push({ name, question });
-      localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
-      
-      closeTemplateModal();
-      renderCustomTemplates();
-      
-      document.getElementById('templateName').value = '';
-      document.getElementById('templateQuestion').value = '';
-    }
-
-    function checkDeadlines() {
-      const today = new Date();
-      const alerts = [];
-      
-      for (const [key, deadline] of Object.entries(fiscalDeadlines)) {
-        if (deadline.month === 'monthly') {
-          const nextDeadline = new Date(today.getFullYear(), today.getMonth(), deadline.day);
-          const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
-          
-          if (daysUntil <= 5 && daysUntil >= 0) {
-            alerts.push({
-              message: `${deadline.description} em ${daysUntil} dias`,
-              severity: daysUntil <= 2 ? 'high' : 'medium'
-            });
-          }
-        } else {
-          // Deadlines anuais
-          const nextDeadline = new Date(today.getFullYear(), deadline.month - 1, deadline.day);
-          if (today > nextDeadline) {
-            nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
-          }
-          const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
-          
-          if (daysUntil <= 30 && daysUntil >= 0) {
-            alerts.push({
-              message: `${deadline.description} em ${daysUntil} dias`,
-              severity: daysUntil <= 7 ? 'high' : 'medium'
-            });
-          }
-        }
-      }
-      
-      const alertDiv = document.getElementById('deadlineAlerts');
-      if (alerts.length > 0) {
-        alertDiv.innerHTML = alerts.map(a => `
-          <div class="alert alert-${a.severity}">
-            <i data-lucide="alert-circle"></i>
-            ${a.message}
-          </div>
-        `).join('');
-        lucide.createIcons();
-      } else {
-        alertDiv.innerHTML = '';
-      }
-    }
-
-    function updateBadges() {
-      const container = document.getElementById('badgesContainer');
-      
-      for (const [key, badge] of Object.entries(badges)) {
-        if (badge.condition(userStats) && !userStats.badges.includes(key)) {
-          userStats.badges.push(key);
-        }
-      }
-      
-      container.innerHTML = userStats.badges.map(key => `
-        <span class="badge" title="${badges[key].name}">
-          ${badges[key].icon} ${badges[key].name}
-        </span>
-      `).join('');
-      
-      localStorage.setItem('userStats', JSON.stringify(userStats));
-    }
-
-    function analyzeSentiment(text) {
-      const urgentKeywords = ['urgente', 'prazo', 'multa', 'problema', 'erro', 'ajuda', 'socorro'];
-      const isUrgent = urgentKeywords.some(k => text.toLowerCase().includes(k));
-      
-      return {
-        priority: isUrgent ? 'high' : 'normal'
-      };
-    }
-
-    function getSemanticCacheKey(messages) {
-      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
-      
-      return `${lastUserMessage?.content}_${lastAssistantMessage?.content}`;
-    }
-
-    function isSimilarQuestion(q1, q2) {
-      if (!q1 || !q2) return false;
-      
-      const words1 = new Set(q1.toLowerCase().split(' '));
-      const words2 = new Set(q2.toLowerCase().split(' '));
-      const intersection = new Set([...words1].filter(x => words2.has(x)));
-      
-      return intersection.size > 3;
-    }
-
-    async function getSmartCachedResponse(messages) {
-      const key = getSemanticCacheKey(messages);
-      
-      for (const [cachedKey, cached] of semanticCache) {
-        if (isSimilarQuestion(key, cachedKey)) {
-          return cached.response;
-        }
-      }
-      
-      return null;
-    }
-
-    async function analyzeInvoice(invoiceData) {
-      const analysisPrompt = `
-        Analise esta nota fiscal detalhadamente:
-        
-        ${invoiceData}
-        
-        Forneça:
-        1. Validação dos cálculos de impostos
-        2. CFOP correto para operação
-        3. CST/CSOSN adequado
-        4. Possíveis irregularidades
-        5. Oportunidades de economia tributária
-        6. Documentos necessários para complementar
-        
-        Formato a resposta em seções claras.
-      `;
-      
-      return await callAI(analysisPrompt);
-    }
-
-    function calculateFullTaxes() {
-      const valor = parseFloat(document.getElementById('calcValor').value) || 0;
-      const state = document.getElementById('calcState').value;
-      const productType = document.getElementById('calcProductType').value;
-      
-      // Alíquotas simuladas (idealmente viriam de API)
-      const rates = {
-        'SP': { icms: 18, ipi: 5 },
-        'RJ': { icms: 20, ipi: 5 },
-        'MG': { icms: 18, ipi: 5 },
-        'RS': { icms: 17, ipi: 5 },
-        'PR': { icms: 18, ipi: 5 }
-      };
-      
-      const pis = parseFloat(document.getElementById('calcPIS').value) || 1.65;
-      const cofins = parseFloat(document.getElementById('calcCOFINS').value) || 7.6;
-      
-      const icms = valor * (rates[state]?.icms / 100);
-      const pisCalc = valor * (pis / 100);
-      const cofinsCalc = valor * (cofins / 100);
-      const ipi = valor * (rates[state]?.ipi / 100);
-      const total = icms + pisCalc + cofinsCalc + ipi;
-
-      document.getElementById('resultICMS').textContent = `R$ ${icms.toFixed(2)}`;
-      document.getElementById('resultPIS').textContent = `R$ ${pisCalc.toFixed(2)}`;
-      document.getElementById('resultCOFINS').textContent = `R$ ${cofinsCalc.toFixed(2)}`;
-      document.getElementById('resultIPI').textContent = `R$ ${ipi.toFixed(2)}`;
-      document.getElementById('resultTotal').textContent = `R$ ${total.toFixed(2)}`;
-      
-      document.getElementById('calcResult').style.display = 'block';
-    }
-
-    function calculateSimplesNacional(revenue, annex) {
-      // Simulação da tabela do Simples Nacional
-      const tables = {
-        1: { // Anexo I - Comércio
-          brackets: [
-            { limit: 180000, rate: 4.0 },
-            { limit: 360000, rate: 7.3 },
-            { limit: 720000, rate: 9.5 },
-            { limit: 1800000, rate: 10.7 },
-            { limit: 3600000, rate: 14.3 },
-            { limit: 4800000, rate: 19.0 }
-          ]
-        },
-        2: { // Anexo II - Indústria
-          brackets: [
-            { limit: 180000, rate: 4.5 },
-            { limit: 360000, rate: 7.8 },
-            { limit: 720000, rate: 10.0 },
-            { limit: 1800000, rate: 11.2 },
-            { limit: 3600000, rate: 14.7 },
-            { limit: 4800000, rate: 30.0 }
-          ]
-        }
-      };
-      
-      const table = tables[annex];
-      if (!table) return null;
-      
-      for (const bracket of table.brackets) {
-        if (revenue <= bracket.limit) {
-          return bracket.rate;
-        }
-      }
-      
-      return table.brackets[table.brackets.length - 1].rate;
-    }
-
-    async function getRealTimeTaxRates() {
-      // Simulação - idealmente viria de uma API real
-      const cached = localStorage.getItem('taxRates');
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) { // 24 horas
-          return data;
-        }
-      }
-      
-      // Simular dados
-      const rates = {
-        'SP': { icms: 18, pis: 1.65, cofins: 7.6 },
-        'RJ': { icms: 20, pis: 1.65, cofins: 7.6 },
-        'MG': { icms: 18, pis: 1.65, cofins: 7.6 }
-      };
-      
-      localStorage.setItem('taxRates', JSON.stringify({
-        data: rates,
-        timestamp: Date.now()
-      }));
-      
-      return rates;
-    }
-
-    function newChat() {
-      if (currentChat.messages && currentChat.messages.length > 0) {
-        saveChat();
-      }
-      
-      currentChat = {
-        id: Date.now(),
-        title: 'Nova Conversa',
-        messages: [],
-        date: new Date()
-      };
-      
-      clearMessages();
-      loadHistory();
-      removeAllFiles();
-      announce('Nova conversa iniciada');
-    }
-
-    function saveChat() {
-      if (!currentChat.messages || currentChat.messages.length === 0) return;
-      
+    async function loadChats() {
       try {
-        const chatToSave = {
-          ...currentChat,
-          messages: currentChat.messages.map(msg => ({
-            ...msg,
-            fileData: msg.fileData ? {
-              ...msg.fileData,
-              content: msg.fileData.content ? msg.fileData.content.substring(0, 5000) : null
-            } : null
-          }))
-        };
-        
-        const index = chats.findIndex(c => c.id === currentChat.id);
-        if (index >= 0) {
-          chats[index] = chatToSave;
-        } else {
-          chats.unshift(chatToSave);
-        }
-        
-        chats = chats.slice(0, 50);
-        localStorage.setItem('fiscalChats', JSON.stringify(chats));
+        const { data, error } = await sb.from('chats').select('id, title, created_at').order('created_at', { ascending: false });
+        if (error) throw error;
+        chats = data || [];
+        renderHistoryList();
       } catch (e) {
-        console.error('Erro ao salvar chat:', e);
+        document.getElementById('historyList').innerHTML =
+          `<div style="padding:16px;color:var(--error);font-size:13px">Erro: ${e.message}</div>`;
       }
     }
 
-    function loadChat(id) {
-      if (currentChat.messages && currentChat.messages.length > 0) {
-        saveChat();
-      }
-      
-      const chat = chats.find(c => c.id === id);
-      if (chat) {
-        currentChat = JSON.parse(JSON.stringify(chat));
-        clearMessages();
-        if (currentChat.messages) {
-          currentChat.messages.forEach(msg => {
-            addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData);
-          });
-        }
-        loadHistory();
-        announce('Conversa carregada');
-      }
-    }
-
-    function deleteChat(id, event) {
-      if (event) {
-        event.stopPropagation();
-      }
-      
-      if (confirm('Tem certeza que deseja deletar esta conversa?')) {
-        chats = chats.filter(c => c.id !== id);
-        localStorage.setItem('fiscalChats', JSON.stringify(chats));
-        
-        if (currentChat.id === id) {
-          newChat();
-        } else {
-          loadHistory();
-        }
-        announce('Conversa deletada');
-      }
-    }
-
-    function filterHistory() {
-      const searchTerm = document.getElementById('historySearch').value.toLowerCase();
-      const items = document.querySelectorAll('.history-item');
-      
-      items.forEach(item => {
-        const title = item.querySelector('.history-title').textContent.toLowerCase();
-        item.style.display = title.includes(searchTerm) ? 'block' : 'none';
-      });
-    }
-
-    function loadHistory() {
+    function renderHistoryList() {
       const list = document.getElementById('historyList');
-      
-      if (!chats || chats.length === 0) {
-        list.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-light);">Nenhuma conversa ainda</div>';
+      if (!chats.length) {
+        list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Nenhuma conversa ainda</div>';
         return;
       }
-      
-      list.innerHTML = chats.map(chat => `
-        <div class="history-item ${chat.id === currentChat.id ? 'active' : ''}" onclick="loadChat(${chat.id})">
-          <div class="history-title">${chat.title || 'Nova Conversa'}</div>
-          <div class="history-date">${new Date(chat.date).toLocaleDateString('pt-BR')}</div>
+      list.innerHTML = chats.map(c => `
+        <div class="history-item ${c.id === currentChat.id ? 'active' : ''}" onclick="loadChat(${c.id})">
+          <div class="history-title">${c.title || 'Nova Conversa'}</div>
+          <div class="history-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
           <div class="history-actions">
-            <button class="history-btn" onclick="deleteChat(${chat.id}, event)">
-              <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
-              Deletar
+            <button class="history-btn" onclick="event.stopPropagation();deleteChat(${c.id})">
+              <i data-lucide="trash-2" style="width:12px;height:12px"></i> Deletar
             </button>
           </div>
-        </div>
-      `).join('');
-      
+        </div>`).join('');
       lucide.createIcons();
     }
 
-    function compressOldChats() {
-      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-      
-      chats = chats.map(chat => {
-        if (new Date(chat.date).getTime() < thirtyDaysAgo && chat.messages.length > 10) {
-          return {
-            id: chat.id,
-            title: chat.title,
-            date: chat.date,
-            messages: [
-              { role: 'system', content: '📦 Conversa comprimida por ser antiga. Apenas o título foi preservado.' },
-              ...chat.messages.slice(0, 2)
-            ]
-          };
-        }
-        return chat;
-      });
-      
-      localStorage.setItem('fiscalChats', JSON.stringify(chats));
+    async function loadChat(id) {
+      try {
+        const { data, error } = await sb.from('chats').select('id, title, messages').eq('id', id).single();
+        if (error) throw error;
+        currentChat = { id: data.id, title: data.title, messages: data.messages || [] };
+        messagesEl.innerHTML = '';
+        currentChat.messages.forEach(m => addMessage(m.content, m.role === 'user', m.confidence));
+        renderHistoryList();
+        if (window.innerWidth <= 768) toggleSidebar();
+      } catch (e) { console.error('loadChat:', e); }
     }
 
-    function clearMessages() {
-      messages.innerHTML = `
+    async function deleteChat(id) {
+      if (!confirm('Deletar esta conversa?')) return;
+      await sb.from('chats').delete().eq('id', id);
+      if (currentChat.id === id) newChat();
+      else await loadChats();
+    }
+
+    async function newChat() {
+      currentChat = { id: null, title: 'Nova Conversa', messages: [] };
+      messagesEl.innerHTML = `
         <div class="empty">
           <i data-lucide="message-circle"></i>
-          <h3>Olá! Sou seu especialista fiscal</h3>
-          <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
-        </div>
-      `;
+          <h3>Nova conversa</h3>
+          <p>Faça sua primeira pergunta!</p>
+        </div>`;
       lucide.createIcons();
+      renderHistoryList();
+      if (window.innerWidth <= 768) toggleSidebar();
     }
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-    async function handleMultipleFiles(event) {
-      const files = Array.from(event.target.files);
-      
-      for (const file of files) {
-        if (file.size > MAX_FILE_SIZE) {
-          alert(`Arquivo ${file.name} muito grande. Tamanho máximo: 10MB`);
-          continue;
-        }
-        
-        if (isProcessingFile) continue;
-        
-        isProcessingFile = true;
-        
-        try {
-          showFileProgress(file);
-          const fileData = await processFile(file);
-          currentFiles.push(fileData);
-          userStats.filesAnalyzed++;
-          localStorage.setItem('userStats', JSON.stringify(userStats));
-          updateBadges();
-        } catch (error) {
-          console.error('Erro ao processar arquivo:', error);
-        } finally {
-          isProcessingFile = false;
-        }
-      }
-      
-      updateFilesUI();
-      fileInput.value = '';
-    }
-
-    function showFileProgress(file) {
-      fileContainer.style.display = 'block';
-      fileInfo.innerHTML = `
-        <div style="width: 100%;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <span>📄 ${file.name}</span>
-            <span id="fileProgress">0%</span>
-          </div>
-          <div class="progress-bar">
-            <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
-          </div>
-        </div>
-      `;
-      
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        document.getElementById('progressFill').style.width = progress + '%';
-        document.getElementById('fileProgress').textContent = progress + '%';
-        
-        if (progress >= 100) {
-          clearInterval(interval);
-        }
-      }, 100);
-    }
-
-    function updateFilesUI() {
-      if (currentFiles.length === 0) {
-        multipleFilesDiv.innerHTML = '';
-        fileContainer.style.display = 'none';
-        return;
-      }
-      
-      fileContainer.style.display = 'block';
-      fileInfo.innerHTML = `
-        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-          ${currentFiles.map((file, index) => `
-            <span class="file-tag">
-              <i data-lucide="file"></i>
-              ${file.name}
-              <i data-lucide="x" onclick="removeFile(${index})" style="cursor: pointer;"></i>
-            </span>
-          `).join('')}
-        </div>
-      `;
-      lucide.createIcons();
-    }
-
-    async function processFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        const fileType = file.type;
-        const fileName = file.name;
-        const fileSize = file.size;
-
-        reader.onload = async function(e) {
-          try {
-            let content = '';
-            let summary = '';
-
-            if (fileType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf')) {
-              const pdfData = new Uint8Array(e.target.result);
-              const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-              
-              let text = '';
-              for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                text += textContent.items.map(item => item.str).join(' ') + '\n';
-              }
-              
-              content = text.substring(0, 5000);
-              summary = `📄 PDF com ${pdf.numPages} página(s) processada(s)`;
-              
-              if (text.toLowerCase().includes('nota fiscal') || text.includes('nfe') || text.includes('cte')) {
-                summary += ' - Documento fiscal detectado';
-              }
-              
-            } else if (fileType.includes('spreadsheet') || fileName.includes('.xls') || fileName.includes('.xlsx') || fileName.includes('.csv')) {
-              const data = new Uint8Array(e.target.result);
-              const workbook = XLSX.read(data, { type: 'array' });
-              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-              content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 5000);
-              summary = `📊 ${workbook.SheetNames.length} planilha(s) encontradas`;
-              
-            } else if (fileType.includes('text') || fileName.includes('.txt') || fileName.includes('.csv')) {
-              content = e.target.result.substring(0, 5000);
-              summary = '📝 Arquivo de texto';
-              
-            } else if (fileType.includes('image')) {
-              content = 'Imagem enviada para análise visual';
-              summary = '🖼️ Arquivo de imagem';
-              
-            } else {
-              content = 'Tipo de arquivo não suportado para leitura completa.';
-              summary = '❓ Tipo não reconhecido';
-            }
-
-            resolve({
-              name: fileName,
-              type: fileType,
-              size: fileSize,
-              content: content,
-              summary: summary,
-              raw: fileType.includes('image') ? e.target.result : null
-            });
-            
-          } catch (error) {
-            reject(error);
-          }
-        };
-
-        reader.onerror = reject;
-
-        if (file.type.includes('pdf') || file.type.includes('spreadsheet') || file.name.match(/\.(xls|xlsx|csv)$/i)) {
-          reader.readAsArrayBuffer(file);
-        } else if (file.type.includes('image')) {
-          reader.readAsDataURL(file);
-        } else {
-          reader.readAsText(file, 'UTF-8');
-        }
-      });
-    }
-
-    function removeFile(index) {
-      currentFiles.splice(index, 1);
-      updateFilesUI();
-    }
-
-    function removeAllFiles() {
-      currentFiles = [];
-      updateFilesUI();
-    }
-
-    async function compareFiles() {
-      if (currentFiles.length < 2) {
-        alert('Selecione pelo menos 2 arquivos para comparar');
-        return;
-      }
-      
-      const content1 = currentFiles[0].content;
-      const content2 = currentFiles[1].content;
-      
-      const comparisonPrompt = `
-        Compare estes dois documentos fiscais:
-        
-        DOCUMENTO 1 (${currentFiles[0].name}):
-        ${content1}
-        
-        DOCUMENTO 2 (${currentFiles[1].name}):
-        ${content2}
-        
-        Destaque:
-        1. Diferenças principais
-        2. Inconsistências fiscais
-        3. Conformidade com a legislação
-        4. Recomendações
-      `;
-      
-      showTypingIndicator();
-      
+    async function saveChat() {
       try {
-        const response = await callAI(comparisonPrompt);
-        hideTypingIndicator();
-        
-        document.getElementById('compareResult').innerHTML = `
-          <div class="invoice-analysis">
-            <h4>Comparação de Documentos</h4>
-            <div class="analysis-section">
-              ${formatText(response)}
-            </div>
-          </div>
-        `;
-        
-        document.getElementById('compareModal').classList.add('active');
-      } catch (error) {
-        hideTypingIndicator();
-        alert('Erro ao comparar documentos');
-      }
+        if (currentChat.id) {
+          await sb.from('chats').update({ title: currentChat.title, messages: currentChat.messages }).eq('id', currentChat.id);
+        } else {
+          const { data, error } = await sb.from('chats').insert({ title: currentChat.title, messages: currentChat.messages }).select('id').single();
+          if (error) throw error;
+          currentChat.id = data.id;
+        }
+        await loadChats();
+      } catch (e) { console.error('saveChat:', e); }
     }
 
-    function closeCompareModal() {
-      document.getElementById('compareModal').classList.remove('active');
-    }
-
-    function addMessage(text, isUser, confidence = 'medium', fileData = null) {
-      const empty = messages.querySelector('.empty');
-      if (empty) empty.remove();
-      
+    function addMessage(text, isUser, confidence = 'medium') {
+      messagesEl.querySelector('.empty')?.remove();
       const div = document.createElement('div');
       div.className = `message ${isUser ? 'user' : 'assistant'}`;
-      
-      const sentiment = !isUser ? analyzeSentiment(text) : { priority: 'normal' };
-      if (sentiment.priority === 'high') {
-        div.classList.add('priority-high');
-      }
-      
-      const formattedText = formatText(text);
-      
-      let fileHtml = '';
-      if (fileData) {
-        if (fileData.type && fileData.type.startsWith('image/') && fileData.raw) {
-          fileHtml = `<img src="${fileData.raw}" class="file-preview" alt="${fileData.name}">`;
-        } else {
-          fileHtml = `
-            <div class="file-attachment">
-              <i data-lucide="file-text"></i>
-              <span>
-                <strong>${fileData.name}</strong> (${(fileData.size / 1024).toFixed(1)} KB)
-                ${fileData.summary ? `<br><small>${fileData.summary}</small>` : ''}
-              </span>
-            </div>
-          `;
-          
-          if (fileData.content && fileData.content.length > 0 && !fileData.type?.startsWith('image/')) {
-            fileHtml += `
-              <div class="file-content-preview">
-                <strong>Preview do conteúdo:</strong><br>
-                ${escapeHtml(fileData.content.substring(0, 300))}${fileData.content.length > 300 ? '...' : ''}
-              </div>
-            `;
-          }
-        }
-      }
-      
+
+      const formatted = isUser ? text : formatText(text);
+      const footer = !isUser ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);flex-wrap:wrap">
+          <button onclick="copyMsg(this)" style="display:flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--text)">
+            <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
+          </button>
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${confidence==='high'?'#d1fae5':confidence==='low'?'#fee2e2':'#fef3c7'};color:${confidence==='high'?'#065f46':confidence==='low'?'#991b1b':'#92400e'}">
+            ${confidence==='high'?'🟢 Alta':confidence==='low'?'🔴 Baixa':'🟡 Média'} confiança
+          </span>
+        </div>` : '';
+
       div.innerHTML = `
-        <div class="avatar">
-          <i data-lucide="${isUser ? 'user' : 'bot'}"></i>
-        </div>
-        <div class="message-content">
-          ${formattedText}
-          ${fileHtml}
-          ${!isUser ? `
-            <div class="message-actions">
-              <button class="msg-btn" onclick="copyText(this)">
-                <i data-lucide="copy"></i>
-                Copiar
-              </button>
-              <span class="confidence-badge confidence-${confidence}">
-                ${confidence === 'high' ? '🟢 Alta' : confidence === 'low' ? '🔴 Baixa' : '🟡 Média'} confiança
-              </span>
-            </div>
-          ` : ''}
-        </div>
-      `;
-      
-      messages.appendChild(div);
+        <div class="avatar"><i data-lucide="${isUser ? 'user' : 'bot'}"></i></div>
+        <div class="message-content">${formatted}${footer}</div>`;
+      messagesEl.appendChild(div);
       lucide.createIcons();
-      messages.scrollTop = messages.scrollHeight;
-      
-      announce(`Nova mensagem de ${isUser ? 'usuário' : 'assistente'}`);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+    function formatText(t) {
+      t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      t = t.replace(/`(.*?)`/g, '<code style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:monospace;font-size:13px">$1</code>');
+      t = t.replace(/^- (.+)$/gm, '<li>$1</li>');
+      t = t.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul style="margin-left:18px;margin-top:6px">$1</ul>');
+      t = t.replace(/\n/g, '<br>');
+      return t;
     }
 
-    function formatText(text) {
-      if (!text) return '';
-      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      text = text.replace(/\n\n/g, '<br><br>');
-      text = text.replace(/\n/g, '<br>');
-      text = text.replace(/^- (.*?)$/gm, '<li>$1</li>');
-      text = text.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-      text = text.replace(/`(.*?)`/g, '<code>$1</code>');
-      return text;
+    function showTyping() {
+      messagesEl.querySelector('.empty')?.remove();
+      const d = document.createElement('div');
+      d.className = 'message assistant'; d.id = 'typing';
+      d.innerHTML = `
+        <div class="avatar"><i data-lucide="bot"></i></div>
+        <div class="message-content" style="display:flex;gap:4px;padding:14px">
+          <span style="width:7px;height:7px;background:var(--text-light);border-radius:50%;display:block;animation:bounce 1.3s infinite"></span>
+          <span style="width:7px;height:7px;background:var(--text-light);border-radius:50%;display:block;animation:bounce 1.3s .2s infinite"></span>
+          <span style="width:7px;height:7px;background:var(--text-light);border-radius:50%;display:block;animation:bounce 1.3s .4s infinite"></span>
+        </div>`;
+      messagesEl.appendChild(d);
+      lucide.createIcons();
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function calculateConfidence(text) {
-      if (!text) return 'medium';
-      
-      const highIndicators = [
-        'lei', 'decreto', 'artigo', '§', 'instrução normativa',
-        'convênio', 'lc', 'ctn', 'regulamento', 'solução de consulta'
-      ];
-      
-      const lowIndicators = [
-        'pode variar', 'consulte', 'verifique', 'depende',
-        'recomenda-se', 'sugere-se', 'talvez', 'possivelmente'
-      ];
-      
-      const textLower = text.toLowerCase();
-      
-      if (highIndicators.some(indicator => textLower.includes(indicator))) {
-        return 'high';
-      } else if (lowIndicators.some(indicator => textLower.includes(indicator))) {
-        return 'low';
-      }
+    function hideTyping() { document.getElementById('typing')?.remove(); }
+
+    function getConfidence(t) {
+      if (/lei\s+n[°º]|decreto|art\.\s*\d|instrução normativa/i.test(t)) return 'high';
+      if (/pode variar|consulte um contador|verifique|depende do caso/i.test(t)) return 'low';
       return 'medium';
     }
 
-    function showTypingIndicator() {
-      if (!typingIndicator) {
-        typingIndicator = document.createElement('div');
-        typingIndicator.className = 'message assistant';
-        typingIndicator.innerHTML = `
-          <div class="avatar">
-            <i data-lucide="bot"></i>
-          </div>
-          <div class="message-content">
-            <div class="typing-indicator">
-              <span class="typing-dot"></span>
-              <span class="typing-dot"></span>
-              <span class="typing-dot"></span>
-            </div>
-          </div>
-        `;
-        messages.appendChild(typingIndicator);
-        messages.scrollTop = messages.scrollHeight;
-        lucide.createIcons();
-      }
-    }
-
-    function hideTypingIndicator() {
-      if (typingIndicator) {
-        typingIndicator.remove();
-        typingIndicator = null;
-      }
-    }
-
-    function suggestNextQuestions(lastResponse) {
-      const keywords = {
-        'icms': [
-          'Como calcular ICMS próprio?',
-          'O que é ICMS-ST?',
-          'Qual a diferença entre ICMS e ICMS-ST?'
-        ],
-        'simples nacional': [
-          'Tabela do Simples Nacional 2024',
-          'Anexos do Simples Nacional',
-          'Como calcular o Simples Nacional?'
-        ],
-        'nota fiscal': [
-          'Como emitir NF-e?',
-          'Diferença entre NF-e e NFS-e',
-          'Prazos para emissão de NF-e'
-        ],
-        'pis/cofins': [
-          'Diferença entre PIS cumulativo e não-cumulativo',
-          'Como calcular créditos de PIS/COFINS?',
-          'Base de cálculo do PIS/COFINS'
-        ],
-        'lucro real': [
-          'O que é Lucro Real?',
-          'Como apurar Lucro Real?',
-          'Diferença entre Lucro Real e Presumido'
-        ],
-        'sped': [
-          'Prazos SPED Fiscal 2024',
-          'Como entregar SPED?',
-          'Multas por atraso no SPED'
-        ]
-      };
-      
-      let suggestions = [];
-      const responseLower = lastResponse.toLowerCase();
-      
-      for (const [key, questions] of Object.entries(keywords)) {
-        if (responseLower.includes(key)) {
-          suggestions = questions;
-          break;
-        }
-      }
-      
-      if (suggestions.length > 0) {
-        setTimeout(() => {
-          const lastMessage = document.querySelector('.message:last-child .message-content');
-          if (lastMessage && !lastMessage.querySelector('.suggestions')) {
-            const suggestionsHTML = `
-              <div class="suggestions">
-                <div class="suggestions-title">📌 Perguntas relacionadas:</div>
-                <div class="suggestions-grid">
-                  ${suggestions.map(q => `
-                    <button class="suggestion-btn" onclick="useTemplate('${q.replace(/'/g, "\\'")}')">
-                      ${q}
-                    </button>
-                  `).join('')}
-                </div>
-              </div>
-            `;
-            lastMessage.insertAdjacentHTML('beforeend', suggestionsHTML);
-            lucide.createIcons();
-          }
-        }, 500);
-      }
-    }
-
-    async function callAI(prompt) {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
-    }
-
-    async function getCachedOrFetch(messagesToSend) {
-      const cacheKey = JSON.stringify(messagesToSend.slice(-2));
-      
-      // Verificar cache semântico primeiro
-      const semanticResponse = await getSmartCachedResponse(messagesToSend);
-      if (semanticResponse) {
-        return semanticResponse;
-      }
-      
-      // Verificar cache normal
-      if (responseCache.has(cacheKey)) {
-        const cached = responseCache.get(cacheKey);
-        const timeDiff = Date.now() - cached.timestamp;
-        
-        if (timeDiff < CACHE_DURATION) {
-          console.log('Usando resposta em cache');
-          return cached.response;
-        } else {
-          responseCache.delete(cacheKey);
-        }
-      }
-      
-      try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: messagesToSend,
-            temperature: 0.7,
-            max_tokens: 2000
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        responseCache.set(cacheKey, {
-          response: data,
-          timestamp: Date.now()
-        });
-        
-        semanticCache.set(cacheKey, {
-          response: data,
-          timestamp: Date.now()
-        });
-        
-        return data;
-        
-      } catch (error) {
-        throw error;
-      }
-    }
-
     async function send() {
-      const text = input.value.trim();
-      if ((!text && currentFiles.length === 0) || isProcessingFile) return;
+      const text = inputEl.value.trim();
+      if (!text) return;
 
-      input.disabled = true;
+      inputEl.disabled = true;
       sendBtn.disabled = true;
+      inputEl.value = '';
 
-      // Incrementar contador de perguntas
-      userStats.questions++;
-      localStorage.setItem('userStats', JSON.stringify(userStats));
-      updateBadges();
-
-      // Analisar sentimento
-      const sentiment = analyzeSentiment(text);
-
-      // Preparar mensagem com múltiplos arquivos
-      let messageContent = text || '📎 Arquivos enviados para análise fiscal';
-      if (currentFiles.length > 0) {
-        messageContent += `\n\n📎 Arquivos anexados (${currentFiles.length}):`;
-        currentFiles.forEach(file => {
-          messageContent += `\n- ${file.name} (${file.summary})`;
-        });
-      }
-
-      addMessage(messageContent, true, 'medium', currentFiles[0]);
-      
-      const userMessage = {
-        role: 'user',
-        content: text || 'Arquivos enviados para análise fiscal',
-        fileData: currentFiles.length > 0 ? currentFiles[0] : null,
-        files: currentFiles
-      };
-      
-      if (!currentChat.messages) {
-        currentChat.messages = [];
-      }
-      
-      currentChat.messages.push(userMessage);
+      addMessage(text, true);
+      currentChat.messages.push({ role: 'user', content: text });
 
       if (currentChat.messages.length === 1) {
-        currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) + ((text || '').length > 50 ? '...' : '');
+        currentChat.title = text.slice(0, 60) + (text.length > 60 ? '...' : '');
+        await saveChat();
       }
 
-      let fileContext = '';
-      if (currentFiles.length > 0) {
-        fileContext = `\n\n📎 ARQUIVOS ANEXADOS (${currentFiles.length}):\n`;
-        currentFiles.forEach((file, index) => {
-          fileContext += `\nARQUIVO ${index + 1}: ${file.name}\n`;
-          if (file.content) {
-            fileContext += `CONTEÚDO:\n${file.content}\n`;
-          }
-          fileContext += `RESUMO: ${file.summary}\n`;
-        });
-      }
-
-      showTypingIndicator();
+      showTyping();
 
       try {
-        const messagesToSend = [
-          { role: 'system', content: PROMPT },
-          ...currentChat.messages.map(m => ({
-            role: m.role,
-            content: m.role === 'user' && m.files ? 
-              `${m.content}\n\n[ARQUIVOS: ${m.files?.map(f => f.name).join(', ')}]` : 
-              m.content
-          }))
-        ];
-
-        if (currentFiles.length > 0) {
-          messagesToSend[messagesToSend.length - 1].content += fileContext;
-        }
-
-        const data = await getCachedOrFetch(messagesToSend);
-        
-        hideTypingIndicator();
-        
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            temperature: 0.7,
+            max_tokens: 2000,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              ...currentChat.messages.slice(-12)
+            ]
+          })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
         const reply = data.choices[0].message.content;
-        const confidence = calculateConfidence(reply);
-
-        // Verificar se resposta foi útil (simples heurística)
-        if (reply.length > 100 && !reply.includes('erro')) {
-          userStats.correctAnswers++;
-          localStorage.setItem('userStats', JSON.stringify(userStats));
-          updateBadges();
-        }
-
-        const assistantMessage = {
-          role: 'assistant',
-          content: reply,
-          confidence: confidence
-        };
-        
-        currentChat.messages.push(assistantMessage);
-        addMessage(reply, false, confidence);
-        
-        // Sugerir próximas perguntas
-        suggestNextQuestions(reply);
-        
-        saveChat();
-        loadHistory();
-
-        removeAllFiles();
-        input.value = '';
-
-      } catch (error) {
-        hideTypingIndicator();
-        console.error('Erro detalhado:', error);
-        
-        let errorMessage = '❌ Erro ao processar. ';
-        
-        if (error.message.includes('Failed to fetch')) {
-          errorMessage += 'Verifique sua conexão com a internet.';
-        } else if (error.message.includes('401')) {
-          errorMessage += 'Erro de autenticação na API.';
-        } else if (error.message.includes('429')) {
-          errorMessage += 'Limite de requisições excedido. Tente novamente em alguns instantes.';
-        } else if (error.message.includes('500')) {
-          errorMessage += 'Erro no servidor. Tente novamente.';
-        } else {
-          errorMessage += 'Tente novamente.';
-        }
-        
-        addMessage(errorMessage, false);
-      } finally {
-        input.disabled = false;
-        sendBtn.disabled = false;
-        input.focus();
+        const conf = getConfidence(reply);
+        hideTyping();
+        currentChat.messages.push({ role: 'assistant', content: reply, confidence: conf });
+        addMessage(reply, false, conf);
+        await saveChat();
+      } catch (e) {
+        hideTyping();
+        addMessage(`❌ Erro: ${e.message}`, false, 'low');
       }
+
+      inputEl.disabled = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
     }
 
-    function useTemplate(text) {
-      input.value = text;
-      input.focus();
-    }
-
-    function copyText(btn) {
-      const content = btn.closest('.message-content');
-      const text = content.innerText
-        .replace('Copiar', '')
-        .replace(/🟢|🟡|🔴/g, '')
-        .replace('Alta confiança', '')
-        .replace('Média confiança', '')
-        .replace('Baixa confiança', '')
-        .trim();
-      
+    function copyMsg(btn) {
+      const text = btn.closest('.message-content').childNodes[0].textContent.trim();
       navigator.clipboard.writeText(text).then(() => {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i data-lucide="check"></i> Copiado!';
+        btn.innerHTML = '<i data-lucide="check" style="width:12px;height:12px"></i> Copiado!';
+        lucide.createIcons();
         setTimeout(() => {
-          btn.innerHTML = originalText;
+          btn.innerHTML = '<i data-lucide="copy" style="width:12px;height:12px"></i> Copiar';
           lucide.createIcons();
         }, 2000);
       });
     }
 
-    function exportChat() {
-      if (!currentChat.messages || currentChat.messages.length === 0) {
-        alert('Nenhuma mensagem para exportar');
-        return;
-      }
-      
-      const chatText = currentChat.messages.map(msg => {
-        const role = msg.role === 'user' ? '👤 USUÁRIO' : '🤖 ASSISTENTE FISCAL';
-        const date = new Date().toLocaleString('pt-BR');
-        let text = `${role} (${date}):\n${msg.content}\n`;
-        
-        if (msg.fileData) {
-          text += `[Arquivo anexado: ${msg.fileData.name}]\n`;
-        }
-        
-        return text;
-      }).join('\n' + '='.repeat(50) + '\n\n');
-      
-      const blob = new Blob([chatText], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `conversa_fiscal_${new Date().toISOString().slice(0,10)}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-      
-      announce('Conversa exportada com sucesso');
+    function useTemplate(text) { inputEl.value = text; inputEl.focus(); }
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('active');
+      sidebarOverlay.classList.toggle('active');
     }
 
-    function exportToPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      
-      let y = 20;
-      
-      doc.setFontSize(16);
-      doc.text('Relatório de Conversa Fiscal', 20, y);
-      y += 15;
-      
-      currentChat.messages.forEach((msg, index) => {
-        doc.setFontSize(12);
-        doc.setFont(undefined, msg.role === 'user' ? 'normal' : 'bold');
-        
-        const role = msg.role === 'user' ? 'Usuário:' : 'Assistente:';
-        const lines = doc.splitTextToSize(`${role} ${msg.content}`, 170);
-        
-        lines.forEach(line => {
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(line, 20, y);
-          y += 7;
-        });
-        
-        y += 5;
+    function filterHistory() {
+      const q = document.getElementById('historySearch').value.toLowerCase();
+      document.querySelectorAll('.history-item').forEach(item => {
+        item.style.display = item.querySelector('.history-title').textContent.toLowerCase().includes(q) ? '' : 'none';
       });
-      
-      doc.save(`conversa_${new Date().toISOString().slice(0,10)}.pdf`);
-    }
-
-    function shareChat() {
-      if (!currentChat.messages || currentChat.messages.length === 0) {
-        alert('Nenhuma conversa para compartilhar');
-        return;
-      }
-      
-      const token = generateToken();
-      const shareLink = `${window.location.origin}?shared=${token}`;
-      
-      // Salvar token temporário
-      const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
-      sharedChats[token] = {
-        chat: currentChat,
-        expires: Date.now() + (24 * 60 * 60 * 1000) // 24 horas
-      };
-      localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
-      
-      document.getElementById('shareLink').value = shareLink;
-      document.getElementById('shareModal').classList.add('active');
-    }
-
-    function copyShareLink() {
-      const link = document.getElementById('shareLink');
-      link.select();
-      navigator.clipboard.writeText(link.value);
-      alert('Link copiado!');
-    }
-
-    function closeShareModal() {
-      document.getElementById('shareModal').classList.remove('active');
-    }
-
-    function generateToken() {
-      return Math.random().toString(36).substring(2) + Date.now().toString(36);
-    }
-
-    function showStats() {
-      const totalChats = chats.length;
-      const totalMessages = chats.reduce((acc, chat) => acc + (chat.messages?.length || 0), 0);
-      
-      const statsHTML = `
-        <div class="stats-card">
-          <div class="stats-item">
-            <span>📊 Total de conversas</span>
-            <strong>${totalChats}</strong>
-          </div>
-          <div class="stats-item">
-            <span>💬 Total de mensagens</span>
-            <strong>${totalMessages}</strong>
-          </div>
-          <div class="stats-item">
-            <span>👤 Suas perguntas</span>
-            <strong>${userStats.questions}</strong>
-          </div>
-          <div class="stats-item">
-            <span>🤖 Respostas úteis</span>
-            <strong>${userStats.correctAnswers}</strong>
-          </div>
-          <div class="stats-item">
-            <span>📎 Arquivos analisados</span>
-            <strong>${userStats.filesAnalyzed}</strong>
-          </div>
-          <div class="stats-item">
-            <span>🏆 Conquistas</span>
-            <strong>${userStats.badges.length}</strong>
-          </div>
-          <div class="stats-item">
-            <span>⚡ Cache ativo</span>
-            <strong>${responseCache.size} respostas</strong>
-          </div>
-        </div>
-      `;
-      
-      document.getElementById('statsContent').innerHTML = statsHTML;
-      document.getElementById('statsModal').classList.add('active');
-    }
-
-    function closeStats() {
-      document.getElementById('statsModal').classList.remove('active');
     }
 
     function toggleTheme() {
-      const current = document.documentElement.getAttribute('data-theme');
-      const newTheme = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
+      const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('theme', t);
     }
 
-    function toggleSidebar() {
-      document.querySelector('.sidebar').classList.toggle('active');
+    function openCalculator()  { document.getElementById('calcModal').classList.add('active'); }
+    function closeCalculator() { document.getElementById('calcModal').classList.remove('active'); }
+
+    function calculate() {
+      const v = parseFloat(document.getElementById('calcValor').value) || 0;
+      const icms = v * 0.18;
+      const fmt = n => `R$ ${n.toFixed(2).replace('.', ',')}`;
+      document.getElementById('resultICMS').textContent = fmt(icms);
+      document.getElementById('resultTotal').textContent = fmt(v + icms);
+      document.getElementById('calcResult').style.display = 'block';
     }
 
-    function openCalculator() {
-      document.getElementById('calcModal').classList.add('active');
-    }
-
-    function closeCalculator() {
-      document.getElementById('calcModal').classList.remove('active');
-    }
-
-    function handleKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          send();
-        }
-      }
-    }
-
-    function announce(message) {
-      const announcer = document.getElementById('ariaAnnouncer');
-      if (announcer) {
-        announcer.textContent = message;
-      }
-    }
-
-    function addAriaObserver() {
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach(() => {
-          const lastMessage = document.querySelector('.message:last-child');
-          if (lastMessage) {
-            const role = lastMessage.classList.contains('user') ? 'usuário' : 'assistente';
-            announce(`Nova mensagem de ${role}`);
-          }
-        });
-      });
-      
-      observer.observe(messages, { childList: true });
-    }
-
-    window.addEventListener('beforeunload', () => {
-      if (currentChat.messages && currentChat.messages.length > 0) {
-        saveChat();
-      }
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault();
-        newChat();
-      }
-      
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        openCalculator();
-      }
-      
-      if (e.key === 'Escape' && currentFiles.length > 0) {
-        removeAllFiles();
-      }
-      
-      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault();
-        input.value = '';
-        input.focus();
-      }
-      
-      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-        e.preventDefault();
-        toggleSidebar();
-      }
-      
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        exportChat();
-      }
-    });
-
-    init();
+    function handleKey(e) { if (e.key === 'Enter') send(); }
   </script>
 </body>
 </html>
