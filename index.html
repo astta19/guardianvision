@@ -11,7 +11,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    /* MANTIDO TODO O CSS EXISTENTE - NÃO ALTERADO */
     * {
       margin: 0;
       padding: 0;
@@ -67,7 +66,6 @@
       transition: background 0.3s, color 0.3s;
     }
 
-    /* OVERLAY */
     #overlay {
       display: none;
       position: fixed;
@@ -81,7 +79,6 @@
       display: block;
     }
 
-    /* SIDEBAR */
     #sidebar {
       width: 85%;
       max-width: 300px;
@@ -229,7 +226,6 @@
       flex-shrink: 0;
     }
 
-    /* CHAT */
     #chat {
       flex: 1;
       display: flex;
@@ -283,8 +279,8 @@
     .badges-container {
       display: flex;
       gap: 4px;
-      margin-left: 8px;
       flex-wrap: wrap;
+      flex-shrink: 0;
     }
 
     .badge {
@@ -301,8 +297,102 @@
 
     .c-right {
       display: flex;
-      gap: 6px;
+      gap: 4px;
       flex-shrink: 0;
+      align-items: center;
+    }
+
+    .dropdown-wrap {
+      position: relative;
+    }
+
+    .hdr-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      min-width: 210px;
+      z-index: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+      display: none;
+    }
+
+    .hdr-dropdown.on {
+      display: block;
+    }
+
+    .hdr-dropdown-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 8px 8px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .menu-item:hover, .menu-item:active {
+      background: var(--bg);
+    }
+
+    .menu-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .trophy-count {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--card);
+      pointer-events: none;
+    }
+
+    .badge-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .badge-item-icon { font-size: 18px; flex-shrink: 0; }
+    .badge-item-name { font-weight: 500; }
+
+    .badges-empty {
+      font-size: 12px;
+      color: var(--text-light);
+      text-align: center;
+      padding: 12px 8px;
     }
 
     .icon-btn {
@@ -321,7 +411,6 @@
       transform: scale(0.95);
     }
 
-    /* DEADLINE ALERTS */
     .deadline-alerts {
       background: var(--card);
       border-bottom: 1px solid var(--border);
@@ -348,7 +437,6 @@
       color: white;
     }
 
-    /* TEMPLATES */
     .tpl {
       padding: 10px 16px;
       background: var(--card);
@@ -366,6 +454,7 @@
     .tpl-row {
       display: flex;
       gap: 8px;
+      width: max-content;
     }
 
     .chip {
@@ -388,7 +477,6 @@
       color: var(--user-text);
     }
 
-    /* MESSAGES */
     #msgs {
       flex: 1;
       overflow-y: auto;
@@ -499,7 +587,6 @@
       color: var(--link-hover);
     }
 
-    /* FILE ATTACHMENTS */
     .file-attachment {
       margin-top: 10px;
       padding: 10px;
@@ -646,7 +733,6 @@
       color: #fca5a5;
     }
 
-    /* FEEDBACK PROMPT */
     .feedback-prompt {
       padding: 10px;
       background: var(--bg);
@@ -679,7 +765,6 @@
       color: var(--user-text);
     }
 
-    /* SUGGESTIONS */
     .suggestions {
       margin-top: 15px;
       padding: 10px;
@@ -716,7 +801,6 @@
       color: var(--user-text);
     }
 
-    /* TYPING */
     .typing-wrap {
       display: flex;
       gap: 4px;
@@ -740,21 +824,18 @@
     }
 
     @keyframes typing {
-
       0%,
       60%,
       100% {
         transform: translateY(0);
         opacity: 0.3;
       }
-
       30% {
         transform: translateY(-8px);
         opacity: 1;
       }
     }
 
-    /* INPUT */
     .inp-area {
       padding: 12px 16px;
       padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -816,12 +897,10 @@
       opacity: 0.45;
     }
 
-    /* FILE INFO */
     .file-info {
       padding: 10px 0;
     }
 
-    /* EMPTY STATE */
     .empty {
       text-align: center;
       padding: 48px 20px;
@@ -848,7 +927,6 @@
       line-height: 1.6;
     }
 
-    /* MODALS */
     #calcModal,
     #statsModal,
     #shareModal,
@@ -1011,7 +1089,6 @@
       border-width: 0;
     }
 
-    /* SCROLLBAR */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -1034,6 +1111,15 @@
       to {
         transform: rotate(360deg);
       }
+    }
+
+    @media (max-width: 768px) {
+      .badges-container { display: none; }
+      .desktop-only { display: none !important; }
+    }
+
+    @media (min-width: 769px) {
+      .mobile-only { display: none !important; }
     }
   </style>
 </head>
@@ -1060,7 +1146,7 @@
   <main id="chat">
     <div class="c-head">
       <div class="c-left">
-        <button class="icon-btn" onclick="toggleSidebar()">
+        <button class="icon-btn" onclick="toggleSidebar()" title="Conversas">
           <i data-lucide="menu"></i>
         </button>
         <span class="c-title">Chat Fiscal Pro</span>
@@ -1068,26 +1154,71 @@
           <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
           <span>Conectando...</span>
         </div>
-        <div class="badges-container" id="badgesContainer"></div>
+        <!-- badges inline apenas desktop -->
+        <div class="badges-container desktop-only" id="badgesContainer"></div>
       </div>
+
       <div class="c-right">
-        <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">
-          <i data-lucide="maximize-2"></i>
-        </button>
-        <button class="icon-btn" onclick="exportChat()" title="Exportar conversa">
-          <i data-lucide="download"></i>
-        </button>
-        <button class="icon-btn" onclick="showStats()" title="Estatísticas do chat">
-          <i data-lucide="bar-chart-2"></i>
-        </button>
-        <button class="icon-btn" onclick="showLearningStats()" title="Estatísticas de aprendizado">
-          <i data-lucide="brain"></i>
-        </button>
+        <!-- Botões sempre visíveis -->
         <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
           <i data-lucide="calculator"></i>
         </button>
         <button class="icon-btn" onclick="toggleTheme()" title="Tema">
           <i data-lucide="moon" id="themeIcon"></i>
+        </button>
+
+        <!-- Troféu de conquistas — só mobile -->
+        <div class="dropdown-wrap mobile-only">
+          <button class="icon-btn" onclick="toggleDropdown('trophyDropdown')" title="Conquistas" id="trophyBtn">
+            <i data-lucide="trophy"></i>
+            <span class="trophy-count" id="trophyCount">0</span>
+          </button>
+          <div class="hdr-dropdown" id="trophyDropdown">
+            <div class="hdr-dropdown-title">🏆 Conquistas</div>
+            <div id="badgesDropdownContent">
+              <p class="badges-empty">Nenhuma conquista ainda.<br>Continue usando o chat!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu "..." — só mobile, agrupa funções secundárias -->
+        <div class="dropdown-wrap mobile-only">
+          <button class="icon-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções">
+            <i data-lucide="more-vertical"></i>
+          </button>
+          <div class="hdr-dropdown" id="moreMenu">
+            <div class="hdr-dropdown-title">Opções</div>
+            <button class="menu-item" onclick="showStats(); closeDropdowns()">
+              <i data-lucide="bar-chart-2"></i> Estatísticas
+            </button>
+            <button class="menu-item" onclick="showLearningStats(); closeDropdowns()">
+              <i data-lucide="brain"></i> Aprendizado
+            </button>
+            <button class="menu-item" onclick="exportChat(); closeDropdowns()">
+              <i data-lucide="download"></i> Exportar conversa
+            </button>
+            <button class="menu-item" onclick="shareChat(); closeDropdowns()">
+              <i data-lucide="share-2"></i> Compartilhar
+            </button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" onclick="toggleFullscreen(); closeDropdowns()">
+              <i data-lucide="maximize-2"></i> Tela cheia
+            </button>
+          </div>
+        </div>
+
+        <!-- Botões desktop visíveis individualmente -->
+        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="icon-btn desktop-only" onclick="showStats()" title="Estatísticas">
+          <i data-lucide="bar-chart-2"></i>
+        </button>
+        <button class="icon-btn desktop-only" onclick="showLearningStats()" title="Aprendizado">
+          <i data-lucide="brain"></i>
+        </button>
+        <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
+          <i data-lucide="maximize-2"></i>
         </button>
       </div>
     </div>
@@ -1206,7 +1337,7 @@
         </button>
       </div>
       <p style="margin-top: 15px; font-size: 12px; color: var(--text-light);">
-        ⚠️ Link válido por 24 horas
+        ⚠️ Link válido apenas neste dispositivo e navegador por 24 horas.
       </p>
     </div>
   </div>
@@ -1214,7 +1345,6 @@
   <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <script>
-    // Configuração do PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     const SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
@@ -1233,11 +1363,9 @@
     let isProcessingFile = false;
     let typingIndicator = null;
 
-    // Cache para respostas
     const responseCache = new Map();
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+    const CACHE_DURATION = 5 * 60 * 1000;
 
-    // Estatísticas do usuário
     let userStats = JSON.parse(localStorage.getItem('userStats') || JSON.stringify({
       questions: 0,
       filesAnalyzed: 0,
@@ -1259,14 +1387,13 @@
     };
 
     // ============================================
-    // SERVIÇO DE APRENDIZADO FISCAL (CORRIGIDO)
+    // SERVIÇO DE APRENDIZADO FISCAL
     // ============================================
     class FiscalLearningService {
       constructor(supabase) {
         this.supabase = supabase;
       }
 
-      // Extrair tags da pergunta
       extrairTags(texto) {
         if (!texto) return [];
         
@@ -1290,7 +1417,6 @@
         return tags;
       }
 
-      // REGISTRAR INTERAÇÃO - CORRIGIDO
       async registrarInteracao(chatId, pergunta, resposta, tokens, modelo) {
         try {
           console.log('📝 Registrando interação:', { 
@@ -1298,16 +1424,13 @@
             pergunta: pergunta?.substring(0, 30) + '...' 
           });
           
-          // Validação básica
           if (!pergunta || !resposta) {
             console.error('❌ Pergunta ou resposta vazia');
             return null;
           }
 
-          // Extrair tags
           const tags = this.extrairTags(pergunta);
           
-          // Preparar dados para inserção - APENAS colunas que existem na tabela
           const dadosInsercao = {
             chat_id: chatId || null,
             pergunta: pergunta,
@@ -1320,7 +1443,6 @@
 
           console.log('📤 Inserindo dados:', dadosInsercao);
 
-          // Inserir no banco
           const { data, error } = await this.supabase
             .from('interacoes_chat')
             .insert(dadosInsercao)
@@ -1344,7 +1466,6 @@
         }
       }
 
-      // Registrar feedback
       async registrarFeedback(interacaoId, nota) {
         try {
           if (!interacaoId) {
@@ -1352,12 +1473,14 @@
             return;
           }
 
-          console.log('📝 Registrando feedback:', { interacaoId, nota });
+          const idString = String(interacaoId).trim();
+          
+          console.log('📝 Registrando feedback:', { interacaoId: idString, nota });
 
           const { error } = await this.supabase
             .from('interacoes_chat')
             .update({ feedback_usuario: nota })
-            .eq('id', interacaoId);
+            .eq('id', idString);
 
           if (error) {
             console.error('❌ Erro ao registrar feedback:', error);
@@ -1366,7 +1489,6 @@
 
           console.log('✅ Feedback registrado com sucesso');
 
-          // Se feedback for muito bom (4 ou 5), adicionar aos dados de treinamento
           if (nota >= 4) {
             await this.adicionarAoTreinamento(interacaoId);
           }
@@ -1376,7 +1498,6 @@
         }
       }
 
-      // Adicionar boa interação aos dados de treinamento
       async adicionarAoTreinamento(interacaoId) {
         try {
           const { data: interacao, error } = await this.supabase
@@ -1407,7 +1528,6 @@
         }
       }
 
-      // Buscar estatísticas de aprendizado
       async buscarEstatisticas() {
         try {
           const { data, error } = await this.supabase
@@ -1425,7 +1545,6 @@
         }
       }
 
-      // Buscar perguntas com melhor feedback
       async buscarMelhoresPerguntas(limite = 5) {
         try {
           const { data, error } = await this.supabase
@@ -1445,18 +1564,22 @@
       }
     }
 
-    // Criar instância do serviço de aprendizado
     const learningService = new FiscalLearningService(sb);
 
     // ============================================
-    // FUNÇÕES DE FEEDBACK
+    // FUNÇÕES DE FEEDBACK CORRIGIDAS
     // ============================================
     let ultimaInteracaoId = null;
 
     function mostrarFeedbackOptions(interacaoId) {
-      ultimaInteracaoId = interacaoId;
+      if (!interacaoId || interacaoId === 'null' || interacaoId === 'undefined' || interacaoId.trim() === '') {
+        console.error('ID da interação inválido:', interacaoId);
+        alert('Feedback indisponível para esta resposta. Apenas respostas novas possuem feedback.');
+        return;
+      }
       
-      // Remover feedback anterior se existir
+      ultimaInteracaoId = String(interacaoId);
+      
       const existingPrompt = document.getElementById('feedback-prompt');
       if (existingPrompt) existingPrompt.remove();
       
@@ -1487,7 +1610,6 @@
       if (ultimaInteracaoId) {
         await learningService.registrarFeedback(ultimaInteracaoId, nota);
         
-        // Mostrar agradecimento
         const agradecimento = document.createElement('div');
         agradecimento.className = 'msg assistant';
         agradecimento.innerHTML = `
@@ -1505,9 +1627,6 @@
       ultimaInteracaoId = null;
     }
 
-    // ============================================
-    // FUNÇÕES DE ESTATÍSTICAS DE APRENDIZADO
-    // ============================================
     async function showLearningStats() {
       const stats = await learningService.buscarEstatisticas();
       const melhoresPerguntas = await learningService.buscarMelhoresPerguntas(5);
@@ -1550,7 +1669,6 @@
       document.getElementById('learningStatsModal').classList.remove('on');
     }
 
-    // INICIALIZAÇÃO
     window.onload = async () => {
       lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
@@ -1560,7 +1678,6 @@
       updateBadges();
     };
 
-    // VERIFICAR CONEXÃO
     async function checkConnection() {
       try {
         const { error } = await sb.from('chats').select('id', { count: 'exact', head: true });
@@ -1578,7 +1695,6 @@
       lucide.createIcons();
     }
 
-    // CARREGAR CONVERSAS
     async function loadChats() {
       try {
         const { data, error } = await sb
@@ -1624,7 +1740,6 @@
       renderHistoryList(filtered);
     }
 
-    // ABRIR CONVERSA
     async function openChat(id) {
       try {
         const { data, error } = await sb
@@ -1649,7 +1764,6 @@
       }
     }
 
-    // SALVAR CONVERSA
     async function saveChat() {
       console.log('Salvando chat...', currentChat);
 
@@ -1699,7 +1813,6 @@
       }
     }
 
-    // DELETAR CONVERSA
     async function deleteChat(id) {
       if (!confirm('Tem certeza que deseja deletar esta conversa?')) return;
 
@@ -1721,7 +1834,6 @@
       }
     }
 
-    // NOVA CONVERSA
     function newChat() {
       currentChat = { id: null, title: 'Nova Conversa', messages: [] };
       document.getElementById('msgs').innerHTML = `
@@ -1736,7 +1848,6 @@
       removeAllFiles();
     }
 
-    // RENDERIZAR MENSAGENS
     function renderMessages() {
       const container = document.getElementById('msgs');
       container.innerHTML = '';
@@ -1750,14 +1861,16 @@
           </div>`;
       } else {
         currentChat.messages.forEach(msg => {
-          addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData);
+          addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData, msg.interactionId);
         });
       }
       lucide.createIcons();
     }
 
-    // ADICIONAR MENSAGEM (COM BOTÃO DE FEEDBACK)
-    function addMessage(text, isUser, confidence = 'medium', fileData = null) {
+    // ============================================
+    // FUNÇÃO ADD MESSAGE CORRIGIDA (COM INTERACTION ID)
+    // ============================================
+    function addMessage(text, isUser, confidence = 'medium', fileData = null, interactionId = null) {
       const container = document.getElementById('msgs');
       container.querySelector('.empty')?.remove();
 
@@ -1790,13 +1903,16 @@
         }
       }
 
-      // Footer com botão de feedback (apenas para mensagens do assistente)
+      // Footer com botão de feedback USANDO O INTERACTION ID
+      const hasInteraction = interactionId && interactionId !== 'null' && interactionId !== 'undefined' && interactionId.trim() !== '';
       const footer = !isUser ? `
         <div class="mfoot">
           <button class="btn-copy" onclick="copyMessage(this)">
             <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
           </button>
-          <button class="btn-feedback" onclick="mostrarFeedbackOptions(ultimaInteracaoId)">
+          <button class="btn-feedback"
+            ${hasInteraction ? `onclick="mostrarFeedbackOptions('${interactionId}')"` : 'disabled style="opacity:0.4;cursor:not-allowed"'}
+            title="${hasInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
             <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
           </button>
           <span class="badge-conf badge ${confidence}">
@@ -1822,7 +1938,6 @@
       
       let t = escapeHtml(text);
       
-      // Converte markdown de links [texto](url) para HTML
       t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
       
       t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -1841,7 +1956,6 @@
         .replace(/\n/g, '<br>');
     }
 
-    // TYPING INDICATOR
     function showTypingIndicator() {
       hideTypingIndicator();
 
@@ -1865,7 +1979,6 @@
       document.getElementById('typing')?.remove();
     }
 
-    // CÁLCULO DE CONFIANÇA
     function calculateConfidence(text) {
       if (!text) return 'medium';
 
@@ -1886,7 +1999,6 @@
       return 'medium';
     }
 
-    // ENVIAR MENSAGEM (MODIFICADA PARA REGISTRAR INTERAÇÃO)
     async function send() {
       const inp = document.getElementById('msgInput');
       const text = inp.value.trim();
@@ -1939,7 +2051,6 @@
       showTypingIndicator();
 
       try {
-        // PROMPT do sistema
         const SYS = `Você é um especialista fiscal brasileiro sênior. Responda de forma clara e técnica sobre ICMS, ISS, PIS, COFINS, IPI, Simples Nacional, Lucro Presumido, Lucro Real, SPED, CFOPs e legislação tributária. Inclua links oficiais ao final da resposta.`;
 
         const messagesToSend = [
@@ -1985,16 +2096,9 @@
           updateBadges();
         }
 
-        const assistantMessage = {
-          role: 'assistant',
-          content: reply,
-          confidence
-        };
-
-        currentChat.messages.push(assistantMessage);
-        addMessage(reply, false, confidence);
-
-        // REGISTRAR INTERAÇÃO PARA APRENDIZADO
+        // ============================================
+        // REGISTRAR INTERAÇÃO E GUARDAR O ID
+        // ============================================
         console.log('🔄 Tentando registrar interação...');
         const interacaoId = await learningService.registrarInteracao(
           currentChat.id,
@@ -2004,19 +2108,26 @@
           'llama-3.3-70b-versatile'
         );
 
+        // Criar mensagem do assistente COM O ID DA INTERAÇÃO
+        const assistantMessage = {
+          role: 'assistant',
+          content: reply,
+          confidence,
+          interactionId: interacaoId || null
+        };
+
+        currentChat.messages.push(assistantMessage);
+        
+        // Passar o interactionId para a função addMessage
+        addMessage(reply, false, confidence, null, interacaoId);
+
         if (interacaoId) {
           console.log('✅ Interação registrada com sucesso! ID:', interacaoId);
-          // Guardar ID para feedback futuro
-          ultimaInteracaoId = interacaoId;
-          
-          // Se não for a primeira mensagem, mostrar feedback após 2 segundos
-          if (currentChat.messages.length > 2) {
-            setTimeout(() => {
-              mostrarFeedbackOptions(interacaoId);
-            }, 2000);
-          }
+          setTimeout(() => {
+            mostrarFeedbackOptions(interacaoId);
+          }, 1500);
         } else {
-          console.log('❌ Falha ao registrar interação');
+          console.log('❌ Falha ao registrar interação — feedback desabilitado para esta resposta');
         }
 
         await saveChat();
@@ -2034,10 +2145,9 @@
       }
     }
 
-    // PROCESSAR ARQUIVOS
     async function handleMultipleFiles(event) {
       const files = Array.from(event.target.files);
-      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+      const MAX_SIZE = 10 * 1024 * 1024;
 
       for (const file of files) {
         if (file.size > MAX_SIZE) {
@@ -2193,7 +2303,6 @@
       updateFilesUI();
     }
 
-    // COPIAR MENSAGEM
     function copyMessage(btn) {
       const bubble = btn.closest('.bubble');
       const clone = bubble.cloneNode(true);
@@ -2210,7 +2319,6 @@
       });
     }
 
-    // CHECK DEADLINES
     function checkDeadlines() {
       const today = new Date();
       const alerts = [];
@@ -2256,26 +2364,58 @@
       }
     }
 
-    // BADGES
     function updateBadges() {
-      const container = document.getElementById('badgesContainer');
-
       for (const [key, badge] of Object.entries(badges)) {
         if (badge.condition(userStats) && !userStats.badges.includes(key)) {
           userStats.badges.push(key);
         }
       }
 
-      container.innerHTML = userStats.badges.map(key => `
-        <span class="badge" title="${badges[key].name}">
-          ${badges[key].icon} ${badges[key].name}
-        </span>
-      `).join('');
+      const earned = userStats.badges;
+
+      // Desktop: badges inline
+      const container = document.getElementById('badgesContainer');
+      container.innerHTML = earned.map(key =>
+        `<span class="badge" title="${badges[key].name}">${badges[key].icon} ${badges[key].name}</span>`
+      ).join('');
+
+      // Mobile: dropdown de conquistas
+      const dropContent = document.getElementById('badgesDropdownContent');
+      const trophyCount = document.getElementById('trophyCount');
+      if (dropContent) {
+        if (earned.length > 0) {
+          dropContent.innerHTML = earned.map(key => `
+            <div class="badge-item">
+              <span class="badge-item-icon">${badges[key].icon}</span>
+              <span class="badge-item-name">${badges[key].name}</span>
+            </div>`).join('');
+          trophyCount.textContent = earned.length;
+          trophyCount.style.display = 'flex';
+        } else {
+          dropContent.innerHTML = '<p class="badges-empty">Nenhuma conquista ainda.<br>Continue usando o chat!</p>';
+          trophyCount.style.display = 'none';
+        }
+      }
 
       localStorage.setItem('userStats', JSON.stringify(userStats));
     }
 
-    // UTILS
+    // Gerenciamento dos dropdowns do header
+    function toggleDropdown(id) {
+      const target = document.getElementById(id);
+      const isOpen = target.classList.contains('on');
+      closeDropdowns();
+      if (!isOpen) target.classList.add('on');
+    }
+
+    function closeDropdowns() {
+      document.querySelectorAll('.hdr-dropdown').forEach(d => d.classList.remove('on'));
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown-wrap')) closeDropdowns();
+    });
+
     function useTemplate(text) {
       document.getElementById('msgInput').value = text;
       document.getElementById('msgInput').focus();
@@ -2434,7 +2574,6 @@
       document.getElementById('shareModal').classList.remove('on');
     }
 
-    // KEYBOARD SHORTCUTS
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
@@ -2457,7 +2596,6 @@
       }
     });
 
-    // SALVAR ANTES DE FECHAR
     window.addEventListener('beforeunload', () => {
       if (currentChat.messages && currentChat.messages.length > 0) {
         saveChat();
