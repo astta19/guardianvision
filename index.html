@@ -59,7 +59,6 @@
       transition: background 0.3s, color 0.3s;
     }
 
-    /* OVERLAY */
     #overlay {
       display: none;
       position: fixed;
@@ -73,7 +72,6 @@
       display: block;
     }
 
-    /* SIDEBAR */
     #sidebar {
       width: 85%;
       max-width: 300px;
@@ -235,7 +233,6 @@
       color: var(--error);
     }
 
-    /* CHAT */
     #chat {
       flex: 1;
       display: flex;
@@ -290,6 +287,7 @@
       display: flex;
       gap: 4px;
       margin-left: 8px;
+      flex-wrap: wrap;
     }
 
     .badge {
@@ -332,7 +330,6 @@
       transform: scale(0.95);
     }
 
-    /* DEADLINE ALERTS */
     .deadline-alerts {
       background: var(--card);
       border-bottom: 1px solid var(--border);
@@ -359,7 +356,6 @@
       color: white;
     }
 
-    /* TEMPLATES */
     .tpl {
       padding: 10px 16px;
       background: var(--card);
@@ -401,7 +397,6 @@
       border-color: var(--accent);
     }
 
-    /* MESSAGES */
     #msgs {
       flex: 1;
       overflow-y: auto;
@@ -482,10 +477,6 @@
       color: var(--assistant-text);
       border-color: var(--border);
       border-bottom-left-radius: 4px;
-    }
-
-    .priority-high {
-      border-left: 4px solid var(--error);
     }
 
     .bubble strong {
@@ -684,7 +675,6 @@
       color: var(--user-text);
     }
 
-    /* TYPING */
     .typing-wrap {
       display: flex;
       gap: 4px;
@@ -718,7 +708,6 @@
       }
     }
 
-    /* INPUT */
     .inp-area {
       padding: 12px 16px;
       padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -780,7 +769,6 @@
       opacity: 0.45;
     }
 
-    /* EMPTY */
     .empty {
       text-align: center;
       padding: 48px 20px;
@@ -807,47 +795,28 @@
       line-height: 1.6;
     }
 
-    /* MODAL CALCULADORA */
-    #calcModal {
+    #calcModal, #statsModal, #shareModal {
       display: none;
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,0.5);
       z-index: 1100;
-      align-items: flex-end;
+      align-items: center;
       justify-content: center;
     }
 
-    #calcModal.on {
+    #calcModal.on, #statsModal.on, #shareModal.on {
       display: flex;
-    }
-
-    @media(min-width: 769px) {
-      #calcModal {
-        align-items: center;
-      }
-      .m-box {
-        border-radius: 16px;
-      }
     }
 
     .m-box {
       background: var(--card);
-      border-radius: 20px 20px 0 0;
-      padding: 24px 20px;
-      padding-bottom: max(24px, env(safe-area-inset-bottom));
-      width: 100%;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
       max-width: 480px;
-      max-height: 85dvh;
+      max-height: 85vh;
       overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      animation: slideUp 0.25s ease-out;
-    }
-
-    @keyframes slideUp {
-      from {
-        transform: translateY(100%);
-      }
     }
 
     .m-head {
@@ -882,7 +851,7 @@
       font-weight: 500;
     }
 
-    .c-inp {
+    .c-inp, select.c-inp {
       width: 100%;
       padding: 12px;
       margin-bottom: 14px;
@@ -937,26 +906,10 @@
       background: var(--bg);
     }
 
-    /* MODAL ESTATÍSTICAS */
-    #statsModal, #shareModal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 1100;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #statsModal.on, #shareModal.on {
-      display: flex;
-    }
-
     .stats-card {
       padding: 15px;
       background: var(--bg);
       border-radius: 8px;
-      margin: 10px;
     }
 
     .stats-item {
@@ -997,7 +950,6 @@
       border-width: 0;
     }
 
-    /* SCROLLBAR */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -1109,7 +1061,7 @@
     <div class="inp-row">
       <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..."
         onkeypress="if(event.key==='Enter' && !event.shiftKey) send()" autocomplete="off">
-      <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos (máx 10MB cada)">
+      <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos">
         <i data-lucide="paperclip"></i>
       </button>
       <button class="btn-send" id="sendBtn" onclick="send()">
@@ -1265,6 +1217,7 @@
     'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
   };
 
+  // INICIALIZAÇÃO
   window.onload = async () => {
     lucide.createIcons();
     setTheme(localStorage.getItem('theme') || 'light');
@@ -1274,13 +1227,14 @@
     updateBadges();
   };
 
-  // CONEXÃO
+  // VERIFICAR CONEXÃO
   async function checkConnection() {
     try {
-      const { error } = await sb.from('chats').select('id').limit(1);
+      const { error } = await sb.from('chats').select('id', { count: 'exact', head: true });
       if (error) throw error;
       setConnectionStatus('Online', 'cloud', '#10b981');
     } catch(e) {
+      console.error('Erro de conexão:', e);
       setConnectionStatus('Offline', 'cloud-off', '#ef4444');
     }
   }
@@ -1291,10 +1245,11 @@
     lucide.createIcons();
   }
 
-  // CARREGAR CONVERSAS DO SUPABASE
+  // CARREGAR CONVERSAS
   async function loadChats() {
     try {
-      const { data, error } = await sb.from('chats')
+      const { data, error } = await sb
+        .from('chats')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -1305,7 +1260,7 @@
     } catch(e) {
       console.error('Erro ao carregar chats:', e);
       document.getElementById('hList').innerHTML =
-        `<p style="padding:16px;color:var(--error);font-size:13px">Erro ao carregar conversas: ${e.message}</p>`;
+        `<p style="padding:16px;color:var(--error);font-size:13px">Erro ao carregar conversas</p>`;
     }
   }
 
@@ -1339,7 +1294,8 @@
   // ABRIR CONVERSA
   async function openChat(id) {
     try {
-      const { data, error } = await sb.from('chats')
+      const { data, error } = await sb
+        .from('chats')
         .select('*')
         .eq('id', id)
         .single();
@@ -1360,30 +1316,33 @@
     }
   }
 
-  // SALVAR CONVERSA NO SUPABASE
+  // SALVAR CONVERSA
   async function saveChat() {
     try {
       if (!currentChat.messages || currentChat.messages.length === 0) return;
       
       const chatData = {
-        title: currentChat.title,
+        title: currentChat.title || 'Nova Conversa',
         messages: currentChat.messages,
         updated_at: new Date().toISOString()
       };
       
       if (currentChat.id) {
         // Atualizar conversa existente
-        const { error } = await sb.from('chats')
+        const { error } = await sb
+          .from('chats')
           .update(chatData)
           .eq('id', currentChat.id);
         
         if (error) throw error;
+        console.log('Chat atualizado:', currentChat.id);
       } else {
         // Criar nova conversa
-        const { data, error } = await sb.from('chats')
+        const { data, error } = await sb
+          .from('chats')
           .insert({
-            title: currentChat.title,
-            messages: currentChat.messages,
+            title: chatData.title,
+            messages: chatData.messages,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
@@ -1392,6 +1351,7 @@
         
         if (error) throw error;
         currentChat.id = data.id;
+        console.log('Novo chat criado:', data.id);
       }
       
       await loadChats(); // Recarregar lista
@@ -1405,7 +1365,11 @@
     if (!confirm('Tem certeza que deseja deletar esta conversa?')) return;
     
     try {
-      const { error } = await sb.from('chats').delete().eq('id', id);
+      const { error } = await sb
+        .from('chats')
+        .delete()
+        .eq('id', id);
+      
       if (error) throw error;
       
       if (currentChat.id === id) {
@@ -1573,7 +1537,7 @@
     return 'medium';
   }
 
-  // SUGESTÕES DE PERGUNTAS
+  // SUGESTÕES
   function suggestNextQuestions(lastResponse) {
     const keywords = {
       'icms': [
@@ -1641,12 +1605,12 @@
     document.getElementById('sendBtn').disabled = true;
     inp.disabled = true;
 
-    // Incrementar contador de perguntas
+    // Incrementar contador
     userStats.questions++;
     localStorage.setItem('userStats', JSON.stringify(userStats));
     updateBadges();
 
-    // Preparar mensagem com arquivos
+    // Preparar mensagem
     let messageContent = text || '📎 Arquivos enviados para análise fiscal';
     if (currentFiles.length > 0) {
       messageContent += `\n\n📎 Arquivos anexados (${currentFiles.length}):`;
@@ -1668,9 +1632,13 @@
     if (!currentChat.messages) currentChat.messages = [];
     currentChat.messages.push(userMessage);
 
+    // Definir título da conversa se for a primeira mensagem
     if (currentChat.messages.length === 1) {
       currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) + 
                          ((text || '').length > 50 ? '...' : '');
+      
+      // Salvar imediatamente para criar o ID
+      await saveChat();
     }
 
     // Preparar contexto dos arquivos
@@ -1689,7 +1657,7 @@
       // Preparar mensagens para API
       const messagesToSend = [
         { role: 'system', content: SYS },
-        ...currentChat.messages.slice(-8).map(m => ({
+        ...currentChat.messages.slice(-10).map(m => ({
           role: m.role,
           content: m.role === 'user' && m.files ? 
             `${m.content}\n\n[ARQUIVOS: ${m.files.map(f => f.name).join(', ')}]` : 
@@ -1709,6 +1677,7 @@
         const cached = responseCache.get(cacheKey);
         if (Date.now() - cached.timestamp < CACHE_DURATION) {
           response = cached.response;
+          console.log('Usando resposta em cache');
         } else {
           responseCache.delete(cacheKey);
         }
@@ -1759,6 +1728,8 @@
       addMessage(reply, false, confidence);
       
       suggestNextQuestions(reply);
+      
+      // Salvar após a resposta
       await saveChat();
 
       removeAllFiles();
@@ -1766,13 +1737,13 @@
 
     } catch(e) {
       hideTypingIndicator();
-      console.error('Erro:', e);
+      console.error('Erro detalhado:', e);
       
       let errorMsg = '❌ Erro ao processar. ';
       if (e.message.includes('Failed to fetch')) {
         errorMsg += 'Verifique sua conexão.';
       } else if (e.message.includes('401')) {
-        errorMsg += 'Erro de autenticação.';
+        errorMsg += 'Erro de autenticação na API.';
       } else if (e.message.includes('429')) {
         errorMsg += 'Limite de requisições excedido.';
       } else {
@@ -1865,7 +1836,7 @@
             content = text.substring(0, 3000);
             summary = `📄 PDF com ${pdf.numPages} página(s)`;
             
-            if (text.toLowerCase().includes('nota fiscal')) {
+            if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
               summary += ' - Documento fiscal';
             }
             
@@ -2180,6 +2151,7 @@
     const link = document.getElementById('shareLink');
     link.select();
     navigator.clipboard.writeText(link.value);
+    alert('Link copiado!');
   }
 
   function closeShareModal() {
@@ -2206,6 +2178,13 @@
     if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
       e.preventDefault();
       exportChat();
+    }
+  });
+
+  // SALVAR ANTES DE FECHAR
+  window.addEventListener('beforeunload', () => {
+    if (currentChat.messages && currentChat.messages.length > 0) {
+      saveChat();
     }
   });
 </script>
