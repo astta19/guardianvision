@@ -2,22 +2,26 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewfit=cover">
   <title>Chat Fiscal Pro</title>
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
+    /* Mantenha todo o CSS existente */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
     :root {
       --bg: #fafafa;
-      --card: #ffffff;
+      --card: #fff;
       --text: #1a1a1a;
       --text-light: #666;
       --border: #e5e5e5;
@@ -30,6 +34,8 @@
       --warning: #f59e0b;
       --error: #ef4444;
       --info: #3b82f6;
+      --link: #0066cc;
+      --link-hover: #004499;
     }
 
     [data-theme="dark"] {
@@ -43,10 +49,11 @@
       --user-text: #1a1a1a;
       --assistant-bg: #2d2d2d;
       --assistant-text: #f5f5f5;
+      --link: #66aaff;
+      --link-hover: #88ccff;
     }
 
     html {
-      scroll-behavior: smooth;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -54,24 +61,27 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      height: 100vh;
+      height: 100dvh;
       display: flex;
+      overflow: hidden;
       transition: background 0.3s, color 0.3s;
     }
 
+    /* OVERLAY */
     #overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.5);
       z-index: 999;
       backdrop-filter: blur(2px);
     }
-    
+
     #overlay.on {
       display: block;
     }
 
+    /* SIDEBAR */
     #sidebar {
       width: 85%;
       max-width: 300px;
@@ -90,13 +100,14 @@
       transform: translateX(0);
     }
 
-    @media(min-width: 769px) {
+    @media (min-width: 769px) {
       #sidebar {
         position: relative;
         transform: none;
         width: 280px;
         flex-shrink: 0;
       }
+
       #overlay {
         display: none !important;
       }
@@ -112,7 +123,7 @@
     }
 
     .sb-title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -134,12 +145,6 @@
       justify-content: center;
       gap: 8px;
       min-height: 48px;
-      transition: all 0.2s;
-    }
-
-    .btn-new:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .sb-search {
@@ -187,11 +192,6 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 8px;
-      transition: all 0.2s;
-    }
-
-    .h-item:hover {
-      border-color: var(--accent);
     }
 
     .h-item.on {
@@ -211,12 +211,12 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 2px;
     }
 
     .h-date {
       font-size: 11px;
       opacity: 0.6;
+      margin-top: 2px;
     }
 
     .btn-del {
@@ -229,10 +229,7 @@
       flex-shrink: 0;
     }
 
-    .btn-del:hover {
-      color: var(--error);
-    }
-
+    /* CHAT */
     #chat {
       flex: 1;
       display: flex;
@@ -263,7 +260,7 @@
     }
 
     .c-title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
@@ -318,18 +315,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
-    }
-
-    .icon-btn:hover {
-      background: var(--card);
-      border-color: var(--accent);
     }
 
     .icon-btn:active {
       transform: scale(0.95);
     }
 
+    /* DEADLINE ALERTS */
     .deadline-alerts {
       background: var(--card);
       border-bottom: 1px solid var(--border);
@@ -356,6 +348,7 @@
       color: white;
     }
 
+    /* TEMPLATES */
     .tpl {
       padding: 10px 16px;
       background: var(--card);
@@ -388,15 +381,14 @@
       gap: 6px;
       min-height: 40px;
       color: var(--text);
-      transition: all 0.2s;
     }
 
-    .chip:hover {
+    .chip:active {
       background: var(--accent);
       color: var(--user-text);
-      border-color: var(--accent);
     }
 
+    /* MESSAGES */
     #msgs {
       flex: 1;
       overflow-y: auto;
@@ -410,13 +402,13 @@
     .msg {
       display: flex;
       gap: 8px;
-      animation: slideIn 0.3s;
+      animation: slideIn 0.25s ease-out;
     }
 
     @keyframes slideIn {
       from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
       }
     }
 
@@ -437,16 +429,12 @@
     }
 
     .user .ava {
-      background: var(--user-bg);
-      border-color: var(--user-bg);
+      background: var(--accent);
+      border-color: var(--accent);
     }
 
     .user .ava svg {
       color: var(--user-text) !important;
-    }
-
-    .assistant .ava svg {
-      color: var(--text);
     }
 
     .bubble {
@@ -459,16 +447,16 @@
       word-break: break-word;
     }
 
-    @media(min-width: 769px) {
+    @media (min-width: 769px) {
       .bubble {
         max-width: 68%;
       }
     }
 
     .user .bubble {
-      background: var(--user-bg);
+      background: var(--accent);
       color: var(--user-text);
-      border-color: var(--user-bg);
+      border-color: var(--accent);
       border-bottom-right-radius: 4px;
     }
 
@@ -501,6 +489,17 @@
       margin: 4px 0;
     }
 
+    .bubble a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .bubble a:hover {
+      text-decoration: underline;
+      color: var(--link-hover);
+    }
+
+    /* FILE ATTACHMENTS */
     .file-attachment {
       margin-top: 10px;
       padding: 10px;
@@ -511,10 +510,6 @@
       align-items: center;
       gap: 10px;
       font-size: 13px;
-    }
-
-    .file-attachment i {
-      color: var(--accent);
     }
 
     .file-preview {
@@ -591,10 +586,22 @@
       cursor: pointer;
       font-size: 12px;
       color: var(--text);
-      transition: all 0.2s;
     }
 
-    .btn-copy:hover {
+    .btn-feedback {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .btn-feedback:hover {
       background: var(--accent);
       color: var(--user-text);
     }
@@ -639,6 +646,40 @@
       color: #fca5a5;
     }
 
+    /* FEEDBACK PROMPT */
+    .feedback-prompt {
+      padding: 10px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin: 10px 0;
+      border: 1px solid var(--border);
+    }
+
+    .feedback-options {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .feedback-btn {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .feedback-btn:hover {
+      background: var(--accent);
+      color: var(--user-text);
+    }
+
+    /* SUGGESTIONS */
     .suggestions {
       margin-top: 15px;
       padding: 10px;
@@ -675,6 +716,7 @@
       color: var(--user-text);
     }
 
+    /* TYPING */
     .typing-wrap {
       display: flex;
       gap: 4px;
@@ -686,7 +728,7 @@
       height: 7px;
       background: var(--text-light);
       border-radius: 50%;
-      animation: typing 1.4s infinite;
+      animation: typing 1.3s infinite;
     }
 
     .dot:nth-child(2) {
@@ -698,16 +740,21 @@
     }
 
     @keyframes typing {
-      0%, 60%, 100% {
+
+      0%,
+      60%,
+      100% {
         transform: translateY(0);
-        opacity: 0.6;
+        opacity: 0.3;
       }
+
       30% {
         transform: translateY(-8px);
         opacity: 1;
       }
     }
 
+    /* INPUT */
     .inp-area {
       padding: 12px 16px;
       padding-bottom: max(12px, env(safe-area-inset-bottom));
@@ -769,6 +816,12 @@
       opacity: 0.45;
     }
 
+    /* FILE INFO */
+    .file-info {
+      padding: 10px 0;
+    }
+
+    /* EMPTY STATE */
     .empty {
       text-align: center;
       padding: 48px 20px;
@@ -795,17 +848,24 @@
       line-height: 1.6;
     }
 
-    #calcModal, #statsModal, #shareModal {
+    /* MODALS */
+    #calcModal,
+    #statsModal,
+    #shareModal,
+    #learningStatsModal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.5);
       z-index: 1100;
       align-items: center;
       justify-content: center;
     }
 
-    #calcModal.on, #statsModal.on, #shareModal.on {
+    #calcModal.on,
+    #statsModal.on,
+    #shareModal.on,
+    #learningStatsModal.on {
       display: flex;
     }
 
@@ -851,7 +911,8 @@
       font-weight: 500;
     }
 
-    .c-inp, select.c-inp {
+    .c-inp,
+    select.c-inp {
       width: 100%;
       padding: 12px;
       margin-bottom: 14px;
@@ -950,6 +1011,7 @@
       border-width: 0;
     }
 
+    /* SCROLLBAR */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -975,1218 +1037,1502 @@
     }
   </style>
 </head>
+
 <body>
+  <div id="overlay" onclick="closeSidebar()"></div>
 
-<div id="overlay" onclick="closeSidebar()"></div>
-
-<aside id="sidebar">
-  <div class="sb-head">
-    <div class="sb-title">
-      <i data-lucide="history"></i> Conversas
-    </div>
-    <button class="btn-new" onclick="newChat()">
-      <i data-lucide="plus"></i> Nova Conversa
-    </button>
-    <div class="sb-search">
-      <i data-lucide="search"></i>
-      <input type="text" id="searchInput" placeholder="Buscar conversa..." oninput="filterChats()">
-    </div>
-  </div>
-  <div id="hList"></div>
-</aside>
-
-<main id="chat">
-  <div class="c-head">
-    <div class="c-left">
-      <button class="icon-btn" onclick="toggleSidebar()">
-        <i data-lucide="menu"></i>
-      </button>
-      <span class="c-title">Chat Fiscal Pro</span>
-      <div class="conn" id="conn">
-        <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
-        <span>Conectando...</span>
+  <aside id="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">
+        <i data-lucide="history"></i> Conversas
       </div>
-      <div class="badges-container" id="badgesContainer"></div>
-    </div>
-    <div class="c-right">
-      <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">
-        <i data-lucide="maximize-2"></i>
+      <button class="btn-new" onclick="newChat()">
+        <i data-lucide="plus"></i> Nova Conversa
       </button>
-      <button class="icon-btn" onclick="exportChat()" title="Exportar conversa">
-        <i data-lucide="download"></i>
-      </button>
-      <button class="icon-btn" onclick="showStats()" title="Estatísticas">
-        <i data-lucide="bar-chart-2"></i>
-      </button>
-      <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
-        <i data-lucide="calculator"></i>
-      </button>
-      <button class="icon-btn" onclick="toggleTheme()" title="Tema">
-        <i data-lucide="moon" id="themeIcon"></i>
-      </button>
-    </div>
-  </div>
-
-  <div id="deadlineAlerts" class="deadline-alerts"></div>
-
-  <div class="tpl">
-    <div class="tpl-row">
-      <button class="chip" onclick="useTemplate('Como calcular ICMS de R$ 10.000 com alíquota 18%?')">
-        <i data-lucide="calculator"></i> ICMS
-      </button>
-      <button class="chip" onclick="useTemplate('Como funciona o ICMS-ST?')">
-        <i data-lucide="shield"></i> ICMS-ST
-      </button>
-      <button class="chip" onclick="useTemplate('Diferença entre Lucro Real e Presumido')">
-        <i data-lucide="bar-chart-2"></i> Regimes
-      </button>
-      <button class="chip" onclick="useTemplate('Quando usar CFOP 5102?')">
-        <i data-lucide="file-text"></i> CFOPs
-      </button>
-      <button class="chip" onclick="useTemplate('Prazo SPED Fiscal 2024')">
-        <i data-lucide="clock"></i> Prazos
-      </button>
-    </div>
-  </div>
-
-  <div id="msgs">
-    <div class="empty">
-      <i data-lucide="message-circle"></i>
-      <h3>Olá! Sou seu especialista fiscal</h3>
-      <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
-    </div>
-  </div>
-
-  <div class="inp-area">
-    <div class="inp-row">
-      <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..."
-        onkeypress="if(event.key==='Enter' && !event.shiftKey) send()" autocomplete="off">
-      <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos">
-        <i data-lucide="paperclip"></i>
-      </button>
-      <button class="btn-send" id="sendBtn" onclick="send()">
-        <i data-lucide="send"></i>
-      </button>
-    </div>
-    <div class="file-info" id="fileContainer" style="display: none; padding: 10px 0;">
-      <div class="multiple-files" id="multipleFiles"></div>
-      <div id="fileProgressContainer" style="display: none;">
-        <div class="progress-bar">
-          <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
-        </div>
+      <div class="sb-search">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchInput" placeholder="Buscar conversa..." oninput="filterChats()">
       </div>
     </div>
-    <input type="file" id="fileInput" style="display: none;" multiple accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" onchange="handleMultipleFiles(event)">
-  </div>
-</main>
+    <div id="hList"></div>
+  </aside>
 
-<div id="calcModal">
-  <div class="m-box">
-    <div class="m-head">
-      <span class="m-title">Calculadora Fiscal</span>
-      <button class="btn-close" onclick="closeCalculator()"><i data-lucide="x"></i></button>
-    </div>
-    <p class="f-lbl">Valor Base (R$)</p>
-    <input type="number" class="c-inp" id="cV" placeholder="Ex: 10000">
-    <p class="f-lbl">Alíquota ICMS (%)</p>
-    <input type="number" class="c-inp" id="cI" value="18">
-    <p class="f-lbl">Alíquota PIS (%)</p>
-    <input type="number" class="c-inp" id="cP" value="1.65">
-    <p class="f-lbl">Alíquota COFINS (%)</p>
-    <input type="number" class="c-inp" id="cC" value="7.6">
-    <button class="btn-calc" onclick="calculateTaxes()">
-      <i data-lucide="calculator"></i> Calcular
-    </button>
-    <div class="c-result" id="cResult" style="display:none">
-      <div class="c-row"><span>ICMS:</span><span id="rI">-</span></div>
-      <div class="c-row"><span>PIS:</span><span id="rP">-</span></div>
-      <div class="c-row"><span>COFINS:</span><span id="rC">-</span></div>
-      <div class="c-row"><span>Total:</span><span id="rT">-</span></div>
-    </div>
-  </div>
-</div>
-
-<div id="statsModal">
-  <div class="m-box">
-    <div class="m-head">
-      <span class="m-title">Estatísticas</span>
-      <button class="btn-close" onclick="closeStats()"><i data-lucide="x"></i></button>
-    </div>
-    <div id="statsContent"></div>
-  </div>
-</div>
-
-<div id="shareModal">
-  <div class="m-box">
-    <div class="m-head">
-      <span class="m-title">Compartilhar Conversa</span>
-      <button class="btn-close" onclick="closeShareModal()"><i data-lucide="x"></i></button>
-    </div>
-    <p>Link para compartilhar:</p>
-    <div class="share-link">
-      <input type="text" id="shareLink" readonly>
-      <button class="icon-btn" onclick="copyShareLink()">
-        <i data-lucide="copy"></i>
-      </button>
-    </div>
-    <p style="margin-top: 15px; font-size: 12px; color: var(--text-light);">
-      ⚠️ Link válido por 24 horas
-    </p>
-  </div>
-</div>
-
-<div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
-
-<script>
-  // Configuração do PDF.js
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-  const SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
-  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
-  const GK = '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';
-  const SYS = `Você é um especialista fiscal brasileiro sênior com mais de 15 anos de experiência. Responda de forma clara, técnica e precisa sobre:
-
-  TRIBUTOS:
-  - ICMS: Regras gerais, substituição tributária (ICMS-ST), diferencial de alíquotas (DIFAL), regimes especiais
-  - ISS: Lista de serviços, alíquotas mínimas e máximas, retenção na fonte
-  - PIS/COFINS: Regimes cumulativo e não-cumulativo, créditos, base de cálculo
-  - IPI: Classificação fiscal (TIPI), alíquotas, créditos
-
-  REGIMES TRIBUTÁRIOS:
-  - Simples Nacional: Anexos, tabelas, sublimites, exclusão
-  - Lucro Presumido: Percentuais de presunção, distribuição de lucros
-  - Lucro Real: Apuração trimestral/anual, adições e exclusões
-
-  OBRIGAÇÕES ACESSÓRIAS:
-  - SPED Fiscal, SPED Contribuições, EFD-Reinf, DCTF, GIA, ECD, ECF
-  - Prazos de entrega, multas por atraso, retificações
-
-  DOCUMENTOS FISCAIS:
-  - CFOPs: Entradas e saídas, operações interestaduais
-  - CST, CSOSN: Códigos de situação tributária
-  - NFe, NFCe, CT-e: Regras de emissão, contingência
-
-  LEGISLAÇÃO:
-  - Lei Kandir (LC 87/96), Lei do Simples (LC 123/06), Convênios ICMS
-  - Atualizações recentes, jurisprudência relevante
-
-  Ao responder:
-  1. Cite os fundamentos legais (leis, artigos, convênios)
-  2. Destaque **termos importantes** em negrito
-  3. Forneça exemplos práticos quando possível
-  4. Indique cuidados especiais e riscos
-  5. Se aplicável, mostre cálculos passo a passo
-  6. Mencione prazos e obrigações relacionadas
-
-  Quando o usuário enviar arquivos, analise o conteúdo e forneça insights específicos sobre questões fiscais encontradas.`;
-
-  const sb = window.supabase.createClient(SB_URL, SB_KEY);
-  let allChats = [];
-  let currentChat = { 
-    id: null, 
-    title: 'Nova Conversa', 
-    messages: [] 
-  };
-  
-  let currentFiles = [];
-  let isProcessingFile = false;
-  let typingIndicator = null;
-  
-  // Cache para respostas
-  const responseCache = new Map();
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
-
-  // Estatísticas do usuário
-  let userStats = JSON.parse(localStorage.getItem('userStats') || JSON.stringify({
-    questions: 0,
-    filesAnalyzed: 0,
-    correctAnswers: 0,
-    badges: []
-  }));
-
-  const badges = {
-    'primeira_pergunta': { name: 'Primeiros Passos', icon: '🌟', condition: (s) => s.questions >= 1 },
-    'analista_10': { name: 'Analista Experiente', icon: '📊', condition: (s) => s.questions >= 10 },
-    'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '📄', condition: (s) => s.filesAnalyzed >= 5 },
-    'fiscal_pro': { name: 'Fiscal Pro', icon: '👑', condition: (s) => s.correctAnswers >= 20 }
-  };
-
-  const fiscalDeadlines = {
-    'sped_fiscal': { day: 15, month: 'monthly', description: 'Entrega SPED Fiscal' },
-    'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
-    'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
-  };
-
-  // INICIALIZAÇÃO
-  window.onload = async () => {
-    lucide.createIcons();
-    setTheme(localStorage.getItem('theme') || 'light');
-    await checkConnection();
-    await loadChats();
-    checkDeadlines();
-    updateBadges();
-  };
-
-  // VERIFICAR CONEXÃO
-  async function checkConnection() {
-    try {
-      const { error } = await sb.from('chats').select('id', { count: 'exact', head: true });
-      if (error) throw error;
-      setConnectionStatus('Online', 'cloud', '#10b981');
-    } catch(e) {
-      console.error('Erro de conexão:', e);
-      setConnectionStatus('Offline', 'cloud-off', '#ef4444');
-    }
-  }
-
-  function setConnectionStatus(label, icon, color) {
-    document.getElementById('conn').innerHTML =
-      `<i data-lucide="${icon}" style="width:12px;height:12px;color:${color}"></i><span>${label}</span>`;
-    lucide.createIcons();
-  }
-
-  // CARREGAR CONVERSAS
-  async function loadChats() {
-    try {
-      const { data, error } = await sb
-        .from('chats')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      allChats = data || [];
-      renderHistoryList(allChats);
-    } catch(e) {
-      console.error('Erro ao carregar chats:', e);
-      document.getElementById('hList').innerHTML =
-        `<p style="padding:16px;color:var(--error);font-size:13px">Erro ao carregar conversas</p>`;
-    }
-  }
-
-  function renderHistoryList(list) {
-    const el = document.getElementById('hList');
-    if (!list || list.length === 0) {
-      el.innerHTML = '<p style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Nenhuma conversa ainda</p>';
-      return;
-    }
-    
-    el.innerHTML = list.map(c => `
-      <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
-        <div class="h-info">
-          <div class="h-title">${c.title || 'Nova Conversa'}</div>
-          <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
-        </div>
-        <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
-          <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+  <main id="chat">
+    <div class="c-head">
+      <div class="c-left">
+        <button class="icon-btn" onclick="toggleSidebar()">
+          <i data-lucide="menu"></i>
         </button>
-      </div>`).join('');
-    
-    lucide.createIcons();
-  }
+        <span class="c-title">Chat Fiscal Pro</span>
+        <div class="conn" id="conn">
+          <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
+          <span>Conectando...</span>
+        </div>
+        <div class="badges-container" id="badgesContainer"></div>
+      </div>
+      <div class="c-right">
+        <button class="icon-btn" onclick="toggleFullscreen()" title="Tela cheia">
+          <i data-lucide="maximize-2"></i>
+        </button>
+        <button class="icon-btn" onclick="exportChat()" title="Exportar conversa">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="icon-btn" onclick="showStats()" title="Estatísticas do chat">
+          <i data-lucide="bar-chart-2"></i>
+        </button>
+        <button class="icon-btn" onclick="showLearningStats()" title="Estatísticas de aprendizado">
+          <i data-lucide="brain"></i>
+        </button>
+        <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
+          <i data-lucide="calculator"></i>
+        </button>
+        <button class="icon-btn" onclick="toggleTheme()" title="Tema">
+          <i data-lucide="moon" id="themeIcon"></i>
+        </button>
+      </div>
+    </div>
 
-  function filterChats() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = q ? allChats.filter(c => (c.title || '').toLowerCase().includes(q)) : allChats;
-    renderHistoryList(filtered);
-  }
+    <div id="deadlineAlerts" class="deadline-alerts"></div>
 
-  // ABRIR CONVERSA
-  async function openChat(id) {
-    try {
-      const { data, error } = await sb
-        .from('chats')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) throw error;
-      
-      currentChat = { 
-        id: data.id, 
-        title: data.title, 
-        messages: data.messages || [] 
-      };
-      
-      renderMessages();
-      renderHistoryList(allChats);
-      closeSidebar();
-    } catch(e) {
-      console.error('Erro ao abrir conversa:', e);
-    }
-  }
+    <div class="tpl">
+      <div class="tpl-row">
+        <button class="chip" onclick="useTemplate('Como calcular ICMS de R$ 10.000 com alíquota 18%?')">
+          <i data-lucide="calculator"></i> ICMS
+        </button>
+        <button class="chip" onclick="useTemplate('Como funciona o ICMS-ST?')">
+          <i data-lucide="shield"></i> ICMS-ST
+        </button>
+        <button class="chip" onclick="useTemplate('Diferença entre Lucro Real e Presumido')">
+          <i data-lucide="bar-chart-2"></i> Regimes
+        </button>
+        <button class="chip" onclick="useTemplate('Quando usar CFOP 5102?')">
+          <i data-lucide="file-text"></i> CFOPs
+        </button>
+        <button class="chip" onclick="useTemplate('Prazo SPED Fiscal 2024')">
+          <i data-lucide="clock"></i> Prazos
+        </button>
+      </div>
+    </div>
 
-  // SALVAR CONVERSA
-  async function saveChat() {
-    try {
-      if (!currentChat.messages || currentChat.messages.length === 0) return;
-      
-      const chatData = {
-        title: currentChat.title || 'Nova Conversa',
-        messages: currentChat.messages,
-        updated_at: new Date().toISOString()
-      };
-      
-      if (currentChat.id) {
-        // Atualizar conversa existente
-        const { error } = await sb
-          .from('chats')
-          .update(chatData)
-          .eq('id', currentChat.id);
-        
-        if (error) throw error;
-        console.log('Chat atualizado:', currentChat.id);
-      } else {
-        // Criar nova conversa
-        const { data, error } = await sb
-          .from('chats')
-          .insert({
-            title: chatData.title,
-            messages: chatData.messages,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select('id')
-          .single();
-        
-        if (error) throw error;
-        currentChat.id = data.id;
-        console.log('Novo chat criado:', data.id);
-      }
-      
-      await loadChats(); // Recarregar lista
-    } catch(e) {
-      console.error('Erro ao salvar conversa:', e);
-    }
-  }
-
-  // DELETAR CONVERSA
-  async function deleteChat(id) {
-    if (!confirm('Tem certeza que deseja deletar esta conversa?')) return;
-    
-    try {
-      const { error } = await sb
-        .from('chats')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      if (currentChat.id === id) {
-        newChat();
-      } else {
-        await loadChats();
-      }
-    } catch(e) {
-      console.error('Erro ao deletar conversa:', e);
-    }
-  }
-
-  // NOVA CONVERSA
-  function newChat() {
-    currentChat = { id: null, title: 'Nova Conversa', messages: [] };
-    document.getElementById('msgs').innerHTML = `
+    <div id="msgs">
       <div class="empty">
         <i data-lucide="message-circle"></i>
-        <h3>Nova conversa</h3>
-        <p>Faça sua primeira pergunta!</p>
-      </div>`;
-    lucide.createIcons();
-    renderHistoryList(allChats);
-    closeSidebar();
-    removeAllFiles();
-  }
+        <h3>Olá! Sou seu especialista fiscal</h3>
+        <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
+      </div>
+    </div>
 
-  // RENDERIZAR MENSAGENS
-  function renderMessages() {
-    const container = document.getElementById('msgs');
-    container.innerHTML = '';
-    
-    if (!currentChat.messages || currentChat.messages.length === 0) {
-      container.innerHTML = `
-        <div class="empty">
-          <i data-lucide="message-circle"></i>
-          <h3>Olá! Sou seu especialista fiscal</h3>
-          <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
-        </div>`;
-    } else {
-      currentChat.messages.forEach(msg => {
-        addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData);
-      });
-    }
-    lucide.createIcons();
-  }
-
-  // ADICIONAR MENSAGEM
-  function addMessage(text, isUser, confidence = 'medium', fileData = null) {
-    const container = document.getElementById('msgs');
-    container.querySelector('.empty')?.remove();
-
-    const div = document.createElement('div');
-    div.className = `msg ${isUser ? 'user' : 'assistant'}`;
-
-    const formattedText = formatText(text);
-    
-    let fileHtml = '';
-    if (fileData) {
-      if (fileData.type?.startsWith('image/') && fileData.raw) {
-        fileHtml = `<img src="${fileData.raw}" class="file-preview" alt="${fileData.name}">`;
-      } else {
-        fileHtml = `
-          <div class="file-attachment">
-            <i data-lucide="file-text"></i>
-            <span>
-              <strong>${fileData.name}</strong> (${(fileData.size / 1024).toFixed(1)} KB)
-              ${fileData.summary ? `<br><small>${fileData.summary}</small>` : ''}
-            </span>
-          </div>`;
-        
-        if (fileData.content && !fileData.type?.startsWith('image/')) {
-          fileHtml += `
-            <div class="file-content-preview">
-              <strong>Preview:</strong><br>
-              ${escapeHtml(fileData.content.substring(0, 300))}${fileData.content.length > 300 ? '...' : ''}
-            </div>`;
-        }
-      }
-    }
-
-    const footer = !isUser ? `
-      <div class="mfoot">
-        <button class="btn-copy" onclick="copyMessage(this)">
-          <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
+    <div class="inp-area">
+      <div class="inp-row">
+        <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..."
+          onkeypress="if(event.key==='Enter' && !event.shiftKey) send()" autocomplete="off">
+        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos">
+          <i data-lucide="paperclip"></i>
         </button>
-        <span class="badge-conf badge ${confidence}">
-          ${confidence === 'high' ? '🟢 Alta' : confidence === 'low' ? '🔴 Baixa' : '🟡 Média'} confiança
-        </span>
-      </div>` : '';
-
-    div.innerHTML = `
-      <div class="ava"><i data-lucide="${isUser ? 'user' : 'bot'}"></i></div>
-      <div class="bubble">
-        ${formattedText}
-        ${fileHtml}
-        ${footer}
-      </div>`;
-
-    container.appendChild(div);
-    lucide.createIcons();
-    container.scrollTop = container.scrollHeight;
-  }
-
-  function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, '&amp;')
-               .replace(/</g, '&lt;')
-               .replace(/>/g, '&gt;')
-               .replace(/\n/g, '<br>');
-  }
-
-  function formatText(text) {
-    if (!text) return '';
-    let t = escapeHtml(text);
-    t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    t = t.replace(/`(.*?)`/g, '<code>$1</code>');
-    t = t.replace(/^- (.+)$/gm, '<li>$1</li>');
-    t = t.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, '<ul>$&</ul>');
-    return t;
-  }
-
-  // TYPING INDICATOR
-  function showTypingIndicator() {
-    hideTypingIndicator();
-    
-    const div = document.createElement('div');
-    div.className = 'msg assistant';
-    div.id = 'typing';
-    div.innerHTML = `
-      <div class="ava"><i data-lucide="bot"></i></div>
-      <div class="bubble">
-        <div class="typing-wrap">
-          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-        </div>
-      </div>`;
-    
-    document.getElementById('msgs').appendChild(div);
-    lucide.createIcons();
-    document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
-  }
-
-  function hideTypingIndicator() {
-    document.getElementById('typing')?.remove();
-  }
-
-  // CÁLCULO DE CONFIANÇA
-  function calculateConfidence(text) {
-    if (!text) return 'medium';
-    
-    const highIndicators = [
-      'lei', 'decreto', 'artigo', '§', 'instrução normativa',
-      'convênio', 'lc', 'ctn', 'regulamento', 'solução de consulta'
-    ];
-    
-    const lowIndicators = [
-      'pode variar', 'consulte', 'verifique', 'depende',
-      'recomenda-se', 'sugere-se', 'talvez', 'possivelmente'
-    ];
-    
-    const textLower = text.toLowerCase();
-    
-    if (highIndicators.some(i => textLower.includes(i))) return 'high';
-    if (lowIndicators.some(i => textLower.includes(i))) return 'low';
-    return 'medium';
-  }
-
-  // SUGESTÕES
-  function suggestNextQuestions(lastResponse) {
-    const keywords = {
-      'icms': [
-        'Como calcular ICMS próprio?',
-        'O que é ICMS-ST?',
-        'Qual a diferença entre ICMS e ICMS-ST?'
-      ],
-      'simples nacional': [
-        'Tabela do Simples Nacional 2024',
-        'Anexos do Simples Nacional',
-        'Como calcular o Simples Nacional?'
-      ],
-      'nota fiscal': [
-        'Como emitir NF-e?',
-        'Diferença entre NF-e e NFS-e',
-        'Prazos para emissão de NF-e'
-      ],
-      'sped': [
-        'Prazos SPED Fiscal 2024',
-        'Como entregar SPED?',
-        'Multas por atraso no SPED'
-      ]
-    };
-    
-    let suggestions = [];
-    const responseLower = lastResponse.toLowerCase();
-    
-    for (const [key, questions] of Object.entries(keywords)) {
-      if (responseLower.includes(key)) {
-        suggestions = questions;
-        break;
-      }
-    }
-    
-    if (suggestions.length > 0) {
-      setTimeout(() => {
-        const lastMsg = document.querySelector('.msg:last-child .bubble');
-        if (lastMsg && !lastMsg.querySelector('.suggestions')) {
-          const suggestionsHTML = `
-            <div class="suggestions">
-              <div class="suggestions-title">📌 Perguntas relacionadas:</div>
-              <div class="suggestions-grid">
-                ${suggestions.map(q => `
-                  <button class="suggestion-btn" onclick="useTemplate('${q.replace(/'/g, "\\'")}')">
-                    ${q}
-                  </button>
-                `).join('')}
-              </div>
-            </div>`;
-          lastMsg.insertAdjacentHTML('beforeend', suggestionsHTML);
-          lucide.createIcons();
-        }
-      }, 500);
-    }
-  }
-
-  // ENVIAR MENSAGEM
-  async function send() {
-    const inp = document.getElementById('msgInput');
-    const text = inp.value.trim();
-    const hasFiles = currentFiles.length > 0;
-    
-    if (!text && !hasFiles) return;
-
-    document.getElementById('sendBtn').disabled = true;
-    inp.disabled = true;
-
-    // Incrementar contador
-    userStats.questions++;
-    localStorage.setItem('userStats', JSON.stringify(userStats));
-    updateBadges();
-
-    // Preparar mensagem
-    let messageContent = text || '📎 Arquivos enviados para análise fiscal';
-    if (currentFiles.length > 0) {
-      messageContent += `\n\n📎 Arquivos anexados (${currentFiles.length}):`;
-      currentFiles.forEach(file => {
-        messageContent += `\n- ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-      });
-    }
-
-    // Adicionar mensagem do usuário
-    addMessage(messageContent, true, 'medium', currentFiles[0]);
-    
-    const userMessage = {
-      role: 'user',
-      content: text || 'Arquivos enviados para análise fiscal',
-      fileData: currentFiles.length > 0 ? currentFiles[0] : null,
-      files: [...currentFiles]
-    };
-    
-    if (!currentChat.messages) currentChat.messages = [];
-    currentChat.messages.push(userMessage);
-
-    // Definir título da conversa se for a primeira mensagem
-    if (currentChat.messages.length === 1) {
-      currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) + 
-                         ((text || '').length > 50 ? '...' : '');
-      
-      // Salvar imediatamente para criar o ID
-      await saveChat();
-    }
-
-    // Preparar contexto dos arquivos
-    let fileContext = '';
-    if (currentFiles.length > 0) {
-      fileContext = '\n\n📎 ARQUIVOS ANEXADOS:\n';
-      currentFiles.forEach((file, i) => {
-        fileContext += `\nARQUIVO ${i + 1}: ${file.name}\n`;
-        if (file.content) fileContext += `CONTEÚDO:\n${file.content}\n`;
-      });
-    }
-
-    showTypingIndicator();
-
-    try {
-      // Preparar mensagens para API
-      const messagesToSend = [
-        { role: 'system', content: SYS },
-        ...currentChat.messages.slice(-10).map(m => ({
-          role: m.role,
-          content: m.role === 'user' && m.files ? 
-            `${m.content}\n\n[ARQUIVOS: ${m.files.map(f => f.name).join(', ')}]` : 
-            m.content
-        }))
-      ];
-
-      if (currentFiles.length > 0) {
-        messagesToSend[messagesToSend.length - 1].content += fileContext;
-      }
-
-      // Verificar cache
-      const cacheKey = JSON.stringify(messagesToSend.slice(-2));
-      let response;
-      
-      if (responseCache.has(cacheKey)) {
-        const cached = responseCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
-          response = cached.response;
-          console.log('Usando resposta em cache');
-        } else {
-          responseCache.delete(cacheKey);
-        }
-      }
-
-      if (!response) {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${GK}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.7,
-            max_tokens: 2000,
-            messages: messagesToSend
-          })
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        response = await res.json();
-        
-        responseCache.set(cacheKey, {
-          response,
-          timestamp: Date.now()
-        });
-      }
-
-      hideTypingIndicator();
-      
-      const reply = response.choices[0].message.content;
-      const confidence = calculateConfidence(reply);
-
-      if (reply.length > 100 && !reply.includes('erro')) {
-        userStats.correctAnswers++;
-        localStorage.setItem('userStats', JSON.stringify(userStats));
-        updateBadges();
-      }
-
-      const assistantMessage = {
-        role: 'assistant',
-        content: reply,
-        confidence
-      };
-      
-      currentChat.messages.push(assistantMessage);
-      addMessage(reply, false, confidence);
-      
-      suggestNextQuestions(reply);
-      
-      // Salvar após a resposta
-      await saveChat();
-
-      removeAllFiles();
-      inp.value = '';
-
-    } catch(e) {
-      hideTypingIndicator();
-      console.error('Erro detalhado:', e);
-      
-      let errorMsg = '❌ Erro ao processar. ';
-      if (e.message.includes('Failed to fetch')) {
-        errorMsg += 'Verifique sua conexão.';
-      } else if (e.message.includes('401')) {
-        errorMsg += 'Erro de autenticação na API.';
-      } else if (e.message.includes('429')) {
-        errorMsg += 'Limite de requisições excedido.';
-      } else {
-        errorMsg += 'Tente novamente.';
-      }
-      
-      addMessage(errorMsg, false, 'low');
-    } finally {
-      document.getElementById('sendBtn').disabled = false;
-      inp.disabled = false;
-      inp.focus();
-    }
-  }
-
-  // PROCESSAR ARQUIVOS
-  async function handleMultipleFiles(event) {
-    const files = Array.from(event.target.files);
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    
-    for (const file of files) {
-      if (file.size > MAX_SIZE) {
-        alert(`Arquivo ${file.name} muito grande. Máx: 10MB`);
-        continue;
-      }
-      
-      if (isProcessingFile) continue;
-      
-      isProcessingFile = true;
-      
-      try {
-        showFileProgress(file);
-        const fileData = await processFile(file);
-        currentFiles.push(fileData);
-        userStats.filesAnalyzed++;
-        localStorage.setItem('userStats', JSON.stringify(userStats));
-        updateBadges();
-      } catch (error) {
-        console.error('Erro ao processar arquivo:', error);
-      } finally {
-        isProcessingFile = false;
-      }
-    }
-    
-    updateFilesUI();
-    event.target.value = '';
-  }
-
-  function showFileProgress(file) {
-    const container = document.getElementById('fileContainer');
-    const progressContainer = document.getElementById('fileProgressContainer');
-    container.style.display = 'block';
-    progressContainer.style.display = 'block';
-    
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      document.getElementById('progressFill').style.width = progress + '%';
-      
-      if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          progressContainer.style.display = 'none';
-        }, 500);
-      }
-    }, 100);
-  }
-
-  async function processFile(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      const fileType = file.type;
-      const fileName = file.name;
-
-      reader.onload = async function(e) {
-        try {
-          let content = '';
-          let summary = '';
-
-          if (fileType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf')) {
-            const pdfData = new Uint8Array(e.target.result);
-            const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-            
-            let text = '';
-            for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
-              const page = await pdf.getPage(i);
-              const textContent = await page.getTextContent();
-              text += textContent.items.map(item => item.str).join(' ') + '\n';
-            }
-            
-            content = text.substring(0, 3000);
-            summary = `📄 PDF com ${pdf.numPages} página(s)`;
-            
-            if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
-              summary += ' - Documento fiscal';
-            }
-            
-          } else if (fileType.includes('spreadsheet') || fileName.match(/\.(xls|xlsx|csv)$/i)) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 3000);
-            summary = `📊 Planilha com ${workbook.SheetNames.length} aba(s)`;
-            
-          } else if (fileType.includes('text') || fileName.match(/\.(txt|csv)$/i)) {
-            content = e.target.result.substring(0, 3000);
-            summary = '📝 Arquivo de texto';
-            
-          } else if (fileType.includes('image')) {
-            content = 'Imagem enviada para análise';
-            summary = '🖼️ Imagem';
-            
-          } else {
-            content = 'Tipo de arquivo não suportado para leitura completa.';
-            summary = '❓ Tipo não reconhecido';
-          }
-
-          resolve({
-            name: fileName,
-            type: fileType,
-            size: file.size,
-            content,
-            summary,
-            raw: fileType.includes('image') ? e.target.result : null
-          });
-          
-        } catch (error) {
-          reject(error);
-        }
-      };
-
-      reader.onerror = reject;
-
-      if (file.type.includes('pdf') || file.name.match(/\.(xls|xlsx|csv)$/i)) {
-        reader.readAsArrayBuffer(file);
-      } else if (file.type.includes('image')) {
-        reader.readAsDataURL(file);
-      } else {
-        reader.readAsText(file, 'UTF-8');
-      }
-    });
-  }
-
-  function updateFilesUI() {
-    const container = document.getElementById('fileContainer');
-    const multipleFilesDiv = document.getElementById('multipleFiles');
-    
-    if (currentFiles.length === 0) {
-      container.style.display = 'none';
-      return;
-    }
-    
-    container.style.display = 'block';
-    multipleFilesDiv.innerHTML = currentFiles.map((file, index) => `
-      <span class="file-tag">
-        <i data-lucide="file"></i>
-        ${file.name}
-        <i data-lucide="x" onclick="removeFile(${index})" style="cursor: pointer;"></i>
-      </span>
-    `).join('');
-    
-    lucide.createIcons();
-  }
-
-  function removeFile(index) {
-    currentFiles.splice(index, 1);
-    updateFilesUI();
-  }
-
-  function removeAllFiles() {
-    currentFiles = [];
-    updateFilesUI();
-  }
-
-  // COPIAR MENSAGEM
-  function copyMessage(btn) {
-    const bubble = btn.closest('.bubble');
-    const clone = bubble.cloneNode(true);
-    clone.querySelector('.mfoot')?.remove();
-    const text = clone.innerText.trim();
-    
-    navigator.clipboard.writeText(text).then(() => {
-      btn.innerHTML = '<i data-lucide="check" style="width:12px;height:12px"></i> Copiado!';
-      lucide.createIcons();
-      setTimeout(() => {
-        btn.innerHTML = '<i data-lucide="copy" style="width:12px;height:12px"></i> Copiar';
-        lucide.createIcons();
-      }, 2000);
-    });
-  }
-
-  // CHECK DEADLINES
-  function checkDeadlines() {
-    const today = new Date();
-    const alerts = [];
-    
-    for (const [key, deadline] of Object.entries(fiscalDeadlines)) {
-      if (deadline.month === 'monthly') {
-        const nextDeadline = new Date(today.getFullYear(), today.getMonth(), deadline.day);
-        const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
-        
-        if (daysUntil <= 5 && daysUntil >= 0) {
-          alerts.push({
-            message: `${deadline.description} em ${daysUntil} dias`,
-            severity: daysUntil <= 2 ? 'high' : 'medium'
-          });
-        }
-      } else {
-        const nextDeadline = new Date(today.getFullYear(), deadline.month - 1, deadline.day);
-        if (today > nextDeadline) {
-          nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
-        }
-        const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
-        
-        if (daysUntil <= 30 && daysUntil >= 0) {
-          alerts.push({
-            message: `${deadline.description} em ${daysUntil} dias`,
-            severity: daysUntil <= 7 ? 'high' : 'medium'
-          });
-        }
-      }
-    }
-    
-    const alertDiv = document.getElementById('deadlineAlerts');
-    if (alerts.length > 0) {
-      alertDiv.innerHTML = alerts.map(a => `
-        <div class="alert alert-${a.severity}">
-          <i data-lucide="alert-circle"></i>
-          ${a.message}
-        </div>
-      `).join('');
-      lucide.createIcons();
-    } else {
-      alertDiv.innerHTML = '';
-    }
-  }
-
-  // BADGES
-  function updateBadges() {
-    const container = document.getElementById('badgesContainer');
-    
-    for (const [key, badge] of Object.entries(badges)) {
-      if (badge.condition(userStats) && !userStats.badges.includes(key)) {
-        userStats.badges.push(key);
-      }
-    }
-    
-    container.innerHTML = userStats.badges.map(key => `
-      <span class="badge" title="${badges[key].name}">
-        ${badges[key].icon} ${badges[key].name}
-      </span>
-    `).join('');
-    
-    localStorage.setItem('userStats', JSON.stringify(userStats));
-  }
-
-  // UTILS
-  function useTemplate(text) {
-    document.getElementById('msgInput').value = text;
-    document.getElementById('msgInput').focus();
-  }
-
-  function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('on');
-    document.getElementById('overlay').classList.toggle('on');
-  }
-
-  function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('on');
-    document.getElementById('overlay').classList.remove('on');
-  }
-
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  }
-
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    const icon = document.getElementById('themeIcon');
-    if (icon) {
-      icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
-      lucide.createIcons();
-    }
-  }
-
-  function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
-    const next = current === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('theme', next);
-    setTheme(next);
-  }
-
-  function openCalculator() {
-    document.getElementById('calcModal').classList.add('on');
-  }
-
-  function closeCalculator() {
-    document.getElementById('calcModal').classList.remove('on');
-  }
-
-  function calculateTaxes() {
-    const v = parseFloat(document.getElementById('cV').value) || 0;
-    const i = parseFloat(document.getElementById('cI').value) || 0;
-    const p = parseFloat(document.getElementById('cP').value) || 0;
-    const c = parseFloat(document.getElementById('cC').value) || 0;
-    
-    const format = n => `R$ ${n.toFixed(2).replace('.', ',')}`;
-    const icms = v * i / 100;
-    const pis = v * p / 100;
-    const cof = v * c / 100;
-    
-    document.getElementById('rI').textContent = format(icms);
-    document.getElementById('rP').textContent = format(pis);
-    document.getElementById('rC').textContent = format(cof);
-    document.getElementById('rT').textContent = format(icms + pis + cof);
-    document.getElementById('cResult').style.display = 'block';
-  }
-
-  function exportChat() {
-    if (!currentChat.messages || currentChat.messages.length === 0) {
-      alert('Nenhuma mensagem para exportar');
-      return;
-    }
-    
-    const chatText = currentChat.messages.map(msg => {
-      const role = msg.role === 'user' ? '👤 USUÁRIO' : '🤖 ASSISTENTE';
-      return `${role}:\n${msg.content}\n`;
-    }).join('\n' + '='.repeat(50) + '\n\n');
-    
-    const blob = new Blob([chatText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `conversa_${new Date().toISOString().slice(0,10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function showStats() {
-    const totalMessages = currentChat.messages?.length || 0;
-    const userMessages = currentChat.messages?.filter(m => m.role === 'user').length || 0;
-    const assistantMessages = currentChat.messages?.filter(m => m.role === 'assistant').length || 0;
-    
-    const statsHTML = `
-      <div class="stats-card">
-        <div class="stats-item">
-          <span>💬 Total de mensagens</span>
-          <strong>${totalMessages}</strong>
-        </div>
-        <div class="stats-item">
-          <span>👤 Suas perguntas</span>
-          <strong>${userMessages}</strong>
-        </div>
-        <div class="stats-item">
-          <span>🤖 Respostas</span>
-          <strong>${assistantMessages}</strong>
-        </div>
-        <div class="stats-item">
-          <span>📎 Arquivos analisados</span>
-          <strong>${userStats.filesAnalyzed}</strong>
-        </div>
-        <div class="stats-item">
-          <span>🏆 Conquistas</span>
-          <strong>${userStats.badges.length}</strong>
-        </div>
-        <div class="stats-item">
-          <span>⚡ Cache</span>
-          <strong>${responseCache.size} respostas</strong>
+        <button class="btn-send" id="sendBtn" onclick="send()">
+          <i data-lucide="send"></i>
+        </button>
+      </div>
+      <div class="file-info" id="fileContainer" style="display: none; padding: 10px 0;">
+        <div class="multiple-files" id="multipleFiles"></div>
+        <div id="fileProgressContainer" style="display: none;">
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+          </div>
         </div>
       </div>
-    `;
-    
-    document.getElementById('statsContent').innerHTML = statsHTML;
-    document.getElementById('statsModal').classList.add('on');
-  }
+      <input type="file" id="fileInput" style="display: none;" multiple
+        accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" onchange="handleMultipleFiles(event)">
+    </div>
+  </main>
 
-  function closeStats() {
-    document.getElementById('statsModal').classList.remove('on');
-  }
+  <div id="calcModal">
+    <div class="m-box">
+      <div class="m-head">
+        <span class="m-title">Calculadora Fiscal</span>
+        <button class="btn-close" onclick="closeCalculator()"><i data-lucide="x"></i></button>
+      </div>
+      <p class="f-lbl">Valor Base (R$)</p>
+      <input type="number" class="c-inp" id="cV" placeholder="Ex: 10000">
+      <p class="f-lbl">Alíquota ICMS (%)</p>
+      <input type="number" class="c-inp" id="cI" value="18">
+      <p class="f-lbl">Alíquota PIS (%)</p>
+      <input type="number" class="c-inp" id="cP" value="1.65">
+      <p class="f-lbl">Alíquota COFINS (%)</p>
+      <input type="number" class="c-inp" id="cC" value="7.6">
+      <button class="btn-calc" onclick="calculateTaxes()">
+        <i data-lucide="calculator"></i> Calcular
+      </button>
+      <div class="c-result" id="cResult" style="display:none">
+        <div class="c-row"><span>ICMS:</span><span id="rI">-</span></div>
+        <div class="c-row"><span>PIS:</span><span id="rP">-</span></div>
+        <div class="c-row"><span>COFINS:</span><span id="rC">-</span></div>
+        <div class="c-row"><span>Total:</span><span id="rT">-</span></div>
+      </div>
+    </div>
+  </div>
 
-  function shareChat() {
-    if (!currentChat.messages || currentChat.messages.length === 0) {
-      alert('Nenhuma conversa para compartilhar');
-      return;
-    }
+  <div id="statsModal">
+    <div class="m-box">
+      <div class="m-head">
+        <span class="m-title">Estatísticas do Chat</span>
+        <button class="btn-close" onclick="closeStats()"><i data-lucide="x"></i></button>
+      </div>
+      <div id="statsContent"></div>
+    </div>
+  </div>
+
+  <div id="learningStatsModal">
+    <div class="m-box">
+      <div class="m-head">
+        <span class="m-title">📚 Aprendizado Fiscal</span>
+        <button class="btn-close" onclick="closeLearningStats()"><i data-lucide="x"></i></button>
+      </div>
+      <div id="learningStatsContent"></div>
+    </div>
+  </div>
+
+  <div id="shareModal">
+    <div class="m-box">
+      <div class="m-head">
+        <span class="m-title">Compartilhar Conversa</span>
+        <button class="btn-close" onclick="closeShareModal()"><i data-lucide="x"></i></button>
+      </div>
+      <p>Link para compartilhar:</p>
+      <div class="share-link">
+        <input type="text" id="shareLink" readonly>
+        <button class="icon-btn" onclick="copyShareLink()">
+          <i data-lucide="copy"></i>
+        </button>
+      </div>
+      <p style="margin-top: 15px; font-size: 12px; color: var(--text-light);">
+        ⚠️ Link válido por 24 horas
+      </p>
+    </div>
+  </div>
+
+  <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
+
+  <script>
+    // Configuração do PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    const SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
+    const GK = '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';
+    const JINA_API_KEY = 'jina_XXXX'; // Substitua pela sua chave do Jina AI (grátis em jina.ai)
+
+    // PROMPT do sistema
+    const SYS = `Você é um especialista fiscal brasileiro sênior com mais de 15 anos de experiência. Responda de forma clara, técnica e precisa sobre:
+
+    TRIBUTOS:
+    - ICMS: Regras gerais, substituição tributária (ICMS-ST), diferencial de alíquotas (DIFAL), regimes especiais
+    - ISS: Lista de serviços, alíquotas mínimas e máximas, retenção na fonte
+    - PIS/COFINS: Regimes cumulativo e não-cumulativo, créditos, base de cálculo
+    - IPI: Classificação fiscal (TIPI), alíquotas, créditos
+
+    REGIMES TRIBUTÁRIOS:
+    - Simples Nacional: Anexos, tabelas, sublimites, exclusão
+    - Lucro Presumido: Percentuais de presunção, distribuição de lucros
+    - Lucro Real: Apuração trimestral/anual, adições e exclusões
+
+    OBRIGAÇÕES ACESSÓRIAS:
+    - SPED Fiscal, SPED Contribuições, EFD-Reinf, DCTF, GIA, ECD, ECF
+    - Prazos de entrega, multas por atraso, retificações
+
+    DOCUMENTOS FISCAIS:
+    - CFOPs: Entradas e saídas, operações interestaduais
+    - CST, CSOSN: Códigos de situação tributária
+    - NFe, NFCe, CT-e: Regras de emissão, contingência
+
+    LEGISLAÇÃO:
+    - Lei Kandir (LC 87/96), Lei do Simples (LC 123/06), Convênios ICMS
+    - Atualizações recentes, jurisprudência relevante
+
+    ⚠️ INSTRUÇÃO IMPORTANTE: 
+    Ao final da sua resposta, SEMPRE inclua uma seção "🔗 Fontes e Links Úteis" com pelo menos 2-3 links reais e funcionais relacionados ao assunto.
+    Use links oficiais do governo quando possível:
+    - Portal da Receita Federal: https://www.gov.br/receitafederal
+    - Planalto (leis): https://www.planalto.gov.br
+    - CONFAZ (ICMS): https://www.confaz.fazenda.gov.br
+    - Simples Nacional: http://www8.receita.fazenda.gov.br/SimplesNacional
+    - SPED: http://sped.rfb.gov.br
     
-    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    const shareLink = `${window.location.origin}?shared=${token}`;
+    Exemplo de formato:
     
-    const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
-    sharedChats[token] = {
-      chat: currentChat,
-      expires: Date.now() + (24 * 60 * 60 * 1000)
+    [resposta detalhada...]
+    
+    🔗 Fontes e Links Úteis:
+    • [Título do Link 1](URL real e funcionando)
+    • [Título do Link 2](URL real e funcionando)
+    • [Título do Link 3](URL real e funcionando)
+    
+    Ao responder:
+    1. Cite os fundamentos legais (leis, artigos, convênios)
+    2. Destaque **termos importantes** em negrito
+    3. Forneça exemplos práticos quando possível
+    4. Indique cuidados especiais e riscos
+    5. Se aplicável, mostre cálculos passo a passo
+    6. Mencione prazos e obrigações relacionadas
+    7. SEMPRE inclua links oficiais ao final
+
+    Quando o usuário enviar arquivos, analise o conteúdo e forneça insights específicos sobre questões fiscais encontradas.`;
+
+    const sb = window.supabase.createClient(SB_URL, SB_KEY);
+    let allChats = [];
+    let currentChat = {
+      id: null,
+      title: 'Nova Conversa',
+      messages: []
     };
-    localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
-    
-    document.getElementById('shareLink').value = shareLink;
-    document.getElementById('shareModal').classList.add('on');
-  }
 
-  function copyShareLink() {
-    const link = document.getElementById('shareLink');
-    link.select();
-    navigator.clipboard.writeText(link.value);
-    alert('Link copiado!');
-  }
+    let currentFiles = [];
+    let isProcessingFile = false;
+    let typingIndicator = null;
 
-  function closeShareModal() {
-    document.getElementById('shareModal').classList.remove('on');
-  }
+    // Cache para respostas
+    const responseCache = new Map();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
-  // KEYBOARD SHORTCUTS
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-      e.preventDefault();
-      newChat();
+    // Estatísticas do usuário
+    let userStats = JSON.parse(localStorage.getItem('userStats') || JSON.stringify({
+      questions: 0,
+      filesAnalyzed: 0,
+      correctAnswers: 0,
+      badges: []
+    }));
+
+    const badges = {
+      'primeira_pergunta': { name: 'Primeiros Passos', icon: '🌟', condition: (s) => s.questions >= 1 },
+      'analista_10': { name: 'Analista Experiente', icon: '📊', condition: (s) => s.questions >= 10 },
+      'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '📄', condition: (s) => s.filesAnalyzed >= 5 },
+      'fiscal_pro': { name: 'Fiscal Pro', icon: '👑', condition: (s) => s.correctAnswers >= 20 }
+    };
+
+    const fiscalDeadlines = {
+      'sped_fiscal': { day: 15, month: 'monthly', description: 'Entrega SPED Fiscal' },
+      'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
+      'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
+    };
+
+    // ============================================
+    // SERVIÇO DE APRENDIZADO FISCAL (NOVO)
+    // ============================================
+    class FiscalLearningService {
+      constructor(supabase) {
+        this.supabase = supabase;
+      }
+
+      // Gerar embedding usando Jina AI (gratuito)
+      async generateEmbedding(texto) {
+        try {
+          if (!JINA_API_KEY || JINA_API_KEY === 'jina_XXXX') {
+            console.log('JINA_API_KEY não configurada, pulando embeddings');
+            return null;
+          }
+
+          const response = await fetch('https://api.jina.ai/v1/embeddings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${JINA_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'jina-embeddings-v2-base-pt',
+              input: [texto.substring(0, 8000)]
+            })
+          });
+
+          if (!response.ok) throw new Error('Erro na API Jina');
+          const data = await response.json();
+          return data.data[0].embedding;
+
+        } catch (error) {
+          console.error('Erro ao gerar embedding:', error);
+          return null;
+        }
+      }
+
+      // Extrair tags da pergunta
+      extrairTags(texto) {
+        const tags = [];
+        const termosFiscais = [
+          'icms', 'iss', 'pis', 'cofins', 'ipi', 'csll',
+          'simples nacional', 'lucro real', 'lucro presumido',
+          'nota fiscal', 'nfe', 'nfce', 'cte',
+          'sped', 'dctf', 'ecf', 'efd',
+          'cfop', 'cst', 'csosn', 'ncm',
+          'prazo', 'multa', 'obrigação', 'declaração'
+        ];
+
+        const textoLower = texto.toLowerCase();
+        for (const termo of termosFiscais) {
+          if (textoLower.includes(termo)) {
+            tags.push(termo);
+          }
+        }
+
+        return tags;
+      }
+
+      // Registrar interação no banco
+      async registrarInteracao(chatId, pergunta, resposta, tokens, modelo) {
+        try {
+          if (!chatId) return null;
+
+          const tags = this.extrairTags(pergunta);
+          
+          const { data, error } = await this.supabase
+            .from('interacoes_chat')
+            .insert({
+              chat_id: chatId,
+              pergunta: pergunta,
+              resposta: resposta,
+              tags_pergunta: tags,
+              tokens_utilizados: tokens,
+              modelo_utilizado: modelo,
+              tempo_resposta: 0
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('Erro ao registrar interação:', error);
+            return null;
+          }
+
+          return data.id;
+
+        } catch (error) {
+          console.error('Erro ao registrar interação:', error);
+          return null;
+        }
+      }
+
+      // Registrar feedback
+      async registrarFeedback(interacaoId, nota) {
+        try {
+          if (!interacaoId) return;
+
+          const { error } = await this.supabase
+            .from('interacoes_chat')
+            .update({ feedback_usuario: nota })
+            .eq('id', interacaoId);
+
+          if (error) throw error;
+
+          // Se feedback for muito bom (4 ou 5), adicionar aos dados de treinamento
+          if (nota >= 4) {
+            await this.adicionarAoTreinamento(interacaoId);
+          }
+
+        } catch (error) {
+          console.error('Erro ao registrar feedback:', error);
+        }
+      }
+
+      // Adicionar boa interação aos dados de treinamento
+      async adicionarAoTreinamento(interacaoId) {
+        try {
+          const { data: interacao, error } = await this.supabase
+            .from('interacoes_chat')
+            .select('pergunta, resposta')
+            .eq('id', interacaoId)
+            .single();
+
+          if (error || !interacao) return;
+
+          await this.supabase
+            .from('dados_treinamento')
+            .insert({
+              pergunta: interacao.pergunta,
+              resposta: interacao.resposta,
+              fonte: 'chat_com_feedback',
+              qualidade: 5
+            });
+
+        } catch (error) {
+          console.error('Erro ao adicionar ao treinamento:', error);
+        }
+      }
+
+      // Buscar estatísticas de aprendizado
+      async buscarEstatisticas() {
+        try {
+          const { data: stats, error } = await this.supabase
+            .from('estatisticas_aprendizado')
+            .select('*')
+            .order('data', { ascending: false })
+            .limit(7);
+
+          if (error) throw error;
+          return stats || [];
+
+        } catch (error) {
+          console.error('Erro ao buscar estatísticas:', error);
+          return [];
+        }
+      }
+
+      // Buscar perguntas com melhor feedback
+      async buscarMelhoresPerguntas(limite = 5) {
+        try {
+          const { data, error } = await this.supabase
+            .from('interacoes_chat')
+            .select('pergunta, feedback_usuario')
+            .not('feedback_usuario', 'is', null)
+            .order('feedback_usuario', { ascending: false })
+            .limit(limite);
+
+          if (error) throw error;
+          return data || [];
+
+        } catch (error) {
+          console.error('Erro ao buscar melhores perguntas:', error);
+          return [];
+        }
+      }
     }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      openCalculator();
+
+    // Criar instância do serviço de aprendizado
+    const learningService = new FiscalLearningService(sb);
+
+    // ============================================
+    // FUNÇÕES DE FEEDBACK (NOVO)
+    // ============================================
+    let ultimaInteracaoId = null;
+
+    function mostrarFeedbackOptions(interacaoId) {
+      ultimaInteracaoId = interacaoId;
+      
+      const feedbackDiv = document.createElement('div');
+      feedbackDiv.className = 'feedback-prompt';
+      feedbackDiv.id = 'feedback-prompt';
+      feedbackDiv.innerHTML = `
+        <p style="margin-bottom: 8px;">Esta resposta foi útil?</p>
+        <div class="feedback-options">
+          <button class="feedback-btn" onclick="enviarFeedback(5)">
+            <i data-lucide="thumbs-up"></i> Muito útil
+          </button>
+          <button class="feedback-btn" onclick="enviarFeedback(3)">
+            <i data-lucide="meh"></i> Mais ou menos
+          </button>
+          <button class="feedback-btn" onclick="enviarFeedback(1)">
+            <i data-lucide="thumbs-down"></i> Não foi útil
+          </button>
+        </div>
+      `;
+      
+      document.getElementById('msgs').appendChild(feedbackDiv);
+      lucide.createIcons();
+      document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
     }
-    if (e.key === 'Escape' && currentFiles.length > 0) {
+
+    async function enviarFeedback(nota) {
+      if (ultimaInteracaoId) {
+        await learningService.registrarFeedback(ultimaInteracaoId, nota);
+        
+        // Mostrar agradecimento
+        const agradecimento = document.createElement('div');
+        agradecimento.className = 'msg assistant';
+        agradecimento.innerHTML = `
+          <div class="ava"><i data-lucide="bot"></i></div>
+          <div class="bubble">
+            Obrigado pelo seu feedback! Isso me ajuda a aprender e melhorar. 🙏
+          </div>
+        `;
+        document.getElementById('msgs').appendChild(agradecimento);
+        lucide.createIcons();
+      }
+      
+      document.getElementById('feedback-prompt')?.remove();
+      ultimaInteracaoId = null;
+    }
+
+    // ============================================
+    // FUNÇÕES DE ESTATÍSTICAS DE APRENDIZADO (NOVO)
+    // ============================================
+    async function showLearningStats() {
+      const stats = await learningService.buscarEstatisticas();
+      const melhoresPerguntas = await learningService.buscarMelhoresPerguntas(5);
+
+      let statsHTML = '<div class="stats-card">';
+      
+      if (stats.length > 0) {
+        statsHTML += '<h4>📊 Últimos 7 dias</h4>';
+        stats.forEach(s => {
+          statsHTML += `
+            <div class="stats-item">
+              <span>${new Date(s.data).toLocaleDateString('pt-BR')}</span>
+              <span>${s.total_interacoes || 0} perguntas | ${s.taxa_acerto_media?.toFixed(1) || 0}% acerto</span>
+            </div>
+          `;
+        });
+      } else {
+        statsHTML += '<p>Nenhuma estatística disponível ainda. Continue usando o chat!</p>';
+      }
+
+      if (melhoresPerguntas.length > 0) {
+        statsHTML += '<h4 style="margin-top: 15px;">🏆 Perguntas com melhores feedbacks</h4>';
+        melhoresPerguntas.forEach(p => {
+          statsHTML += `
+            <div class="stats-item">
+              <span>${p.pergunta.substring(0, 50)}...</span>
+              <span>Nota: ${p.feedback_usuario}/5</span>
+            </div>
+          `;
+        });
+      }
+
+      statsHTML += '</div>';
+      
+      document.getElementById('learningStatsContent').innerHTML = statsHTML;
+      document.getElementById('learningStatsModal').classList.add('on');
+    }
+
+    function closeLearningStats() {
+      document.getElementById('learningStatsModal').classList.remove('on');
+    }
+
+    // ============================================
+    // FUNÇÕES ORIGINAIS (MANTIDAS)
+    // ============================================
+
+    // INICIALIZAÇÃO
+    window.onload = async () => {
+      lucide.createIcons();
+      setTheme(localStorage.getItem('theme') || 'light');
+      await checkConnection();
+      await loadChats();
+      checkDeadlines();
+      updateBadges();
+    };
+
+    // VERIFICAR CONEXÃO
+    async function checkConnection() {
+      try {
+        const { error } = await sb.from('chats').select('id', { count: 'exact', head: true });
+        if (error) throw error;
+        setConnectionStatus('Online', 'cloud', '#10b981');
+      } catch (e) {
+        console.error('Erro de conexão:', e);
+        setConnectionStatus('Offline', 'cloud-off', '#ef4444');
+      }
+    }
+
+    function setConnectionStatus(label, icon, color) {
+      document.getElementById('conn').innerHTML =
+        `<i data-lucide="${icon}" style="width:12px;height:12px;color:${color}"></i><span>${label}</span>`;
+      lucide.createIcons();
+    }
+
+    // CARREGAR CONVERSAS
+    async function loadChats() {
+      try {
+        const { data, error } = await sb
+          .from('chats')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        allChats = data || [];
+        renderHistoryList(allChats);
+      } catch (e) {
+        console.error('Erro ao carregar chats:', e);
+        document.getElementById('hList').innerHTML =
+          `<p style="padding:16px;color:var(--error);font-size:13px">Erro ao carregar conversas</p>`;
+      }
+    }
+
+    function renderHistoryList(list) {
+      const el = document.getElementById('hList');
+      if (!list || list.length === 0) {
+        el.innerHTML = '<p style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Nenhuma conversa ainda</p>';
+        return;
+      }
+
+      el.innerHTML = list.map(c => `
+        <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
+          <div class="h-info">
+            <div class="h-title">${c.title || 'Nova Conversa'}</div>
+            <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
+          </div>
+          <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
+            <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+          </button>
+        </div>`).join('');
+
+      lucide.createIcons();
+    }
+
+    function filterChats() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = q ? allChats.filter(c => (c.title || '').toLowerCase().includes(q)) : allChats;
+      renderHistoryList(filtered);
+    }
+
+    // ABRIR CONVERSA
+    async function openChat(id) {
+      try {
+        const { data, error } = await sb
+          .from('chats')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
+        currentChat = {
+          id: data.id,
+          title: data.title,
+          messages: data.messages || []
+        };
+
+        renderMessages();
+        renderHistoryList(allChats);
+        closeSidebar();
+      } catch (e) {
+        console.error('Erro ao abrir conversa:', e);
+      }
+    }
+
+    // SALVAR CONVERSA
+    async function saveChat() {
+      console.log('Salvando chat...', currentChat);
+
+      try {
+        if (!currentChat.messages || currentChat.messages.length === 0) {
+          console.log('Nenhuma mensagem para salvar');
+          return;
+        }
+
+        const chatData = {
+          title: currentChat.title || 'Nova Conversa',
+          messages: currentChat.messages,
+          updated_at: new Date().toISOString()
+        };
+
+        if (currentChat.id) {
+          const { error } = await sb
+            .from('chats')
+            .update(chatData)
+            .eq('id', currentChat.id);
+
+          if (error) throw error;
+          console.log('Chat atualizado com sucesso!');
+
+        } else {
+          const { data, error } = await sb
+            .from('chats')
+            .insert({
+              title: chatData.title,
+              messages: chatData.messages,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select('id')
+            .single();
+
+          if (error) throw error;
+
+          currentChat.id = data.id;
+          console.log('Novo chat criado com ID:', data.id);
+        }
+
+        await loadChats();
+
+      } catch (e) {
+        console.error('Erro em saveChat:', e);
+      }
+    }
+
+    // DELETAR CONVERSA
+    async function deleteChat(id) {
+      if (!confirm('Tem certeza que deseja deletar esta conversa?')) return;
+
+      try {
+        const { error } = await sb
+          .from('chats')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        if (currentChat.id === id) {
+          newChat();
+        } else {
+          await loadChats();
+        }
+      } catch (e) {
+        console.error('Erro ao deletar conversa:', e);
+      }
+    }
+
+    // NOVA CONVERSA
+    function newChat() {
+      currentChat = { id: null, title: 'Nova Conversa', messages: [] };
+      document.getElementById('msgs').innerHTML = `
+        <div class="empty">
+          <i data-lucide="message-circle"></i>
+          <h3>Nova conversa</h3>
+          <p>Faça sua primeira pergunta!</p>
+        </div>`;
+      lucide.createIcons();
+      renderHistoryList(allChats);
+      closeSidebar();
       removeAllFiles();
     }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-      e.preventDefault();
-      toggleSidebar();
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-      e.preventDefault();
-      exportChat();
-    }
-  });
 
-  // SALVAR ANTES DE FECHAR
-  window.addEventListener('beforeunload', () => {
-    if (currentChat.messages && currentChat.messages.length > 0) {
-      saveChat();
+    // RENDERIZAR MENSAGENS
+    function renderMessages() {
+      const container = document.getElementById('msgs');
+      container.innerHTML = '';
+
+      if (!currentChat.messages || currentChat.messages.length === 0) {
+        container.innerHTML = `
+          <div class="empty">
+            <i data-lucide="message-circle"></i>
+            <h3>Olá! Sou seu especialista fiscal</h3>
+            <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
+          </div>`;
+      } else {
+        currentChat.messages.forEach(msg => {
+          addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData);
+        });
+      }
+      lucide.createIcons();
     }
-  });
-</script>
+
+    // ADICIONAR MENSAGEM (MODIFICADA PARA INCLUIR BOTÃO DE FEEDBACK)
+    function addMessage(text, isUser, confidence = 'medium', fileData = null) {
+      const container = document.getElementById('msgs');
+      container.querySelector('.empty')?.remove();
+
+      const div = document.createElement('div');
+      div.className = `msg ${isUser ? 'user' : 'assistant'}`;
+
+      const formattedText = formatTextWithLinks(text);
+
+      let fileHtml = '';
+      if (fileData) {
+        if (fileData.type?.startsWith('image/') && fileData.raw) {
+          fileHtml = `<img src="${fileData.raw}" class="file-preview" alt="${fileData.name}">`;
+        } else {
+          fileHtml = `
+            <div class="file-attachment">
+              <i data-lucide="file-text"></i>
+              <span>
+                <strong>${fileData.name}</strong> (${(fileData.size / 1024).toFixed(1)} KB)
+                ${fileData.summary ? `<br><small>${fileData.summary}</small>` : ''}
+              </span>
+            </div>`;
+
+          if (fileData.content && !fileData.type?.startsWith('image/')) {
+            fileHtml += `
+              <div class="file-content-preview">
+                <strong>Preview:</strong><br>
+                ${escapeHtml(fileData.content.substring(0, 300))}${fileData.content.length > 300 ? '...' : ''}
+              </div>`;
+          }
+        }
+      }
+
+      // Footer modificado para incluir botão de feedback
+      const footer = !isUser ? `
+        <div class="mfoot">
+          <button class="btn-copy" onclick="copyMessage(this)">
+            <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
+          </button>
+          <button class="btn-feedback" onclick="mostrarFeedbackOptions('${currentChat.messages.length}')">
+            <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
+          </button>
+          <span class="badge-conf badge ${confidence}">
+            ${confidence === 'high' ? '🟢 Alta' : confidence === 'low' ? '🔴 Baixa' : '🟡 Média'} confiança
+          </span>
+        </div>` : '';
+
+      div.innerHTML = `
+        <div class="ava"><i data-lucide="${isUser ? 'user' : 'bot'}"></i></div>
+        <div class="bubble">
+          ${formattedText}
+          ${fileHtml}
+          ${footer}
+        </div>`;
+
+      container.appendChild(div);
+      lucide.createIcons();
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function formatTextWithLinks(text) {
+      if (!text) return '';
+      
+      let t = escapeHtml(text);
+      
+      // Converte markdown de links [texto](url) para HTML
+      t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      
+      t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      t = t.replace(/`(.*?)`/g, '<code>$1</code>');
+      t = t.replace(/^- (.+)$/gm, '<li>$1</li>');
+      t = t.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, '<ul>$&</ul>');
+      
+      return t;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+
+    // TYPING INDICATOR
+    function showTypingIndicator() {
+      hideTypingIndicator();
+
+      const div = document.createElement('div');
+      div.className = 'msg assistant';
+      div.id = 'typing';
+      div.innerHTML = `
+        <div class="ava"><i data-lucide="bot"></i></div>
+        <div class="bubble">
+          <div class="typing-wrap">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+        </div>`;
+
+      document.getElementById('msgs').appendChild(div);
+      lucide.createIcons();
+      document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+      document.getElementById('typing')?.remove();
+    }
+
+    // CÁLCULO DE CONFIANÇA
+    function calculateConfidence(text) {
+      if (!text) return 'medium';
+
+      const highIndicators = [
+        'lei', 'decreto', 'artigo', '§', 'instrução normativa',
+        'convênio', 'lc', 'ctn', 'regulamento', 'solução de consulta'
+      ];
+
+      const lowIndicators = [
+        'pode variar', 'consulte', 'verifique', 'depende',
+        'recomenda-se', 'sugere-se', 'talvez', 'possivelmente'
+      ];
+
+      const textLower = text.toLowerCase();
+
+      if (highIndicators.some(i => textLower.includes(i))) return 'high';
+      if (lowIndicators.some(i => textLower.includes(i))) return 'low';
+      return 'medium';
+    }
+
+    // ENVIAR MENSAGEM (MODIFICADA PARA REGISTRAR INTERAÇÃO)
+    async function send() {
+      const inp = document.getElementById('msgInput');
+      const text = inp.value.trim();
+      const hasFiles = currentFiles.length > 0;
+
+      if (!text && !hasFiles) return;
+
+      document.getElementById('sendBtn').disabled = true;
+      inp.disabled = true;
+
+      userStats.questions++;
+      localStorage.setItem('userStats', JSON.stringify(userStats));
+      updateBadges();
+
+      let messageContent = text || '📎 Arquivos enviados para análise fiscal';
+      if (currentFiles.length > 0) {
+        messageContent += `\n\n📎 Arquivos anexados (${currentFiles.length}):`;
+        currentFiles.forEach(file => {
+          messageContent += `\n- ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        });
+      }
+
+      addMessage(messageContent, true, 'medium', currentFiles[0]);
+
+      const userMessage = {
+        role: 'user',
+        content: text || 'Arquivos enviados para análise fiscal',
+        fileData: currentFiles.length > 0 ? currentFiles[0] : null,
+        files: [...currentFiles]
+      };
+
+      if (!currentChat.messages) currentChat.messages = [];
+      currentChat.messages.push(userMessage);
+
+      if (currentChat.messages.length === 1) {
+        currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) +
+          ((text || '').length > 50 ? '...' : '');
+        await saveChat();
+      }
+
+      let fileContext = '';
+      if (currentFiles.length > 0) {
+        fileContext = '\n\n📎 ARQUIVOS ANEXADOS:\n';
+        currentFiles.forEach((file, i) => {
+          fileContext += `\nARQUIVO ${i + 1}: ${file.name}\n`;
+          if (file.content) fileContext += `CONTEÚDO:\n${file.content}\n`;
+        });
+      }
+
+      showTypingIndicator();
+
+      try {
+        const messagesToSend = [
+          { role: 'system', content: SYS },
+          ...currentChat.messages.slice(-10).map(m => ({
+            role: m.role,
+            content: m.role === 'user' && m.files ?
+              `${m.content}\n\n[ARQUIVOS: ${m.files.map(f => f.name).join(', ')}]` :
+              m.content
+          }))
+        ];
+
+        if (currentFiles.length > 0) {
+          messagesToSend[messagesToSend.length - 1].content += fileContext;
+        }
+
+        const cacheKey = JSON.stringify(messagesToSend.slice(-2));
+        let response;
+
+        if (responseCache.has(cacheKey)) {
+          const cached = responseCache.get(cacheKey);
+          if (Date.now() - cached.timestamp < CACHE_DURATION) {
+            response = cached.response;
+            console.log('Usando resposta em cache');
+          } else {
+            responseCache.delete(cacheKey);
+          }
+        }
+
+        if (!response) {
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${GK}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              temperature: 0.7,
+              max_tokens: 2000,
+              messages: messagesToSend
+            })
+          });
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          response = await res.json();
+
+          responseCache.set(cacheKey, {
+            response,
+            timestamp: Date.now()
+          });
+        }
+
+        hideTypingIndicator();
+
+        const reply = response.choices[0].message.content;
+        const confidence = calculateConfidence(reply);
+        const tokens = response.usage?.total_tokens || 0;
+
+        if (reply.length > 100 && !reply.includes('erro')) {
+          userStats.correctAnswers++;
+          localStorage.setItem('userStats', JSON.stringify(userStats));
+          updateBadges();
+        }
+
+        const assistantMessage = {
+          role: 'assistant',
+          content: reply,
+          confidence
+        };
+
+        currentChat.messages.push(assistantMessage);
+        addMessage(reply, false, confidence);
+
+        // NOVO: Registrar interação para aprendizado
+        const interacaoId = await learningService.registrarInteracao(
+          currentChat.id,
+          text,
+          reply,
+          tokens,
+          'llama-3.3-70b-versatile'
+        );
+
+        // Se conseguiu registrar, mostrar feedback após algumas mensagens
+        if (interacaoId && currentChat.messages.length % 3 === 0) {
+          ultimaInteracaoId = interacaoId;
+          setTimeout(() => {
+            mostrarFeedbackOptions(interacaoId);
+          }, 2000);
+        }
+
+        await saveChat();
+
+        removeAllFiles();
+        inp.value = '';
+
+      } catch (e) {
+        hideTypingIndicator();
+        console.error('Erro detalhado:', e);
+
+        let errorMsg = '❌ Erro ao processar. ';
+        if (e.message.includes('Failed to fetch')) {
+          errorMsg += 'Verifique sua conexão.';
+        } else if (e.message.includes('401')) {
+          errorMsg += 'Erro de autenticação na API.';
+        } else if (e.message.includes('429')) {
+          errorMsg += 'Limite de requisições excedido.';
+        } else {
+          errorMsg += 'Tente novamente.';
+        }
+
+        addMessage(errorMsg, false, 'low');
+      } finally {
+        document.getElementById('sendBtn').disabled = false;
+        inp.disabled = false;
+        inp.focus();
+      }
+    }
+
+    // PROCESSAR ARQUIVOS (MANTIDO)
+    async function handleMultipleFiles(event) {
+      const files = Array.from(event.target.files);
+      const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+      for (const file of files) {
+        if (file.size > MAX_SIZE) {
+          alert(`Arquivo ${file.name} muito grande. Máx: 10MB`);
+          continue;
+        }
+
+        if (isProcessingFile) continue;
+
+        isProcessingFile = true;
+
+        try {
+          showFileProgress(file);
+          const fileData = await processFile(file);
+          currentFiles.push(fileData);
+          userStats.filesAnalyzed++;
+          localStorage.setItem('userStats', JSON.stringify(userStats));
+          updateBadges();
+        } catch (error) {
+          console.error('Erro ao processar arquivo:', error);
+        } finally {
+          isProcessingFile = false;
+        }
+      }
+
+      updateFilesUI();
+      event.target.value = '';
+    }
+
+    function showFileProgress(file) {
+      const container = document.getElementById('fileContainer');
+      const progressContainer = document.getElementById('fileProgressContainer');
+      container.style.display = 'block';
+      progressContainer.style.display = 'block';
+
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        document.getElementById('progressFill').style.width = progress + '%';
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            progressContainer.style.display = 'none';
+          }, 500);
+        }
+      }, 100);
+    }
+
+    async function processFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const fileType = file.type;
+        const fileName = file.name;
+
+        reader.onload = async function (e) {
+          try {
+            let content = '';
+            let summary = '';
+
+            if (fileType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf')) {
+              const pdfData = new Uint8Array(e.target.result);
+              const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+
+              let text = '';
+              for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                text += textContent.items.map(item => item.str).join(' ') + '\n';
+              }
+
+              content = text.substring(0, 3000);
+              summary = `📄 PDF com ${pdf.numPages} página(s)`;
+
+              if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
+                summary += ' - Documento fiscal';
+              }
+
+            } else if (fileType.includes('spreadsheet') || fileName.match(/\.(xls|xlsx|csv)$/i)) {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 3000);
+              summary = `📊 Planilha com ${workbook.SheetNames.length} aba(s)`;
+
+            } else if (fileType.includes('text') || fileName.match(/\.(txt|csv)$/i)) {
+              content = e.target.result.substring(0, 3000);
+              summary = '📝 Arquivo de texto';
+
+            } else if (fileType.includes('image')) {
+              content = 'Imagem enviada para análise';
+              summary = '🖼️ Imagem';
+
+            } else {
+              content = 'Tipo de arquivo não suportado para leitura completa.';
+              summary = '❓ Tipo não reconhecido';
+            }
+
+            resolve({
+              name: fileName,
+              type: fileType,
+              size: file.size,
+              content,
+              summary,
+              raw: fileType.includes('image') ? e.target.result : null
+            });
+
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        reader.onerror = reject;
+
+        if (file.type.includes('pdf') || file.name.match(/\.(xls|xlsx|csv)$/i)) {
+          reader.readAsArrayBuffer(file);
+        } else if (file.type.includes('image')) {
+          reader.readAsDataURL(file);
+        } else {
+          reader.readAsText(file, 'UTF-8');
+        }
+      });
+    }
+
+    function updateFilesUI() {
+      const container = document.getElementById('fileContainer');
+      const multipleFilesDiv = document.getElementById('multipleFiles');
+
+      if (currentFiles.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+      multipleFilesDiv.innerHTML = currentFiles.map((file, index) => `
+        <span class="file-tag">
+          <i data-lucide="file"></i>
+          ${file.name}
+          <i data-lucide="x" onclick="removeFile(${index})" style="cursor: pointer;"></i>
+        </span>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function removeFile(index) {
+      currentFiles.splice(index, 1);
+      updateFilesUI();
+    }
+
+    function removeAllFiles() {
+      currentFiles = [];
+      updateFilesUI();
+    }
+
+    // COPIAR MENSAGEM
+    function copyMessage(btn) {
+      const bubble = btn.closest('.bubble');
+      const clone = bubble.cloneNode(true);
+      clone.querySelector('.mfoot')?.remove();
+      const text = clone.innerText.trim();
+
+      navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = '<i data-lucide="check" style="width:12px;height:12px"></i> Copiado!';
+        lucide.createIcons();
+        setTimeout(() => {
+          btn.innerHTML = '<i data-lucide="copy" style="width:12px;height:12px"></i> Copiar';
+          lucide.createIcons();
+        }, 2000);
+      });
+    }
+
+    // CHECK DEADLINES
+    function checkDeadlines() {
+      const today = new Date();
+      const alerts = [];
+
+      for (const [key, deadline] of Object.entries(fiscalDeadlines)) {
+        if (deadline.month === 'monthly') {
+          const nextDeadline = new Date(today.getFullYear(), today.getMonth(), deadline.day);
+          const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
+
+          if (daysUntil <= 5 && daysUntil >= 0) {
+            alerts.push({
+              message: `${deadline.description} em ${daysUntil} dias`,
+              severity: daysUntil <= 2 ? 'high' : 'medium'
+            });
+          }
+        } else {
+          const nextDeadline = new Date(today.getFullYear(), deadline.month - 1, deadline.day);
+          if (today > nextDeadline) {
+            nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
+          }
+          const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
+
+          if (daysUntil <= 30 && daysUntil >= 0) {
+            alerts.push({
+              message: `${deadline.description} em ${daysUntil} dias`,
+              severity: daysUntil <= 7 ? 'high' : 'medium'
+            });
+          }
+        }
+      }
+
+      const alertDiv = document.getElementById('deadlineAlerts');
+      if (alerts.length > 0) {
+        alertDiv.innerHTML = alerts.map(a => `
+          <div class="alert alert-${a.severity}">
+            <i data-lucide="alert-circle"></i>
+            ${a.message}
+          </div>
+        `).join('');
+        lucide.createIcons();
+      } else {
+        alertDiv.innerHTML = '';
+      }
+    }
+
+    // BADGES
+    function updateBadges() {
+      const container = document.getElementById('badgesContainer');
+
+      for (const [key, badge] of Object.entries(badges)) {
+        if (badge.condition(userStats) && !userStats.badges.includes(key)) {
+          userStats.badges.push(key);
+        }
+      }
+
+      container.innerHTML = userStats.badges.map(key => `
+        <span class="badge" title="${badges[key].name}">
+          ${badges[key].icon} ${badges[key].name}
+        </span>
+      `).join('');
+
+      localStorage.setItem('userStats', JSON.stringify(userStats));
+    }
+
+    // UTILS
+    function useTemplate(text) {
+      document.getElementById('msgInput').value = text;
+      document.getElementById('msgInput').focus();
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('on');
+      document.getElementById('overlay').classList.toggle('on');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('on');
+      document.getElementById('overlay').classList.remove('on');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const icon = document.getElementById('themeIcon');
+      if (icon) {
+        icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
+        lucide.createIcons();
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      setTheme(next);
+    }
+
+    function openCalculator() {
+      document.getElementById('calcModal').classList.add('on');
+    }
+
+    function closeCalculator() {
+      document.getElementById('calcModal').classList.remove('on');
+    }
+
+    function calculateTaxes() {
+      const v = parseFloat(document.getElementById('cV').value) || 0;
+      const i = parseFloat(document.getElementById('cI').value) || 0;
+      const p = parseFloat(document.getElementById('cP').value) || 0;
+      const c = parseFloat(document.getElementById('cC').value) || 0;
+
+      const format = n => `R$ ${n.toFixed(2).replace('.', ',')}`;
+      const icms = v * i / 100;
+      const pis = v * p / 100;
+      const cof = v * c / 100;
+
+      document.getElementById('rI').textContent = format(icms);
+      document.getElementById('rP').textContent = format(pis);
+      document.getElementById('rC').textContent = format(cof);
+      document.getElementById('rT').textContent = format(icms + pis + cof);
+      document.getElementById('cResult').style.display = 'block';
+    }
+
+    function exportChat() {
+      if (!currentChat.messages || currentChat.messages.length === 0) {
+        alert('Nenhuma mensagem para exportar');
+        return;
+      }
+
+      const chatText = currentChat.messages.map(msg => {
+        const role = msg.role === 'user' ? '👤 USUÁRIO' : '🤖 ASSISTENTE';
+        return `${role}:\n${msg.content}\n`;
+      }).join('\n' + '='.repeat(50) + '\n\n');
+
+      const blob = new Blob([chatText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `conversa_${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function showStats() {
+      const totalMessages = currentChat.messages?.length || 0;
+      const userMessages = currentChat.messages?.filter(m => m.role === 'user').length || 0;
+      const assistantMessages = currentChat.messages?.filter(m => m.role === 'assistant').length || 0;
+
+      const statsHTML = `
+        <div class="stats-card">
+          <div class="stats-item">
+            <span>💬 Total de mensagens</span>
+            <strong>${totalMessages}</strong>
+          </div>
+          <div class="stats-item">
+            <span>👤 Suas perguntas</span>
+            <strong>${userMessages}</strong>
+          </div>
+          <div class="stats-item">
+            <span>🤖 Respostas</span>
+            <strong>${assistantMessages}</strong>
+          </div>
+          <div class="stats-item">
+            <span>📎 Arquivos analisados</span>
+            <strong>${userStats.filesAnalyzed}</strong>
+          </div>
+          <div class="stats-item">
+            <span>🏆 Conquistas</span>
+            <strong>${userStats.badges.length}</strong>
+          </div>
+          <div class="stats-item">
+            <span>⚡ Cache</span>
+            <strong>${responseCache.size} respostas</strong>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('statsContent').innerHTML = statsHTML;
+      document.getElementById('statsModal').classList.add('on');
+    }
+
+    function closeStats() {
+      document.getElementById('statsModal').classList.remove('on');
+    }
+
+    function shareChat() {
+      if (!currentChat.messages || currentChat.messages.length === 0) {
+        alert('Nenhuma conversa para compartilhar');
+        return;
+      }
+
+      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const shareLink = `${window.location.origin}?shared=${token}`;
+
+      const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
+      sharedChats[token] = {
+        chat: currentChat,
+        expires: Date.now() + (24 * 60 * 60 * 1000)
+      };
+      localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
+
+      document.getElementById('shareLink').value = shareLink;
+      document.getElementById('shareModal').classList.add('on');
+    }
+
+    function copyShareLink() {
+      const link = document.getElementById('shareLink');
+      link.select();
+      navigator.clipboard.writeText(link.value);
+      alert('Link copiado!');
+    }
+
+    function closeShareModal() {
+      document.getElementById('shareModal').classList.remove('on');
+    }
+
+    // KEYBOARD SHORTCUTS
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        newChat();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        openCalculator();
+      }
+      if (e.key === 'Escape' && currentFiles.length > 0) {
+        removeAllFiles();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        exportChat();
+      }
+    });
+
+    // SALVAR ANTES DE FECHAR
+    window.addEventListener('beforeunload', () => {
+      if (currentChat.messages && currentChat.messages.length > 0) {
+        saveChat();
+      }
+    });
+  </script>
 </body>
 </html>
