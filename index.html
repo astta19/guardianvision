@@ -1545,6 +1545,160 @@
         }
       }
 
+      // Classificar tipo de documento fiscal
+      async buscarContextoRAG(pergunta) {
+        try {
+          const tags = this.extrairTags(pergunta);
+
+          const { data: interacoes } = await this.supabase
+            .from('interacoes_chat')
+            .select('pergunta, resposta, feedback_usuario, tags_pergunta')
+            .gte('feedback_usuario', 4)
+            .not('resposta', 'is', null)
+            .order('feedback_usuario', { ascending: false })
+            .limit(20);
+
+          const { data: treinamento } = await this.supabase
+            .from('dados_treinamento')
+            .select('pergunta, resposta, qualidade')
+            .gte('qualidade', 4)
+            .order('qualidade', { ascending: false })
+            .limit(20);
+
+          const candidatos = [
+            ...(interacoes || []).map(i => ({
+              pergunta: i.pergunta,
+              resposta: i.resposta,
+              tags: i.tags_pergunta || [],
+              peso: i.feedback_usuario || 0
+            })),
+            ...(treinamento || []).map(t => ({
+              pergunta: t.pergunta,
+              resposta: t.resposta,
+              tags: [],
+              peso: t.qualidade || 0
+            }))
+          ];
+
+          if (candidatos.length === 0) return null;
+
+          const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length > 3);
+
+          const pontuados = candidatos.map(c => {
+            const texto = (c.pergunta + ' ' + c.tags.join(' ')).toLowerCase();
+            const matches = palavras.filter(p => texto.includes(p)).length;
+            const tagMatches = tags.filter(t => c.tags.includes(t)).length;
+            return { ...c, score: matches + tagMatches * 2 + c.peso };
+          });
+
+          const relevantes = pontuados
+            .filter(c => c.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3);
+
+          if (relevantes.length === 0) return null;
+
+          return relevantes.map(c =>
+            `P: ${c.pergunta}\nR: ${c.resposta.substring(0, 500)}`
+          ).join('\n\n---\n\n');
+
+        } catch (error) {
+          console.error('❌ Erro no RAG de interações:', error);
+          return null;
+        }
+      }
+
+      classificarTipoArquivo(nome, conteudo) {
+        const n = nome.toLowerCase();
+        const c = (conteudo || '').toLowerCase();
+        if (n.includes('nfe') || n.includes('nf-e') || c.includes('nota fiscal eletrônica')) return 'NF-e';
+        if (n.includes('sped') || c.includes('registro 0000') || c.includes('|c100|')) return 'SPED';
+        if (n.includes('dctf') || c.includes('dctf')) return 'DCTF';
+        if (n.includes('ecf') || c.includes('ecf')) return 'ECF';
+        if (n.includes('cte') || c.includes('conhecimento de transporte')) return 'CT-e';
+        if (n.match(/\.(xls|xlsx)$/)) return 'Planilha';
+        if (n.match(/\.pdf$/)) return 'PDF';
+        if (n.match(/\.csv$/)) return 'CSV';
+        return 'Documento';
+      }
+
+      async salvarDocumento(chatId, fileData) {
+        try {
+          if (!fileData || !fileData.name) return null;
+
+          const tags = this.extrairTags((fileData.content || '') + ' ' + fileData.name);
+          const tipo = this.classificarTipoArquivo(fileData.name, fileData.content);
+
+          const { data, error } = await this.supabase
+            .from('documentos_analisados')
+            .insert({
+              chat_id: chatId || null,
+              nome_arquivo: fileData.name,
+              tipo_arquivo: tipo,
+              tamanho_bytes: fileData.size || null,
+              conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
+              resumo: fileData.summary || null,
+              tags_extraidas: tags.length > 0 ? tags : null
+            })
+            .select('id')
+            .single();
+
+          if (error) {
+            console.error('❌ Erro ao salvar documento:', error);
+            return null;
+          }
+
+          console.log('✅ Documento salvo com ID:', data.id, '| Tipo:', tipo);
+          return data.id;
+
+        } catch (error) {
+          console.error('❌ Erro ao salvar documento:', error);
+          return null;
+        }
+      }
+
+      async buscarDocumentosRAG(pergunta, chatId) {
+        try {
+          const tags = this.extrairTags(pergunta);
+          if (tags.length === 0) return null;
+
+          // Buscar documentos com tags coincidentes — preferir do chat atual
+          const { data } = await this.supabase
+            .from('documentos_analisados')
+            .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id')
+            .not('conteudo_extraido', 'is', null)
+            .order('data_upload', { ascending: false })
+            .limit(30);
+
+          if (!data || data.length === 0) return null;
+
+          const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length > 3);
+
+          const pontuados = data.map(doc => {
+            const texto = ((doc.conteudo_extraido || '') + ' ' + (doc.tags_extraidas || []).join(' ')).toLowerCase();
+            const tagMatches = tags.filter(t => (doc.tags_extraidas || []).includes(t)).length;
+            const wordMatches = palavras.filter(p => texto.includes(p)).length;
+            const mesmoChat = doc.chat_id === chatId ? 3 : 0;
+            return { ...doc, score: tagMatches * 2 + wordMatches + mesmoChat };
+          });
+
+          const relevantes = pontuados
+            .filter(d => d.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 2);
+
+          if (relevantes.length === 0) return null;
+
+          return relevantes.map(d =>
+            `[${d.tipo_arquivo}] ${d.nome_arquivo}\n${(d.conteudo_extraido || '').substring(0, 600)}`
+          ).join('\n\n---\n\n');
+
+        } catch (error) {
+          console.error('❌ Erro no RAG de documentos:', error);
+          return null;
+        }
+      }
+
       async buscarMelhoresPerguntas(limite = 5) {
         try {
           const { data, error } = await this.supabase
@@ -1628,39 +1782,49 @@
     }
 
     async function showLearningStats() {
-      const stats = await learningService.buscarEstatisticas();
-      const melhoresPerguntas = await learningService.buscarMelhoresPerguntas(5);
+      const [stats, melhoresPerguntas, countRAG, countDocs, countTreinamento] = await Promise.all([
+        learningService.buscarEstatisticas(),
+        learningService.buscarMelhoresPerguntas(5),
+        sb.from('interacoes_chat').select('id', { count: 'exact', head: true }).gte('feedback_usuario', 4),
+        sb.from('documentos_analisados').select('id', { count: 'exact', head: true }),
+        sb.from('dados_treinamento').select('id', { count: 'exact', head: true })
+      ]);
 
       let statsHTML = '<div class="stats-card">';
-      
+
+      // Resumo da memória RAG
+      statsHTML += `
+        <div class="stats-item"><span>🧠 Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
+        <div class="stats-item"><span>📎 Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
+        <div class="stats-item"><span>📚 Base de treinamento</span><strong>${countTreinamento.count || 0} registros</strong></div>
+      `;
+
       if (stats.length > 0) {
-        statsHTML += '<h4>📊 Últimos 7 dias</h4>';
+        statsHTML += '<h4 style="margin-top:14px">📊 Últimos 7 dias</h4>';
         stats.forEach(s => {
           statsHTML += `
             <div class="stats-item">
               <span>${new Date(s.data).toLocaleDateString('pt-BR')}</span>
               <span>${s.total_interacoes || 0} perguntas | ${s.taxa_acerto_media?.toFixed(1) || 0}% acerto</span>
-            </div>
-          `;
+            </div>`;
         });
       } else {
-        statsHTML += '<p>Nenhuma estatística disponível ainda. Continue usando o chat!</p>';
+        statsHTML += '<p style="padding:8px 0;font-size:13px;color:var(--text-light)">Nenhuma estatística ainda. Continue usando o chat!</p>';
       }
 
       if (melhoresPerguntas.length > 0) {
-        statsHTML += '<h4 style="margin-top: 15px;">🏆 Perguntas com melhores feedbacks</h4>';
+        statsHTML += '<h4 style="margin-top:14px">🏆 Melhores feedbacks</h4>';
         melhoresPerguntas.forEach(p => {
           statsHTML += `
             <div class="stats-item">
               <span>${p.pergunta.substring(0, 50)}...</span>
               <span>Nota: ${p.feedback_usuario}/5</span>
-            </div>
-          `;
+            </div>`;
         });
       }
 
       statsHTML += '</div>';
-      
+
       document.getElementById('learningStatsContent').innerHTML = statsHTML;
       document.getElementById('learningStatsModal').classList.add('on');
     }
@@ -2051,7 +2215,17 @@
       showTypingIndicator();
 
       try {
-        const SYS = `Você é um especialista fiscal brasileiro sênior. Responda de forma clara e técnica sobre ICMS, ISS, PIS, COFINS, IPI, Simples Nacional, Lucro Presumido, Lucro Real, SPED, CFOPs e legislação tributária. Inclua links oficiais ao final da resposta.`;
+        // RAG: buscar contexto de interações e documentos salvos em paralelo
+        const [ragInteracoes, ragDocumentos] = await Promise.all([
+          learningService.buscarContextoRAG(text || ''),
+          learningService.buscarDocumentosRAG(text || '', currentChat.id)
+        ]);
+
+        let ragBloco = '';
+        if (ragInteracoes) ragBloco += `\n\nRESPOSTAS ANTERIORES RELEVANTES (bem avaliadas):\n${ragInteracoes}`;
+        if (ragDocumentos) ragBloco += `\n\nDOCUMENTOS FISCAIS DO HISTÓRICO:\n${ragDocumentos}`;
+
+        const SYS = `Você é um especialista fiscal brasileiro sênior. Responda de forma clara e técnica sobre ICMS, ISS, PIS, COFINS, IPI, Simples Nacional, Lucro Presumido, Lucro Real, SPED, CFOPs e legislação tributária. Inclua links oficiais ao final da resposta.${ragBloco}`;
 
         const messagesToSend = [
           { role: 'system', content: SYS },
@@ -2163,6 +2337,10 @@
           showFileProgress(file);
           const fileData = await processFile(file);
           currentFiles.push(fileData);
+
+          // Salvar documento no banco para RAG futuro
+          learningService.salvarDocumento(currentChat.id, fileData);
+
           userStats.filesAnalyzed++;
           localStorage.setItem('userStats', JSON.stringify(userStats));
           updateBadges();
