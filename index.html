@@ -4,10 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat Fiscal Pro</title>
+  
+  <!-- Meta tags para Netlify -->
+  <meta name="netlify" content="true">
+  <meta name="description" content="Chat Fiscal Pro - Especialista em tributos brasileiros">
+  
+  <!-- Ícones e bibliotecas -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
   <style>
     * {
       margin: 0;
@@ -57,6 +65,39 @@
       height: 100vh;
       display: flex;
       transition: all 0.3s;
+    }
+
+    /* Loading screen para Netlify */
+    .netlify-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s;
+    }
+
+    .netlify-loading.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     .sr-only {
@@ -252,6 +293,24 @@
     .icon-btn:hover {
       background: var(--card);
       border-color: var(--accent);
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: var(--bg);
+    }
+
+    .status-online {
+      color: var(--success);
+    }
+
+    .status-offline {
+      color: var(--warning);
     }
 
     .deadline-alerts {
@@ -688,7 +747,7 @@
       flex-direction: column;
     }
 
-    input {
+    input, textarea {
       border: none;
       background: transparent;
       padding: 10px 15px;
@@ -696,6 +755,12 @@
       outline: none;
       color: var(--text);
       width: 100%;
+      font-family: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
     }
 
     .file-input-container {
@@ -911,6 +976,11 @@
   </style>
 </head>
 <body>
+  <!-- Loading screen para Netlify -->
+  <div class="netlify-loading" id="loadingScreen">
+    <div class="loading-spinner"></div>
+  </div>
+
   <div class="container">
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -941,6 +1011,10 @@
         <div class="chat-title">
           <i data-lucide="calculator"></i>
           Chat Fiscal Pro
+          <span class="connection-status" id="connectionStatus">
+            <i data-lucide="cloud-off" class="status-offline"></i>
+            <span>Offline</span>
+          </span>
           <div class="badges-container" id="badgesContainer"></div>
         </div>
         <div class="chat-controls">
@@ -1177,7 +1251,34 @@
     // Configuração do PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
+    // Configuração da API
     const API_KEY = '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';
+    
+    // 🔥 CONFIGURAÇÃO DO SUPABASE - SEUS DADOS AQUI 🔥
+    const SUPABASE_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_e-LJ43ZF7RjEDWuBbPNOgg__tjylgkY';
+    
+    // Inicializar Supabase
+    let supabase = null;
+    let isOnline = false;
+    
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      });
+      checkConnection();
+      
+      // Verificar conexão a cada 30 segundos
+      setInterval(checkConnection, 30000);
+      
+    } catch (e) {
+      console.log('Modo offline - usando apenas localStorage');
+      updateConnectionStatus(false);
+    }
+
     const messages = document.getElementById('messages');
     const input = document.getElementById('input');
     const sendBtn = document.getElementById('sendBtn');
@@ -1185,12 +1286,14 @@
     const fileContainer = document.getElementById('fileContainer');
     const fileInfo = document.getElementById('fileInfo');
     const multipleFilesDiv = document.getElementById('multipleFiles');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const connectionStatus = document.getElementById('connectionStatus');
 
     let currentChat = {
-      id: Date.now(),
+      id: Date.now().toString(),
       title: 'Nova Conversa',
       messages: [],
-      date: new Date()
+      date: new Date().toISOString()
     };
 
     let currentFiles = [];
@@ -1229,10 +1332,9 @@
     const fiscalDeadlines = {
       'sped_fiscal': { day: 15, month: 'monthly', description: 'Entrega SPED Fiscal' },
       'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
-      'ecf': { day: 31, month: 7, description: 'Entrega ECF' } // 31 de julho
+      'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
     };
 
-    // PROMPT melhorado com contexto fiscal mais específico
     const PROMPT = `Você é um especialista fiscal brasileiro sênior com mais de 15 anos de experiência. Responda de forma clara, técnica e precisa sobre:
 
     TRIBUTOS:
@@ -1269,7 +1371,135 @@
 
     Quando o usuário enviar arquivos, analise o conteúdo e forneça insights específicos sobre questões fiscais encontradas.`;
 
+    async function checkConnection() {
+      if (!supabase) {
+        updateConnectionStatus(false);
+        return;
+      }
+      
+      try {
+        // Tentar uma consulta simples para verificar conexão
+        const { error } = await supabase
+          .from('chats')
+          .select('count', { count: 'exact', head: true });
+        
+        isOnline = !error;
+        console.log('Status da conexão Supabase:', isOnline ? 'Online' : 'Offline');
+        
+      } catch (e) {
+        console.log('Erro ao conectar com Supabase:', e);
+        isOnline = false;
+      }
+      
+      updateConnectionStatus(isOnline);
+      
+      if (isOnline) {
+        await syncWithSupabase();
+      }
+    }
+
+    function updateConnectionStatus(online) {
+      const icon = connectionStatus.querySelector('i');
+      const text = connectionStatus.querySelector('span');
+      
+      if (online) {
+        icon.setAttribute('data-lucide', 'cloud');
+        icon.classList.remove('status-offline');
+        icon.classList.add('status-online');
+        text.textContent = 'Online';
+      } else {
+        icon.setAttribute('data-lucide', 'cloud-off');
+        icon.classList.remove('status-online');
+        icon.classList.add('status-offline');
+        text.textContent = 'Offline';
+      }
+      
+      lucide.createIcons();
+    }
+
+    async function syncWithSupabase() {
+      if (!isOnline || !supabase) return;
+      
+      try {
+        // Buscar chats do Supabase
+        const { data: remoteChats, error } = await supabase
+          .from('chats')
+          .select('*')
+          .order('updated_at', { ascending: false });
+        
+        if (!error && remoteChats && remoteChats.length > 0) {
+          console.log(`Sincronizados ${remoteChats.length} chats do Supabase`);
+          
+          // Mesclar com chats locais
+          const mergedChats = [...remoteChats];
+          chats.forEach(localChat => {
+            if (!remoteChats.find(c => c.id === localChat.id)) {
+              mergedChats.push(localChat);
+            }
+          });
+          
+          chats = mergedChats.slice(0, 50);
+          localStorage.setItem('fiscalChats', JSON.stringify(chats));
+          loadHistory();
+        }
+      } catch (e) {
+        console.log('Erro ao sincronizar com Supabase:', e);
+        isOnline = false;
+        updateConnectionStatus(false);
+      }
+    }
+
+    async function saveChatToSupabase(chat) {
+      if (!isOnline || !supabase) return;
+      
+      try {
+        const { error } = await supabase
+          .from('chats')
+          .upsert({
+            id: chat.id,
+            title: chat.title,
+            messages: chat.messages,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id'
+          });
+        
+        if (error) {
+          console.log('Erro ao salvar no Supabase:', error);
+          isOnline = false;
+          updateConnectionStatus(false);
+        } else {
+          console.log('Chat salvo no Supabase com sucesso');
+        }
+      } catch (e) {
+        console.log('Erro ao salvar no Supabase:', e);
+        isOnline = false;
+        updateConnectionStatus(false);
+      }
+    }
+
+    // SQL para criar a tabela no Supabase (execute no SQL Editor do Supabase)
+    /*
+    CREATE TABLE chats (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      messages JSONB NOT NULL DEFAULT '[]',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    
+    CREATE INDEX idx_chats_updated_at ON chats(updated_at DESC);
+    */
+
     function init() {
+      // Esconder loading após 1 segundo
+      setTimeout(() => {
+        loadingScreen.classList.add('fade-out');
+        setTimeout(() => {
+          loadingScreen.style.display = 'none';
+        }, 500);
+      }, 1000);
+      
       loadHistory();
       lucide.createIcons();
       
@@ -1283,22 +1513,11 @@
         });
       }
       
-      // Compactar chats antigos
       compressOldChats();
-      
-      // Adicionar observer para acessibilidade
       addAriaObserver();
-      
-      // Detectar tema do sistema
       detectSystemTheme();
-      
-      // Renderizar templates customizados
       renderCustomTemplates();
-      
-      // Verificar prazos
       checkDeadlines();
-      
-      // Atualizar badges
       updateBadges();
     }
 
@@ -1311,7 +1530,6 @@
       }
     }
 
-    // Ouvir mudanças no tema do sistema
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
       if (!localStorage.getItem('theme')) {
         document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
@@ -1383,7 +1601,6 @@
             });
           }
         } else {
-          // Deadlines anuais
           const nextDeadline = new Date(today.getFullYear(), deadline.month - 1, deadline.day);
           if (today > nextDeadline) {
             nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
@@ -1469,32 +1686,10 @@
       return null;
     }
 
-    async function analyzeInvoice(invoiceData) {
-      const analysisPrompt = `
-        Analise esta nota fiscal detalhadamente:
-        
-        ${invoiceData}
-        
-        Forneça:
-        1. Validação dos cálculos de impostos
-        2. CFOP correto para operação
-        3. CST/CSOSN adequado
-        4. Possíveis irregularidades
-        5. Oportunidades de economia tributária
-        6. Documentos necessários para complementar
-        
-        Formato a resposta em seções claras.
-      `;
-      
-      return await callAI(analysisPrompt);
-    }
-
     function calculateFullTaxes() {
       const valor = parseFloat(document.getElementById('calcValor').value) || 0;
       const state = document.getElementById('calcState').value;
-      const productType = document.getElementById('calcProductType').value;
       
-      // Alíquotas simuladas (idealmente viriam de API)
       const rates = {
         'SP': { icms: 18, ipi: 5 },
         'RJ': { icms: 20, ipi: 5 },
@@ -1521,78 +1716,16 @@
       document.getElementById('calcResult').style.display = 'block';
     }
 
-    function calculateSimplesNacional(revenue, annex) {
-      // Simulação da tabela do Simples Nacional
-      const tables = {
-        1: { // Anexo I - Comércio
-          brackets: [
-            { limit: 180000, rate: 4.0 },
-            { limit: 360000, rate: 7.3 },
-            { limit: 720000, rate: 9.5 },
-            { limit: 1800000, rate: 10.7 },
-            { limit: 3600000, rate: 14.3 },
-            { limit: 4800000, rate: 19.0 }
-          ]
-        },
-        2: { // Anexo II - Indústria
-          brackets: [
-            { limit: 180000, rate: 4.5 },
-            { limit: 360000, rate: 7.8 },
-            { limit: 720000, rate: 10.0 },
-            { limit: 1800000, rate: 11.2 },
-            { limit: 3600000, rate: 14.7 },
-            { limit: 4800000, rate: 30.0 }
-          ]
-        }
-      };
-      
-      const table = tables[annex];
-      if (!table) return null;
-      
-      for (const bracket of table.brackets) {
-        if (revenue <= bracket.limit) {
-          return bracket.rate;
-        }
-      }
-      
-      return table.brackets[table.brackets.length - 1].rate;
-    }
-
-    async function getRealTimeTaxRates() {
-      // Simulação - idealmente viria de uma API real
-      const cached = localStorage.getItem('taxRates');
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) { // 24 horas
-          return data;
-        }
-      }
-      
-      // Simular dados
-      const rates = {
-        'SP': { icms: 18, pis: 1.65, cofins: 7.6 },
-        'RJ': { icms: 20, pis: 1.65, cofins: 7.6 },
-        'MG': { icms: 18, pis: 1.65, cofins: 7.6 }
-      };
-      
-      localStorage.setItem('taxRates', JSON.stringify({
-        data: rates,
-        timestamp: Date.now()
-      }));
-      
-      return rates;
-    }
-
     function newChat() {
       if (currentChat.messages && currentChat.messages.length > 0) {
         saveChat();
       }
       
       currentChat = {
-        id: Date.now(),
+        id: Date.now().toString(),
         title: 'Nova Conversa',
         messages: [],
-        date: new Date()
+        date: new Date().toISOString()
       };
       
       clearMessages();
@@ -1625,6 +1758,11 @@
         
         chats = chats.slice(0, 50);
         localStorage.setItem('fiscalChats', JSON.stringify(chats));
+        
+        // Salvar no Supabase se estiver online
+        if (isOnline) {
+          saveChatToSupabase(chatToSave);
+        }
       } catch (e) {
         console.error('Erro ao salvar chat:', e);
       }
@@ -2181,13 +2319,11 @@
     async function getCachedOrFetch(messagesToSend) {
       const cacheKey = JSON.stringify(messagesToSend.slice(-2));
       
-      // Verificar cache semântico primeiro
       const semanticResponse = await getSmartCachedResponse(messagesToSend);
       if (semanticResponse) {
         return semanticResponse;
       }
       
-      // Verificar cache normal
       if (responseCache.has(cacheKey)) {
         const cached = responseCache.get(cacheKey);
         const timeDiff = Date.now() - cached.timestamp;
@@ -2245,15 +2381,12 @@
       input.disabled = true;
       sendBtn.disabled = true;
 
-      // Incrementar contador de perguntas
       userStats.questions++;
       localStorage.setItem('userStats', JSON.stringify(userStats));
       updateBadges();
 
-      // Analisar sentimento
       const sentiment = analyzeSentiment(text);
 
-      // Preparar mensagem com múltiplos arquivos
       let messageContent = text || '📎 Arquivos enviados para análise fiscal';
       if (currentFiles.length > 0) {
         messageContent += `\n\n📎 Arquivos anexados (${currentFiles.length}):`;
@@ -2317,7 +2450,6 @@
         const reply = data.choices[0].message.content;
         const confidence = calculateConfidence(reply);
 
-        // Verificar se resposta foi útil (simples heurística)
         if (reply.length > 100 && !reply.includes('erro')) {
           userStats.correctAnswers++;
           localStorage.setItem('userStats', JSON.stringify(userStats));
@@ -2333,7 +2465,6 @@
         currentChat.messages.push(assistantMessage);
         addMessage(reply, false, confidence);
         
-        // Sugerir próximas perguntas
         suggestNextQuestions(reply);
         
         saveChat();
@@ -2463,11 +2594,10 @@
       const token = generateToken();
       const shareLink = `${window.location.origin}?shared=${token}`;
       
-      // Salvar token temporário
       const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
       sharedChats[token] = {
         chat: currentChat,
-        expires: Date.now() + (24 * 60 * 60 * 1000) // 24 horas
+        expires: Date.now() + (24 * 60 * 60 * 1000)
       };
       localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
       
@@ -2523,6 +2653,10 @@
           <div class="stats-item">
             <span>⚡ Cache ativo</span>
             <strong>${responseCache.size} respostas</strong>
+          </div>
+          <div class="stats-item">
+            <span>☁️ Status Supabase</span>
+            <strong>${isOnline ? '✅ Online' : '❌ Offline'}</strong>
           </div>
         </div>
       `;
