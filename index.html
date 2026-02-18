@@ -1483,12 +1483,62 @@
 
       <!-- CONFIRMAÇÃO ENVIADA -->
       <div id="confirmSentForm" style="display:none;text-align:center;padding:8px 0">
-        <div style="font-size:48px;margin-bottom:12px">📧</div>
+        <div style="margin-bottom:16px"><i data-lucide="mail" style="width:48px;height:48px;color:var(--accent)"></i></div>
         <p style="font-weight:600;margin-bottom:8px" id="confirmSentTitle">Link enviado!</p>
         <p style="font-size:13px;color:var(--text-light);line-height:1.6" id="confirmSentText">
           Verifique sua caixa de entrada e clique no link para continuar.
         </p>
         <button class="auth-link-btn" style="margin-top:16px" onclick="showAuthState('login')">← Voltar ao login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CLIENTES -->
+  <div id="clientModal" class="hidden">
+    <div class="client-modal-box">
+      <div class="client-modal-head">
+        <h3><i data-lucide="building-2" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i>Selecionar Empresa</h3>
+        <button class="btn-close" onclick="closeClientModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div id="clientList" class="client-list">
+        <p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Carregando...</p>
+      </div>
+      <button class="btn-add-client" onclick="toggleNewClientForm()">
+        <i data-lucide="plus"></i> Cadastrar nova empresa
+      </button>
+      <div id="newClientForm">
+        <div class="form-sep"></div>
+        <div class="form-field">
+          <label>Razão Social *</label>
+          <input type="text" id="fRazao" placeholder="Empresa Ltda">
+        </div>
+        <div class="form-field">
+          <label>CNPJ *</label>
+          <input type="text" id="fCnpj" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)">
+        </div>
+        <div class="form-field">
+          <label>Nome Fantasia</label>
+          <input type="text" id="fFantasia" placeholder="Opcional">
+        </div>
+        <div class="form-field">
+          <label>Regime Tributário</label>
+          <select id="fRegime">
+            <option value="">Selecione...</option>
+            <option value="Simples Nacional">Simples Nacional</option>
+            <option value="Lucro Presumido">Lucro Presumido</option>
+            <option value="Lucro Real">Lucro Real</option>
+            <option value="MEI">MEI</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Inscrição Estadual</label>
+          <input type="text" id="fIE" placeholder="Opcional">
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel" onclick="toggleNewClientForm()">Cancelar</button>
+          <button class="btn-save" onclick="saveNewClient()">Salvar Empresa</button>
+        </div>
+        <div id="clientFormMsg" class="auth-msg"></div>
       </div>
     </div>
   </div>
@@ -1533,8 +1583,7 @@
           <i data-lucide="building-2" style="width:12px;height:12px;flex-shrink:0"></i>
           <span id="headerClientName">—</span>
         </div>
-        <!-- badges inline apenas desktop -->
-        <div class="badges-container desktop-only" id="badgesContainer"></div>
+
       </div>
 
       <div class="c-right">
@@ -1546,20 +1595,6 @@
           <i data-lucide="moon" id="themeIcon"></i>
         </button>
 
-        <!-- Troféu de conquistas — só mobile -->
-        <div class="dropdown-wrap mobile-only">
-          <button class="icon-btn" onclick="toggleDropdown('trophyDropdown')" title="Conquistas" id="trophyBtn">
-            <i data-lucide="trophy"></i>
-            <span class="trophy-count" id="trophyCount">0</span>
-          </button>
-          <div class="hdr-dropdown" id="trophyDropdown">
-            <div class="hdr-dropdown-title">🏆 Conquistas</div>
-            <div id="badgesDropdownContent">
-              <p class="badges-empty">Nenhuma conquista ainda.<br>Continue usando o chat!</p>
-            </div>
-          </div>
-        </div>
-
         <!-- Menu "..." — só mobile, agrupa funções secundárias -->
         <div class="dropdown-wrap mobile-only">
           <button class="icon-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções">
@@ -1567,10 +1602,10 @@
           </button>
           <div class="hdr-dropdown" id="moreMenu">
             <div class="hdr-dropdown-title">Opções</div>
-            <button class="menu-item" onclick="showStats(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()">
               <i data-lucide="bar-chart-2"></i> Estatísticas
             </button>
-            <button class="menu-item" onclick="showLearningStats(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()">
               <i data-lucide="brain"></i> Aprendizado
             </button>
             <button class="menu-item" onclick="exportChat(); closeDropdowns()">
@@ -1594,10 +1629,10 @@
         <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar">
           <i data-lucide="download"></i>
         </button>
-        <button class="icon-btn desktop-only" onclick="showStats()" title="Estatísticas">
+        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas">
           <i data-lucide="bar-chart-2"></i>
         </button>
-        <button class="icon-btn desktop-only" onclick="showLearningStats()" title="Aprendizado">
+        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado">
           <i data-lucide="brain"></i>
         </button>
         <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
@@ -1664,7 +1699,7 @@
       <input type="file" id="fileInput" style="display: none;" multiple
         accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" onchange="handleMultipleFiles(event)">
       <p class="disclaimer">
-        ⚠️ As respostas são geradas por inteligência artificial e podem conter erros. 
+        <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:middle;margin-right:4px"></i> As respostas são geradas por inteligência artificial e podem conter erros. 
         Sempre valide as informações com um contador responsável antes de tomar decisões fiscais.
       </p>
     </div>
@@ -1709,7 +1744,7 @@
   <div id="learningStatsModal">
     <div class="m-box">
       <div class="m-head">
-        <span class="m-title">📚 Aprendizado Fiscal</span>
+        <span class="m-title"><i data-lucide="brain" style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Aprendizado Fiscal</span>
         <button class="btn-close" onclick="closeLearningStats()"><i data-lucide="x"></i></button>
       </div>
       <div id="learningStatsContent"></div>
@@ -1730,7 +1765,7 @@
         </button>
       </div>
       <p style="margin-top: 15px; font-size: 12px; color: var(--text-light);">
-        ⚠️ Link válido apenas neste dispositivo e navegador por 24 horas.
+        <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:middle;margin-right:4px"></i> Link válido apenas neste dispositivo e navegador por 24 horas.
       </p>
     </div>
   </div>
@@ -1747,6 +1782,10 @@
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
     let currentUser = null;
     let currentCliente = null; // { id, razao_social, cnpj, regime_tributario, nome_fantasia }
+
+    function isAdmin() {
+      return currentUser?.user_metadata?.role === 'admin';
+    }
     let allChats = [];
     let currentChat = {
       id: null,
@@ -1773,18 +1812,12 @@
     let consecutiveErrors = 0;
     let rateLimitUntil = 0;
 
-    let userStats = JSON.parse(localStorage.getItem('userStats') || JSON.stringify({
-      questions: 0,
-      filesAnalyzed: 0,
-      correctAnswers: 0,
-      badges: []
-    }));
 
     const badges = {
-      'primeira_pergunta': { name: 'Primeiros Passos', icon: '🌟', condition: (s) => s.questions >= 1 },
-      'analista_10': { name: 'Analista Experiente', icon: '📊', condition: (s) => s.questions >= 10 },
-      'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '📄', condition: (s) => s.filesAnalyzed >= 5 },
-      'fiscal_pro': { name: 'Fiscal Pro', icon: '👑', condition: (s) => s.correctAnswers >= 20 }
+      'primeira_pergunta': { name: 'Primeiros Passos', icon: '', condition: (s) => s.questions >= 1 },
+      'analista_10': { name: 'Analista Experiente', icon: '', condition: (s) => s.questions >= 10 },
+      'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '', condition: (s) => s.filesAnalyzed >= 5 },
+      'fiscal_pro': { name: 'Fiscal Pro', icon: '', condition: (s) => s.correctAnswers >= 20 }
     };
 
     const fiscalDeadlines = {
@@ -1805,7 +1838,6 @@
       if (responseCache.has(key)) {
         const cached = responseCache.get(key);
         if (Date.now() - cached.timestamp < CACHE_DURATION) {
-          console.log('✅ Resposta encontrada em cache');
           return cached.data;
         }
         responseCache.delete(key);
@@ -1918,13 +1950,7 @@
 
       async registrarInteracao(chatId, pergunta, resposta, tokens, modelo) {
         try {
-          console.log('📝 Registrando interação:', { 
-            chatId, 
-            pergunta: pergunta?.substring(0, 30) + '...' 
-          });
-          
           if (!pergunta || !resposta) {
-            console.error('❌ Pergunta ou resposta vazia');
             return null;
           }
 
@@ -1949,15 +1975,12 @@
             .single();
 
           if (error) {
-            console.error('❌ Erro do Supabase:', error);
             return null;
           }
 
-          console.log('✅ Interação registrada com ID:', data.id);
           return data.id;
 
         } catch (error) {
-          console.error('❌ Erro ao registrar interação:', error);
           return null;
         }
       }
@@ -1965,7 +1988,6 @@
       async registrarFeedback(interacaoId, nota) {
         try {
           if (!interacaoId) {
-            console.error('❌ ID da interação não fornecido');
             return;
           }
 
@@ -1977,18 +1999,15 @@
             .eq('id', idString);
 
           if (error) {
-            console.error('❌ Erro ao registrar feedback:', error);
             return;
           }
 
-          console.log('✅ Feedback registrado com sucesso');
 
           if (nota >= 4) {
             await this.adicionarAoTreinamento(interacaoId);
           }
 
         } catch (error) {
-          console.error('❌ Erro ao registrar feedback:', error);
         }
       }
 
@@ -2001,7 +2020,6 @@
             .single();
 
           if (error || !interacao) {
-            console.error('❌ Erro ao buscar interação para treinamento:', error);
             return;
           }
 
@@ -2017,10 +2035,8 @@
               data_criacao: new Date().toISOString()
             });
 
-          console.log('✅ Interação adicionada aos dados de treinamento');
 
         } catch (error) {
-          console.error('❌ Erro ao adicionar ao treinamento:', error);
         }
       }
 
@@ -2036,7 +2052,6 @@
           return data || [];
 
         } catch (error) {
-          console.error('❌ Erro ao buscar estatísticas:', error);
           return [];
         }
       }
@@ -2106,7 +2121,6 @@
           ).join('\n\n---\n\n');
 
         } catch (error) {
-          console.error('❌ Erro no RAG de interações:', error);
           return null;
         }
       }
@@ -2149,15 +2163,12 @@
             .single();
 
           if (error) {
-            console.error('❌ Erro ao salvar documento:', error);
             return null;
           }
 
-          console.log('✅ Documento salvo com ID:', data.id, '| Tipo:', tipo);
           return data.id;
 
         } catch (error) {
-          console.error('❌ Erro ao salvar documento:', error);
           return null;
         }
       }
@@ -2201,7 +2212,6 @@
           ).join('\n\n---\n\n');
 
         } catch (error) {
-          console.error('❌ Erro no RAG de documentos:', error);
           return null;
         }
       }
@@ -2219,7 +2229,6 @@
           return data || [];
 
         } catch (error) {
-          console.error('❌ Erro ao buscar melhores perguntas:', error);
           return [];
         }
       }
@@ -2234,7 +2243,6 @@
 
     function mostrarFeedbackOptions(interacaoId) {
       if (!interacaoId || interacaoId === 'null' || interacaoId === 'undefined' || interacaoId.trim() === '') {
-        console.error('ID da interação inválido:', interacaoId);
         alert('Feedback indisponível para esta resposta. Apenas respostas novas possuem feedback.');
         return;
       }
@@ -2276,7 +2284,7 @@
         agradecimento.innerHTML = `
           <div class="ava"><i data-lucide="bot"></i></div>
           <div class="bubble">
-            Obrigado pelo seu feedback! Isso me ajuda a aprender e melhorar. 🙏
+            Obrigado pelo seu feedback!
           </div>
         `;
         document.getElementById('msgs').appendChild(agradecimento);
@@ -2300,13 +2308,13 @@
       let statsHTML = '<div class="stats-card">';
 
       statsHTML += `
-        <div class="stats-item"><span>🧠 Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
-        <div class="stats-item"><span>📎 Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
-        <div class="stats-item"><span>📚 Base de treinamento</span><strong>${countTreinamento.count || 0} registros</strong></div>
+        <div class="stats-item"><span>Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
+        <div class="stats-item"><span>Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
+        <div class="stats-item"><span>Base de treinamento</span><strong>${countTreinamento.count || 0} registros</strong></div>
       `;
 
       if (stats.length > 0) {
-        statsHTML += '<h4 style="margin-top:14px">📊 Últimos 7 dias</h4>';
+        statsHTML += '<h4 style="margin-top:14px">Últimos 7 dias</h4>';
         stats.forEach(s => {
           statsHTML += `
             <div class="stats-item">
@@ -2319,7 +2327,7 @@
       }
 
       if (melhoresPerguntas.length > 0) {
-        statsHTML += '<h4 style="margin-top:14px">🏆 Melhores feedbacks</h4>';
+        statsHTML += '<h4 style="margin-top:14px">Melhores feedbacks</h4>';
         melhoresPerguntas.forEach(p => {
           statsHTML += `
             <div class="stats-item">
@@ -2333,6 +2341,7 @@
 
       document.getElementById('learningStatsContent').innerHTML = statsHTML;
       document.getElementById('learningStatsModal').classList.add('on');
+      lucide.createIcons();
     }
 
     function closeLearningStats() {
@@ -2345,7 +2354,6 @@
 
       // Registrar listener ANTES de qualquer coisa — Supabase processa o hash automaticamente
       sb.auth.onAuthStateChange((event, session) => {
-        console.log('Auth event:', event);
 
         if (event === 'SIGNED_IN' && session) {
           currentUser = session.user;
@@ -2399,10 +2407,16 @@
       const savedTheme = currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
 
+      applyAdminUI();
       checkConnection();
       loadClientes();
       checkDeadlines();
-      updateBadges();
+    }
+
+    function applyAdminUI() {
+      const admin = isAdmin();
+      document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
+      document.querySelectorAll('.admin-menu-item').forEach(el => { el.style.display = admin ? '' : 'none'; });
     }
 
     function showAuthScreen() {
@@ -2428,7 +2442,7 @@
         .from('clientes')
         .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
         .order('razao_social');
-      if (error) { console.error('Erro ao carregar clientes:', error); return; }
+      if (error) { return; }
 
       const clientes = data || [];
 
@@ -2582,6 +2596,7 @@
       const map = { login: 'loginForm', setPassword: 'setPasswordForm', reset: 'resetForm', confirmSent: 'confirmSentForm' };
       const el = document.getElementById(map[state]);
       if (el) el.style.display = 'block';
+      lucide.createIcons();
     }
 
     async function doLogin() {
@@ -2663,7 +2678,6 @@
         if (error) throw error;
         setConnectionStatus('Online', 'cloud', '#10b981');
       } catch (e) {
-        console.error('Erro de conexão:', e);
         setConnectionStatus('Offline', 'cloud-off', '#ef4444');
       }
     }
@@ -2689,7 +2703,6 @@
         allChats = data || [];
         renderHistoryList(allChats);
       } catch (e) {
-        console.error('Erro ao carregar chats:', e);
         document.getElementById('hList').innerHTML =
           `<p style="padding:16px;color:var(--error);font-size:13px">Erro ao carregar conversas</p>`;
       }
@@ -2742,16 +2755,13 @@
         renderHistoryList(allChats);
         closeSidebar();
       } catch (e) {
-        console.error('Erro ao abrir conversa:', e);
       }
     }
 
     async function saveChat() {
-      console.log('Salvando chat...', currentChat);
 
       try {
         if (!currentChat.messages || currentChat.messages.length === 0) {
-          console.log('Nenhuma mensagem para salvar');
           return;
         }
 
@@ -2768,7 +2778,6 @@
             .eq('id', currentChat.id);
 
           if (error) throw error;
-          console.log('Chat atualizado com sucesso!');
 
         } else {
           const { data, error } = await sb
@@ -2787,13 +2796,11 @@
           if (error) throw error;
 
           currentChat.id = data.id;
-          console.log('Novo chat criado com ID:', data.id);
         }
 
         await loadChats();
 
       } catch (e) {
-        console.error('Erro em saveChat:', e);
       }
     }
 
@@ -2814,7 +2821,6 @@
           await loadChats();
         }
       } catch (e) {
-        console.error('Erro ao deletar conversa:', e);
       }
     }
 
@@ -2934,7 +2940,7 @@
             <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
           </button>
           <span class="badge-conf badge ${confidence}">
-            ${confidence === 'high' ? '🟢 Alta' : confidence === 'low' ? '🔴 Baixa' : '🟡 Média'} confiança
+            ${confidence === 'high' ? 'Alta' : confidence === 'low' ? 'Baixa' : 'Média'} confiança
           </span>
         </div>` : '';
 
@@ -3031,7 +3037,7 @@
       if (Date.now() < rateLimitUntil) {
         const waitMs = rateLimitUntil - Date.now();
         const waitSeconds = Math.ceil(waitMs / 1000);
-        addMessage(`⏳ Limite temporário atingido. Reenviando automaticamente em ${waitSeconds}s...`, false, 'low');
+        addMessage(`Limite temporário atingido. Reenviando automaticamente em ${waitSeconds}s...`, false, 'low');
         setTimeout(() => send(), waitMs + 500);
         return;
       }
@@ -3040,15 +3046,12 @@
       inp.disabled = true;
 
       try {
-        userStats.questions++;
-        localStorage.setItem('userStats', JSON.stringify(userStats));
-        updateBadges();
 
         // Preparar mensagem do usuário
-        let messageContent = text || '📎 Arquivos enviados para análise fiscal';
+        let messageContent = text || 'Arquivos enviados para análise fiscal';
         
         if (currentFiles.length > 0) {
-          messageContent += '\n\n📎 **ARQUIVOS ANEXADOS:**';
+          messageContent += '\n\nArquivos anexados:';
           currentFiles.forEach((file, index) => {
             messageContent += `\n\n**Arquivo ${index + 1}:** ${file.name}`;
             if (file.summary) {
@@ -3144,7 +3147,6 @@ ${fileContext}`.substring(0, 6000);
           const model = MODELS[modelIndex];
           
           try {
-            console.log(`Tentando modelo: ${model} (tentativa ${attempts + 1})`);
             
             const res = await fetch('/.netlify/functions/chat', {
               method: 'POST',
@@ -3159,7 +3161,6 @@ ${fileContext}`.substring(0, 6000);
 
             if (res.status === 429) {
               // Rate limit - mudar para próximo modelo
-              console.log(`Rate limit no modelo ${model}, tentando próximo...`);
               currentModelIndex++;
               attempts++;
               
@@ -3184,7 +3185,6 @@ ${fileContext}`.substring(0, 6000);
             consecutiveErrors = 0;
             
           } catch (error) {
-            console.error(`Erro com modelo ${model}:`, error);
             consecutiveErrors++;
             
             // Se muitos erros consecutivos, mudar de modelo
@@ -3223,7 +3223,6 @@ ${fileContext}`.substring(0, 6000);
             MODELS[currentModelIndex % MODELS.length]
           );
         } catch (e) {
-          console.error('Erro ao registrar interação:', e);
         }
 
         const assistantMessage = {
@@ -3242,25 +3241,23 @@ ${fileContext}`.substring(0, 6000);
           }, 1500);
         }
 
-        saveChat().catch(e => console.error('Erro ao salvar chat:', e));
-        
+        saveChat();
         inp.value = '';
 
       } catch (e) {
-        console.error('❌ Erro detalhado:', e);
         hideTypingIndicator();
         
-        let errorMessage = '❌ ';
+        let errorMessage = '';
         
         if (e.message.includes('429') || e.message.includes('rate limit')) {
-          errorMessage = '❌ Limite de requisições excedido. Aguarde 30 segundos e tente novamente.';
+          errorMessage = 'Limite de requisições excedido. Aguarde 30 segundos e tente novamente.';
           rateLimitUntil = Date.now() + 30000;
         } else if (e.message.includes('500') || e.message.includes('503')) {
-          errorMessage = '❌ Serviço temporariamente indisponível. Tente novamente em alguns instantes.';
+          errorMessage = 'Serviço temporariamente indisponível. Tente novamente em alguns instantes.';
         } else if (e.message.includes('401')) {
-          errorMessage = '❌ Erro de autenticação. Recarregue a página.';
+          errorMessage = 'Erro de autenticação. Recarregue a página.';
         } else {
-          errorMessage = '❌ Erro ao processar. Tente novamente.';
+          errorMessage = 'Erro ao processar. Tente novamente.';
         }
         
         addMessage(errorMessage, false, 'low');
@@ -3293,11 +3290,7 @@ ${fileContext}`.substring(0, 6000);
 
           learningService.salvarDocumento(currentChat.id, fileData);
 
-          userStats.filesAnalyzed++;
-          localStorage.setItem('userStats', JSON.stringify(userStats));
-          updateBadges();
         } catch (error) {
-          console.error('Erro ao processar arquivo:', error);
         } finally {
           isProcessingFile = false;
         }
@@ -3350,7 +3343,7 @@ ${fileContext}`.substring(0, 6000);
               }
 
               content = text.substring(0, 5000);
-              summary = `📄 PDF com ${pdf.numPages} página(s)`;
+              summary = `PDF com ${pdf.numPages} página(s)`;
 
               if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
                 summary += ' - Documento fiscal';
@@ -3361,19 +3354,19 @@ ${fileContext}`.substring(0, 6000);
               const workbook = XLSX.read(data, { type: 'array' });
               const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
               content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 5000);
-              summary = `📊 Planilha com ${workbook.SheetNames.length} aba(s)`;
+              summary = `Planilha com ${workbook.SheetNames.length} aba(s)`;
 
             } else if (fileType.includes('text') || fileName.match(/\.(txt|csv)$/i)) {
               content = e.target.result.substring(0, 5000);
-              summary = '📝 Arquivo de texto';
+              summary = 'Arquivo de texto';
 
             } else if (fileType.includes('image')) {
               content = 'Imagem enviada para análise';
-              summary = '🖼️ Imagem';
+              summary = 'Imagem';
 
             } else {
               content = 'Tipo de arquivo não suportado para leitura completa.';
-              summary = '❓ Tipo não reconhecido';
+              summary = 'Arquivo';
             }
 
             resolve({
@@ -3494,39 +3487,6 @@ ${fileContext}`.substring(0, 6000);
       }
     }
 
-    function updateBadges() {
-      for (const [key, badge] of Object.entries(badges)) {
-        if (badge.condition(userStats) && !userStats.badges.includes(key)) {
-          userStats.badges.push(key);
-        }
-      }
-
-      const earned = userStats.badges;
-
-      const container = document.getElementById('badgesContainer');
-      container.innerHTML = earned.map(key =>
-        `<span class="badge" title="${badges[key].name}">${badges[key].icon} ${badges[key].name}</span>`
-      ).join('');
-
-      const dropContent = document.getElementById('badgesDropdownContent');
-      const trophyCount = document.getElementById('trophyCount');
-      if (dropContent) {
-        if (earned.length > 0) {
-          dropContent.innerHTML = earned.map(key => `
-            <div class="badge-item">
-              <span class="badge-item-icon">${badges[key].icon}</span>
-              <span class="badge-item-name">${badges[key].name}</span>
-            </div>`).join('');
-          trophyCount.textContent = earned.length;
-          trophyCount.style.display = 'flex';
-        } else {
-          dropContent.innerHTML = '<p class="badges-empty">Nenhuma conquista ainda.<br>Continue usando o chat!</p>';
-          trophyCount.style.display = 'none';
-        }
-      }
-
-      localStorage.setItem('userStats', JSON.stringify(userStats));
-    }
 
     function toggleDropdown(id) {
       const target = document.getElementById(id);
@@ -3619,7 +3579,7 @@ ${fileContext}`.substring(0, 6000);
       }
 
       const chatText = currentChat.messages.map(msg => {
-        const role = msg.role === 'user' ? '👤 USUÁRIO' : '🤖 ASSISTENTE';
+        const role = msg.role === 'user' ? 'USUÁRIO' : 'ASSISTENTE';
         return `${role}:\n${msg.content}\n`;
       }).join('\n' + '='.repeat(50) + '\n\n');
 
@@ -3640,27 +3600,27 @@ ${fileContext}`.substring(0, 6000);
       const statsHTML = `
         <div class="stats-card">
           <div class="stats-item">
-            <span>💬 Total de mensagens</span>
+            <span>Total de mensagens</span>
             <strong>${totalMessages}</strong>
           </div>
           <div class="stats-item">
-            <span>👤 Suas perguntas</span>
+            <span>Suas perguntas</span>
             <strong>${userMessages}</strong>
           </div>
           <div class="stats-item">
-            <span>🤖 Respostas</span>
+            <span>Respostas</span>
             <strong>${assistantMessages}</strong>
           </div>
           <div class="stats-item">
-            <span>📎 Arquivos analisados</span>
-            <strong>${userStats.filesAnalyzed}</strong>
+            <span>Arquivos analisados</span>
+            <strong>—</strong>
           </div>
           <div class="stats-item">
-            <span>🏆 Conquistas</span>
-            <strong>${userStats.badges.length}</strong>
+            <span>Conquistas</span>
+            <strong>—</strong>
           </div>
           <div class="stats-item">
-            <span>⚡ Cache</span>
+            <span>Cache</span>
             <strong>${responseCache.size} respostas</strong>
           </div>
         </div>
@@ -3668,6 +3628,7 @@ ${fileContext}`.substring(0, 6000);
 
       document.getElementById('statsContent').innerHTML = statsHTML;
       document.getElementById('statsModal').classList.add('on');
+      lucide.createIcons();
     }
 
     function closeStats() {
