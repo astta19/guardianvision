@@ -238,8 +238,8 @@
     .c-head {
       background: var(--card);
       border-bottom: 1px solid var(--border);
-      padding: 12px 16px;
-      padding-top: max(12px, env(safe-area-inset-top));
+      padding: 8px 16px;
+      padding-top: max(8px, env(safe-area-inset-top));
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -352,6 +352,15 @@
       background: var(--bg);
     }
 
+    .menu-item.active {
+      background: var(--accent);
+      color: var(--user-text);
+    }
+
+    .menu-item.active .text-light {
+      color: rgba(255,255,255,0.7);
+    }
+
     .menu-sep {
       height: 1px;
       background: var(--border);
@@ -409,6 +418,82 @@
 
     .icon-btn:active {
       transform: scale(0.95);
+    }
+
+    /* Estilos para o seletor de clientes */
+    .cliente-selector {
+      position: relative;
+      margin-right: 8px;
+    }
+
+    .cliente-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      min-width: 180px;
+      max-width: 250px;
+      color: var(--text);
+      font-size: 13px;
+      height: 44px;
+    }
+
+    .cliente-btn span {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+    }
+
+    .cliente-btn svg:last-child {
+      opacity: 0.7;
+    }
+
+    .cliente-list {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+
+    .cliente-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .cliente-item:hover {
+      background: var(--bg);
+    }
+
+    .cliente-item.active {
+      background: var(--accent);
+      color: var(--user-text);
+    }
+
+    .cliente-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .cliente-nome {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cliente-cnpj {
+      font-size: 10px;
+      opacity: 0.7;
     }
 
     .deadline-alerts {
@@ -930,7 +1015,8 @@
     #calcModal,
     #statsModal,
     #shareModal,
-    #learningStatsModal {
+    #learningStatsModal,
+    #clienteModal {
       display: none;
       position: fixed;
       inset: 0;
@@ -943,7 +1029,8 @@
     #calcModal.on,
     #statsModal.on,
     #shareModal.on,
-    #learningStatsModal.on {
+    #learningStatsModal.on,
+    #clienteModal.on {
       display: flex;
     }
 
@@ -1020,6 +1107,11 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+    }
+
+    .btn-calc:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .c-result {
@@ -1125,6 +1217,7 @@
     @media (max-width: 768px) {
       .badges-container { display: none; }
       .desktop-only { display: none !important; }
+      .cliente-btn { min-width: 140px; }
     }
 
     @media (min-width: 769px) {
@@ -1249,7 +1342,9 @@
     }
     .user-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    @media (max-width: 480px) { .user-info span { display: none; } }
+    .spin {
+      animation: spin 1s linear infinite;
+    }
   </style>
 </head>
 
@@ -1339,6 +1434,30 @@
       </div>
 
       <div class="c-right">
+        <!-- SELETOR DE CLIENTES - NOVO -->
+        <div class="cliente-selector dropdown-wrap">
+          <button class="cliente-btn" onclick="toggleDropdown('clienteDropdown')" title="Selecionar cliente">
+            <i data-lucide="building-2"></i>
+            <span id="clienteAtual">Selecionar Cliente</span>
+            <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
+          </button>
+          <div class="hdr-dropdown" id="clienteDropdown" style="min-width:280px">
+            <div class="hdr-dropdown-title">👥 Clientes / CNPJs</div>
+            <div class="sb-search" style="padding:8px">
+              <i data-lucide="search"></i>
+              <input type="text" id="clienteSearch" placeholder="Buscar CNPJ ou razão social..." oninput="filterClientes()">
+            </div>
+            <div class="cliente-list" id="clienteList"></div>
+            <div class="menu-sep"></div>
+            <button class="menu-item" onclick="openClienteModal()">
+              <i data-lucide="plus-circle"></i> Novo Cliente
+            </button>
+            <button class="menu-item" onclick="openClienteRelatorio()">
+              <i data-lucide="bar-chart-2"></i> Relatório do Cliente
+            </button>
+          </div>
+        </div>
+
         <!-- Botões sempre visíveis -->
         <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
           <i data-lucide="calculator"></i>
@@ -1405,11 +1524,10 @@
           <i data-lucide="maximize-2"></i>
         </button>
 
-        <!-- Usuário logado + logout -->
-        <div class="user-info" onclick="doLogout()" title="Clique para sair">
-          <i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i>
-          <span id="userEmail">—</span>
-        </div>
+        <!-- Sair (simplificado) -->
+        <button class="icon-btn" onclick="doLogout()" title="Sair">
+          <i data-lucide="log-out"></i>
+        </button>
       </div>
     </div>
 
@@ -1536,6 +1654,45 @@
     </div>
   </div>
 
+  <!-- MODAL DE CADASTRO DE CLIENTE - NOVO -->
+  <div id="clienteModal">
+    <div class="m-box">
+      <div class="m-head">
+        <span class="m-title">📋 Novo Cliente</span>
+        <button class="btn-close" onclick="closeClienteModal()"><i data-lucide="x"></i></button>
+      </div>
+      <form id="clienteForm" onsubmit="event.preventDefault(); salvarCliente()">
+        <p class="f-lbl">CNPJ *</p>
+        <input type="text" class="c-inp" id="clienteCnpj" placeholder="00.000.000/0000-00" 
+               oninput="formatarCNPJ(this)" maxlength="18" required>
+        
+        <p class="f-lbl">Razão Social *</p>
+        <input type="text" class="c-inp" id="clienteRazao" required>
+        
+        <p class="f-lbl">Nome Fantasia</p>
+        <input type="text" class="c-inp" id="clienteFantasia">
+        
+        <p class="f-lbl">Inscrição Estadual</p>
+        <input type="text" class="c-inp" id="clienteIE">
+        
+        <p class="f-lbl">Inscrição Municipal</p>
+        <input type="text" class="c-inp" id="clienteIM">
+        
+        <p class="f-lbl">Regime Tributário</p>
+        <select class="c-inp" id="clienteRegime">
+          <option value="">Selecione...</option>
+          <option value="Simples Nacional">Simples Nacional</option>
+          <option value="Lucro Presumido">Lucro Presumido</option>
+          <option value="Lucro Real">Lucro Real</option>
+        </select>
+        
+        <button type="submit" class="btn-calc" id="btnSalvarCliente">
+          <i data-lucide="save"></i> Salvar Cliente
+        </button>
+      </form>
+    </div>
+  </div>
+
   <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <script>
@@ -1543,8 +1700,7 @@
 
     const SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
-    // Chave Groq removida — chamadas passam pela Netlify Function
-
+    
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
     let currentUser = null;
     let allChats = [];
@@ -1553,6 +1709,12 @@
       title: 'Nova Conversa',
       messages: []
     };
+
+    // ============================================
+    // VARIÁVEIS DE CLIENTE - NOVO
+    // ============================================
+    let clientes = [];
+    let clienteAtual = null;
 
     let currentFiles = [];
     let isProcessingFile = false;
@@ -1564,9 +1726,9 @@
 
     // Modelos disponíveis em ordem de preferência
     const MODELS = [
-      'llama-3.3-70b-versatile',  // Principal — mais capaz
-      'llama-3.1-8b-instant',     // Fallback rápido — rate limit generoso
-      'llama3-8b-8192'            // Último fallback
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'llama3-8b-8192'
     ];
 
     let currentModelIndex = 0;
@@ -1618,11 +1780,214 @@
         data,
         timestamp: Date.now()
       });
-      // Limitar tamanho do cache
       if (responseCache.size > 50) {
         const oldestKey = responseCache.keys().next().value;
         responseCache.delete(oldestKey);
       }
+    }
+
+    // ============================================
+    // FUNÇÕES DE CLIENTE - NOVO
+    // ============================================
+
+    async function carregarClientes() {
+      try {
+        const { data, error } = await sb
+          .from('clientes')
+          .select('*')
+          .eq('user_id', currentUser?.id)
+          .order('razao_social');
+
+        if (error) throw error;
+        
+        clientes = data || [];
+        renderClienteList(clientes);
+        
+        // Restaurar último cliente selecionado
+        const lastClienteId = localStorage.getItem(`lastCliente_${currentUser?.id}`);
+        if (lastClienteId) {
+          clienteAtual = clientes.find(c => c.id === lastClienteId) || clientes[0] || null;
+        } else {
+          clienteAtual = clientes[0] || null;
+        }
+        
+        updateClienteSelector();
+        
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+      }
+    }
+
+    function renderClienteList(list) {
+      const el = document.getElementById('clienteList');
+      
+      if (!list || list.length === 0) {
+        el.innerHTML = '<p class="badges-empty">Nenhum cliente cadastrado</p>';
+        return;
+      }
+      
+      el.innerHTML = list.map(c => `
+        <div class="menu-item ${c.id === clienteAtual?.id ? 'active' : ''}" 
+             onclick="selecionarCliente('${c.id}')">
+          <div style="display:flex;align-items:center;gap:12px;width:100%">
+            <i data-lucide="building-2" style="width:16px;height:16px;flex-shrink:0"></i>
+            <div class="cliente-info">
+              <div class="cliente-nome">${escapeHtml(c.razao_social)}</div>
+              <div class="cliente-cnpj">${formatarCNPJDisplay(c.cnpj)} • ${c.regime_tributario || '—'}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      
+      lucide.createIcons();
+    }
+
+    function filterClientes() {
+      const q = document.getElementById('clienteSearch').value.toLowerCase();
+      const filtered = q ? clientes.filter(c => 
+        c.razao_social.toLowerCase().includes(q) || 
+        c.cnpj.includes(q.replace(/\D/g, ''))
+      ) : clientes;
+      renderClienteList(filtered);
+    }
+
+    async function selecionarCliente(clienteId) {
+      clienteAtual = clientes.find(c => c.id === clienteId) || null;
+      
+      if (clienteAtual) {
+        localStorage.setItem(`lastCliente_${currentUser?.id}`, clienteAtual.id);
+      }
+      
+      updateClienteSelector();
+      closeDropdowns();
+      
+      // Recarregar conversas do cliente selecionado
+      await loadChats();
+      
+      // Mostrar mensagem de contexto
+      if (clienteAtual) {
+        const msg = `🔍 Contexto alterado para: **${clienteAtual.razao_social}** (CNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)})\n\n`;
+        addMessage(msg, false, 'medium');
+      }
+    }
+
+    function updateClienteSelector() {
+      const span = document.getElementById('clienteAtual');
+      if (clienteAtual) {
+        span.textContent = truncate(clienteAtual.razao_social, 25);
+        span.title = `${clienteAtual.razao_social}\nCNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)}`;
+      } else {
+        span.textContent = 'Selecionar Cliente';
+      }
+      renderClienteList(clientes);
+    }
+
+    function openClienteModal() {
+      document.getElementById('clienteForm').reset();
+      document.getElementById('clienteModal').classList.add('on');
+      closeDropdowns();
+    }
+
+    function closeClienteModal() {
+      document.getElementById('clienteModal').classList.remove('on');
+    }
+
+    async function salvarCliente() {
+      const cnpj = document.getElementById('clienteCnpj').value.replace(/\D/g, '');
+      const razao = document.getElementById('clienteRazao').value.trim();
+      
+      if (!cnpj || cnpj.length !== 14) {
+        alert('CNPJ inválido!');
+        return;
+      }
+      
+      if (!razao) {
+        alert('Razão Social é obrigatória!');
+        return;
+      }
+
+      const btn = document.getElementById('btnSalvarCliente');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Salvando...';
+      btn.disabled = true;
+
+      try {
+        const clienteData = {
+          user_id: currentUser.id,
+          cnpj: cnpj,
+          razao_social: razao,
+          nome_fantasia: document.getElementById('clienteFantasia').value.trim() || null,
+          inscricao_estadual: document.getElementById('clienteIE').value.trim() || null,
+          inscricao_municipal: document.getElementById('clienteIM').value.trim() || null,
+          regime_tributario: document.getElementById('clienteRegime').value || null,
+          updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await sb
+          .from('clientes')
+          .insert(clienteData)
+          .select()
+          .single();
+
+        if (error) {
+          if (error.code === '23505') {
+            throw new Error('CNPJ já cadastrado para este usuário');
+          }
+          throw error;
+        }
+
+        alert('✅ Cliente cadastrado com sucesso!');
+        
+        await carregarClientes();
+        await selecionarCliente(data.id);
+        
+        closeClienteModal();
+
+      } catch (error) {
+        console.error('Erro ao salvar cliente:', error);
+        alert('❌ Erro: ' + error.message);
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        lucide.createIcons();
+      }
+    }
+
+    function openClienteRelatorio() {
+      if (!clienteAtual) {
+        alert('Selecione um cliente primeiro');
+        return;
+      }
+      
+      showLearningStats();
+      closeDropdowns();
+    }
+
+    function formatarCNPJ(input) {
+      let v = input.value.replace(/\D/g, '');
+      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+      input.value = v;
+    }
+
+    function formatarCNPJDisplay(cnpj) {
+      if (!cnpj) return '';
+      const c = cnpj.replace(/\D/g, '');
+      return c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    }
+
+    function truncate(str, n) {
+      return (str && str.length > n) ? str.substr(0, n-1) + '…' : str;
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
     }
 
     // ============================================
@@ -1633,11 +1998,9 @@
       
       if (!currentChat.messages) return files;
       
-      // Percorrer TODAS as mensagens, não só as recentes
       currentChat.messages.forEach(msg => {
         if (msg.files && msg.files.length > 0) {
           msg.files.forEach(file => {
-            // Evitar duplicatas
             const exists = files.some(f => 
               f.name === file.name && f.size === file.size
             );
@@ -1663,7 +2026,6 @@
       context += `Total de ${allFiles.length} arquivo(s) anexado(s).\n\n`;
       context += '⚠️ **INSTRUÇÃO IMPORTANTE:** Use as informações dos arquivos abaixo para responder TODAS as perguntas do usuário sobre eles. Os arquivos permanecem disponíveis durante toda a conversa.\n\n';
       
-      // Incluir TODOS os arquivos
       allFiles.forEach((file, index) => {
         context += `--- ARQUIVO ${index + 1}: ${file.name} ---\n`;
         
@@ -1671,10 +2033,9 @@
           context += `Tipo: ${file.summary}\n`;
         }
         
-        // INCLUIR O CONTEÚDO COMPLETO (limitado a 4000 caracteres por arquivo)
         if (file.content) {
           const content = file.content.length > 4000 
-            ? file.content.substring(0, 4000) + '... (conteúdo truncado por limite de tamanho)'
+            ? file.content.substring(0, 4000) + '... (conteúdo truncado)'
             : file.content;
           context += `CONTEÚDO:\n${content}\n`;
         }
@@ -1738,6 +2099,7 @@
             tokens_utilizados: tokens || null,
             modelo_utilizado: modelo || null,
             user_id: currentUser?.id || null,
+            cliente_id: clienteAtual?.id || null, // <- ADICIONADO
             data_interacao: new Date().toISOString()
           };
 
@@ -1812,6 +2174,7 @@
               fonte: 'chat_com_feedback',
               qualidade: 5,
               user_id: currentUser?.id || null,
+              cliente_id: clienteAtual?.id || null, // <- ADICIONADO
               data_criacao: new Date().toISOString()
             });
 
@@ -1822,32 +2185,22 @@
         }
       }
 
-      async buscarEstatisticas() {
-        try {
-          const { data, error } = await this.supabase
-            .from('estatisticas_aprendizado')
-            .select('*')
-            .order('data', { ascending: false })
-            .limit(7);
-
-          if (error) throw error;
-          return data || [];
-
-        } catch (error) {
-          console.error('❌ Erro ao buscar estatísticas:', error);
-          return [];
-        }
-      }
-
       async buscarContextoRAG(pergunta) {
         try {
           const tags = this.extrairTags(pergunta);
 
-          const { data: interacoes } = await this.supabase
+          let query = this.supabase
             .from('interacoes_chat')
             .select('pergunta, resposta, feedback_usuario, tags_pergunta')
             .gte('feedback_usuario', 4)
-            .not('resposta', 'is', null)
+            .not('resposta', 'is', null);
+          
+          // Filtrar por cliente atual se existir
+          if (clienteAtual?.id) {
+            query = query.eq('cliente_id', clienteAtual.id);
+          }
+
+          const { data: interacoes } = await query
             .order('feedback_usuario', { ascending: false })
             .limit(10);
 
@@ -1932,7 +2285,8 @@
               conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
               resumo: fileData.summary || null,
               tags_extraidas: tags.length > 0 ? tags : null,
-              user_id: currentUser?.id || null
+              user_id: currentUser?.id || null,
+              cliente_id: clienteAtual?.id || null // <- ADICIONADO
             })
             .select('id')
             .single();
@@ -1956,10 +2310,17 @@
           const tags = this.extrairTags(pergunta);
           if (tags.length === 0) return null;
 
-          const { data } = await this.supabase
+          let query = this.supabase
             .from('documentos_analisados')
             .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id')
-            .not('conteudo_extraido', 'is', null)
+            .not('conteudo_extraido', 'is', null);
+          
+          // Filtrar por cliente atual se existir
+          if (clienteAtual?.id) {
+            query = query.eq('cliente_id', clienteAtual.id);
+          }
+
+          const { data } = await query
             .order('data_upload', { ascending: false })
             .limit(20);
 
@@ -1989,24 +2350,6 @@
         } catch (error) {
           console.error('❌ Erro no RAG de documentos:', error);
           return null;
-        }
-      }
-
-      async buscarMelhoresPerguntas(limite = 5) {
-        try {
-          const { data, error } = await this.supabase
-            .from('interacoes_chat')
-            .select('pergunta, feedback_usuario')
-            .not('feedback_usuario', 'is', null)
-            .order('feedback_usuario', { ascending: false })
-            .limit(limite);
-
-          if (error) throw error;
-          return data || [];
-
-        } catch (error) {
-          console.error('❌ Erro ao buscar melhores perguntas:', error);
-          return [];
         }
       }
     }
@@ -2075,38 +2418,46 @@
     }
 
     async function showLearningStats() {
+      if (!clienteAtual) {
+        alert('Selecione um cliente primeiro');
+        return;
+      }
+
       const [stats, melhoresPerguntas, countRAG, countDocs, countTreinamento] = await Promise.all([
         learningService.buscarEstatisticas(),
-        learningService.buscarMelhoresPerguntas(5),
-        sb.from('interacoes_chat').select('id', { count: 'exact', head: true }).gte('feedback_usuario', 4),
-        sb.from('documentos_analisados').select('id', { count: 'exact', head: true }),
-        sb.from('dados_treinamento').select('id', { count: 'exact', head: true })
+        sb.from('interacoes_chat')
+          .select('pergunta, feedback_usuario')
+          .eq('cliente_id', clienteAtual.id)
+          .not('feedback_usuario', 'is', null)
+          .order('feedback_usuario', { ascending: false })
+          .limit(5),
+        sb.from('interacoes_chat')
+          .select('id', { count: 'exact', head: true })
+          .eq('cliente_id', clienteAtual.id)
+          .gte('feedback_usuario', 4),
+        sb.from('documentos_analisados')
+          .select('id', { count: 'exact', head: true })
+          .eq('cliente_id', clienteAtual.id),
+        sb.from('dados_treinamento')
+          .select('id', { count: 'exact', head: true })
+          .eq('cliente_id', clienteAtual.id)
       ]);
 
       let statsHTML = '<div class="stats-card">';
-
+      
       statsHTML += `
+        <h3 style="margin-bottom:12px">📊 ${clienteAtual.razao_social}</h3>
+        <p style="font-size:12px;color:var(--text-light);margin-bottom:12px">
+          CNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)} • ${clienteAtual.regime_tributario || 'Regime não informado'}
+        </p>
         <div class="stats-item"><span>🧠 Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
         <div class="stats-item"><span>📎 Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
         <div class="stats-item"><span>📚 Base de treinamento</span><strong>${countTreinamento.count || 0} registros</strong></div>
       `;
 
-      if (stats.length > 0) {
-        statsHTML += '<h4 style="margin-top:14px">📊 Últimos 7 dias</h4>';
-        stats.forEach(s => {
-          statsHTML += `
-            <div class="stats-item">
-              <span>${new Date(s.data).toLocaleDateString('pt-BR')}</span>
-              <span>${s.total_interacoes || 0} perguntas | ${s.taxa_acerto_media?.toFixed(1) || 0}% acerto</span>
-            </div>`;
-        });
-      } else {
-        statsHTML += '<p style="padding:8px 0;font-size:13px;color:var(--text-light)">Nenhuma estatística ainda. Continue usando o chat!</p>';
-      }
-
-      if (melhoresPerguntas.length > 0) {
+      if (melhoresPerguntas.data && melhoresPerguntas.data.length > 0) {
         statsHTML += '<h4 style="margin-top:14px">🏆 Melhores feedbacks</h4>';
-        melhoresPerguntas.forEach(p => {
+        melhoresPerguntas.data.forEach(p => {
           statsHTML += `
             <div class="stats-item">
               <span>${p.pergunta.substring(0, 50)}...</span>
@@ -2124,6 +2475,10 @@
     function closeLearningStats() {
       document.getElementById('learningStatsModal').classList.remove('on');
     }
+
+    // ============================================
+    // FUNÇÕES DE AUTENTICAÇÃO
+    // ============================================
 
     window.onload = async () => {
       lucide.createIcons();
@@ -2151,6 +2506,7 @@
       document.getElementById('userEmail').textContent =
         currentUser?.email?.split('@')[0] || 'usuário';
       checkConnection();
+      carregarClientes(); // <- CHAMADA ADICIONADA
       loadChats();
       checkDeadlines();
       updateBadges();
@@ -2160,6 +2516,8 @@
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('userEmail').textContent = '—';
       allChats = [];
+      clientes = [];
+      clienteAtual = null;
       currentChat = { id: null, title: 'Nova Conversa', messages: [] };
       document.getElementById('hList').innerHTML = '';
       document.getElementById('msgs').innerHTML = `
@@ -2171,7 +2529,6 @@
       lucide.createIcons();
     }
 
-    // ====== FUNÇÕES DE AUTENTICAÇÃO ======
     function switchAuthTab(tab) {
       document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
       document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
@@ -2258,10 +2615,19 @@
 
     async function loadChats() {
       try {
-        const { data, error } = await sb
+        let query = sb
           .from('chats')
           .select('*')
           .order('created_at', { ascending: false });
+        
+        // Filtrar por cliente se selecionado
+        if (clienteAtual?.id) {
+          query = query.eq('cliente_id', clienteAtual.id);
+        } else {
+          query = query.is('cliente_id', null);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -2337,7 +2703,8 @@
         const chatData = {
           title: currentChat.title || 'Nova Conversa',
           messages: currentChat.messages,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          cliente_id: clienteAtual?.id || null  // <- ADICIONADO
         };
 
         if (currentChat.id) {
@@ -2356,6 +2723,7 @@
               title: chatData.title,
               messages: chatData.messages,
               user_id: currentUser?.id || null,
+              cliente_id: clienteAtual?.id || null,  // <- ADICIONADO
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -2397,6 +2765,11 @@
     }
 
     function newChat() {
+      if (!clienteAtual) {
+        alert('Selecione um cliente antes de iniciar uma nova conversa');
+        return;
+      }
+
       currentChat = { id: null, title: 'Nova Conversa', messages: [] };
       document.getElementById('msgs').innerHTML = `
         <div class="empty">
@@ -2544,14 +2917,6 @@
       return t;
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      return text.replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
-    }
-
     function showTypingIndicator() {
       hideTypingIndicator();
 
@@ -2604,8 +2969,12 @@
       const hasFiles = currentFiles.length > 0;
 
       if (!text && !hasFiles) return;
+      
+      if (!clienteAtual) {
+        alert('Selecione um cliente antes de enviar mensagens');
+        return;
+      }
 
-      // Verificar rate limit — mostrar countdown e reenviar automaticamente
       if (Date.now() < rateLimitUntil) {
         const waitMs = rateLimitUntil - Date.now();
         const waitSeconds = Math.ceil(waitMs / 1000);
@@ -2622,7 +2991,6 @@
         localStorage.setItem('userStats', JSON.stringify(userStats));
         updateBadges();
 
-        // Preparar mensagem do usuário
         let messageContent = text || '📎 Arquivos enviados para análise fiscal';
         
         if (currentFiles.length > 0) {
@@ -2637,14 +3005,13 @@
 
         addMessage(messageContent, true, 'medium', null, null, currentFiles);
 
-        // Salvar arquivos na mensagem — limitar conteúdo para não estourar o JSONB do Supabase
         const filesParaSalvar = currentFiles.map(f => ({
           name: f.name,
           type: f.type,
           size: f.size,
           summary: f.summary || '',
           content: f.content ? f.content.substring(0, 3000) : '',
-          raw: null // não salvar base64 de imagens no banco
+          raw: null
         }));
 
         const userMessage = {
@@ -2662,12 +3029,10 @@
           await saveChat();
         }
 
-        // CRIAR CONTEXTO DOS ARQUIVOS (TODOS OS ARQUIVOS DA CONVERSA)
         const fileContext = createFileContext();
 
         showTypingIndicator();
 
-        // Buscar contexto RAG (sem timeout, deixar executar em background)
         const ragPromise = Promise.all([
           learningService.buscarContextoRAG(text || '').catch(() => null),
           learningService.buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
@@ -2676,13 +3041,11 @@
         let ragInteracoes = null;
         let ragDocumentos = null;
 
-        // Não esperar pelo RAG, executar em background
         ragPromise.then(([r1, r2]) => {
           ragInteracoes = r1;
           ragDocumentos = r2;
         }).catch(() => {});
 
-        // Sistema prompt com instruções EXPLÍCITAS
         const SYS = `Você é um especialista fiscal brasileiro sênior.
 
 ⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
@@ -2694,7 +3057,6 @@
 
 ${fileContext}`.substring(0, 6000);
 
-        // Preparar mensagens (últimas 8 para manter contexto)
         const recentChatMessages = currentChat.messages.slice(-8).map(m => ({
           role: m.role,
           content: m.role === 'user' && m.files ?
@@ -2707,7 +3069,6 @@ ${fileContext}`.substring(0, 6000);
           ...recentChatMessages
         ];
 
-        // Tentar com modelo atual, se falhar tentar próximo
         let data = null;
         let attempts = 0;
         const maxAttempts = MODELS.length * 2;
@@ -2731,7 +3092,6 @@ ${fileContext}`.substring(0, 6000);
             });
 
             if (res.status === 429) {
-              // Rate limit - mudar para próximo modelo
               console.log(`Rate limit no modelo ${model}, tentando próximo...`);
               currentModelIndex++;
               attempts++;
@@ -2740,8 +3100,7 @@ ${fileContext}`.substring(0, 6000);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 continue;
               } else {
-                // Todos os modelos falharam
-                rateLimitUntil = Date.now() + 30000; // Bloquear por 30 segundos
+                rateLimitUntil = Date.now() + 30000;
                 throw new Error('Todos os modelos estão em rate limit. Aguarde 30 segundos.');
               }
             }
@@ -2753,14 +3112,12 @@ ${fileContext}`.substring(0, 6000);
             
             data = await res.json();
             
-            // Resetar erros consecutivos em caso de sucesso
             consecutiveErrors = 0;
             
           } catch (error) {
             console.error(`Erro com modelo ${model}:`, error);
             consecutiveErrors++;
             
-            // Se muitos erros consecutivos, mudar de modelo
             if (consecutiveErrors >= 2) {
               currentModelIndex++;
               consecutiveErrors = 0;
@@ -2785,7 +3142,6 @@ ${fileContext}`.substring(0, 6000);
         const reply = data.choices[0].message.content;
         const confidence = calculateConfidence(reply);
 
-        // Registrar interação (opcional)
         let interacaoId = null;
         try {
           interacaoId = await learningService.registrarInteracao(
@@ -2818,6 +3174,7 @@ ${fileContext}`.substring(0, 6000);
         saveChat().catch(e => console.error('Erro ao salvar chat:', e));
         
         inp.value = '';
+        removeAllFiles();
 
       } catch (e) {
         console.error('❌ Erro detalhado:', e);
@@ -2864,7 +3221,9 @@ ${fileContext}`.substring(0, 6000);
           const fileData = await processFile(file);
           currentFiles.push(fileData);
 
-          learningService.salvarDocumento(currentChat.id, fileData);
+          if (clienteAtual) {
+            learningService.salvarDocumento(currentChat.id, fileData);
+          }
 
           userStats.filesAnalyzed++;
           localStorage.setItem('userStats', JSON.stringify(userStats));
@@ -3187,16 +3546,25 @@ ${fileContext}`.substring(0, 6000);
         return;
       }
 
+      let header = '';
+      if (clienteAtual) {
+        header = `CLIENTE: ${clienteAtual.razao_social} (CNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)})\n`;
+        header += `REGIME: ${clienteAtual.regime_tributario || 'Não informado'}\n`;
+        header += '='.repeat(50) + '\n\n';
+      }
+
       const chatText = currentChat.messages.map(msg => {
         const role = msg.role === 'user' ? '👤 USUÁRIO' : '🤖 ASSISTENTE';
         return `${role}:\n${msg.content}\n`;
       }).join('\n' + '='.repeat(50) + '\n\n');
 
-      const blob = new Blob([chatText], { type: 'text/plain;charset=utf-8' });
+      const fullText = header + chatText;
+
+      const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `conversa_${new Date().toISOString().slice(0, 10)}.txt`;
+      a.download = `conversa_${clienteAtual?.cnpj || 'sem_cliente'}_${new Date().toISOString().slice(0, 10)}.txt`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -3206,8 +3574,19 @@ ${fileContext}`.substring(0, 6000);
       const userMessages = currentChat.messages?.filter(m => m.role === 'user').length || 0;
       const assistantMessages = currentChat.messages?.filter(m => m.role === 'assistant').length || 0;
 
+      let clienteInfo = '';
+      if (clienteAtual) {
+        clienteInfo = `
+          <div class="stats-item" style="background:var(--accent);color:var(--user-text);margin-bottom:12px;border-radius:8px;">
+            <span>👥 Cliente atual</span>
+            <strong>${clienteAtual.razao_social}</strong>
+          </div>
+        `;
+      }
+
       const statsHTML = `
         <div class="stats-card">
+          ${clienteInfo}
           <div class="stats-item">
             <span>💬 Total de mensagens</span>
             <strong>${totalMessages}</strong>
@@ -3255,6 +3634,7 @@ ${fileContext}`.substring(0, 6000);
       const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
       sharedChats[token] = {
         chat: currentChat,
+        cliente: clienteAtual,
         expires: Date.now() + (24 * 60 * 60 * 1000)
       };
       localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
