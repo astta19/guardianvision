@@ -1187,10 +1187,28 @@
       -webkit-overflow-scrolling: touch;
     }
 
-    @media (max-width: 480px) {
-      #clientModal { align-items: flex-end; padding: 0; }
-      .client-modal-box { border-radius: 16px 16px 0 0; max-height: 90vh; padding: 20px 16px; }
+    @media (max-width: 600px) {
+      #clientModal {
+        align-items: flex-end;
+        justify-content: stretch;
+        padding: 0;
+      }
+      .client-modal-box {
+        border-radius: 20px 20px 0 0;
+        max-height: 88vh;
+        min-height: 40vh;
+        padding: 20px 16px 32px;
+        width: 100%;
+        max-width: 100%;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+        animation: slideUp 0.28s cubic-bezier(0.32,0.72,0,1);
+      }
       .form-field input, .form-field select { font-size: 16px; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
     }
     .client-modal-head {
       display: flex;
@@ -1514,7 +1532,7 @@
         </div>
         <div class="form-field">
           <label>CNPJ *</label>
-          <input type="text" id="fCnpj" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)">
+          <input type="text" id="fCnpj" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)" onblur="autoPreencherCNPJ(this.value)">
         </div>
         <div class="form-field">
           <label>Nome Fantasia</label>
@@ -1785,6 +1803,51 @@
 
     function isAdmin() {
       return currentUser?.user_metadata?.role === 'admin';
+    }
+
+    // ====== CONSULTA CNPJ (Brasil API) ======
+    function extrairCNPJ(texto) {
+      const match = texto.match(/\d{2}[\.\-]?\d{3}[\.\-]?\d{3}[\/]?\d{4}[\-]?\d{2}/);
+      if (!match) return null;
+      return match[0].replace(/\D/g, '');
+    }
+
+    async function consultarCNPJ(cnpj) {
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        if (!res.ok) return null;
+        const d = await res.json();
+        return d;
+      } catch {
+        return null;
+      }
+    }
+
+    function formatarDadosCNPJ(d) {
+      if (!d) return null;
+      const situacao = d.descricao_situacao_cadastral || 'Não informado';
+      const atividade = d.cnae_fiscal_descricao || d.atividade_principal?.[0]?.text || 'Não informado';
+      const socios = d.qsa?.map(s => `${s.nome_socio} (${s.qualificacao_socio})`).join(', ') || 'Não informado';
+      const endereco = [d.logradouro, d.numero, d.complemento, d.bairro, d.municipio, d.uf]
+        .filter(Boolean).join(', ');
+
+      return `DADOS DA RECEITA FEDERAL — CNPJ ${d.cnpj}:
+- Razão Social: ${d.razao_social}
+- Nome Fantasia: ${d.nome_fantasia || '—'}
+- Situação Cadastral: ${situacao}
+- Data Abertura: ${d.data_inicio_atividade || '—'}
+- Atividade Principal: ${atividade}
+- Natureza Jurídica: ${d.natureza_juridica || '—'}
+- Capital Social: R$ ${Number(d.capital_social || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}
+- Endereço: ${endereco || '—'}
+- Município/UF: ${d.municipio || '—'}/${d.uf || '—'}
+- CEP: ${d.cep || '—'}
+- Telefone: ${d.ddd_telefone_1 ? `(${d.ddd_telefone_1}) ${d.telefone_1}` : '—'}
+- E-mail: ${d.email || '—'}
+- Sócios/Administradores: ${socios}
+- Porte: ${d.porte || '—'}
+- Optante Simples Nacional: ${d.opcao_pelo_simples ? 'Sim' : 'Não'}
+- Optante MEI: ${d.opcao_pelo_mei ? 'Sim' : 'Não'}`;
     }
 
     async function supabaseProxy(action, payload) {
@@ -2546,6 +2609,41 @@
       input.value = v;
     }
 
+    async function autoPreencherCNPJ(valor) {
+      const cnpj = valor.replace(/\D/g, '');
+      if (cnpj.length !== 14) return;
+
+      const msgEl = document.getElementById('clientFormMsg');
+      msgEl.textContent = 'Consultando Receita Federal...';
+      msgEl.className = 'auth-msg';
+
+      const dados = await consultarCNPJ(cnpj);
+      if (!dados) {
+        msgEl.textContent = 'CNPJ não encontrado na Receita Federal.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      // Preencher campos automaticamente
+      const razao = document.getElementById('fRazao');
+      const fantasia = document.getElementById('fFantasia');
+
+      if (!razao.value) razao.value = dados.razao_social || '';
+      if (!fantasia.value) fantasia.value = dados.nome_fantasia || '';
+
+      // Detectar regime pelo Simples/MEI
+      const regime = document.getElementById('fRegime');
+      if (!regime.value) {
+        if (dados.opcao_pelo_mei) regime.value = 'MEI';
+        else if (dados.opcao_pelo_simples) regime.value = 'Simples Nacional';
+      }
+
+      const situacao = dados.descricao_situacao_cadastral || '';
+      const cor = situacao.toLowerCase().includes('ativa') ? 'success' : 'error';
+      msgEl.textContent = `Situação: ${situacao}`;
+      msgEl.className = `auth-msg ${cor}`;
+    }
+
     async function saveNewClient() {
       const razao = document.getElementById('fRazao').value.trim();
       const cnpj = document.getElementById('fCnpj').value.trim();
@@ -2560,18 +2658,44 @@
         return;
       }
 
-      const { data, error } = await sb.from('clientes').insert({
+      const btn = document.querySelector('#newClientForm .btn-save');
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+
+      // Insert separado do select — evita conflito com RLS policy de SELECT
+      const { error: insertError } = await sb.from('clientes').insert({
         razao_social: razao,
         cnpj: cnpj,
         nome_fantasia: fantasia || null,
         regime_tributario: regime || null,
         inscricao_estadual: ie || null,
         user_id: currentUser.id
-      }).select().single();
+      });
 
-      if (error) {
-        msgEl.textContent = error.message.includes('duplicate') ? 'CNPJ já cadastrado.' : 'Erro ao salvar. Tente novamente.';
+      btn.disabled = false;
+      btn.textContent = 'Salvar Empresa';
+
+      if (insertError) {
+        const msg = insertError.message.includes('duplicate') || insertError.code === '23505'
+          ? 'CNPJ já cadastrado para este usuário.'
+          : `Erro ao salvar: ${insertError.message}`;
+        msgEl.textContent = msg;
         msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      // Buscar o registro recém-inserido para ter o ID
+      const { data: novo, error: selectError } = await sb
+        .from('clientes')
+        .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+        .eq('cnpj', cnpj)
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (selectError || !novo) {
+        // Insert funcionou mas não conseguiu buscar — recarregar lista
+        await loadClientes();
+        closeClientModal();
         return;
       }
 
@@ -2579,7 +2703,7 @@
       ['fRazao','fCnpj','fFantasia','fIE'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('fRegime').value = '';
       toggleNewClientForm();
-      setCurrentCliente(data);
+      setCurrentCliente(novo);
       closeClientModal();
       newChat();
     }
@@ -3116,13 +3240,31 @@
           ragDocumentos = r2;
         }).catch(() => {});
 
+        // Consultar CNPJ se detectado na mensagem
+        let cnpjCtx = '';
+        const cnpjDetectado = text ? extrairCNPJ(text) : null;
+        if (cnpjDetectado) {
+          addMessage('Consultando CNPJ na Receita Federal...', false, 'low');
+          const dadosCNPJ = await consultarCNPJ(cnpjDetectado);
+          const formatado = formatarDadosCNPJ(dadosCNPJ);
+          if (formatado) {
+            cnpjCtx = `
+
+${formatado}`;
+            // Remover mensagem de loading
+            const msgs = document.getElementById('msgs');
+            const ultimo = msgs.querySelector('.msg-row:last-child');
+            if (ultimo) ultimo.remove();
+          }
+        }
+
         // Sistema prompt personalizado por cliente
         const clienteCtx = currentCliente
           ? `\n\nEMPRESA ATIVA:\n- Razão Social: ${currentCliente.razao_social}\n- CNPJ: ${currentCliente.cnpj}\n- Regime Tributário: ${currentCliente.regime_tributario || 'Não informado'}\n- Nome Fantasia: ${currentCliente.nome_fantasia || '-'}\nResponda sempre no contexto desta empresa.`
           : '';
 
         // Sistema prompt com instruções EXPLÍCITAS
-        const SYS = `Você é um especialista fiscal brasileiro sênior.${clienteCtx}
+        const SYS = `Você é um especialista fiscal brasileiro sênior.${clienteCtx}${cnpjCtx}
 
 ⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
 1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS NESTA CONVERSA"
