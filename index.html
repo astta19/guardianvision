@@ -1181,9 +1181,16 @@
       padding: 24px;
       width: 100%;
       max-width: 480px;
-      max-height: 80vh;
+      max-height: 85vh;
       overflow-y: auto;
       box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 480px) {
+      #clientModal { align-items: flex-end; padding: 0; }
+      .client-modal-box { border-radius: 16px 16px 0 0; max-height: 90vh; padding: 20px 16px; }
+      .form-field input, .form-field select { font-size: 16px; }
     }
     .client-modal-head {
       display: flex;
@@ -1365,6 +1372,27 @@
     }
     .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    .auth-link-btn {
+      width: 100%;
+      padding: 10px;
+      background: none;
+      border: none;
+      color: var(--text-light);
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 6px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .auth-link-btn:hover { color: var(--accent); }
+
+    @media (max-width: 480px) {
+      #authScreen { padding: 16px; align-items: flex-start; padding-top: 40px; }
+      .auth-box { padding: 24px 18px; border-radius: 12px; }
+      .auth-field input { font-size: 16px; }
+      .auth-btn { font-size: 16px; padding: 15px; min-height: 52px; }
+    }
+
     .auth-msg {
       margin-top: 12px;
       padding: 10px 14px;
@@ -1399,17 +1427,12 @@
 <body>
 
   <!-- TELA DE AUTENTICAÇÃO -->
-  <div id="authScreen">
+    <div id="authScreen">
     <div class="auth-box">
       <div class="auth-logo">
-        <i data-lucide="shield-check" style="width:40px;height:40px;color:var(--accent)"></i>
+        <i data-lucide="shield-check" style="width:36px;height:36px;color:var(--accent)"></i>
         <h2>Chat Fiscal Pro</h2>
-        <p>Acesso exclusivo para colaboradores</p>
-      </div>
-
-      <div class="auth-tabs">
-        <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
-        <button class="auth-tab" onclick="switchAuthTab('register')">Criar conta</button>
+        <p id="authSubtitle">Acesso exclusivo para colaboradores</p>
       </div>
 
       <!-- LOGIN -->
@@ -1424,76 +1447,48 @@
             onkeypress="if(event.key==='Enter') doLogin()">
         </div>
         <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
+        <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
         <div class="auth-msg" id="loginMsg"></div>
       </div>
 
-      <!-- CADASTRO -->
-      <div id="registerForm" style="display:none">
+      <!-- DEFINIR SENHA (convite / primeiro acesso) -->
+      <div id="setPasswordForm" style="display:none">
         <div class="auth-field">
-          <label>Nome completo</label>
-          <input type="text" id="regName" placeholder="Seu nome">
+          <label>Nova senha</label>
+          <input type="password" id="newPassword" placeholder="Mín. 8 caracteres" autocomplete="new-password">
         </div>
+        <div class="auth-field">
+          <label>Confirmar senha</label>
+          <input type="password" id="confirmPassword" placeholder="Repita a senha" autocomplete="new-password"
+            onkeypress="if(event.key==='Enter') doSetPassword()">
+        </div>
+        <button class="auth-btn" onclick="doSetPassword()" id="setPasswordBtn">Definir senha e entrar</button>
+        <div class="auth-msg" id="setPasswordMsg"></div>
+      </div>
+
+      <!-- RECUPERAR SENHA -->
+      <div id="resetForm" style="display:none">
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;line-height:1.6">
+          Digite seu e-mail e enviaremos um link para redefinir sua senha.
+        </p>
         <div class="auth-field">
           <label>E-mail</label>
-          <input type="email" id="regEmail" placeholder="seu@email.com" autocomplete="email">
+          <input type="email" id="resetEmail" placeholder="seu@email.com" autocomplete="email"
+            onkeypress="if(event.key==='Enter') doReset()">
         </div>
-        <div class="auth-field">
-          <label>Senha</label>
-          <input type="password" id="regPassword" placeholder="Mín. 6 caracteres" autocomplete="new-password"
-            onkeypress="if(event.key==='Enter') doRegister()">
-        </div>
-        <button class="auth-btn" onclick="doRegister()" id="registerBtn">Criar conta</button>
-        <div class="auth-msg" id="registerMsg"></div>
+        <button class="auth-btn" onclick="doReset()" id="resetBtn">Enviar link</button>
+        <button class="auth-link-btn" onclick="showAuthState('login')">← Voltar ao login</button>
+        <div class="auth-msg" id="resetMsg"></div>
       </div>
-    </div>
-  </div>
 
-  <!-- MODAL DE CLIENTES -->
-  <div id="clientModal" class="hidden">
-    <div class="client-modal-box">
-      <div class="client-modal-head">
-        <h3>🏢 Selecionar Empresa</h3>
-        <button class="btn-close" onclick="closeClientModal()"><i data-lucide="x"></i></button>
-      </div>
-      <div id="clientList" class="client-list">
-        <p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Carregando...</p>
-      </div>
-      <button class="btn-add-client" onclick="toggleNewClientForm()">
-        <i data-lucide="plus"></i> Cadastrar nova empresa
-      </button>
-      <div id="newClientForm">
-        <div class="form-sep"></div>
-        <div class="form-field">
-          <label>Razão Social *</label>
-          <input type="text" id="fRazao" placeholder="Empresa Ltda">
-        </div>
-        <div class="form-field">
-          <label>CNPJ *</label>
-          <input type="text" id="fCnpj" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)">
-        </div>
-        <div class="form-field">
-          <label>Nome Fantasia</label>
-          <input type="text" id="fFantasia" placeholder="Nome fantasia (opcional)">
-        </div>
-        <div class="form-field">
-          <label>Regime Tributário</label>
-          <select id="fRegime">
-            <option value="">Selecione...</option>
-            <option value="Simples Nacional">Simples Nacional</option>
-            <option value="Lucro Presumido">Lucro Presumido</option>
-            <option value="Lucro Real">Lucro Real</option>
-            <option value="MEI">MEI</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Inscrição Estadual</label>
-          <input type="text" id="fIE" placeholder="Opcional">
-        </div>
-        <div class="form-actions">
-          <button class="btn-cancel" onclick="toggleNewClientForm()">Cancelar</button>
-          <button class="btn-save" onclick="saveNewClient()">Salvar Empresa</button>
-        </div>
-        <div id="clientFormMsg" class="auth-msg"></div>
+      <!-- CONFIRMAÇÃO ENVIADA -->
+      <div id="confirmSentForm" style="display:none;text-align:center;padding:8px 0">
+        <div style="font-size:48px;margin-bottom:12px">📧</div>
+        <p style="font-weight:600;margin-bottom:8px" id="confirmSentTitle">Link enviado!</p>
+        <p style="font-size:13px;color:var(--text-light);line-height:1.6" id="confirmSentText">
+          Verifique sua caixa de entrada e clique no link para continuar.
+        </p>
+        <button class="auth-link-btn" style="margin-top:16px" onclick="showAuthState('login')">← Voltar ao login</button>
       </div>
     </div>
   </div>
@@ -2348,6 +2343,23 @@
       lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
 
+      // Detectar tokens de convite ou reset na URL (Supabase envia via hash)
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.replace('#', '?'));
+      const tokenType = params.get('type');
+
+      if (tokenType === 'invite' || tokenType === 'recovery') {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          currentUser = session.user;
+          window.history.replaceState(null, '', window.location.pathname);
+          document.getElementById('authScreen').classList.remove('hidden');
+          showAuthState('setPassword',
+            tokenType === 'invite' ? 'Bem-vindo! Defina sua senha de acesso' : 'Redefina sua senha');
+          return;
+        }
+      }
+
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         currentUser = session.user;
@@ -2356,6 +2368,13 @@
 
       sb.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
+          currentUser = session.user;
+          const setPassVisible = document.getElementById('setPasswordForm')?.style.display !== 'none';
+          if (!setPassVisible) showApp();
+        } else if (event === 'PASSWORD_RECOVERY') {
+          currentUser = session?.user || null;
+          showAuthState('setPassword', 'Redefina sua senha');
+        } else if (event === 'USER_UPDATED' && session) {
           currentUser = session.user;
           showApp();
         } else if (event === 'SIGNED_OUT') {
@@ -2382,8 +2401,10 @@
 
     function showAuthScreen() {
       document.getElementById('authScreen').classList.remove('hidden');
+      showAuthState('login');
       document.getElementById('userEmail').textContent = '—';
       allChats = [];
+      currentCliente = null;
       currentChat = { id: null, title: 'Nova Conversa', messages: [] };
       document.getElementById('hList').innerHTML = '';
       document.getElementById('msgs').innerHTML = `
@@ -2535,18 +2556,26 @@
     }
 
     // ====== FUNÇÕES DE AUTENTICAÇÃO ======
-    function switchAuthTab(tab) {
-      document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
-      document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
-      document.querySelectorAll('.auth-tab').forEach((t, i) => {
-        t.classList.toggle('active', (i === 0) === (tab === 'login'));
-      });
-    }
-
     function setAuthMsg(id, msg, type) {
       const el = document.getElementById(id);
+      if (!el) return;
       el.textContent = msg;
       el.className = `auth-msg ${type}`;
+    }
+
+    function showAuthState(state, subtitle) {
+      const forms = ['loginForm', 'setPasswordForm', 'resetForm', 'confirmSentForm'];
+      forms.forEach(f => { const el = document.getElementById(f); if (el) el.style.display = 'none'; });
+      const subtitles = {
+        login: 'Acesso exclusivo para colaboradores',
+        setPassword: 'Defina sua senha para ativar o acesso',
+        reset: 'Recuperação de senha',
+        confirmSent: ''
+      };
+      document.getElementById('authSubtitle').textContent = subtitle || subtitles[state] || '';
+      const map = { login: 'loginForm', setPassword: 'setPasswordForm', reset: 'resetForm', confirmSent: 'confirmSentForm' };
+      const el = document.getElementById(map[state]);
+      if (el) el.style.display = 'block';
     }
 
     async function doLogin() {
@@ -2564,37 +2593,57 @@
       btn.textContent = 'Entrar';
 
       if (error) {
-        const msg = error.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : error.message;
+        const msg = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
+          ? 'E-mail ou senha incorretos.'
+          : error.message.includes('Email not confirmed')
+          ? 'Confirme seu e-mail antes de entrar.'
+          : 'Erro ao entrar. Tente novamente.';
         setAuthMsg('loginMsg', msg, 'error');
       }
     }
 
-    async function doRegister() {
-      const name = document.getElementById('regName').value.trim();
-      const email = document.getElementById('regEmail').value.trim();
-      const password = document.getElementById('regPassword').value;
+    async function doReset() {
+      const email = document.getElementById('resetEmail').value.trim();
+      if (!email) return setAuthMsg('resetMsg', 'Informe seu e-mail.', 'error');
 
-      if (!name || !email || !password) return setAuthMsg('registerMsg', 'Preencha todos os campos.', 'error');
-      if (password.length < 6) return setAuthMsg('registerMsg', 'Senha deve ter mínimo 6 caracteres.', 'error');
-
-      const btn = document.getElementById('registerBtn');
+      const btn = document.getElementById('resetBtn');
       btn.disabled = true;
-      btn.textContent = 'Criando conta...';
+      btn.textContent = 'Enviando...';
 
-      const { error } = await sb.auth.signUp({
-        email,
-        password,
-        options: { data: { name } }
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin
       });
 
       btn.disabled = false;
-      btn.textContent = 'Criar conta';
+      btn.textContent = 'Enviar link';
 
       if (error) {
-        setAuthMsg('registerMsg', error.message, 'error');
+        setAuthMsg('resetMsg', 'Erro ao enviar. Verifique o e-mail informado.', 'error');
       } else {
-        setAuthMsg('registerMsg', 'Conta criada! Verifique seu e-mail para confirmar.', 'success');
+        document.getElementById('confirmSentTitle').textContent = 'Link de recuperação enviado!';
+        document.getElementById('confirmSentText').textContent =
+          'Verifique sua caixa de entrada e clique no link para redefinir sua senha.';
+        showAuthState('confirmSent');
       }
+    }
+
+    async function doSetPassword() {
+      const password = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('confirmPassword').value;
+      if (!password || !confirm) return setAuthMsg('setPasswordMsg', 'Preencha os dois campos.', 'error');
+      if (password.length < 8) return setAuthMsg('setPasswordMsg', 'Senha deve ter mínimo 8 caracteres.', 'error');
+      if (password !== confirm) return setAuthMsg('setPasswordMsg', 'As senhas não coincidem.', 'error');
+
+      const btn = document.getElementById('setPasswordBtn');
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+
+      const { error } = await sb.auth.updateUser({ password });
+
+      btn.disabled = false;
+      btn.textContent = 'Definir senha e entrar';
+
+      if (error) setAuthMsg('setPasswordMsg', 'Erro ao definir senha. Tente novamente.', 'error');
     }
 
     async function doLogout() {
