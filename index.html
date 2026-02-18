@@ -144,6 +144,123 @@
       min-height: 48px;
     }
 
+    .cliente-selector {
+      margin-top: 10px;
+    }
+
+    .cliente-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .cliente-header span {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-icon-small {
+      width: 28px;
+      height: 28px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+
+    .btn-icon-small:hover {
+      background: var(--accent);
+      color: var(--user-text);
+      border-color: var(--accent);
+    }
+
+    .cliente-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .cliente-tab {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-light);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .cliente-tab.active {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .cliente-item {
+      padding: 12px;
+      margin-bottom: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cliente-item:hover {
+      border-color: var(--accent);
+    }
+
+    .cliente-item.on {
+      background: var(--accent);
+      color: var(--user-text);
+      border-color: var(--accent);
+    }
+
+    .cliente-item.on .cliente-cnpj {
+      color: var(--user-text);
+      opacity: 0.8;
+    }
+
+    .cliente-razao {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cliente-cnpj {
+      font-size: 11px;
+      color: var(--text-light);
+    }
+
+    .cliente-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     .sb-search {
       position: relative;
     }
@@ -930,7 +1047,8 @@
     #calcModal,
     #statsModal,
     #shareModal,
-    #learningStatsModal {
+    #learningStatsModal,
+    #clienteModal {
       display: none;
       position: fixed;
       inset: 0;
@@ -943,7 +1061,8 @@
     #calcModal.on,
     #statsModal.on,
     #shareModal.on,
-    #learningStatsModal.on {
+    #learningStatsModal.on,
+    #clienteModal.on {
       display: flex;
     }
 
@@ -1315,6 +1434,22 @@
       <button class="btn-new" onclick="newChat()">
         <i data-lucide="plus"></i> Nova Conversa
       </button>
+      
+      <!-- NOVO: SELETOR DE CLIENTES -->
+      <div class="cliente-selector">
+        <div class="cliente-header">
+          <span>
+            <i data-lucide="building-2" style="width:14px;height:14px;"></i> CLIENTE ATUAL
+          </span>
+          <button class="btn-icon-small" onclick="openClienteModal()" title="Gerenciar clientes">
+            <i data-lucide="settings" style="width:14px;height:14px;"></i>
+          </button>
+        </div>
+        <select id="clienteSelect" class="c-inp" style="margin-bottom: 10px;" onchange="mudarCliente(this.value)">
+          <option value="">Selecione um cliente...</option>
+        </select>
+      </div>
+      
       <div class="sb-search">
         <i data-lucide="search"></i>
         <input type="text" id="searchInput" placeholder="Buscar conversa..." oninput="filterChats()">
@@ -1536,6 +1671,97 @@
     </div>
   </div>
 
+  <!-- NOVO: MODAL DE CLIENTES -->
+  <div id="clienteModal">
+    <div class="m-box" style="max-width: 600px;">
+      <div class="m-head">
+        <span class="m-title">📋 Gerenciar Clientes</span>
+        <button class="btn-close" onclick="closeClienteModal()"><i data-lucide="x"></i></button>
+      </div>
+      
+      <div style="max-height: 70vh; overflow-y: auto; padding-right: 5px;">
+        <div class="cliente-tabs">
+          <button class="cliente-tab active" onclick="switchClienteTab('lista')">
+            <i data-lucide="list"></i> Lista de Clientes
+          </button>
+          <button class="cliente-tab" onclick="switchClienteTab('form')">
+            <i data-lucide="plus-circle"></i> Novo Cliente
+          </button>
+        </div>
+
+        <!-- Lista de Clientes -->
+        <div id="clienteLista" style="display: block;">
+          <div class="sb-search" style="margin-bottom: 15px;">
+            <i data-lucide="search"></i>
+            <input type="text" id="searchCliente" placeholder="Buscar cliente..." oninput="filtrarClientes()">
+          </div>
+          <div id="clientesContainer" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+
+        <!-- Formulário de Cliente -->
+        <div id="clienteForm" style="display: none;">
+          <form onsubmit="salvarCliente(event)">
+            <input type="hidden" id="clienteId">
+            
+            <p class="f-lbl">CNPJ *</p>
+            <input type="text" class="c-inp" id="clienteCnpj" required 
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')"
+                   maxlength="18" placeholder="00.000.000/0000-00">
+            
+            <p class="f-lbl">Razão Social *</p>
+            <input type="text" class="c-inp" id="clienteRazao" required>
+            
+            <p class="f-lbl">Nome Fantasia</p>
+            <input type="text" class="c-inp" id="clienteFantasia">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <p class="f-lbl">Inscrição Estadual</p>
+                <input type="text" class="c-inp" id="clienteIE">
+              </div>
+              <div>
+                <p class="f-lbl">Inscrição Municipal</p>
+                <input type="text" class="c-inp" id="clienteIM">
+              </div>
+            </div>
+            
+            <p class="f-lbl">Regime Tributário</p>
+            <select class="c-inp" id="clienteRegime">
+              <option value="">Selecione...</option>
+              <option value="simples_nacional">Simples Nacional</option>
+              <option value="lucro_presumido">Lucro Presumido</option>
+              <option value="lucro_real">Lucro Real</option>
+            </select>
+            
+            <p class="f-lbl">Contato</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+              <div>
+                <input type="text" class="c-inp" id="clienteContatoNome" placeholder="Nome" style="margin-bottom: 0;">
+              </div>
+              <div>
+                <input type="email" class="c-inp" id="clienteContatoEmail" placeholder="E-mail" style="margin-bottom: 0;">
+              </div>
+            </div>
+            
+            <input type="text" class="c-inp" id="clienteContatoTelefone" placeholder="Telefone">
+            
+            <p class="f-lbl">Observações</p>
+            <textarea class="c-inp" id="clienteObservacoes" rows="3" style="resize: vertical;"></textarea>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+              <button type="button" class="btn-calc" style="background: var(--bg); color: var(--text);" onclick="switchClienteTab('lista')">
+                Cancelar
+              </button>
+              <button type="submit" class="btn-calc" style="flex: 1;">
+                <i data-lucide="save"></i> Salvar Cliente
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <script>
@@ -1553,6 +1779,10 @@
       title: 'Nova Conversa',
       messages: []
     };
+
+    // NOVO: Variáveis para clientes
+    let clientes = [];
+    let currentCliente = null;
 
     let currentFiles = [];
     let isProcessingFile = false;
@@ -1592,6 +1822,252 @@
       'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
       'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
     };
+
+    // ============================================
+    // FUNÇÕES DE CLIENTES
+    // ============================================
+    async function carregarClientes() {
+      if (!currentUser) return;
+      
+      try {
+        const { data, error } = await sb
+          .from('clientes')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('razao_social');
+
+        if (error) throw error;
+        
+        clientes = data || [];
+        atualizarSelectClientes();
+        atualizarListaClientes();
+      } catch (e) {
+        console.error('Erro ao carregar clientes:', e);
+      }
+    }
+
+    function atualizarSelectClientes() {
+      const select = document.getElementById('clienteSelect');
+      const options = ['<option value="">Selecione um cliente...</option>'];
+      
+      clientes.forEach(c => {
+        options.push(`<option value="${c.id}" ${currentCliente?.id === c.id ? 'selected' : ''}>
+          ${c.razao_social} (${c.cnpj})
+        </option>`);
+      });
+      
+      select.innerHTML = options.join('');
+    }
+
+    function atualizarListaClientes() {
+      const container = document.getElementById('clientesContainer');
+      const termo = document.getElementById('searchCliente')?.value.toLowerCase() || '';
+      
+      const filtrados = clientes.filter(c => 
+        c.razao_social.toLowerCase().includes(termo) || 
+        c.cnpj.includes(termo) ||
+        (c.nome_fantasia && c.nome_fantasia.toLowerCase().includes(termo))
+      );
+      
+      if (filtrados.length === 0) {
+        container.innerHTML = '<p style="padding:16px;text-align:center;color:var(--text-light)">Nenhum cliente encontrado</p>';
+        return;
+      }
+      
+      container.innerHTML = filtrados.map(c => `
+        <div class="cliente-item ${currentCliente?.id === c.id ? 'on' : ''}" onclick="selecionarCliente('${c.id}')">
+          <div class="cliente-razao">${c.razao_social}</div>
+          <div class="cliente-cnpj">${c.cnpj} ${c.nome_fantasia ? `• ${c.nome_fantasia}` : ''}</div>
+          <div class="cliente-actions">
+            <button class="btn-icon-small" onclick="event.stopPropagation();editarCliente('${c.id}')" title="Editar">
+              <i data-lucide="edit-2" style="width:12px;height:12px"></i>
+            </button>
+            <button class="btn-icon-small" onclick="event.stopPropagation();excluirCliente('${c.id}')" title="Excluir">
+              <i data-lucide="trash-2" style="width:12px;height:12px"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+      
+      lucide.createIcons();
+    }
+
+    function filtrarClientes() {
+      atualizarListaClientes();
+    }
+
+    function openClienteModal() {
+      document.getElementById('clienteModal').classList.add('on');
+      carregarClientes();
+      switchClienteTab('lista');
+    }
+
+    function closeClienteModal() {
+      document.getElementById('clienteModal').classList.remove('on');
+      limparFormCliente();
+    }
+
+    function switchClienteTab(tab) {
+      document.getElementById('clienteLista').style.display = tab === 'lista' ? 'block' : 'none';
+      document.getElementById('clienteForm').style.display = tab === 'form' ? 'block' : 'none';
+      
+      document.querySelectorAll('.cliente-tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0) === (tab === 'lista'));
+      });
+      
+      if (tab === 'lista') {
+        limparFormCliente();
+        carregarClientes();
+      }
+    }
+
+    function limparFormCliente() {
+      document.getElementById('clienteId').value = '';
+      document.getElementById('clienteCnpj').value = '';
+      document.getElementById('clienteRazao').value = '';
+      document.getElementById('clienteFantasia').value = '';
+      document.getElementById('clienteIE').value = '';
+      document.getElementById('clienteIM').value = '';
+      document.getElementById('clienteRegime').value = '';
+      document.getElementById('clienteContatoNome').value = '';
+      document.getElementById('clienteContatoEmail').value = '';
+      document.getElementById('clienteContatoTelefone').value = '';
+      document.getElementById('clienteObservacoes').value = '';
+    }
+
+    async function salvarCliente(event) {
+      event.preventDefault();
+      
+      const clienteData = {
+        user_id: currentUser.id,
+        cnpj: document.getElementById('clienteCnpj').value.replace(/[^\d]/g, ''),
+        razao_social: document.getElementById('clienteRazao').value,
+        nome_fantasia: document.getElementById('clienteFantasia').value || null,
+        inscricao_estadual: document.getElementById('clienteIE').value || null,
+        inscricao_municipal: document.getElementById('clienteIM').value || null,
+        regime_tributario: document.getElementById('clienteRegime').value || null,
+        contato_nome: document.getElementById('clienteContatoNome').value || null,
+        contato_email: document.getElementById('clienteContatoEmail').value || null,
+        contato_telefone: document.getElementById('clienteContatoTelefone').value || null,
+        observacoes: document.getElementById('clienteObservacoes').value || null,
+        updated_at: new Date().toISOString()
+      };
+      
+      const clienteId = document.getElementById('clienteId').value;
+      
+      try {
+        if (clienteId) {
+          const { error } = await sb
+            .from('clientes')
+            .update(clienteData)
+            .eq('id', clienteId);
+            
+          if (error) throw error;
+        } else {
+          const { error } = await sb
+            .from('clientes')
+            .insert({
+              ...clienteData,
+              created_at: new Date().toISOString()
+            });
+            
+          if (error) throw error;
+        }
+        
+        await carregarClientes();
+        switchClienteTab('lista');
+        
+      } catch (e) {
+        console.error('Erro ao salvar cliente:', e);
+        alert('Erro ao salvar cliente: ' + e.message);
+      }
+    }
+
+    function editarCliente(id) {
+      const cliente = clientes.find(c => c.id === id);
+      if (!cliente) return;
+      
+      document.getElementById('clienteId').value = cliente.id;
+      document.getElementById('clienteCnpj').value = cliente.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      document.getElementById('clienteRazao').value = cliente.razao_social;
+      document.getElementById('clienteFantasia').value = cliente.nome_fantasia || '';
+      document.getElementById('clienteIE').value = cliente.inscricao_estadual || '';
+      document.getElementById('clienteIM').value = cliente.inscricao_municipal || '';
+      document.getElementById('clienteRegime').value = cliente.regime_tributario || '';
+      document.getElementById('clienteContatoNome').value = cliente.contato_nome || '';
+      document.getElementById('clienteContatoEmail').value = cliente.contato_email || '';
+      document.getElementById('clienteContatoTelefone').value = cliente.contato_telefone || '';
+      document.getElementById('clienteObservacoes').value = cliente.observacoes || '';
+      
+      switchClienteTab('form');
+    }
+
+    async function excluirCliente(id) {
+      if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+      
+      try {
+        const { error } = await sb
+          .from('clientes')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        
+        if (currentCliente?.id === id) {
+          currentCliente = null;
+          document.getElementById('clienteSelect').value = '';
+        }
+        
+        await carregarClientes();
+        
+      } catch (e) {
+        console.error('Erro ao excluir cliente:', e);
+        alert('Erro ao excluir cliente: ' + e.message);
+      }
+    }
+
+    function selecionarCliente(id) {
+      const cliente = clientes.find(c => c.id === id);
+      if (cliente) {
+        currentCliente = cliente;
+        document.getElementById('clienteSelect').value = cliente.id;
+        closeClienteModal();
+        
+        // Recarregar conversas filtradas por cliente
+        carregarChatsPorCliente(cliente.id);
+      }
+    }
+
+    function mudarCliente(id) {
+      if (!id) {
+        currentCliente = null;
+        carregarChats();
+        return;
+      }
+      
+      const cliente = clientes.find(c => c.id === id);
+      if (cliente) {
+        currentCliente = cliente;
+        carregarChatsPorCliente(cliente.id);
+      }
+    }
+
+    async function carregarChatsPorCliente(clienteId) {
+      try {
+        const { data, error } = await sb
+          .from('chats')
+          .select('*')
+          .eq('cliente_id', clienteId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        allChats = data || [];
+        renderHistoryList(allChats);
+      } catch (e) {
+        console.error('Erro ao carregar chats do cliente:', e);
+      }
+    }
 
     // ============================================
     // FUNÇÕES DE CACHE
@@ -1738,6 +2214,7 @@
             tokens_utilizados: tokens || null,
             modelo_utilizado: modelo || null,
             user_id: currentUser?.id || null,
+            cliente_id: currentCliente?.id || null, // NOVO: adicionar cliente_id
             data_interacao: new Date().toISOString()
           };
 
@@ -1843,13 +2320,20 @@
         try {
           const tags = this.extrairTags(pergunta);
 
-          const { data: interacoes } = await this.supabase
+          let query = this.supabase
             .from('interacoes_chat')
             .select('pergunta, resposta, feedback_usuario, tags_pergunta')
             .gte('feedback_usuario', 4)
             .not('resposta', 'is', null)
             .order('feedback_usuario', { ascending: false })
             .limit(10);
+
+          // Filtrar por cliente se selecionado
+          if (currentCliente) {
+            query = query.eq('cliente_id', currentCliente.id);
+          }
+
+          const { data: interacoes } = await query;
 
           const { data: treinamento } = await this.supabase
             .from('dados_treinamento')
@@ -1932,7 +2416,8 @@
               conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
               resumo: fileData.summary || null,
               tags_extraidas: tags.length > 0 ? tags : null,
-              user_id: currentUser?.id || null
+              user_id: currentUser?.id || null,
+              cliente_id: currentCliente?.id || null // NOVO: adicionar cliente_id
             })
             .select('id')
             .single();
@@ -1956,12 +2441,19 @@
           const tags = this.extrairTags(pergunta);
           if (tags.length === 0) return null;
 
-          const { data } = await this.supabase
+          let query = this.supabase
             .from('documentos_analisados')
             .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id')
             .not('conteudo_extraido', 'is', null)
             .order('data_upload', { ascending: false })
             .limit(20);
+
+          // Filtrar por cliente se selecionado
+          if (currentCliente) {
+            query = query.eq('cliente_id', currentCliente.id);
+          }
+
+          const { data } = await query;
 
           if (!data || data.length === 0) return null;
 
@@ -1994,12 +2486,19 @@
 
       async buscarMelhoresPerguntas(limite = 5) {
         try {
-          const { data, error } = await this.supabase
+          let query = this.supabase
             .from('interacoes_chat')
             .select('pergunta, feedback_usuario')
             .not('feedback_usuario', 'is', null)
             .order('feedback_usuario', { ascending: false })
             .limit(limite);
+
+          // Filtrar por cliente se selecionado
+          if (currentCliente) {
+            query = query.eq('cliente_id', currentCliente.id);
+          }
+
+          const { data, error } = await query;
 
           if (error) throw error;
           return data || [];
@@ -2133,12 +2632,14 @@
       if (session) {
         currentUser = session.user;
         showApp();
+        await carregarClientes(); // NOVO: carregar clientes
       }
 
       sb.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           currentUser = session.user;
           showApp();
+          carregarClientes(); // NOVO: carregar clientes
         } else if (event === 'SIGNED_OUT') {
           currentUser = null;
           showAuthScreen();
@@ -2258,10 +2759,17 @@
 
     async function loadChats() {
       try {
-        const { data, error } = await sb
+        let query = sb
           .from('chats')
           .select('*')
           .order('created_at', { ascending: false });
+
+        // Filtrar por cliente se selecionado
+        if (currentCliente) {
+          query = query.eq('cliente_id', currentCliente.id);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -2340,6 +2848,11 @@
           updated_at: new Date().toISOString()
         };
 
+        // Adicionar cliente_id se selecionado
+        if (currentCliente) {
+          chatData.cliente_id = currentCliente.id;
+        }
+
         if (currentChat.id) {
           const { error } = await sb
             .from('chats')
@@ -2356,6 +2869,7 @@
               title: chatData.title,
               messages: chatData.messages,
               user_id: currentUser?.id || null,
+              cliente_id: currentCliente?.id || null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -2683,7 +3197,7 @@
         }).catch(() => {});
 
         // Sistema prompt com instruções EXPLÍCITAS
-        const SYS = `Você é um especialista fiscal brasileiro sênior.
+        let SYS = `Você é um especialista fiscal brasileiro sênior.
 
 ⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
 1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS NESTA CONVERSA"
@@ -2693,6 +3207,15 @@
 5. Não diga que não pode analisar arquivos - você TEM acesso a eles
 
 ${fileContext}`.substring(0, 6000);
+
+        // Adicionar contexto do cliente se selecionado
+        if (currentCliente) {
+          const clienteInfo = `\n📋 **CLIENTE ATUAL:** ${currentCliente.razao_social} (CNPJ: ${currentCliente.cnpj})`;
+          if (currentCliente.regime_tributario) {
+            clienteInfo += `\nRegime Tributário: ${currentCliente.regime_tributario.replace('_', ' ')}`;
+          }
+          SYS += clienteInfo;
+        }
 
         // Preparar mensagens (últimas 8 para manter contexto)
         const recentChatMessages = currentChat.messages.slice(-8).map(m => ({
@@ -3187,7 +3710,15 @@ ${fileContext}`.substring(0, 6000);
         return;
       }
 
-      const chatText = currentChat.messages.map(msg => {
+      let chatText = '';
+      
+      // Adicionar informação do cliente no cabeçalho
+      if (currentCliente) {
+        chatText += `CLIENTE: ${currentCliente.razao_social} (${currentCliente.cnpj})\n`;
+        chatText += '='.repeat(50) + '\n\n';
+      }
+      
+      chatText += currentChat.messages.map(msg => {
         const role = msg.role === 'user' ? '👤 USUÁRIO' : '🤖 ASSISTENTE';
         return `${role}:\n${msg.content}\n`;
       }).join('\n' + '='.repeat(50) + '\n\n');
@@ -3196,7 +3727,7 @@ ${fileContext}`.substring(0, 6000);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `conversa_${new Date().toISOString().slice(0, 10)}.txt`;
+      a.download = `conversa_${currentCliente?.cnpj || 'geral'}_${new Date().toISOString().slice(0, 10)}.txt`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -3255,6 +3786,7 @@ ${fileContext}`.substring(0, 6000);
       const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
       sharedChats[token] = {
         chat: currentChat,
+        cliente: currentCliente, // Salvar informação do cliente
         expires: Date.now() + (24 * 60 * 60 * 1000)
       };
       localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
