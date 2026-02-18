@@ -1779,7 +1779,7 @@
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
     // Chave Groq removida — chamadas passam pela Netlify Function
 
-    const sb = window.supabase.createClient(SB_URL, SB_KEY);
+    let sb; // inicializado no window.onload após supabase-js carregar
     let currentUser = null;
     let currentCliente = null; // { id, razao_social, cnpj, regime_tributario, nome_fantasia }
 
@@ -2241,7 +2241,7 @@
       }
     }
 
-    const learningService = new FiscalLearningService(sb);
+    let learningService; // inicializado no window.onload
 
     // ============================================
     // FUNÇÕES DE FEEDBACK
@@ -2356,6 +2356,8 @@
     }
 
     window.onload = async () => {
+      sb = window.supabase.createClient(SB_URL, SB_KEY);
+      learningService = new FiscalLearningService(sb);
       lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
 
