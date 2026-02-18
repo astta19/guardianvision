@@ -2343,45 +2343,51 @@
       lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
 
-      // Detectar tokens de convite ou reset na URL (Supabase envia via hash)
-      const hash = window.location.hash;
-      const params = new URLSearchParams(hash.replace('#', '?'));
-      const tokenType = params.get('type');
-
-      if (tokenType === 'invite' || tokenType === 'recovery') {
-        const { data: { session } } = await sb.auth.getSession();
-        if (session) {
-          currentUser = session.user;
-          window.history.replaceState(null, '', window.location.pathname);
-          document.getElementById('authScreen').classList.remove('hidden');
-          showAuthState('setPassword',
-            tokenType === 'invite' ? 'Bem-vindo! Defina sua senha de acesso' : 'Redefina sua senha');
-          return;
-        }
-      }
-
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        showApp();
-      }
-
+      // Registrar listener ANTES de qualquer coisa — Supabase processa o hash automaticamente
       sb.auth.onAuthStateChange((event, session) => {
+        console.log('Auth event:', event);
+
         if (event === 'SIGNED_IN' && session) {
           currentUser = session.user;
           const setPassVisible = document.getElementById('setPasswordForm')?.style.display !== 'none';
           if (!setPassVisible) showApp();
-        } else if (event === 'PASSWORD_RECOVERY') {
-          currentUser = session?.user || null;
+
+        } else if (event === 'PASSWORD_RECOVERY' && session) {
+          // Token de recuperação de senha processado com sucesso
+          currentUser = session.user;
+          window.history.replaceState(null, '', window.location.pathname);
+          document.getElementById('authScreen').classList.remove('hidden');
           showAuthState('setPassword', 'Redefina sua senha');
+
         } else if (event === 'USER_UPDATED' && session) {
+          // Senha redefinida com sucesso
           currentUser = session.user;
           showApp();
+
         } else if (event === 'SIGNED_OUT') {
           currentUser = null;
           showAuthScreen();
         }
       });
+
+      // Verificar se há token de convite no hash (Supabase usa #access_token + type=invite)
+      const hash = window.location.hash;
+      if (hash.includes('type=invite')) {
+        // Supabase JS v2 processa o hash e dispara SIGNED_IN automaticamente
+        // Só precisamos mostrar a tela de definir senha quando o evento chegar
+        // Mas vamos garantir que a tela de auth está visível enquanto aguarda
+        document.getElementById('authScreen').classList.remove('hidden');
+        showAuthState('setPassword', 'Bem-vindo! Defina sua senha de acesso');
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
+
+      // Sessão normal (usuário já logado)
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        showApp();
+      }
     };
 
     function showApp() {
