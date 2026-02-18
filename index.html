@@ -1786,6 +1786,25 @@
     function isAdmin() {
       return currentUser?.user_metadata?.role === 'admin';
     }
+
+    async function supabaseProxy(action, payload) {
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Sessão inválida');
+
+      const res = await fetch('/.netlify/functions/supabase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload, token })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Erro ${res.status}`);
+      }
+
+      return res.json();
+    }
     let allChats = [];
     let currentChat = {
       id: null,
@@ -2019,38 +2038,26 @@
             .eq('id', interacaoId)
             .single();
 
-          if (error || !interacao) {
-            return;
-          }
+          if (error || !interacao) return;
 
-          await this.supabase
-            .from('dados_treinamento')
-            .insert({
-              pergunta: interacao.pergunta,
-              resposta: interacao.resposta,
-              fonte: 'chat_com_feedback',
-              qualidade: 5,
-              user_id: currentUser?.id || null,
-              cliente_id: currentCliente?.id || null,
-              data_criacao: new Date().toISOString()
-            });
-
+          await supabaseProxy('inserir_treinamento', {
+            pergunta: interacao.pergunta,
+            resposta: interacao.resposta,
+            fonte: 'chat_com_feedback',
+            qualidade: 5,
+            user_id: currentUser?.id || null,
+            cliente_id: currentCliente?.id || null
+          });
 
         } catch (error) {
+          // falha silenciosa — não impede o fluxo principal
         }
       }
 
       async buscarEstatisticas() {
         try {
-          const { data, error } = await this.supabase
-            .from('estatisticas_aprendizado')
-            .select('*')
-            .order('data', { ascending: false })
-            .limit(7);
-
-          if (error) throw error;
-          return data || [];
-
+          const data = await supabaseProxy('buscar_estatisticas', {});
+          return Array.isArray(data) ? data : [];
         } catch (error) {
           return [];
         }
@@ -2302,7 +2309,7 @@
         learningService.buscarMelhoresPerguntas(5),
         sb.from('interacoes_chat').select('id', { count: 'exact', head: true }).gte('feedback_usuario', 4),
         sb.from('documentos_analisados').select('id', { count: 'exact', head: true }),
-        sb.from('dados_treinamento').select('id', { count: 'exact', head: true })
+        supabaseProxy('buscar_treinamento_count', {}).catch(() => ({ count: 0 }))
       ]);
 
       let statsHTML = '<div class="stats-card">';
