@@ -1113,6 +1113,149 @@
       }
     }
 
+    /* ====== CLIENT SELECTOR ====== */
+    .client-selector {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      min-height: 40px;
+      transition: border-color 0.2s;
+    }
+    .client-selector:hover { border-color: var(--accent); }
+    .client-selector .client-name {
+      flex: 1;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .client-selector .client-regime {
+      font-size: 10px;
+      color: var(--text-light);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      white-space: nowrap;
+    }
+    .client-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--accent);
+      color: var(--user-text);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      max-width: 180px;
+      overflow: hidden;
+    }
+    .client-badge span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ====== CLIENT MODAL ====== */
+    #clientModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #clientModal.hidden { display: none; }
+    .client-modal-box {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+    .client-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .client-modal-head h3 { font-size: 17px; font-weight: 700; }
+    .client-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .client-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      gap: 10px;
+    }
+    .client-item:hover { border-color: var(--accent); background: var(--bg); }
+    .client-item.active { border-color: var(--accent); background: var(--bg); }
+    .client-item-info { flex: 1; min-width: 0; }
+    .client-item-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-item-cnpj { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+    .client-item-regime {
+      font-size: 10px;
+      padding: 2px 7px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-add-client {
+      width: 100%;
+      padding: 11px;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      background: none;
+      color: var(--text-light);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+    .btn-add-client:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ====== NEW CLIENT FORM ====== */
+    #newClientForm { display: none; }
+    #newClientForm.show { display: block; }
+    .form-sep { height: 1px; background: var(--border); margin: 16px 0; }
+    .form-field { margin-bottom: 12px; }
+    .form-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-field input, .form-field select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    .form-field input:focus, .form-field select:focus { border-color: var(--accent); }
+    .form-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .btn-save { flex: 1; padding: 11px; background: var(--accent); color: var(--user-text); border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+    .btn-cancel { padding: 11px 16px; border: 1px solid var(--border); border-radius: 8px; background: none; color: var(--text-light); cursor: pointer; font-size: 14px; }
+
     .disclaimer {
       font-size: 11px;
       color: var(--text-light);
@@ -1305,12 +1448,68 @@
     </div>
   </div>
 
+  <!-- MODAL DE CLIENTES -->
+  <div id="clientModal" class="hidden">
+    <div class="client-modal-box">
+      <div class="client-modal-head">
+        <h3>🏢 Selecionar Empresa</h3>
+        <button class="btn-close" onclick="closeClientModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div id="clientList" class="client-list">
+        <p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Carregando...</p>
+      </div>
+      <button class="btn-add-client" onclick="toggleNewClientForm()">
+        <i data-lucide="plus"></i> Cadastrar nova empresa
+      </button>
+      <div id="newClientForm">
+        <div class="form-sep"></div>
+        <div class="form-field">
+          <label>Razão Social *</label>
+          <input type="text" id="fRazao" placeholder="Empresa Ltda">
+        </div>
+        <div class="form-field">
+          <label>CNPJ *</label>
+          <input type="text" id="fCnpj" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)">
+        </div>
+        <div class="form-field">
+          <label>Nome Fantasia</label>
+          <input type="text" id="fFantasia" placeholder="Nome fantasia (opcional)">
+        </div>
+        <div class="form-field">
+          <label>Regime Tributário</label>
+          <select id="fRegime">
+            <option value="">Selecione...</option>
+            <option value="Simples Nacional">Simples Nacional</option>
+            <option value="Lucro Presumido">Lucro Presumido</option>
+            <option value="Lucro Real">Lucro Real</option>
+            <option value="MEI">MEI</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Inscrição Estadual</label>
+          <input type="text" id="fIE" placeholder="Opcional">
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel" onclick="toggleNewClientForm()">Cancelar</button>
+          <button class="btn-save" onclick="saveNewClient()">Salvar Empresa</button>
+        </div>
+        <div id="clientFormMsg" class="auth-msg"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="overlay" onclick="closeSidebar()"></div>
 
   <aside id="sidebar">
     <div class="sb-head">
       <div class="sb-title">
         <i data-lucide="history"></i> Conversas
+      </div>
+      <!-- Seletor de empresa na sidebar -->
+      <div class="client-selector" onclick="openClientModal()" title="Trocar empresa">
+        <i data-lucide="building-2" style="width:16px;height:16px;flex-shrink:0;color:var(--accent)"></i>
+        <span class="client-name" id="sidebarClientName">Selecionar empresa...</span>
+        <i data-lucide="chevron-down" style="width:14px;height:14px;flex-shrink:0;color:var(--text-light)"></i>
       </div>
       <button class="btn-new" onclick="newChat()">
         <i data-lucide="plus"></i> Nova Conversa
@@ -1333,6 +1532,11 @@
         <div class="conn" id="conn">
           <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
           <span>Conectando...</span>
+        </div>
+        <!-- Cliente ativo no header -->
+        <div class="client-badge desktop-only" id="headerClientBadge" onclick="openClientModal()" title="Trocar empresa" style="display:none;cursor:pointer">
+          <i data-lucide="building-2" style="width:12px;height:12px;flex-shrink:0"></i>
+          <span id="headerClientName">—</span>
         </div>
         <!-- badges inline apenas desktop -->
         <div class="badges-container desktop-only" id="badgesContainer"></div>
@@ -1547,6 +1751,7 @@
 
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
     let currentUser = null;
+    let currentCliente = null; // { id, razao_social, cnpj, regime_tributario, nome_fantasia }
     let allChats = [];
     let currentChat = {
       id: null,
@@ -1738,6 +1943,7 @@
             tokens_utilizados: tokens || null,
             modelo_utilizado: modelo || null,
             user_id: currentUser?.id || null,
+            cliente_id: currentCliente?.id || null,
             data_interacao: new Date().toISOString()
           };
 
@@ -1812,6 +2018,7 @@
               fonte: 'chat_com_feedback',
               qualidade: 5,
               user_id: currentUser?.id || null,
+              cliente_id: currentCliente?.id || null,
               data_criacao: new Date().toISOString()
             });
 
@@ -1842,21 +2049,29 @@
       async buscarContextoRAG(pergunta) {
         try {
           const tags = this.extrairTags(pergunta);
+          const clienteId = currentCliente?.id || null;
 
-          const { data: interacoes } = await this.supabase
+          // RAG filtrado por cliente — aprende separado por empresa
+          let qInteracoes = this.supabase
             .from('interacoes_chat')
             .select('pergunta, resposta, feedback_usuario, tags_pergunta')
             .gte('feedback_usuario', 4)
             .not('resposta', 'is', null)
             .order('feedback_usuario', { ascending: false })
             .limit(10);
+          if (clienteId) qInteracoes = qInteracoes.eq('cliente_id', clienteId);
 
-          const { data: treinamento } = await this.supabase
+          let qTreinamento = this.supabase
             .from('dados_treinamento')
             .select('pergunta, resposta, qualidade')
             .gte('qualidade', 4)
             .order('qualidade', { ascending: false })
             .limit(10);
+          if (clienteId) qTreinamento = qTreinamento.eq('cliente_id', clienteId);
+
+          const [{ data: interacoes }, { data: treinamento }] = await Promise.all([
+            qInteracoes, qTreinamento
+          ]);
 
           const candidatos = [
             ...(interacoes || []).map(i => ({
@@ -1932,7 +2147,8 @@
               conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
               resumo: fileData.summary || null,
               tags_extraidas: tags.length > 0 ? tags : null,
-              user_id: currentUser?.id || null
+              user_id: currentUser?.id || null,
+              cliente_id: currentCliente?.id || null
             })
             .select('id')
             .single();
@@ -1956,12 +2172,15 @@
           const tags = this.extrairTags(pergunta);
           if (tags.length === 0) return null;
 
-          const { data } = await this.supabase
+          const clienteId = currentCliente?.id || null;
+          let qDocs = this.supabase
             .from('documentos_analisados')
-            .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id')
+            .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id, cliente_id')
             .not('conteudo_extraido', 'is', null)
             .order('data_upload', { ascending: false })
             .limit(20);
+          if (clienteId) qDocs = qDocs.eq('cliente_id', clienteId);
+          const { data } = await qDocs;
 
           if (!data || data.length === 0) return null;
 
@@ -2150,8 +2369,13 @@
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('userEmail').textContent =
         currentUser?.email?.split('@')[0] || 'usuário';
+
+      // Restaurar tema do usuário (user_metadata tem prioridade sobre localStorage)
+      const savedTheme = currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light';
+      setTheme(savedTheme);
+
       checkConnection();
-      loadChats();
+      loadClientes();
       checkDeadlines();
       updateBadges();
     }
@@ -2169,6 +2393,145 @@
           <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
         </div>`;
       lucide.createIcons();
+    }
+
+    // ====== FUNÇÕES DE CLIENTES ======
+    async function loadClientes() {
+      const { data, error } = await sb
+        .from('clientes')
+        .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+        .order('razao_social');
+      if (error) { console.error('Erro ao carregar clientes:', error); return; }
+
+      const clientes = data || [];
+
+      // Auto-selecionar se tiver só 1, ou restaurar último selecionado
+      const lastId = localStorage.getItem('lastClienteId');
+      const found = clientes.find(c => c.id === lastId);
+      if (found) {
+        setCurrentCliente(found);
+      } else if (clientes.length === 1) {
+        setCurrentCliente(clientes[0]);
+      } else if (clientes.length > 1) {
+        // Mostrar modal para escolher
+        openClientModal();
+      }
+
+      loadChats();
+    }
+
+    function setCurrentCliente(cliente) {
+      currentCliente = cliente;
+      localStorage.setItem('lastClienteId', cliente.id);
+
+      const displayName = cliente.nome_fantasia || cliente.razao_social;
+
+      // Atualizar UI
+      document.getElementById('sidebarClientName').textContent = displayName;
+      const badge = document.getElementById('headerClientBadge');
+      document.getElementById('headerClientName').textContent = displayName;
+      badge.style.display = 'flex';
+
+      // Recarregar chats filtrados
+      loadChats();
+    }
+
+    function openClientModal() {
+      document.getElementById('clientModal').classList.remove('hidden');
+      renderClientList();
+    }
+
+    function closeClientModal() {
+      document.getElementById('clientModal').classList.add('hidden');
+      document.getElementById('newClientForm').classList.remove('show');
+    }
+
+    async function renderClientList() {
+      const el = document.getElementById('clientList');
+      el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando...</p>';
+
+      const { data, error } = await sb
+        .from('clientes')
+        .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+        .order('razao_social');
+
+      if (error || !data?.length) {
+        el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Nenhuma empresa cadastrada ainda.</p>';
+        return;
+      }
+
+      el.innerHTML = data.map(c => `
+        <div class="client-item ${currentCliente?.id === c.id ? 'active' : ''}" onclick="selectCliente('${c.id}')">
+          <div class="client-item-info">
+            <div class="client-item-name">${c.razao_social}</div>
+            <div class="client-item-cnpj">CNPJ: ${c.cnpj}</div>
+          </div>
+          ${c.regime_tributario ? `<span class="client-item-regime">${c.regime_tributario}</span>` : ''}
+        </div>`).join('');
+
+      // Guardar lista para selectCliente usar
+      window._clientesList = data;
+      lucide.createIcons();
+    }
+
+    function selectCliente(id) {
+      const cliente = (window._clientesList || []).find(c => c.id === id);
+      if (!cliente) return;
+      setCurrentCliente(cliente);
+      closeClientModal();
+      newChat(); // iniciar nova conversa no contexto do cliente
+    }
+
+    function toggleNewClientForm() {
+      document.getElementById('newClientForm').classList.toggle('show');
+      document.getElementById('clientFormMsg').className = 'auth-msg';
+    }
+
+    function maskCnpj(input) {
+      let v = input.value.replace(/\D/g, '').substring(0, 14);
+      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+      input.value = v;
+    }
+
+    async function saveNewClient() {
+      const razao = document.getElementById('fRazao').value.trim();
+      const cnpj = document.getElementById('fCnpj').value.trim();
+      const fantasia = document.getElementById('fFantasia').value.trim();
+      const regime = document.getElementById('fRegime').value;
+      const ie = document.getElementById('fIE').value.trim();
+      const msgEl = document.getElementById('clientFormMsg');
+
+      if (!razao || !cnpj) {
+        msgEl.textContent = 'Razão social e CNPJ são obrigatórios.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      const { data, error } = await sb.from('clientes').insert({
+        razao_social: razao,
+        cnpj: cnpj,
+        nome_fantasia: fantasia || null,
+        regime_tributario: regime || null,
+        inscricao_estadual: ie || null,
+        user_id: currentUser.id
+      }).select().single();
+
+      if (error) {
+        msgEl.textContent = error.message.includes('duplicate') ? 'CNPJ já cadastrado.' : 'Erro ao salvar. Tente novamente.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      // Limpar form e selecionar novo cliente
+      ['fRazao','fCnpj','fFantasia','fIE'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('fRegime').value = '';
+      toggleNewClientForm();
+      setCurrentCliente(data);
+      closeClientModal();
+      newChat();
     }
 
     // ====== FUNÇÕES DE AUTENTICAÇÃO ======
@@ -2258,11 +2621,14 @@
 
     async function loadChats() {
       try {
-        const { data, error } = await sb
-          .from('chats')
-          .select('*')
-          .order('created_at', { ascending: false });
+        let query = sb.from('chats').select('*').order('created_at', { ascending: false });
 
+        // Filtrar por cliente se houver um selecionado
+        if (currentCliente?.id) {
+          query = query.eq('cliente_id', currentCliente.id);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
 
         allChats = data || [];
@@ -2356,6 +2722,7 @@
               title: chatData.title,
               messages: chatData.messages,
               user_id: currentUser?.id || null,
+              cliente_id: currentCliente?.id || null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
@@ -2682,8 +3049,13 @@
           ragDocumentos = r2;
         }).catch(() => {});
 
+        // Sistema prompt personalizado por cliente
+        const clienteCtx = currentCliente
+          ? `\n\nEMPRESA ATIVA:\n- Razão Social: ${currentCliente.razao_social}\n- CNPJ: ${currentCliente.cnpj}\n- Regime Tributário: ${currentCliente.regime_tributario || 'Não informado'}\n- Nome Fantasia: ${currentCliente.nome_fantasia || '-'}\nResponda sempre no contexto desta empresa.`
+          : '';
+
         // Sistema prompt com instruções EXPLÍCITAS
-        const SYS = `Você é um especialista fiscal brasileiro sênior.
+        const SYS = `Você é um especialista fiscal brasileiro sênior.${clienteCtx}
 
 ⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
 1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS NESTA CONVERSA"
@@ -3148,11 +3520,15 @@ ${fileContext}`.substring(0, 6000);
       }
     }
 
-    function toggleTheme() {
+    async function toggleTheme() {
       const current = document.documentElement.getAttribute('data-theme');
       const next = current === 'dark' ? 'light' : 'dark';
       localStorage.setItem('theme', next);
       setTheme(next);
+      // Salvar preferência no perfil do usuário (por usuário, não por dispositivo)
+      if (currentUser) {
+        await sb.auth.updateUser({ data: { theme: next } });
+      }
     }
 
     function openCalculator() {
