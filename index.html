@@ -1113,6 +1113,15 @@
       }
     }
 
+    .disclaimer {
+      font-size: 11px;
+      color: var(--text-light);
+      text-align: center;
+      padding: 6px 8px 0;
+      line-height: 1.5;
+      opacity: 0.8;
+    }
+
     @media (max-width: 768px) {
       .badges-container { display: none; }
       .desktop-only { display: none !important; }
@@ -1455,6 +1464,10 @@
       </div>
       <input type="file" id="fileInput" style="display: none;" multiple
         accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" onchange="handleMultipleFiles(event)">
+      <p class="disclaimer">
+        ⚠️ As respostas são geradas por inteligência artificial e podem conter erros. 
+        Sempre valide as informações com um contador responsável antes de tomar decisões fiscais.
+      </p>
     </div>
   </main>
 
@@ -1530,7 +1543,7 @@
 
     const SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
-    const GK = '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';
+    // Chave Groq removida — chamadas passam pela Netlify Function
 
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
     let currentUser = null;
@@ -1551,9 +1564,9 @@
 
     // Modelos disponíveis em ordem de preferência
     const MODELS = [
-      'llama-3.3-70b-versatile', // Mais capaz, mas rate limit mais restrito
-      'llama3-8b-8192',          // Mais leve, rate limit mais generoso
-      'mixtral-8x7b-32768'       // Fallback alternativo
+      'llama-3.3-70b-versatile',  // Principal — mais capaz
+      'llama-3.1-8b-instant',     // Fallback rápido — rate limit generoso
+      'llama3-8b-8192'            // Último fallback
     ];
 
     let currentModelIndex = 0;
@@ -2592,10 +2605,12 @@
 
       if (!text && !hasFiles) return;
 
-      // Verificar rate limit
+      // Verificar rate limit — mostrar countdown e reenviar automaticamente
       if (Date.now() < rateLimitUntil) {
-        const waitSeconds = Math.ceil((rateLimitUntil - Date.now()) / 1000);
-        addMessage(`⏳ Muitas requisições. Aguarde ${waitSeconds} segundos antes de enviar nova mensagem.`, false, 'low');
+        const waitMs = rateLimitUntil - Date.now();
+        const waitSeconds = Math.ceil(waitMs / 1000);
+        addMessage(`⏳ Limite temporário atingido. Reenviando automaticamente em ${waitSeconds}s...`, false, 'low');
+        setTimeout(() => send(), waitMs + 500);
         return;
       }
 
@@ -2622,10 +2637,20 @@
 
         addMessage(messageContent, true, 'medium', null, null, currentFiles);
 
+        // Salvar arquivos na mensagem — limitar conteúdo para não estourar o JSONB do Supabase
+        const filesParaSalvar = currentFiles.map(f => ({
+          name: f.name,
+          type: f.type,
+          size: f.size,
+          summary: f.summary || '',
+          content: f.content ? f.content.substring(0, 3000) : '',
+          raw: null // não salvar base64 de imagens no banco
+        }));
+
         const userMessage = {
           role: 'user',
           content: text || 'Arquivos enviados para análise fiscal',
-          files: [...currentFiles]
+          files: filesParaSalvar
         };
 
         if (!currentChat.messages) currentChat.messages = [];
@@ -2694,12 +2719,9 @@ ${fileContext}`.substring(0, 6000);
           try {
             console.log(`Tentando modelo: ${model} (tentativa ${attempts + 1})`);
             
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const res = await fetch('/.netlify/functions/chat', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${GK}`,
-                'Content-Type': 'application/json'
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 model: model,
                 temperature: 0.7,
