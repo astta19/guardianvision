@@ -1545,8 +1545,20 @@
     let isProcessingFile = false;
     let typingIndicator = null;
 
+    // Cache de respostas
     const responseCache = new Map();
-    const CACHE_DURATION = 5 * 60 * 1000;
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
+
+    // Modelos disponíveis em ordem de preferência
+    const MODELS = [
+      'llama-3.3-70b-versatile', // Mais capaz, mas rate limit mais restrito
+      'llama3-8b-8192',          // Mais leve, rate limit mais generoso
+      'mixtral-8x7b-32768'       // Fallback alternativo
+    ];
+
+    let currentModelIndex = 0;
+    let consecutiveErrors = 0;
+    let rateLimitUntil = 0;
 
     let userStats = JSON.parse(localStorage.getItem('userStats') || JSON.stringify({
       questions: 0,
@@ -1567,6 +1579,98 @@
       'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
       'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
     };
+
+    // ============================================
+    // FUNÇÕES DE CACHE
+    // ============================================
+    function getCacheKey(text, files) {
+      const fileInfo = files.map(f => `${f.name}_${f.size}`).join('|');
+      return `${text}_${fileInfo}`;
+    }
+
+    function getCachedResponse(key) {
+      if (responseCache.has(key)) {
+        const cached = responseCache.get(key);
+        if (Date.now() - cached.timestamp < CACHE_DURATION) {
+          console.log('✅ Resposta encontrada em cache');
+          return cached.data;
+        }
+        responseCache.delete(key);
+      }
+      return null;
+    }
+
+    function cacheResponse(key, data) {
+      responseCache.set(key, {
+        data,
+        timestamp: Date.now()
+      });
+      // Limitar tamanho do cache
+      if (responseCache.size > 50) {
+        const oldestKey = responseCache.keys().next().value;
+        responseCache.delete(oldestKey);
+      }
+    }
+
+    // ============================================
+    // FUNÇÃO PARA EXTRAIR TODOS OS ARQUIVOS DA CONVERSA
+    // ============================================
+    function getAllFilesFromChat() {
+      const files = [];
+      
+      if (!currentChat.messages) return files;
+      
+      // Percorrer TODAS as mensagens, não só as recentes
+      currentChat.messages.forEach(msg => {
+        if (msg.files && msg.files.length > 0) {
+          msg.files.forEach(file => {
+            // Evitar duplicatas
+            const exists = files.some(f => 
+              f.name === file.name && f.size === file.size
+            );
+            if (!exists) {
+              files.push(file);
+            }
+          });
+        }
+      });
+      
+      return files;
+    }
+
+    // ============================================
+    // FUNÇÃO PARA CRIAR CONTEXTO DOS ARQUIVOS
+    // ============================================
+    function createFileContext() {
+      const allFiles = getAllFilesFromChat();
+      
+      if (allFiles.length === 0) return '';
+      
+      let context = '\n📁 **ARQUIVOS DISPONÍVEIS NESTA CONVERSA:**\n';
+      context += `Total de ${allFiles.length} arquivo(s) anexado(s).\n\n`;
+      context += '⚠️ **INSTRUÇÃO IMPORTANTE:** Use as informações dos arquivos abaixo para responder TODAS as perguntas do usuário sobre eles. Os arquivos permanecem disponíveis durante toda a conversa.\n\n';
+      
+      // Incluir TODOS os arquivos
+      allFiles.forEach((file, index) => {
+        context += `--- ARQUIVO ${index + 1}: ${file.name} ---\n`;
+        
+        if (file.summary) {
+          context += `Tipo: ${file.summary}\n`;
+        }
+        
+        // INCLUIR O CONTEÚDO COMPLETO (limitado a 4000 caracteres por arquivo)
+        if (file.content) {
+          const content = file.content.length > 4000 
+            ? file.content.substring(0, 4000) + '... (conteúdo truncado por limite de tamanho)'
+            : file.content;
+          context += `CONTEÚDO:\n${content}\n`;
+        }
+        
+        context += '\n';
+      });
+      
+      return context;
+    }
 
     // ============================================
     // SERVIÇO DE APRENDIZADO FISCAL
@@ -1624,8 +1728,6 @@
             data_interacao: new Date().toISOString()
           };
 
-          console.log('📤 Inserindo dados:', dadosInsercao);
-
           const { data, error } = await this.supabase
             .from('interacoes_chat')
             .insert(dadosInsercao)
@@ -1634,9 +1736,6 @@
 
           if (error) {
             console.error('❌ Erro do Supabase:', error);
-            console.error('❌ Mensagem:', error.message);
-            console.error('❌ Código:', error.code);
-            console.error('❌ Detalhes:', error.details);
             return null;
           }
 
@@ -1658,8 +1757,6 @@
 
           const idString = String(interacaoId).trim();
           
-          console.log('📝 Registrando feedback:', { interacaoId: idString, nota });
-
           const { error } = await this.supabase
             .from('interacoes_chat')
             .update({ feedback_usuario: nota })
@@ -1729,7 +1826,6 @@
         }
       }
 
-      // Classificar tipo de documento fiscal
       async buscarContextoRAG(pergunta) {
         try {
           const tags = this.extrairTags(pergunta);
@@ -1740,14 +1836,14 @@
             .gte('feedback_usuario', 4)
             .not('resposta', 'is', null)
             .order('feedback_usuario', { ascending: false })
-            .limit(20);
+            .limit(10);
 
           const { data: treinamento } = await this.supabase
             .from('dados_treinamento')
             .select('pergunta, resposta, qualidade')
             .gte('qualidade', 4)
             .order('qualidade', { ascending: false })
-            .limit(20);
+            .limit(10);
 
           const candidatos = [
             ...(interacoes || []).map(i => ({
@@ -1778,7 +1874,7 @@
           const relevantes = pontuados
             .filter(c => c.score > 0)
             .sort((a, b) => b.score - a.score)
-            .slice(0, 3);
+            .slice(0, 2);
 
           if (relevantes.length === 0) return null;
 
@@ -1847,13 +1943,12 @@
           const tags = this.extrairTags(pergunta);
           if (tags.length === 0) return null;
 
-          // Buscar documentos com tags coincidentes — preferir do chat atual
           const { data } = await this.supabase
             .from('documentos_analisados')
             .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id')
             .not('conteudo_extraido', 'is', null)
             .order('data_upload', { ascending: false })
-            .limit(30);
+            .limit(20);
 
           if (!data || data.length === 0) return null;
 
@@ -1875,7 +1970,7 @@
           if (relevantes.length === 0) return null;
 
           return relevantes.map(d =>
-            `[${d.tipo_arquivo}] ${d.nome_arquivo}\n${(d.conteudo_extraido || '').substring(0, 600)}`
+            `[${d.tipo_arquivo}] ${d.nome_arquivo}\n${(d.conteudo_extraido || '').substring(0, 800)}`
           ).join('\n\n---\n\n');
 
         } catch (error) {
@@ -1906,7 +2001,7 @@
     const learningService = new FiscalLearningService(sb);
 
     // ============================================
-    // FUNÇÕES DE FEEDBACK CORRIGIDAS
+    // FUNÇÕES DE FEEDBACK
     // ============================================
     let ultimaInteracaoId = null;
 
@@ -1977,7 +2072,6 @@
 
       let statsHTML = '<div class="stats-card">';
 
-      // Resumo da memória RAG
       statsHTML += `
         <div class="stats-item"><span>🧠 Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
         <div class="stats-item"><span>📎 Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
@@ -2022,14 +2116,12 @@
       lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
 
-      // Verificar sessão existente
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         currentUser = session.user;
         showApp();
       }
 
-      // Listener de mudança de estado de auth
       sb.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           currentUser = session.user;
@@ -2054,7 +2146,6 @@
     function showAuthScreen() {
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('userEmail').textContent = '—';
-      // Limpar estado do chat
       allChats = [];
       currentChat = { id: null, title: 'Nova Conversa', messages: [] };
       document.getElementById('hList').innerHTML = '';
@@ -2319,16 +2410,20 @@
           </div>`;
       } else {
         currentChat.messages.forEach(msg => {
-          addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData, msg.interactionId);
+          if (msg.role === 'user' && msg.files && msg.files.length > 0) {
+            addMessage(msg.content, true, 'medium', null, null, msg.files);
+          } else {
+            addMessage(msg.content, msg.role === 'user', msg.confidence, msg.fileData, msg.interactionId);
+          }
         });
       }
       lucide.createIcons();
     }
 
     // ============================================
-    // FUNÇÃO ADD MESSAGE CORRIGIDA (COM INTERACTION ID)
+    // FUNÇÃO ADD MESSAGE - SUPORTA MÚLTIPLOS ARQUIVOS
     // ============================================
-    function addMessage(text, isUser, confidence = 'medium', fileData = null, interactionId = null) {
+    function addMessage(text, isUser, confidence = 'medium', fileData = null, interactionId = null, allFiles = null) {
       const container = document.getElementById('msgs');
       container.querySelector('.empty')?.remove();
 
@@ -2338,7 +2433,33 @@
       const formattedText = formatTextWithLinks(text);
 
       let fileHtml = '';
-      if (fileData) {
+      
+      if (allFiles && allFiles.length > 0) {
+        fileHtml = '<div class="multiple-files">';
+        allFiles.forEach(file => {
+          if (file.type?.startsWith('image/') && file.raw) {
+            fileHtml += `<img src="${file.raw}" class="file-preview" alt="${file.name}" style="max-width:100%; margin:5px 0;">`;
+          } else {
+            fileHtml += `
+              <div class="file-attachment" style="margin:5px 0;">
+                <i data-lucide="file-text"></i>
+                <span>
+                  <strong>${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)
+                  ${file.summary ? `<br><small>${file.summary}</small>` : ''}
+                </span>
+              </div>`;
+
+            if (file.content && !file.type?.startsWith('image/')) {
+              fileHtml += `
+                <div class="file-content-preview" style="margin-top:5px;">
+                  <strong>Preview:</strong><br>
+                  ${escapeHtml(file.content.substring(0, 300))}${file.content.length > 300 ? '...' : ''}
+                </div>`;
+            }
+          }
+        });
+        fileHtml += '</div>';
+      } else if (fileData) {
         if (fileData.type?.startsWith('image/') && fileData.raw) {
           fileHtml = `<img src="${fileData.raw}" class="file-preview" alt="${fileData.name}">`;
         } else {
@@ -2361,16 +2482,20 @@
         }
       }
 
-      // Footer com botão de feedback USANDO O INTERACTION ID
-      const hasInteraction = interactionId && interactionId !== 'null' && interactionId !== 'undefined' && interactionId.trim() !== '';
+      const hasValidInteraction = interactionId && 
+                                  interactionId !== 'null' && 
+                                  interactionId !== 'undefined' && 
+                                  String(interactionId).trim() !== '' &&
+                                  !String(interactionId).includes('error');
+
       const footer = !isUser ? `
         <div class="mfoot">
           <button class="btn-copy" onclick="copyMessage(this)">
             <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
           </button>
-          <button class="btn-feedback"
-            ${hasInteraction ? `onclick="mostrarFeedbackOptions('${interactionId}')"` : 'disabled style="opacity:0.4;cursor:not-allowed"'}
-            title="${hasInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
+          <button class="btn-feedback" id="feedback-btn-${interactionId || 'temp'}"
+            ${hasValidInteraction ? `onclick="mostrarFeedbackOptions('${interactionId}')"` : 'disabled style="opacity:0.4;cursor:not-allowed"'}
+            title="${hasValidInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
             <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
           </button>
           <span class="badge-conf badge ${confidence}">
@@ -2457,6 +2582,9 @@
       return 'medium';
     }
 
+    // ============================================
+    // FUNÇÃO SEND CORRIGIDA - COM MEMÓRIA PERMANENTE E FALLBACK DE MODELOS
+    // ============================================
     async function send() {
       const inp = document.getElementById('msgInput');
       const text = inp.value.trim();
@@ -2464,148 +2592,230 @@
 
       if (!text && !hasFiles) return;
 
+      // Verificar rate limit
+      if (Date.now() < rateLimitUntil) {
+        const waitSeconds = Math.ceil((rateLimitUntil - Date.now()) / 1000);
+        addMessage(`⏳ Muitas requisições. Aguarde ${waitSeconds} segundos antes de enviar nova mensagem.`, false, 'low');
+        return;
+      }
+
       document.getElementById('sendBtn').disabled = true;
       inp.disabled = true;
 
-      userStats.questions++;
-      localStorage.setItem('userStats', JSON.stringify(userStats));
-      updateBadges();
-
-      let messageContent = text || '📎 Arquivos enviados para análise fiscal';
-      if (currentFiles.length > 0) {
-        messageContent += `\n\n📎 Arquivos anexados (${currentFiles.length}):`;
-        currentFiles.forEach(file => {
-          messageContent += `\n- ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        });
-      }
-
-      addMessage(messageContent, true, 'medium', currentFiles[0]);
-
-      const userMessage = {
-        role: 'user',
-        content: text || 'Arquivos enviados para análise fiscal',
-        fileData: currentFiles.length > 0 ? currentFiles[0] : null,
-        files: [...currentFiles]
-      };
-
-      if (!currentChat.messages) currentChat.messages = [];
-      currentChat.messages.push(userMessage);
-
-      if (currentChat.messages.length === 1) {
-        currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) +
-          ((text || '').length > 50 ? '...' : '');
-        await saveChat();
-      }
-
-      let fileContext = '';
-      if (currentFiles.length > 0) {
-        fileContext = '\n\n📎 ARQUIVOS ANEXADOS:\n';
-        currentFiles.forEach((file, i) => {
-          fileContext += `\nARQUIVO ${i + 1}: ${file.name}\n`;
-          if (file.content) fileContext += `CONTEÚDO:\n${file.content}\n`;
-        });
-      }
-
-      showTypingIndicator();
-
       try {
-        // RAG: buscar contexto de interações e documentos salvos em paralelo
-        const [ragInteracoes, ragDocumentos] = await Promise.all([
-          learningService.buscarContextoRAG(text || ''),
-          learningService.buscarDocumentosRAG(text || '', currentChat.id)
+        userStats.questions++;
+        localStorage.setItem('userStats', JSON.stringify(userStats));
+        updateBadges();
+
+        // Preparar mensagem do usuário
+        let messageContent = text || '📎 Arquivos enviados para análise fiscal';
+        
+        if (currentFiles.length > 0) {
+          messageContent += '\n\n📎 **ARQUIVOS ANEXADOS:**';
+          currentFiles.forEach((file, index) => {
+            messageContent += `\n\n**Arquivo ${index + 1}:** ${file.name}`;
+            if (file.summary) {
+              messageContent += `\n*Tipo:* ${file.summary}`;
+            }
+          });
+        }
+
+        addMessage(messageContent, true, 'medium', null, null, currentFiles);
+
+        const userMessage = {
+          role: 'user',
+          content: text || 'Arquivos enviados para análise fiscal',
+          files: [...currentFiles]
+        };
+
+        if (!currentChat.messages) currentChat.messages = [];
+        currentChat.messages.push(userMessage);
+
+        if (currentChat.messages.length === 1) {
+          currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) +
+            ((text || '').length > 50 ? '...' : '');
+          await saveChat();
+        }
+
+        // CRIAR CONTEXTO DOS ARQUIVOS (TODOS OS ARQUIVOS DA CONVERSA)
+        const fileContext = createFileContext();
+
+        showTypingIndicator();
+
+        // Buscar contexto RAG (sem timeout, deixar executar em background)
+        const ragPromise = Promise.all([
+          learningService.buscarContextoRAG(text || '').catch(() => null),
+          learningService.buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
         ]);
 
-        let ragBloco = '';
-        if (ragInteracoes) ragBloco += `\n\nRESPOSTAS ANTERIORES RELEVANTES (bem avaliadas):\n${ragInteracoes}`;
-        if (ragDocumentos) ragBloco += `\n\nDOCUMENTOS FISCAIS DO HISTÓRICO:\n${ragDocumentos}`;
+        let ragInteracoes = null;
+        let ragDocumentos = null;
 
-        const SYS = `Você é um especialista fiscal brasileiro sênior. Responda de forma clara e técnica sobre ICMS, ISS, PIS, COFINS, IPI, Simples Nacional, Lucro Presumido, Lucro Real, SPED, CFOPs e legislação tributária. Inclua links oficiais ao final da resposta.${ragBloco}`;
+        // Não esperar pelo RAG, executar em background
+        ragPromise.then(([r1, r2]) => {
+          ragInteracoes = r1;
+          ragDocumentos = r2;
+        }).catch(() => {});
+
+        // Sistema prompt com instruções EXPLÍCITAS
+        const SYS = `Você é um especialista fiscal brasileiro sênior.
+
+⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
+1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS NESTA CONVERSA"
+2. Use o conteúdo destes arquivos para responder TODAS as perguntas do usuário
+3. Os arquivos permanecem disponíveis durante TODA a conversa
+4. Se o usuário perguntar sobre algo que está nos arquivos, cite o conteúdo relevante
+5. Não diga que não pode analisar arquivos - você TEM acesso a eles
+
+${fileContext}`.substring(0, 6000);
+
+        // Preparar mensagens (últimas 8 para manter contexto)
+        const recentChatMessages = currentChat.messages.slice(-8).map(m => ({
+          role: m.role,
+          content: m.role === 'user' && m.files ?
+            `${m.content}\n\n[Arquivos anexados nesta mensagem: ${m.files.map(f => f.name).join(', ')}]` :
+            m.content
+        }));
 
         const messagesToSend = [
           { role: 'system', content: SYS },
-          ...currentChat.messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.role === 'user' && m.files ?
-              `${m.content}\n\n[ARQUIVOS: ${m.files.map(f => f.name).join(', ')}]` :
-              m.content
-          }))
+          ...recentChatMessages
         ];
 
-        if (currentFiles.length > 0) {
-          messagesToSend[messagesToSend.length - 1].content += fileContext;
+        // Tentar com modelo atual, se falhar tentar próximo
+        let data = null;
+        let attempts = 0;
+        const maxAttempts = MODELS.length * 2;
+
+        while (attempts < maxAttempts && !data) {
+          const modelIndex = currentModelIndex % MODELS.length;
+          const model = MODELS[modelIndex];
+          
+          try {
+            console.log(`Tentando modelo: ${model} (tentativa ${attempts + 1})`);
+            
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${GK}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: model,
+                temperature: 0.7,
+                max_tokens: 2000,
+                messages: messagesToSend
+              })
+            });
+
+            if (res.status === 429) {
+              // Rate limit - mudar para próximo modelo
+              console.log(`Rate limit no modelo ${model}, tentando próximo...`);
+              currentModelIndex++;
+              attempts++;
+              
+              if (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+              } else {
+                // Todos os modelos falharam
+                rateLimitUntil = Date.now() + 30000; // Bloquear por 30 segundos
+                throw new Error('Todos os modelos estão em rate limit. Aguarde 30 segundos.');
+              }
+            }
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 100)}`);
+            }
+            
+            data = await res.json();
+            
+            // Resetar erros consecutivos em caso de sucesso
+            consecutiveErrors = 0;
+            
+          } catch (error) {
+            console.error(`Erro com modelo ${model}:`, error);
+            consecutiveErrors++;
+            
+            // Se muitos erros consecutivos, mudar de modelo
+            if (consecutiveErrors >= 2) {
+              currentModelIndex++;
+              consecutiveErrors = 0;
+            }
+            
+            attempts++;
+            
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            } else {
+              throw error;
+            }
+          }
         }
 
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${GK}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.7,
-            max_tokens: 2000,
-            messages: messagesToSend
-          })
-        });
+        if (!data?.choices?.[0]?.message) {
+          throw new Error('Não foi possível obter resposta após múltiplas tentativas');
+        }
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        
-        const data = await res.json();
         hideTypingIndicator();
 
         const reply = data.choices[0].message.content;
         const confidence = calculateConfidence(reply);
-        const tokens = data.usage?.total_tokens || 0;
 
-        if (reply.length > 100 && !reply.includes('erro')) {
-          userStats.correctAnswers++;
-          localStorage.setItem('userStats', JSON.stringify(userStats));
-          updateBadges();
+        // Registrar interação (opcional)
+        let interacaoId = null;
+        try {
+          interacaoId = await learningService.registrarInteracao(
+            currentChat.id,
+            text || 'Arquivos enviados',
+            reply,
+            data.usage?.total_tokens || 0,
+            MODELS[currentModelIndex % MODELS.length]
+          );
+        } catch (e) {
+          console.error('Erro ao registrar interação:', e);
         }
 
-        // ============================================
-        // REGISTRAR INTERAÇÃO E GUARDAR O ID
-        // ============================================
-        console.log('🔄 Tentando registrar interação...');
-        const interacaoId = await learningService.registrarInteracao(
-          currentChat.id,
-          text || 'Arquivos enviados',
-          reply,
-          tokens,
-          'llama-3.3-70b-versatile'
-        );
-
-        // Criar mensagem do assistente COM O ID DA INTERAÇÃO
         const assistantMessage = {
           role: 'assistant',
           content: reply,
           confidence,
-          interactionId: interacaoId || null
+          interactionId: interacaoId
         };
 
         currentChat.messages.push(assistantMessage);
-        
-        // Passar o interactionId para a função addMessage
         addMessage(reply, false, confidence, null, interacaoId);
 
         if (interacaoId) {
-          console.log('✅ Interação registrada com sucesso! ID:', interacaoId);
           setTimeout(() => {
             mostrarFeedbackOptions(interacaoId);
           }, 1500);
-        } else {
-          console.log('❌ Falha ao registrar interação — feedback desabilitado para esta resposta');
         }
 
-        await saveChat();
-        removeAllFiles();
+        saveChat().catch(e => console.error('Erro ao salvar chat:', e));
+        
         inp.value = '';
 
       } catch (e) {
-        hideTypingIndicator();
         console.error('❌ Erro detalhado:', e);
-        addMessage('❌ Erro ao processar. Tente novamente.', false, 'low');
+        hideTypingIndicator();
+        
+        let errorMessage = '❌ ';
+        
+        if (e.message.includes('429') || e.message.includes('rate limit')) {
+          errorMessage = '❌ Limite de requisições excedido. Aguarde 30 segundos e tente novamente.';
+          rateLimitUntil = Date.now() + 30000;
+        } else if (e.message.includes('500') || e.message.includes('503')) {
+          errorMessage = '❌ Serviço temporariamente indisponível. Tente novamente em alguns instantes.';
+        } else if (e.message.includes('401')) {
+          errorMessage = '❌ Erro de autenticação. Recarregue a página.';
+        } else {
+          errorMessage = '❌ Erro ao processar. Tente novamente.';
+        }
+        
+        addMessage(errorMessage, false, 'low');
+        
       } finally {
         document.getElementById('sendBtn').disabled = false;
         inp.disabled = false;
@@ -2632,7 +2842,6 @@
           const fileData = await processFile(file);
           currentFiles.push(fileData);
 
-          // Salvar documento no banco para RAG futuro
           learningService.salvarDocumento(currentChat.id, fileData);
 
           userStats.filesAnalyzed++;
@@ -2685,13 +2894,13 @@
               const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
 
               let text = '';
-              for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+              for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
                 text += textContent.items.map(item => item.str).join(' ') + '\n';
               }
 
-              content = text.substring(0, 3000);
+              content = text.substring(0, 5000);
               summary = `📄 PDF com ${pdf.numPages} página(s)`;
 
               if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
@@ -2702,11 +2911,11 @@
               const data = new Uint8Array(e.target.result);
               const workbook = XLSX.read(data, { type: 'array' });
               const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-              content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 3000);
+              content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 5000);
               summary = `📊 Planilha com ${workbook.SheetNames.length} aba(s)`;
 
             } else if (fileType.includes('text') || fileName.match(/\.(txt|csv)$/i)) {
-              content = e.target.result.substring(0, 3000);
+              content = e.target.result.substring(0, 5000);
               summary = '📝 Arquivo de texto';
 
             } else if (fileType.includes('image')) {
@@ -2845,13 +3054,11 @@
 
       const earned = userStats.badges;
 
-      // Desktop: badges inline
       const container = document.getElementById('badgesContainer');
       container.innerHTML = earned.map(key =>
         `<span class="badge" title="${badges[key].name}">${badges[key].icon} ${badges[key].name}</span>`
       ).join('');
 
-      // Mobile: dropdown de conquistas
       const dropContent = document.getElementById('badgesDropdownContent');
       const trophyCount = document.getElementById('trophyCount');
       if (dropContent) {
@@ -2872,7 +3079,6 @@
       localStorage.setItem('userStats', JSON.stringify(userStats));
     }
 
-    // Gerenciamento dos dropdowns do header
     function toggleDropdown(id) {
       const target = document.getElementById(id);
       const isOpen = target.classList.contains('on');
