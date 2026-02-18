@@ -1429,12 +1429,11 @@
           <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
           <span>Conectando...</span>
         </div>
-        <!-- badges inline apenas desktop -->
         <div class="badges-container desktop-only" id="badgesContainer"></div>
       </div>
 
       <div class="c-right">
-        <!-- SELETOR DE CLIENTES - NOVO -->
+        <!-- SELETOR DE CLIENTES -->
         <div class="cliente-selector dropdown-wrap">
           <button class="cliente-btn" onclick="toggleDropdown('clienteDropdown')" title="Selecionar cliente">
             <i data-lucide="building-2"></i>
@@ -1452,13 +1451,9 @@
             <button class="menu-item" onclick="openClienteModal()">
               <i data-lucide="plus-circle"></i> Novo Cliente
             </button>
-            <button class="menu-item" onclick="openClienteRelatorio()">
-              <i data-lucide="bar-chart-2"></i> Relatório do Cliente
-            </button>
           </div>
         </div>
 
-        <!-- Botões sempre visíveis -->
         <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
           <i data-lucide="calculator"></i>
         </button>
@@ -1466,7 +1461,6 @@
           <i data-lucide="moon" id="themeIcon"></i>
         </button>
 
-        <!-- Troféu de conquistas — só mobile -->
         <div class="dropdown-wrap mobile-only">
           <button class="icon-btn" onclick="toggleDropdown('trophyDropdown')" title="Conquistas" id="trophyBtn">
             <i data-lucide="trophy"></i>
@@ -1474,13 +1468,10 @@
           </button>
           <div class="hdr-dropdown" id="trophyDropdown">
             <div class="hdr-dropdown-title">🏆 Conquistas</div>
-            <div id="badgesDropdownContent">
-              <p class="badges-empty">Nenhuma conquista ainda.<br>Continue usando o chat!</p>
-            </div>
+            <div id="badgesDropdownContent"></div>
           </div>
         </div>
 
-        <!-- Menu "..." — só mobile, agrupa funções secundárias -->
         <div class="dropdown-wrap mobile-only">
           <button class="icon-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções">
             <i data-lucide="more-vertical"></i>
@@ -1510,7 +1501,6 @@
           </div>
         </div>
 
-        <!-- Botões desktop visíveis individualmente -->
         <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar">
           <i data-lucide="download"></i>
         </button>
@@ -1524,7 +1514,6 @@
           <i data-lucide="maximize-2"></i>
         </button>
 
-        <!-- Sair (simplificado) -->
         <button class="icon-btn" onclick="doLogout()" title="Sair">
           <i data-lucide="log-out"></i>
         </button>
@@ -1654,7 +1643,6 @@
     </div>
   </div>
 
-  <!-- MODAL DE CADASTRO DE CLIENTE - NOVO -->
   <div id="clienteModal">
     <div class="m-box">
       <div class="m-head">
@@ -1710,9 +1698,7 @@
       messages: []
     };
 
-    // ============================================
-    // VARIÁVEIS DE CLIENTE - NOVO
-    // ============================================
+    // Variáveis de cliente
     let clientes = [];
     let clienteAtual = null;
 
@@ -1720,11 +1706,9 @@
     let isProcessingFile = false;
     let typingIndicator = null;
 
-    // Cache de respostas
     const responseCache = new Map();
-    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
+    const CACHE_DURATION = 30 * 60 * 1000;
 
-    // Modelos disponíveis em ordem de preferência
     const MODELS = [
       'llama-3.3-70b-versatile',
       'llama-3.1-8b-instant',
@@ -1756,38 +1740,7 @@
     };
 
     // ============================================
-    // FUNÇÕES DE CACHE
-    // ============================================
-    function getCacheKey(text, files) {
-      const fileInfo = files.map(f => `${f.name}_${f.size}`).join('|');
-      return `${text}_${fileInfo}`;
-    }
-
-    function getCachedResponse(key) {
-      if (responseCache.has(key)) {
-        const cached = responseCache.get(key);
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
-          console.log('✅ Resposta encontrada em cache');
-          return cached.data;
-        }
-        responseCache.delete(key);
-      }
-      return null;
-    }
-
-    function cacheResponse(key, data) {
-      responseCache.set(key, {
-        data,
-        timestamp: Date.now()
-      });
-      if (responseCache.size > 50) {
-        const oldestKey = responseCache.keys().next().value;
-        responseCache.delete(oldestKey);
-      }
-    }
-
-    // ============================================
-    // FUNÇÕES DE CLIENTE - NOVO
+    // FUNÇÕES DE CLIENTE
     // ============================================
 
     async function carregarClientes() {
@@ -1803,7 +1756,6 @@
         clientes = data || [];
         renderClienteList(clientes);
         
-        // Restaurar último cliente selecionado
         const lastClienteId = localStorage.getItem(`lastCliente_${currentUser?.id}`);
         if (lastClienteId) {
           clienteAtual = clientes.find(c => c.id === lastClienteId) || clientes[0] || null;
@@ -1860,15 +1812,7 @@
       
       updateClienteSelector();
       closeDropdowns();
-      
-      // Recarregar conversas do cliente selecionado
       await loadChats();
-      
-      // Mostrar mensagem de contexto
-      if (clienteAtual) {
-        const msg = `🔍 Contexto alterado para: **${clienteAtual.razao_social}** (CNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)})\n\n`;
-        addMessage(msg, false, 'medium');
-      }
     }
 
     function updateClienteSelector() {
@@ -1953,16 +1897,6 @@
       }
     }
 
-    function openClienteRelatorio() {
-      if (!clienteAtual) {
-        alert('Selecione um cliente primeiro');
-        return;
-      }
-      
-      showLearningStats();
-      closeDropdowns();
-    }
-
     function formatarCNPJ(input) {
       let v = input.value.replace(/\D/g, '');
       v = v.replace(/^(\d{2})(\d)/, '$1.$2');
@@ -1988,492 +1922,6 @@
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>');
-    }
-
-    // ============================================
-    // FUNÇÃO PARA EXTRAIR TODOS OS ARQUIVOS DA CONVERSA
-    // ============================================
-    function getAllFilesFromChat() {
-      const files = [];
-      
-      if (!currentChat.messages) return files;
-      
-      currentChat.messages.forEach(msg => {
-        if (msg.files && msg.files.length > 0) {
-          msg.files.forEach(file => {
-            const exists = files.some(f => 
-              f.name === file.name && f.size === file.size
-            );
-            if (!exists) {
-              files.push(file);
-            }
-          });
-        }
-      });
-      
-      return files;
-    }
-
-    // ============================================
-    // FUNÇÃO PARA CRIAR CONTEXTO DOS ARQUIVOS
-    // ============================================
-    function createFileContext() {
-      const allFiles = getAllFilesFromChat();
-      
-      if (allFiles.length === 0) return '';
-      
-      let context = '\n📁 **ARQUIVOS DISPONÍVEIS NESTA CONVERSA:**\n';
-      context += `Total de ${allFiles.length} arquivo(s) anexado(s).\n\n`;
-      context += '⚠️ **INSTRUÇÃO IMPORTANTE:** Use as informações dos arquivos abaixo para responder TODAS as perguntas do usuário sobre eles. Os arquivos permanecem disponíveis durante toda a conversa.\n\n';
-      
-      allFiles.forEach((file, index) => {
-        context += `--- ARQUIVO ${index + 1}: ${file.name} ---\n`;
-        
-        if (file.summary) {
-          context += `Tipo: ${file.summary}\n`;
-        }
-        
-        if (file.content) {
-          const content = file.content.length > 4000 
-            ? file.content.substring(0, 4000) + '... (conteúdo truncado)'
-            : file.content;
-          context += `CONTEÚDO:\n${content}\n`;
-        }
-        
-        context += '\n';
-      });
-      
-      return context;
-    }
-
-    // ============================================
-    // SERVIÇO DE APRENDIZADO FISCAL
-    // ============================================
-    class FiscalLearningService {
-      constructor(supabase) {
-        this.supabase = supabase;
-      }
-
-      extrairTags(texto) {
-        if (!texto) return [];
-        
-        const tags = [];
-        const termosFiscais = [
-          'icms', 'iss', 'pis', 'cofins', 'ipi', 'csll',
-          'simples nacional', 'lucro real', 'lucro presumido',
-          'nota fiscal', 'nfe', 'nfce', 'cte',
-          'sped', 'dctf', 'ecf', 'efd',
-          'cfop', 'cst', 'csosn', 'ncm',
-          'prazo', 'multa', 'obrigação', 'declaração'
-        ];
-
-        const textoLower = texto.toLowerCase();
-        for (const termo of termosFiscais) {
-          if (textoLower.includes(termo)) {
-            tags.push(termo);
-          }
-        }
-
-        return tags;
-      }
-
-      async registrarInteracao(chatId, pergunta, resposta, tokens, modelo) {
-        try {
-          console.log('📝 Registrando interação:', { 
-            chatId, 
-            pergunta: pergunta?.substring(0, 30) + '...' 
-          });
-          
-          if (!pergunta || !resposta) {
-            console.error('❌ Pergunta ou resposta vazia');
-            return null;
-          }
-
-          const tags = this.extrairTags(pergunta);
-          
-          const dadosInsercao = {
-            chat_id: chatId || null,
-            pergunta: pergunta,
-            resposta: resposta,
-            tags_pergunta: tags.length > 0 ? tags : null,
-            tokens_utilizados: tokens || null,
-            modelo_utilizado: modelo || null,
-            user_id: currentUser?.id || null,
-            cliente_id: clienteAtual?.id || null, // <- ADICIONADO
-            data_interacao: new Date().toISOString()
-          };
-
-          const { data, error } = await this.supabase
-            .from('interacoes_chat')
-            .insert(dadosInsercao)
-            .select()
-            .single();
-
-          if (error) {
-            console.error('❌ Erro do Supabase:', error);
-            return null;
-          }
-
-          console.log('✅ Interação registrada com ID:', data.id);
-          return data.id;
-
-        } catch (error) {
-          console.error('❌ Erro ao registrar interação:', error);
-          return null;
-        }
-      }
-
-      async registrarFeedback(interacaoId, nota) {
-        try {
-          if (!interacaoId) {
-            console.error('❌ ID da interação não fornecido');
-            return;
-          }
-
-          const idString = String(interacaoId).trim();
-          
-          const { error } = await this.supabase
-            .from('interacoes_chat')
-            .update({ feedback_usuario: nota })
-            .eq('id', idString);
-
-          if (error) {
-            console.error('❌ Erro ao registrar feedback:', error);
-            return;
-          }
-
-          console.log('✅ Feedback registrado com sucesso');
-
-          if (nota >= 4) {
-            await this.adicionarAoTreinamento(interacaoId);
-          }
-
-        } catch (error) {
-          console.error('❌ Erro ao registrar feedback:', error);
-        }
-      }
-
-      async adicionarAoTreinamento(interacaoId) {
-        try {
-          const { data: interacao, error } = await this.supabase
-            .from('interacoes_chat')
-            .select('pergunta, resposta')
-            .eq('id', interacaoId)
-            .single();
-
-          if (error || !interacao) {
-            console.error('❌ Erro ao buscar interação para treinamento:', error);
-            return;
-          }
-
-          await this.supabase
-            .from('dados_treinamento')
-            .insert({
-              pergunta: interacao.pergunta,
-              resposta: interacao.resposta,
-              fonte: 'chat_com_feedback',
-              qualidade: 5,
-              user_id: currentUser?.id || null,
-              cliente_id: clienteAtual?.id || null, // <- ADICIONADO
-              data_criacao: new Date().toISOString()
-            });
-
-          console.log('✅ Interação adicionada aos dados de treinamento');
-
-        } catch (error) {
-          console.error('❌ Erro ao adicionar ao treinamento:', error);
-        }
-      }
-
-      async buscarContextoRAG(pergunta) {
-        try {
-          const tags = this.extrairTags(pergunta);
-
-          let query = this.supabase
-            .from('interacoes_chat')
-            .select('pergunta, resposta, feedback_usuario, tags_pergunta')
-            .gte('feedback_usuario', 4)
-            .not('resposta', 'is', null);
-          
-          // Filtrar por cliente atual se existir
-          if (clienteAtual?.id) {
-            query = query.eq('cliente_id', clienteAtual.id);
-          }
-
-          const { data: interacoes } = await query
-            .order('feedback_usuario', { ascending: false })
-            .limit(10);
-
-          const { data: treinamento } = await this.supabase
-            .from('dados_treinamento')
-            .select('pergunta, resposta, qualidade')
-            .gte('qualidade', 4)
-            .order('qualidade', { ascending: false })
-            .limit(10);
-
-          const candidatos = [
-            ...(interacoes || []).map(i => ({
-              pergunta: i.pergunta,
-              resposta: i.resposta,
-              tags: i.tags_pergunta || [],
-              peso: i.feedback_usuario || 0
-            })),
-            ...(treinamento || []).map(t => ({
-              pergunta: t.pergunta,
-              resposta: t.resposta,
-              tags: [],
-              peso: t.qualidade || 0
-            }))
-          ];
-
-          if (candidatos.length === 0) return null;
-
-          const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length > 3);
-
-          const pontuados = candidatos.map(c => {
-            const texto = (c.pergunta + ' ' + c.tags.join(' ')).toLowerCase();
-            const matches = palavras.filter(p => texto.includes(p)).length;
-            const tagMatches = tags.filter(t => c.tags.includes(t)).length;
-            return { ...c, score: matches + tagMatches * 2 + c.peso };
-          });
-
-          const relevantes = pontuados
-            .filter(c => c.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 2);
-
-          if (relevantes.length === 0) return null;
-
-          return relevantes.map(c =>
-            `P: ${c.pergunta}\nR: ${c.resposta.substring(0, 500)}`
-          ).join('\n\n---\n\n');
-
-        } catch (error) {
-          console.error('❌ Erro no RAG de interações:', error);
-          return null;
-        }
-      }
-
-      classificarTipoArquivo(nome, conteudo) {
-        const n = nome.toLowerCase();
-        const c = (conteudo || '').toLowerCase();
-        if (n.includes('nfe') || n.includes('nf-e') || c.includes('nota fiscal eletrônica')) return 'NF-e';
-        if (n.includes('sped') || c.includes('registro 0000') || c.includes('|c100|')) return 'SPED';
-        if (n.includes('dctf') || c.includes('dctf')) return 'DCTF';
-        if (n.includes('ecf') || c.includes('ecf')) return 'ECF';
-        if (n.includes('cte') || c.includes('conhecimento de transporte')) return 'CT-e';
-        if (n.match(/\.(xls|xlsx)$/)) return 'Planilha';
-        if (n.match(/\.pdf$/)) return 'PDF';
-        if (n.match(/\.csv$/)) return 'CSV';
-        return 'Documento';
-      }
-
-      async salvarDocumento(chatId, fileData) {
-        try {
-          if (!fileData || !fileData.name) return null;
-
-          const tags = this.extrairTags((fileData.content || '') + ' ' + fileData.name);
-          const tipo = this.classificarTipoArquivo(fileData.name, fileData.content);
-
-          const { data, error } = await this.supabase
-            .from('documentos_analisados')
-            .insert({
-              chat_id: chatId || null,
-              nome_arquivo: fileData.name,
-              tipo_arquivo: tipo,
-              tamanho_bytes: fileData.size || null,
-              conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
-              resumo: fileData.summary || null,
-              tags_extraidas: tags.length > 0 ? tags : null,
-              user_id: currentUser?.id || null,
-              cliente_id: clienteAtual?.id || null // <- ADICIONADO
-            })
-            .select('id')
-            .single();
-
-          if (error) {
-            console.error('❌ Erro ao salvar documento:', error);
-            return null;
-          }
-
-          console.log('✅ Documento salvo com ID:', data.id, '| Tipo:', tipo);
-          return data.id;
-
-        } catch (error) {
-          console.error('❌ Erro ao salvar documento:', error);
-          return null;
-        }
-      }
-
-      async buscarDocumentosRAG(pergunta, chatId) {
-        try {
-          const tags = this.extrairTags(pergunta);
-          if (tags.length === 0) return null;
-
-          let query = this.supabase
-            .from('documentos_analisados')
-            .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id')
-            .not('conteudo_extraido', 'is', null);
-          
-          // Filtrar por cliente atual se existir
-          if (clienteAtual?.id) {
-            query = query.eq('cliente_id', clienteAtual.id);
-          }
-
-          const { data } = await query
-            .order('data_upload', { ascending: false })
-            .limit(20);
-
-          if (!data || data.length === 0) return null;
-
-          const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length > 3);
-
-          const pontuados = data.map(doc => {
-            const texto = ((doc.conteudo_extraido || '') + ' ' + (doc.tags_extraidas || []).join(' ')).toLowerCase();
-            const tagMatches = tags.filter(t => (doc.tags_extraidas || []).includes(t)).length;
-            const wordMatches = palavras.filter(p => texto.includes(p)).length;
-            const mesmoChat = doc.chat_id === chatId ? 3 : 0;
-            return { ...doc, score: tagMatches * 2 + wordMatches + mesmoChat };
-          });
-
-          const relevantes = pontuados
-            .filter(d => d.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 2);
-
-          if (relevantes.length === 0) return null;
-
-          return relevantes.map(d =>
-            `[${d.tipo_arquivo}] ${d.nome_arquivo}\n${(d.conteudo_extraido || '').substring(0, 800)}`
-          ).join('\n\n---\n\n');
-
-        } catch (error) {
-          console.error('❌ Erro no RAG de documentos:', error);
-          return null;
-        }
-      }
-    }
-
-    const learningService = new FiscalLearningService(sb);
-
-    // ============================================
-    // FUNÇÕES DE FEEDBACK
-    // ============================================
-    let ultimaInteracaoId = null;
-
-    function mostrarFeedbackOptions(interacaoId) {
-      if (!interacaoId || interacaoId === 'null' || interacaoId === 'undefined' || interacaoId.trim() === '') {
-        console.error('ID da interação inválido:', interacaoId);
-        alert('Feedback indisponível para esta resposta. Apenas respostas novas possuem feedback.');
-        return;
-      }
-      
-      ultimaInteracaoId = String(interacaoId);
-      
-      const existingPrompt = document.getElementById('feedback-prompt');
-      if (existingPrompt) existingPrompt.remove();
-      
-      const feedbackDiv = document.createElement('div');
-      feedbackDiv.className = 'feedback-prompt';
-      feedbackDiv.id = 'feedback-prompt';
-      feedbackDiv.innerHTML = `
-        <p style="margin-bottom: 8px;">Esta resposta foi útil?</p>
-        <div class="feedback-options">
-          <button class="feedback-btn" onclick="enviarFeedback(5)">
-            <i data-lucide="thumbs-up"></i> Muito útil
-          </button>
-          <button class="feedback-btn" onclick="enviarFeedback(3)">
-            <i data-lucide="meh"></i> Mais ou menos
-          </button>
-          <button class="feedback-btn" onclick="enviarFeedback(1)">
-            <i data-lucide="thumbs-down"></i> Não foi útil
-          </button>
-        </div>
-      `;
-      
-      document.getElementById('msgs').appendChild(feedbackDiv);
-      lucide.createIcons();
-      document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
-    }
-
-    async function enviarFeedback(nota) {
-      if (ultimaInteracaoId) {
-        await learningService.registrarFeedback(ultimaInteracaoId, nota);
-        
-        const agradecimento = document.createElement('div');
-        agradecimento.className = 'msg assistant';
-        agradecimento.innerHTML = `
-          <div class="ava"><i data-lucide="bot"></i></div>
-          <div class="bubble">
-            Obrigado pelo seu feedback! Isso me ajuda a aprender e melhorar. 🙏
-          </div>
-        `;
-        document.getElementById('msgs').appendChild(agradecimento);
-        lucide.createIcons();
-        document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
-      }
-      
-      document.getElementById('feedback-prompt')?.remove();
-      ultimaInteracaoId = null;
-    }
-
-    async function showLearningStats() {
-      if (!clienteAtual) {
-        alert('Selecione um cliente primeiro');
-        return;
-      }
-
-      const [stats, melhoresPerguntas, countRAG, countDocs, countTreinamento] = await Promise.all([
-        learningService.buscarEstatisticas(),
-        sb.from('interacoes_chat')
-          .select('pergunta, feedback_usuario')
-          .eq('cliente_id', clienteAtual.id)
-          .not('feedback_usuario', 'is', null)
-          .order('feedback_usuario', { ascending: false })
-          .limit(5),
-        sb.from('interacoes_chat')
-          .select('id', { count: 'exact', head: true })
-          .eq('cliente_id', clienteAtual.id)
-          .gte('feedback_usuario', 4),
-        sb.from('documentos_analisados')
-          .select('id', { count: 'exact', head: true })
-          .eq('cliente_id', clienteAtual.id),
-        sb.from('dados_treinamento')
-          .select('id', { count: 'exact', head: true })
-          .eq('cliente_id', clienteAtual.id)
-      ]);
-
-      let statsHTML = '<div class="stats-card">';
-      
-      statsHTML += `
-        <h3 style="margin-bottom:12px">📊 ${clienteAtual.razao_social}</h3>
-        <p style="font-size:12px;color:var(--text-light);margin-bottom:12px">
-          CNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)} • ${clienteAtual.regime_tributario || 'Regime não informado'}
-        </p>
-        <div class="stats-item"><span>🧠 Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
-        <div class="stats-item"><span>📎 Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
-        <div class="stats-item"><span>📚 Base de treinamento</span><strong>${countTreinamento.count || 0} registros</strong></div>
-      `;
-
-      if (melhoresPerguntas.data && melhoresPerguntas.data.length > 0) {
-        statsHTML += '<h4 style="margin-top:14px">🏆 Melhores feedbacks</h4>';
-        melhoresPerguntas.data.forEach(p => {
-          statsHTML += `
-            <div class="stats-item">
-              <span>${p.pergunta.substring(0, 50)}...</span>
-              <span>Nota: ${p.feedback_usuario}/5</span>
-            </div>`;
-        });
-      }
-
-      statsHTML += '</div>';
-
-      document.getElementById('learningStatsContent').innerHTML = statsHTML;
-      document.getElementById('learningStatsModal').classList.add('on');
-    }
-
-    function closeLearningStats() {
-      document.getElementById('learningStatsModal').classList.remove('on');
     }
 
     // ============================================
@@ -2503,10 +1951,8 @@
 
     function showApp() {
       document.getElementById('authScreen').classList.add('hidden');
-      document.getElementById('userEmail').textContent =
-        currentUser?.email?.split('@')[0] || 'usuário';
       checkConnection();
-      carregarClientes(); // <- CHAMADA ADICIONADA
+      carregarClientes();
       loadChats();
       checkDeadlines();
       updateBadges();
@@ -2514,7 +1960,6 @@
 
     function showAuthScreen() {
       document.getElementById('authScreen').classList.remove('hidden');
-      document.getElementById('userEmail').textContent = '—';
       allChats = [];
       clientes = [];
       clienteAtual = null;
@@ -2537,12 +1982,6 @@
       });
     }
 
-    function setAuthMsg(id, msg, type) {
-      const el = document.getElementById(id);
-      el.textContent = msg;
-      el.className = `auth-msg ${type}`;
-    }
-
     async function doLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
@@ -2558,8 +1997,7 @@
       btn.textContent = 'Entrar';
 
       if (error) {
-        const msg = error.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : error.message;
-        setAuthMsg('loginMsg', msg, 'error');
+        setAuthMsg('loginMsg', error.message, 'error');
       }
     }
 
@@ -2591,8 +2029,13 @@
       }
     }
 
+    function setAuthMsg(id, msg, type) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = `auth-msg ${type}`;
+    }
+
     async function doLogout() {
-      if (!confirm('Tem certeza que deseja sair?')) return;
       await sb.auth.signOut();
     }
 
@@ -2602,7 +2045,6 @@
         if (error) throw error;
         setConnectionStatus('Online', 'cloud', '#10b981');
       } catch (e) {
-        console.error('Erro de conexão:', e);
         setConnectionStatus('Offline', 'cloud-off', '#ef4444');
       }
     }
@@ -2620,7 +2062,6 @@
           .select('*')
           .order('created_at', { ascending: false });
         
-        // Filtrar por cliente se selecionado
         if (clienteAtual?.id) {
           query = query.eq('cliente_id', clienteAtual.id);
         } else {
@@ -2635,8 +2076,6 @@
         renderHistoryList(allChats);
       } catch (e) {
         console.error('Erro ao carregar chats:', e);
-        document.getElementById('hList').innerHTML =
-          `<p style="padding:16px;color:var(--error);font-size:13px">Erro ao carregar conversas</p>`;
       }
     }
 
@@ -2692,52 +2131,36 @@
     }
 
     async function saveChat() {
-      console.log('Salvando chat...', currentChat);
-
       try {
-        if (!currentChat.messages || currentChat.messages.length === 0) {
-          console.log('Nenhuma mensagem para salvar');
-          return;
-        }
+        if (!currentChat.messages || currentChat.messages.length === 0) return;
 
         const chatData = {
           title: currentChat.title || 'Nova Conversa',
           messages: currentChat.messages,
           updated_at: new Date().toISOString(),
-          cliente_id: clienteAtual?.id || null  // <- ADICIONADO
+          cliente_id: clienteAtual?.id || null
         };
 
         if (currentChat.id) {
-          const { error } = await sb
+          await sb
             .from('chats')
             .update(chatData)
             .eq('id', currentChat.id);
-
-          if (error) throw error;
-          console.log('Chat atualizado com sucesso!');
-
         } else {
-          const { data, error } = await sb
+          const { data } = await sb
             .from('chats')
             .insert({
-              title: chatData.title,
-              messages: chatData.messages,
-              user_id: currentUser?.id || null,
-              cliente_id: clienteAtual?.id || null,  // <- ADICIONADO
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              ...chatData,
+              user_id: currentUser?.id,
+              created_at: new Date().toISOString()
             })
             .select('id')
             .single();
 
-          if (error) throw error;
-
           currentChat.id = data.id;
-          console.log('Novo chat criado com ID:', data.id);
         }
 
         await loadChats();
-
       } catch (e) {
         console.error('Erro em saveChat:', e);
       }
@@ -2747,12 +2170,7 @@
       if (!confirm('Tem certeza que deseja deletar esta conversa?')) return;
 
       try {
-        const { error } = await sb
-          .from('chats')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
+        await sb.from('chats').delete().eq('id', id);
 
         if (currentChat.id === id) {
           newChat();
@@ -2806,9 +2224,6 @@
       lucide.createIcons();
     }
 
-    // ============================================
-    // FUNÇÃO ADD MESSAGE - SUPORTA MÚLTIPLOS ARQUIVOS
-    // ============================================
     function addMessage(text, isUser, confidence = 'medium', fileData = null, interactionId = null, allFiles = null) {
       const container = document.getElementById('msgs');
       container.querySelector('.empty')?.remove();
@@ -2834,55 +2249,15 @@
                   ${file.summary ? `<br><small>${file.summary}</small>` : ''}
                 </span>
               </div>`;
-
-            if (file.content && !file.type?.startsWith('image/')) {
-              fileHtml += `
-                <div class="file-content-preview" style="margin-top:5px;">
-                  <strong>Preview:</strong><br>
-                  ${escapeHtml(file.content.substring(0, 300))}${file.content.length > 300 ? '...' : ''}
-                </div>`;
-            }
           }
         });
         fileHtml += '</div>';
-      } else if (fileData) {
-        if (fileData.type?.startsWith('image/') && fileData.raw) {
-          fileHtml = `<img src="${fileData.raw}" class="file-preview" alt="${fileData.name}">`;
-        } else {
-          fileHtml = `
-            <div class="file-attachment">
-              <i data-lucide="file-text"></i>
-              <span>
-                <strong>${fileData.name}</strong> (${(fileData.size / 1024).toFixed(1)} KB)
-                ${fileData.summary ? `<br><small>${fileData.summary}</small>` : ''}
-              </span>
-            </div>`;
-
-          if (fileData.content && !fileData.type?.startsWith('image/')) {
-            fileHtml += `
-              <div class="file-content-preview">
-                <strong>Preview:</strong><br>
-                ${escapeHtml(fileData.content.substring(0, 300))}${fileData.content.length > 300 ? '...' : ''}
-              </div>`;
-          }
-        }
       }
-
-      const hasValidInteraction = interactionId && 
-                                  interactionId !== 'null' && 
-                                  interactionId !== 'undefined' && 
-                                  String(interactionId).trim() !== '' &&
-                                  !String(interactionId).includes('error');
 
       const footer = !isUser ? `
         <div class="mfoot">
           <button class="btn-copy" onclick="copyMessage(this)">
             <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
-          </button>
-          <button class="btn-feedback" id="feedback-btn-${interactionId || 'temp'}"
-            ${hasValidInteraction ? `onclick="mostrarFeedbackOptions('${interactionId}')"` : 'disabled style="opacity:0.4;cursor:not-allowed"'}
-            title="${hasValidInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
-            <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
           </button>
           <span class="badge-conf badge ${confidence}">
             ${confidence === 'high' ? '🟢 Alta' : confidence === 'low' ? '🔴 Baixa' : '🟡 Média'} confiança
@@ -2908,11 +2283,8 @@
       let t = escapeHtml(text);
       
       t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-      
       t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       t = t.replace(/`(.*?)`/g, '<code>$1</code>');
-      t = t.replace(/^- (.+)$/gm, '<li>$1</li>');
-      t = t.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, '<ul>$&</ul>');
       
       return t;
     }
@@ -2940,28 +2312,8 @@
       document.getElementById('typing')?.remove();
     }
 
-    function calculateConfidence(text) {
-      if (!text) return 'medium';
-
-      const highIndicators = [
-        'lei', 'decreto', 'artigo', '§', 'instrução normativa',
-        'convênio', 'lc', 'ctn', 'regulamento', 'solução de consulta'
-      ];
-
-      const lowIndicators = [
-        'pode variar', 'consulte', 'verifique', 'depende',
-        'recomenda-se', 'sugere-se', 'talvez', 'possivelmente'
-      ];
-
-      const textLower = text.toLowerCase();
-
-      if (highIndicators.some(i => textLower.includes(i))) return 'high';
-      if (lowIndicators.some(i => textLower.includes(i))) return 'low';
-      return 'medium';
-    }
-
     // ============================================
-    // FUNÇÃO SEND CORRIGIDA - COM MEMÓRIA PERMANENTE E FALLBACK DE MODELOS
+    // FUNÇÃO SEND CORRIGIDA - ENVIA CLIENTE_ID E USER_ID
     // ============================================
     async function send() {
       const inp = document.getElementById('msgInput');
@@ -2975,14 +2327,6 @@
         return;
       }
 
-      if (Date.now() < rateLimitUntil) {
-        const waitMs = rateLimitUntil - Date.now();
-        const waitSeconds = Math.ceil(waitMs / 1000);
-        addMessage(`⏳ Limite temporário atingido. Reenviando automaticamente em ${waitSeconds}s...`, false, 'low');
-        setTimeout(() => send(), waitMs + 500);
-        return;
-      }
-
       document.getElementById('sendBtn').disabled = true;
       inp.disabled = true;
 
@@ -2993,16 +2337,6 @@
 
         let messageContent = text || '📎 Arquivos enviados para análise fiscal';
         
-        if (currentFiles.length > 0) {
-          messageContent += '\n\n📎 **ARQUIVOS ANEXADOS:**';
-          currentFiles.forEach((file, index) => {
-            messageContent += `\n\n**Arquivo ${index + 1}:** ${file.name}`;
-            if (file.summary) {
-              messageContent += `\n*Tipo:* ${file.summary}`;
-            }
-          });
-        }
-
         addMessage(messageContent, true, 'medium', null, null, currentFiles);
 
         const filesParaSalvar = currentFiles.map(f => ({
@@ -3024,43 +2358,18 @@
         currentChat.messages.push(userMessage);
 
         if (currentChat.messages.length === 1) {
-          currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) +
-            ((text || '').length > 50 ? '...' : '');
+          currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50);
           await saveChat();
         }
 
-        const fileContext = createFileContext();
-
         showTypingIndicator();
 
-        const ragPromise = Promise.all([
-          learningService.buscarContextoRAG(text || '').catch(() => null),
-          learningService.buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
-        ]);
-
-        let ragInteracoes = null;
-        let ragDocumentos = null;
-
-        ragPromise.then(([r1, r2]) => {
-          ragInteracoes = r1;
-          ragDocumentos = r2;
-        }).catch(() => {});
-
-        const SYS = `Você é um especialista fiscal brasileiro sênior.
-
-⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
-1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS NESTA CONVERSA"
-2. Use o conteúdo destes arquivos para responder TODAS as perguntas do usuário
-3. Os arquivos permanecem disponíveis durante TODA a conversa
-4. Se o usuário perguntar sobre algo que está nos arquivos, cite o conteúdo relevante
-5. Não diga que não pode analisar arquivos - você TEM acesso a eles
-
-${fileContext}`.substring(0, 6000);
+        const SYS = `Você é um especialista fiscal brasileiro sênior.`;
 
         const recentChatMessages = currentChat.messages.slice(-8).map(m => ({
           role: m.role,
           content: m.role === 'user' && m.files ?
-            `${m.content}\n\n[Arquivos anexados nesta mensagem: ${m.files.map(f => f.name).join(', ')}]` :
+            `${m.content}\n\n[Arquivos anexados: ${m.files.map(f => f.name).join(', ')}]` :
             m.content
         }));
 
@@ -3069,107 +2378,43 @@ ${fileContext}`.substring(0, 6000);
           ...recentChatMessages
         ];
 
-        let data = null;
-        let attempts = 0;
-        const maxAttempts = MODELS.length * 2;
+        // 🔥 CORREÇÃO AQUI: Enviar cliente_id e user_id
+        const res = await fetch('/.netlify/functions/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: MODELS[currentModelIndex % MODELS.length],
+            temperature: 0.7,
+            max_tokens: 2000,
+            messages: messagesToSend,
+            cliente_id: clienteAtual?.id || null,
+            user_id: currentUser?.id || null
+          })
+        });
 
-        while (attempts < maxAttempts && !data) {
-          const modelIndex = currentModelIndex % MODELS.length;
-          const model = MODELS[modelIndex];
-          
-          try {
-            console.log(`Tentando modelo: ${model} (tentativa ${attempts + 1})`);
-            
-            const res = await fetch('/.netlify/functions/chat', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                model: model,
-                temperature: 0.7,
-                max_tokens: 2000,
-                messages: messagesToSend
-              })
-            });
-
-            if (res.status === 429) {
-              console.log(`Rate limit no modelo ${model}, tentando próximo...`);
-              currentModelIndex++;
-              attempts++;
-              
-              if (attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                continue;
-              } else {
-                rateLimitUntil = Date.now() + 30000;
-                throw new Error('Todos os modelos estão em rate limit. Aguarde 30 segundos.');
-              }
-            }
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 100)}`);
-            }
-            
-            data = await res.json();
-            
-            consecutiveErrors = 0;
-            
-          } catch (error) {
-            console.error(`Erro com modelo ${model}:`, error);
-            consecutiveErrors++;
-            
-            if (consecutiveErrors >= 2) {
-              currentModelIndex++;
-              consecutiveErrors = 0;
-            }
-            
-            attempts++;
-            
-            if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            } else {
-              throw error;
-            }
-          }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
         }
 
-        if (!data?.choices?.[0]?.message) {
-          throw new Error('Não foi possível obter resposta após múltiplas tentativas');
-        }
-
+        const data = await res.json();
         hideTypingIndicator();
+
+        if (!data.choices?.[0]?.message) {
+          throw new Error('Resposta inválida da API');
+        }
 
         const reply = data.choices[0].message.content;
         const confidence = calculateConfidence(reply);
 
-        let interacaoId = null;
-        try {
-          interacaoId = await learningService.registrarInteracao(
-            currentChat.id,
-            text || 'Arquivos enviados',
-            reply,
-            data.usage?.total_tokens || 0,
-            MODELS[currentModelIndex % MODELS.length]
-          );
-        } catch (e) {
-          console.error('Erro ao registrar interação:', e);
-        }
-
         const assistantMessage = {
           role: 'assistant',
           content: reply,
-          confidence,
-          interactionId: interacaoId
+          confidence
         };
 
         currentChat.messages.push(assistantMessage);
-        addMessage(reply, false, confidence, null, interacaoId);
-
-        if (interacaoId) {
-          setTimeout(() => {
-            mostrarFeedbackOptions(interacaoId);
-          }, 1500);
-        }
+        addMessage(reply, false, confidence);
 
         saveChat().catch(e => console.error('Erro ao salvar chat:', e));
         
@@ -3180,17 +2425,10 @@ ${fileContext}`.substring(0, 6000);
         console.error('❌ Erro detalhado:', e);
         hideTypingIndicator();
         
-        let errorMessage = '❌ ';
+        let errorMessage = '❌ Erro ao processar. Tente novamente.';
         
-        if (e.message.includes('429') || e.message.includes('rate limit')) {
-          errorMessage = '❌ Limite de requisições excedido. Aguarde 30 segundos e tente novamente.';
-          rateLimitUntil = Date.now() + 30000;
-        } else if (e.message.includes('500') || e.message.includes('503')) {
-          errorMessage = '❌ Serviço temporariamente indisponível. Tente novamente em alguns instantes.';
-        } else if (e.message.includes('401')) {
-          errorMessage = '❌ Erro de autenticação. Recarregue a página.';
-        } else {
-          errorMessage = '❌ Erro ao processar. Tente novamente.';
+        if (e.message.includes('Failed to fetch')) {
+          errorMessage = '❌ Erro de conexão com o servidor. Verifique se a função serverless está disponível.';
         }
         
         addMessage(errorMessage, false, 'low');
@@ -3200,6 +2438,19 @@ ${fileContext}`.substring(0, 6000);
         inp.disabled = false;
         inp.focus();
       }
+    }
+
+    function calculateConfidence(text) {
+      if (!text) return 'medium';
+
+      const highIndicators = ['lei', 'decreto', 'artigo', 'instrução normativa'];
+      const lowIndicators = ['pode variar', 'consulte', 'depende', 'talvez'];
+
+      const textLower = text.toLowerCase();
+
+      if (highIndicators.some(i => textLower.includes(i))) return 'high';
+      if (lowIndicators.some(i => textLower.includes(i))) return 'low';
+      return 'medium';
     }
 
     async function handleMultipleFiles(event) {
@@ -3220,10 +2471,6 @@ ${fileContext}`.substring(0, 6000);
           showFileProgress(file);
           const fileData = await processFile(file);
           currentFiles.push(fileData);
-
-          if (clienteAtual) {
-            learningService.salvarDocumento(currentChat.id, fileData);
-          }
 
           userStats.filesAnalyzed++;
           localStorage.setItem('userStats', JSON.stringify(userStats));
@@ -3284,10 +2531,6 @@ ${fileContext}`.substring(0, 6000);
               content = text.substring(0, 5000);
               summary = `📄 PDF com ${pdf.numPages} página(s)`;
 
-              if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
-                summary += ' - Documento fiscal';
-              }
-
             } else if (fileType.includes('spreadsheet') || fileName.match(/\.(xls|xlsx|csv)$/i)) {
               const data = new Uint8Array(e.target.result);
               const workbook = XLSX.read(data, { type: 'array' });
@@ -3302,10 +2545,6 @@ ${fileContext}`.substring(0, 6000);
             } else if (fileType.includes('image')) {
               content = 'Imagem enviada para análise';
               summary = '🖼️ Imagem';
-
-            } else {
-              content = 'Tipo de arquivo não suportado para leitura completa.';
-              summary = '❓ Tipo não reconhecido';
             }
 
             resolve({
@@ -3394,19 +2633,6 @@ ${fileContext}`.substring(0, 6000);
             alerts.push({
               message: `${deadline.description} em ${daysUntil} dias`,
               severity: daysUntil <= 2 ? 'high' : 'medium'
-            });
-          }
-        } else {
-          const nextDeadline = new Date(today.getFullYear(), deadline.month - 1, deadline.day);
-          if (today > nextDeadline) {
-            nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
-          }
-          const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
-
-          if (daysUntil <= 30 && daysUntil >= 0) {
-            alerts.push({
-              message: `${deadline.description} em ${daysUntil} dias`,
-              severity: daysUntil <= 7 ? 'high' : 'medium'
             });
           }
         }
@@ -3549,7 +2775,6 @@ ${fileContext}`.substring(0, 6000);
       let header = '';
       if (clienteAtual) {
         header = `CLIENTE: ${clienteAtual.razao_social} (CNPJ: ${formatarCNPJDisplay(clienteAtual.cnpj)})\n`;
-        header += `REGIME: ${clienteAtual.regime_tributario || 'Não informado'}\n`;
         header += '='.repeat(50) + '\n\n';
       }
 
@@ -3607,10 +2832,6 @@ ${fileContext}`.substring(0, 6000);
             <span>🏆 Conquistas</span>
             <strong>${userStats.badges.length}</strong>
           </div>
-          <div class="stats-item">
-            <span>⚡ Cache</span>
-            <strong>${responseCache.size} respostas</strong>
-          </div>
         </div>
       `;
 
@@ -3620,6 +2841,15 @@ ${fileContext}`.substring(0, 6000);
 
     function closeStats() {
       document.getElementById('statsModal').classList.remove('on');
+    }
+
+    function showLearningStats() {
+      document.getElementById('learningStatsContent').innerHTML = '<div class="stats-card"><p>Funcionalidade em desenvolvimento</p></div>';
+      document.getElementById('learningStatsModal').classList.add('on');
+    }
+
+    function closeLearningStats() {
+      document.getElementById('learningStatsModal').classList.remove('on');
     }
 
     function shareChat() {
@@ -3658,21 +2888,6 @@ ${fileContext}`.substring(0, 6000);
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         newChat();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        openCalculator();
-      }
-      if (e.key === 'Escape' && currentFiles.length > 0) {
-        removeAllFiles();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
-        e.preventDefault();
-        toggleSidebar();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-        e.preventDefault();
-        exportChat();
       }
     });
 
