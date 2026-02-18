@@ -2658,6 +2658,7 @@
         return;
       }
 
+      const cnpjLimpo = cnpj.replace(/[^0-9]/g, '').substring(0, 14);
       const btn = document.querySelector('#newClientForm .btn-save');
       btn.disabled = true;
       btn.textContent = 'Salvando...';
@@ -2665,7 +2666,7 @@
       // Insert separado do select — evita conflito com RLS policy de SELECT
       const { error: insertError } = await sb.from('clientes').insert({
         razao_social: razao,
-        cnpj: cnpj,
+        cnpj: cnpjLimpo,
         nome_fantasia: fantasia || null,
         regime_tributario: regime || null,
         inscricao_estadual: ie || null,
@@ -2688,7 +2689,7 @@
       const { data: novo, error: selectError } = await sb
         .from('clientes')
         .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
-        .eq('cnpj', cnpj)
+        .eq('cnpj', cnpjLimpo)
         .eq('user_id', currentUser.id)
         .single();
 
