@@ -2047,6 +2047,16 @@
       <!-- ABA CONTA -->
       <div id="profileTabConta" class="doc-panel active">
         <div class="profile-section">
+          <h4>Informações pessoais</h4>
+          <div class="profile-field">
+            <label>Nome de exibição</label>
+            <input type="text" id="profileNome" placeholder="Como você quer ser chamado" maxlength="50">
+          </div>
+          <button class="btn-save" style="width:100%" onclick="salvarNome()">Salvar nome</button>
+          <div id="profileNomeMsg" class="auth-msg" style="margin-top:8px"></div>
+        </div>
+
+        <div class="profile-section">
           <h4>Alterar senha</h4>
           <div class="profile-field">
             <label>Nova senha</label>
@@ -3017,8 +3027,7 @@
     async function showApp() {
       hideLoading();
       document.getElementById('authScreen').classList.add('hidden');
-      document.getElementById('userEmail').textContent =
-        currentUser?.email?.split('@')[0] || 'usuário';
+      atualizarNomeHeader();
 
       // Forçar refresh do user para pegar user_metadata atualizado (role, theme)
       const { data: { user } } = await sb.auth.getUser();
@@ -3953,6 +3962,13 @@
       { id: 'dirpf',      label: 'DIRPF (PF)',            desc: 'Até 29/05 anual',           dia: 29, mes: 5        },
     ];
 
+    function atualizarNomeHeader() {
+      const nome = currentUser?.user_metadata?.nome;
+      const email = currentUser?.email || '';
+      const display = nome || email.split('@')[0] || 'usuário';
+      document.getElementById('userEmail').textContent = display;
+    }
+
     function openProfile() {
       const modal = document.getElementById('profileModal');
       modal.style.display = 'flex';
@@ -3966,6 +3982,10 @@
       // Tema atual
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       document.getElementById('profileThemeToggle').checked = isDark;
+
+      // Preencher nome atual
+      const nomeAtual = currentUser?.user_metadata?.nome || '';
+      document.getElementById('profileNome').value = nomeAtual;
 
       // pwdBar2 usa mesmo checkPasswordStrength mas com id diferente
       // Override temporário para apontar para pwdBar2
@@ -4004,6 +4024,27 @@
       bar.style.background = colors[score] || 'var(--border)';
       hint.textContent = score === 4 ? '✅ Senha forte' : `Faltando: ${missing.join(', ')}`;
       hint.style.color = score < 3 ? 'var(--error)' : score === 4 ? '#22c55e' : 'var(--text-light)';
+    }
+
+    async function salvarNome() {
+      const nome = document.getElementById('profileNome').value.trim();
+      const msgEl = document.getElementById('profileNomeMsg');
+      const btn = event.target;
+
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      const { error } = await sb.auth.updateUser({ data: { nome } });
+      btn.disabled = false; btn.textContent = 'Salvar nome';
+
+      if (error) {
+        msgEl.textContent = 'Erro ao salvar. Tente novamente.';
+        msgEl.className = 'auth-msg error';
+      } else {
+        // Atualizar currentUser e header imediatamente
+        if (currentUser?.user_metadata) currentUser.user_metadata.nome = nome;
+        atualizarNomeHeader();
+        msgEl.textContent = '✅ Nome salvo com sucesso.';
+        msgEl.className = 'auth-msg success';
+      }
     }
 
     async function salvarSenha() {
