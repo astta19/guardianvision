@@ -2357,6 +2357,64 @@
             .update({ feedback_usuario: nota })
             .eq('id', idString);
 
+          if (!error) {
+            // Se nota alta (4-5), salvar par pergunta/resposta em dados_treinamento
+            if (nota >= 4) {
+              try {
+                const { data: interacao } = await this.supabase
+                  .from('interacoes_chat')
+                  .select('pergunta, resposta')
+                  .eq('id', idString)
+                  .single();
+                if (interacao?.pergunta && interacao?.resposta) {
+                  await this.supabase.from('dados_treinamento').insert({
+                    pergunta: interacao.pergunta,
+                    resposta: interacao.resposta,
+                    qualidade: nota,
+                    fonte: 'feedback_usuario',
+                    user_id: currentUser?.id || null,
+                    cliente_id: typeof currentCliente !== 'undefined' ? currentCliente?.id : null
+                  });
+                }
+              } catch(e) {}
+            }
+
+            // Atualizar estatisticas_aprendizado — upsert por data
+            const hoje = new Date().toISOString().split('T')[0];
+            const clienteId = typeof currentCliente !== 'undefined' ? currentCliente?.id : null;
+
+            // Buscar registro do dia
+            const { data: existing } = await this.supabase
+              .from('estatisticas_aprendizado')
+              .select('id, total_interacoes, soma_notas, total_feedbacks')
+              .eq('data', hoje)
+              .maybeSingle();
+
+            if (existing) {
+              const novoTotal = (existing.total_feedbacks || 0) + 1;
+              const novaSoma  = (existing.soma_notas || 0) + nota;
+              await this.supabase
+                .from('estatisticas_aprendizado')
+                .update({
+                  total_feedbacks: novoTotal,
+                  soma_notas: novaSoma,
+                  taxa_acerto_media: (novaSoma / novoTotal) * 20 // converte 1-5 para %
+                })
+                .eq('id', existing.id);
+            } else {
+              await this.supabase
+                .from('estatisticas_aprendizado')
+                .insert({
+                  data: hoje,
+                  total_interacoes: 1,
+                  total_feedbacks: 1,
+                  soma_notas: nota,
+                  taxa_acerto_media: nota * 20,
+                  cliente_id: clienteId
+                });
+            }
+          }
+
           if (error) {
             return;
           }
@@ -4613,7 +4671,7 @@ ${fileContext}${ragCtx}`.substring(0, 14000);
           const fileData = await processFile(file);
           currentFiles.push(fileData);
 
-          learningService.salvarDocumento(currentChat.id, fileData);
+          await learningService.salvarDocumento(currentChat.id, fileData);
 
         } catch (error) {
         } finally {
