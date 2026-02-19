@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -1766,6 +1767,17 @@
         <button class="btn-close" onclick="closeLearningStats()"><i data-lucide="x"></i></button>
       </div>
       <div id="learningStatsContent"></div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:10px">
+          <strong>Base de Conhecimento</strong> — envie documentos fiscais para o sistema aprender (PDFs, planilhas, TXTs)
+        </p>
+        <input type="file" id="batchFileInput" multiple accept=".pdf,.txt,.csv,.xls,.xlsx" style="display:none" onchange="handleBatchUpload(event)">
+        <button class="auth-btn" style="padding:10px;font-size:13px;display:flex;align-items:center;gap:6px;justify-content:center" onclick="document.getElementById('batchFileInput').click()">
+          <i data-lucide="folder-open" style="width:14px;height:14px"></i>
+          Selecionar arquivos para treinamento
+        </button>
+        <div id="batchProgress" style="margin-top:10px;font-size:12px;color:var(--text-light)"></div>
+      </div>
     </div>
   </div>
 
@@ -1973,9 +1985,11 @@
       
       if (allFiles.length === 0) return '';
       
-      let context = '\n📁 **ARQUIVOS DISPONÍVEIS NESTA CONVERSA:**\n';
+      let context = '\nARQUIVOS DISPONÍVEIS NESTA CONVERSA:\n';
       context += `Total de ${allFiles.length} arquivo(s) anexado(s).\n\n`;
-      context += '⚠️ **INSTRUÇÃO IMPORTANTE:** Use as informações dos arquivos abaixo para responder TODAS as perguntas do usuário sobre eles. Os arquivos permanecem disponíveis durante toda a conversa.\n\n';
+      if (allFiles.length > 1) {
+        context += 'INSTRUÇÃO DE CRUZAMENTO: Ao analisar estes arquivos, compare os dados entre eles. Identifique inconsistências, divergências de valores, CNPJs que aparecem em múltiplos documentos, e qualquer anomalia fiscal. Relacione informações complementares entre os arquivos.\n\n';
+      }
       
       // Incluir TODOS os arquivos
       allFiles.forEach((file, index) => {
@@ -2223,7 +2237,7 @@
               nome_arquivo: fileData.name,
               tipo_arquivo: tipo,
               tamanho_bytes: fileData.size || null,
-              conteudo_extraido: fileData.content ? fileData.content.substring(0, 8000) : null,
+              conteudo_extraido: fileData.content ? fileData.content.substring(0, 15000) : null,
               resumo: fileData.summary || null,
               tags_extraidas: tags.length > 0 ? tags : null,
               user_id: currentUser?.id || null,
@@ -2366,6 +2380,62 @@
       ultimaInteracaoId = null;
     }
 
+    async function handleBatchUpload(event) {
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
+
+      const progressEl = document.getElementById('batchProgress');
+      const MAX_SIZE = 20 * 1024 * 1024; // 20MB por arquivo no batch
+      let sucesso = 0;
+      let erro = 0;
+
+      progressEl.innerHTML = `<i data-lucide="loader" style="width:12px;height:12px;vertical-align:middle"></i> Processando ${files.length} arquivo(s)...`;
+      lucide.createIcons();
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        progressEl.innerHTML = `Processando ${i + 1}/${files.length}: ${file.name}`;
+
+        if (file.size > MAX_SIZE) {
+          erro++;
+          continue;
+        }
+
+        try {
+          const fileData = await processFile(file);
+
+          // Salvar na base de conhecimento como dados_treinamento
+          await supabaseProxy('inserir_treinamento', {
+            pergunta: `[BASE DE CONHECIMENTO] ${file.name}`,
+            resposta: fileData.content || 'Conteúdo não extraído',
+            fonte: 'base_conhecimento',
+            qualidade: 5,
+            user_id: currentUser.id,
+            cliente_id: currentCliente?.id || null
+          });
+
+          // Também salvar em documentos_analisados para RAG
+          await learningService.salvarDocumento(currentChat?.id || null, {
+            ...fileData,
+            summary: `[BASE] ${fileData.summary}`
+          });
+
+          sucesso++;
+        } catch (e) {
+          erro++;
+        }
+      }
+
+      // Reset input
+      event.target.value = '';
+
+      progressEl.innerHTML = `
+        <span style="color:var(--success)">✓ ${sucesso} arquivo(s) adicionado(s) à base</span>
+        ${erro > 0 ? `<span style="color:var(--error)"> · ${erro} com erro</span>` : ''}
+        <br><small style="color:var(--text-light)">O sistema usará estes documentos como referência nas próximas consultas</small>
+      `;
+    }
+
     async function showLearningStats() {
       const [stats, melhoresPerguntas, countRAG, countDocs, countTreinamento] = await Promise.all([
         learningService.buscarEstatisticas(),
@@ -2470,12 +2540,15 @@
       }
     };
 
-    function showApp() {
+    async function showApp() {
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('userEmail').textContent =
         currentUser?.email?.split('@')[0] || 'usuário';
 
-      // Restaurar tema do usuário (user_metadata tem prioridade sobre localStorage)
+      // Forçar refresh do user para pegar user_metadata atualizado (role, theme)
+      const { data: { user } } = await sb.auth.getUser();
+      if (user) currentUser = user;
+
       const savedTheme = currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
 
@@ -2487,8 +2560,12 @@
 
     function applyAdminUI() {
       const admin = isAdmin();
-      document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
-      document.querySelectorAll('.admin-menu-item').forEach(el => { el.style.display = admin ? '' : 'none'; });
+      document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = admin ? 'flex' : 'none';
+      });
+      document.querySelectorAll('.admin-menu-item').forEach(el => {
+        el.style.display = admin ? 'flex' : 'none';
+      });
     }
 
     function showAuthScreen() {
@@ -3227,20 +3304,11 @@
 
         showTypingIndicator();
 
-        // Buscar contexto RAG (sem timeout, deixar executar em background)
-        const ragPromise = Promise.all([
+        // Buscar contexto RAG — aguardar antes de montar o prompt
+        const [ragInteracoes, ragDocumentos] = await Promise.all([
           learningService.buscarContextoRAG(text || '').catch(() => null),
           learningService.buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
         ]);
-
-        let ragInteracoes = null;
-        let ragDocumentos = null;
-
-        // Não esperar pelo RAG, executar em background
-        ragPromise.then(([r1, r2]) => {
-          ragInteracoes = r1;
-          ragDocumentos = r2;
-        }).catch(() => {});
 
         // Consultar CNPJ se detectado na mensagem
         let cnpjCtx = '';
@@ -3265,20 +3333,32 @@ ${formatado}`;
           ? `\n\nEMPRESA ATIVA:\n- Razão Social: ${currentCliente.razao_social}\n- CNPJ: ${currentCliente.cnpj}\n- Regime Tributário: ${currentCliente.regime_tributario || 'Não informado'}\n- Nome Fantasia: ${currentCliente.nome_fantasia || '-'}\nResponda sempre no contexto desta empresa.`
           : '';
 
+        // Montar contexto RAG
+        let ragCtx = '';
+        if (ragInteracoes) ragCtx += `\n\n--- CONHECIMENTO FISCAL ACUMULADO ---\n${ragInteracoes}`;
+        if (ragDocumentos) ragCtx += `\n\n--- DOCUMENTOS ANTERIORES RELEVANTES ---\n${ragDocumentos}`;
+
         // Sistema prompt com instruções EXPLÍCITAS
-        const SYS = `Você é um especialista fiscal brasileiro sênior.${clienteCtx}${cnpjCtx}
+        const SYS = `Você é um especialista fiscal brasileiro sênior com profundo conhecimento em legislação tributária brasileira, SPED, NF-e, obrigações acessórias, Simples Nacional, Lucro Presumido e Lucro Real.${clienteCtx}${cnpjCtx}
 
-⚠️ **INSTRUÇÕES CRÍTICAS SOBRE ARQUIVOS:**
-1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS NESTA CONVERSA"
-2. Use o conteúdo destes arquivos para responder TODAS as perguntas do usuário
+INSTRUÇÕES SOBRE ARQUIVOS:
+1. Os arquivos anexados estão listados abaixo na seção "ARQUIVOS DISPONÍVEIS"
+2. Use o conteúdo destes arquivos para responder TODAS as perguntas
 3. Os arquivos permanecem disponíveis durante TODA a conversa
-4. Se o usuário perguntar sobre algo que está nos arquivos, cite o conteúdo relevante
-5. Não diga que não pode analisar arquivos - você TEM acesso a eles
+4. Cite o conteúdo relevante dos arquivos nas respostas
+5. Ao analisar múltiplos arquivos, cruze os dados entre eles e aponte inconsistências
 
-${fileContext}`.substring(0, 6000);
+INSTRUÇÕES GERAIS:
+- Responda sempre em português brasileiro
+- Cite artigos de lei, regulamentos e normas quando relevante
+- Aponte riscos fiscais, multas e penalidades quando identificar
+- Sugira otimizações tributárias quando aplicável
+- Seja preciso com datas, prazos e valores
+
+${fileContext}${ragCtx}`.substring(0, 14000);
 
         // Preparar mensagens (últimas 8 para manter contexto)
-        const recentChatMessages = currentChat.messages.slice(-8).map(m => ({
+        const recentChatMessages = currentChat.messages.slice(-16).map(m => ({
           role: m.role,
           content: m.role === 'user' && m.files ?
             `${m.content}\n\n[Arquivos anexados nesta mensagem: ${m.files.map(f => f.name).join(', ')}]` :
@@ -3307,7 +3387,7 @@ ${fileContext}`.substring(0, 6000);
               body: JSON.stringify({
                 model: model,
                 temperature: 0.7,
-                max_tokens: 2000,
+                max_tokens: 4000,
                 messages: messagesToSend
               })
             });
@@ -3432,10 +3512,6 @@ ${fileContext}`.substring(0, 6000);
           continue;
         }
 
-        if (isProcessingFile) continue;
-
-        isProcessingFile = true;
-
         try {
           showFileProgress(file);
           const fileData = await processFile(file);
@@ -3489,13 +3565,14 @@ ${fileContext}`.substring(0, 6000);
               const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
 
               let text = '';
-              for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) {
+              for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
                 text += textContent.items.map(item => item.str).join(' ') + '\n';
+                if (text.length > 30000) break; // evitar timeout em PDFs gigantes
               }
 
-              content = text.substring(0, 5000);
+              content = text.substring(0, 15000);
               summary = `PDF com ${pdf.numPages} página(s)`;
 
               if (text.toLowerCase().includes('nota fiscal') || text.toLowerCase().includes('nfe')) {
@@ -3505,13 +3582,33 @@ ${fileContext}`.substring(0, 6000);
             } else if (fileType.includes('spreadsheet') || fileName.match(/\.(xls|xlsx|csv)$/i)) {
               const data = new Uint8Array(e.target.result);
               const workbook = XLSX.read(data, { type: 'array' });
-              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-              content = XLSX.utils.sheet_to_csv(firstSheet).substring(0, 5000);
+              let allSheets = '';
+              workbook.SheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                const csv = XLSX.utils.sheet_to_csv(sheet);
+                if (csv.trim()) allSheets += `\n=== ABA: ${sheetName} ===\n${csv}`;
+              });
+              content = allSheets.substring(0, 15000);
               summary = `Planilha com ${workbook.SheetNames.length} aba(s)`;
 
             } else if (fileType.includes('text') || fileName.match(/\.(txt|csv)$/i)) {
-              content = e.target.result.substring(0, 5000);
+              content = e.target.result.substring(0, 15000);
               summary = 'Arquivo de texto';
+
+            } else if (
+              fileType.includes('wordprocessingml') ||
+              fileType.includes('msword') ||
+              fileName.match(/\.docx?$/i)
+            ) {
+              try {
+                const arrayBuffer = e.target.result;
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                content = result.value.substring(0, 15000);
+                summary = `Documento Word (${content.length} chars extraídos)`;
+              } catch {
+                content = 'Não foi possível extrair o texto do documento Word.';
+                summary = 'Documento Word';
+              }
 
             } else if (fileType.includes('image')) {
               content = 'Imagem enviada para análise';
@@ -3538,7 +3635,12 @@ ${fileContext}`.substring(0, 6000);
 
         reader.onerror = reject;
 
-        if (file.type.includes('pdf') || file.name.match(/\.(xls|xlsx|csv)$/i)) {
+        if (
+          file.type.includes('pdf') ||
+          file.type.includes('wordprocessingml') ||
+          file.type.includes('msword') ||
+          file.name.match(/\.(xls|xlsx|csv|docx?)$/i)
+        ) {
           reader.readAsArrayBuffer(file);
         } else if (file.type.includes('image')) {
           reader.readAsDataURL(file);
