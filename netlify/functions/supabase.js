@@ -5,6 +5,7 @@ const ALLOWED_ACTIONS = [
   'inserir_treinamento',
   'buscar_estatisticas',
   'buscar_treinamento_count',
+  'listar_usuarios',
 ];
 
 exports.handler = async (event) => {
@@ -127,6 +128,34 @@ exports.handler = async (event) => {
 
       const count = res.headers.get('content-range')?.split('/')[1] || '0';
       return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: parseInt(count) }) };
+    }
+
+    // --------------------------------------------------------
+    // AÇÃO: listar_usuarios
+    // Apenas admin — lista contadores para atribuição
+    // --------------------------------------------------------
+    if (action === 'listar_usuarios') {
+      if (userRole !== 'admin') {
+        return { statusCode: 403, body: JSON.stringify({ error: 'Acesso restrito a administradores' }) };
+      }
+
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=100`, {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY
+        }
+      });
+
+      const data = await res.json();
+      const usuarios = (data.users || [])
+        .filter(u => u.id !== authUser.id) // excluir o próprio admin
+        .map(u => ({ id: u.id, email: u.email }));
+
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuarios })
+      };
     }
 
   } catch (error) {
