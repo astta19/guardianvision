@@ -1246,6 +1246,9 @@
       from { transform: translateY(100%); }
       to   { transform: translateY(0); }
     }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     /* drag handle visual nos bottom sheets */
     @media (max-width: 600px) {
@@ -1498,8 +1501,24 @@
 
 <body>
 
+  <!-- TELA DE LOADING -->
+  <div id="loadingScreen" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity 0.3s ease">
+    <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#000;border-radius:50%;animation:spin 0.75s linear infinite"></div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO -->
+  <div id="confirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--card);border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
+      <p id="confirmModalText" style="font-size:15px;font-weight:500;color:var(--text);margin-bottom:20px;line-height:1.5"></p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="confirmModalCancel" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;cursor:pointer;font-weight:500">Cancelar</button>
+        <button id="confirmModalOk" style="padding:10px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:14px;cursor:pointer;font-weight:500">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TELA DE AUTENTICAÇÃO -->
-    <div id="authScreen">
+    <div id="authScreen" class="hidden">
     <div class="auth-box">
       <div class="auth-logo">
         <i data-lucide="shield-check" style="width:36px;height:36px;color:var(--accent)"></i>
@@ -2550,8 +2569,8 @@
     window.onload = async () => {
       sb = window.supabase.createClient(SB_URL, SB_KEY);
       learningService = new FiscalLearningService(sb);
-      lucide.createIcons();
       setTheme(localStorage.getItem('theme') || 'light');
+      lucide.createIcons(); // inclui o ícone do loading screen
 
       // Registrar listener ANTES de qualquer coisa — Supabase processa o hash automaticamente
       sb.auth.onAuthStateChange((event, session) => {
@@ -2575,6 +2594,7 @@
 
         } else if (event === 'SIGNED_OUT') {
           currentUser = null;
+          hideLoading();
           showAuthScreen();
         }
       });
@@ -2585,6 +2605,7 @@
         // Supabase JS v2 processa o hash e dispara SIGNED_IN automaticamente
         // Só precisamos mostrar a tela de definir senha quando o evento chegar
         // Mas vamos garantir que a tela de auth está visível enquanto aguarda
+        hideLoading();
         document.getElementById('authScreen').classList.remove('hidden');
         showAuthState('setPassword', 'Bem-vindo! Defina sua senha de acesso');
         window.history.replaceState(null, '', window.location.pathname);
@@ -2596,10 +2617,44 @@
       if (session) {
         currentUser = session.user;
         showApp();
+      } else {
+        // Sem sessão — mostrar login
+        hideLoading();
+        document.getElementById('authScreen').classList.remove('hidden');
       }
+
+      // Segurança: se por qualquer razão o loading ainda estiver visível após 3s, remove
+      setTimeout(() => hideLoading(), 3000);
     };
 
+    // Modal de confirmação estilizado — substitui confirm() nativo
+    function showConfirm(texto, onOk) {
+      const modal = document.getElementById('confirmModal');
+      document.getElementById('confirmModalText').textContent = texto;
+      modal.style.display = 'flex';
+
+      const ok = document.getElementById('confirmModalOk');
+      const cancel = document.getElementById('confirmModalCancel');
+
+      function fechar() {
+        modal.style.display = 'none';
+        ok.replaceWith(ok.cloneNode(true));
+        cancel.replaceWith(cancel.cloneNode(true));
+      }
+
+      document.getElementById('confirmModalOk').onclick = () => { fechar(); onOk(); };
+      document.getElementById('confirmModalCancel').onclick = fechar;
+    }
+
+    function hideLoading() {
+      const el = document.getElementById('loadingScreen');
+      if (!el) return;
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 300);
+    }
+
     async function showApp() {
+      hideLoading();
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('userEmail').textContent =
         currentUser?.email?.split('@')[0] || 'usuário';
@@ -2998,12 +3053,12 @@
 
       const btn = document.getElementById('loginBtn');
       btn.disabled = true;
-      btn.textContent = 'Entrando...';
+      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block"></span>Entrando...</span>';
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
 
       btn.disabled = false;
-      btn.textContent = 'Entrar';
+      btn.innerHTML = 'Entrar';
 
       if (error) {
         const msg = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
@@ -3060,7 +3115,7 @@
     }
 
     async function doLogout() {
-      if (!confirm('Tem certeza que deseja sair?')) return;
+      showConfirm('Tem certeza que deseja sair?', () => { sb.auth.signOut(); }); return;
       await sb.auth.signOut();
     }
 
@@ -3196,24 +3251,15 @@
       }
     }
 
-    async function deleteChat(id) {
-      if (!confirm('Tem certeza que deseja deletar esta conversa?')) return;
-
-      try {
-        const { error } = await sb
-          .from('chats')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-
-        if (currentChat.id === id) {
-          newChat();
-        } else {
-          await loadChats();
-        }
-      } catch (e) {
-      }
+    function deleteChat(id) {
+      showConfirm('Tem certeza que deseja excluir esta conversa?', async () => {
+        try {
+          const { error } = await sb.from('chats').delete().eq('id', id);
+          if (error) throw error;
+          if (currentChat.id === id) newChat();
+          else await loadChats();
+        } catch (e) {}
+      });
     }
 
     function newChat() {
