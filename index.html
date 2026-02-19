@@ -81,7 +81,7 @@
     }
 
     #sidebar {
-      width: 85%;
+      width: min(85%, 300px);
       max-width: 300px;
       background: var(--card);
       border-right: 1px solid var(--border);
@@ -246,6 +246,12 @@
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
+    }
+    @media (max-width: 600px) {
+      .c-head { padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); gap: 6px; }
+      .c-title { font-size: 14px; }
+      .c-right { gap: 2px; }
+      .icon-btn { width: 36px; height: 36px; }
     }
 
     .c-left {
@@ -539,6 +545,13 @@
     @media (min-width: 769px) {
       .bubble {
         max-width: 68%;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .bubble {
+        max-width: 88%;
+        font-size: 14px;
       }
     }
 
@@ -956,6 +969,28 @@
       max-width: 480px;
       max-height: 85vh;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 600px) {
+      #calcModal,
+      #statsModal,
+      #shareModal,
+      #learningStatsModal {
+        align-items: flex-end;
+        justify-content: stretch;
+        padding: 0;
+      }
+      .m-box {
+        border-radius: 20px 20px 0 0;
+        width: 100%;
+        max-width: 100%;
+        max-height: 88vh;
+        min-height: 30vh;
+        padding: 20px 16px 32px;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+        animation: slideUp 0.28s cubic-bezier(0.32,0.72,0,1);
+      }
     }
 
     .m-head {
@@ -1211,6 +1246,20 @@
       from { transform: translateY(100%); }
       to   { transform: translateY(0); }
     }
+
+    /* drag handle visual nos bottom sheets */
+    @media (max-width: 600px) {
+      .m-box::before,
+      .client-modal-box::before {
+        content: '';
+        display: block;
+        width: 36px;
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        margin: -8px auto 16px;
+      }
+    }
     .client-modal-head {
       display: flex;
       align-items: center;
@@ -1439,7 +1488,11 @@
     }
     .user-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    @media (max-width: 480px) { .user-info span { display: none; } }
+    @media (max-width: 480px) {
+      .user-info span { display: none; }
+      .m-head .m-title { font-size: 14px; }
+      #msgInput { font-size: 16px; }
+    }
   </style>
 </head>
 
