@@ -3171,32 +3171,39 @@
 
     async function carregarContadoresParaForm() {
       const listEl = document.getElementById('fContadoresList');
+      if (!listEl) return;
       listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light)">Carregando...</p>';
 
-      const { data, error } = await sb
-        .from('clientes_usuarios')
-        .select('user_id')
-        .limit(1); // apenas para testar acesso
+      try {
+        const res = await supabaseProxy('listar_usuarios', {});
 
-      // Buscar usuários via Supabase admin proxy
-      const res = await supabaseProxy('listar_usuarios', {});
-      if (!res?.usuarios?.length) {
-        listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light)">Nenhum contador cadastrado.</p>';
-        return;
+        if (res?.error) {
+          listEl.innerHTML = `<p style="font-size:12px;color:var(--error)">Erro: ${escapeHtml(res.error)}</p>`;
+          return;
+        }
+
+        const usuarios = res?.usuarios || [];
+        if (!usuarios.length) {
+          listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light)">Nenhum contador cadastrado ainda.</p>';
+          return;
+        }
+
+        listEl.innerHTML = usuarios.map(u => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0;border-bottom:1px solid var(--border)">
+            <input type="checkbox" value="${u.id}" style="width:14px;height:14px">
+            <span>${escapeHtml(u.email)}</span>
+          </label>
+        `).join('');
+      } catch(e) {
+        listEl.innerHTML = '<p style="font-size:12px;color:var(--error)">Erro ao carregar contadores. Verifique se você tem permissão de admin.</p>';
       }
-
-      listEl.innerHTML = res.usuarios.map(u => `
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0">
-          <input type="checkbox" value="${u.id}" style="width:14px;height:14px">
-          <span>${escapeHtml(u.email)}</span>
-        </label>
-      `).join('');
     }
 
     function validarCNPJ(cnpj) {
       cnpj = cnpj.replace(/\D/g, '');
       if (cnpj.length !== 14) return false;
-      if (/^(\d)+$/.test(cnpj)) return false; // sequências iguais: 00000000000000
+      // Rejeitar sequências repetidas (00000000000000, 11111111111111, etc.)
+      if (/^(\d)\1+$/.test(cnpj)) return false;
       const calc = (cnpj, len) => {
         let sum = 0, pos = len - 7;
         for (let i = len; i >= 1; i--) {
@@ -3402,9 +3409,15 @@
       const comAcesso = new Set((atuais || []).map(a => a.user_id));
       const usuarios = resUsers?.usuarios || [];
 
+      if (resUsers?.error) {
+        document.getElementById('acessosList').innerHTML =
+          `<p style="font-size:13px;color:var(--error)">Erro ao carregar usuários: ${escapeHtml(resUsers.error)}<br><small>Verifique se sua conta tem role 'admin' no user_metadata do Supabase.</small></p>`;
+        return;
+      }
+
       if (!usuarios.length) {
         document.getElementById('acessosList').innerHTML =
-          '<p style="font-size:13px;color:var(--text-light)">Nenhum contador cadastrado.</p>';
+          '<p style="font-size:13px;color:var(--text-light)">Nenhum outro usuário cadastrado no sistema.</p>';
         return;
       }
 
@@ -3470,8 +3483,9 @@
       document.getElementById('docModal').classList.remove('on');
     }
     function switchDocTab(tab, btn) {
-      document.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.doc-panel').forEach(p => p.classList.remove('active'));
+      // Escopo restrito ao docModal para não afetar outros modais
+      document.querySelectorAll('#docModal .doc-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('#docModal .doc-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('docPanel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
     }
