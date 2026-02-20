@@ -3066,6 +3066,8 @@
     async function showApp() {
       hideLoading();
       document.getElementById('authScreen').classList.add('hidden');
+      ['sidebar', 'chat'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); });
+      document.querySelector('header')?.classList.remove('hidden');
       carregarPerfil().then(() => atualizarNomeHeader());
 
       // Forçar refresh do user para pegar user_metadata atualizado (role, theme)
@@ -3092,11 +3094,20 @@
     }
 
     function showAuthScreen() {
+      // Esconder app
+      ['sidebar', 'chat', 'overlay'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      document.querySelector('header')?.classList.add('hidden');
+
+      // Mostrar tela de login
       document.getElementById('authScreen').classList.remove('hidden');
       showAuthState('login');
       document.getElementById('userEmail').textContent = '—';
       allChats = [];
       currentCliente = null;
+      perfilCache = null;
       currentChat = { id: null, title: 'Nova Conversa', messages: [] };
       document.getElementById('hList').innerHTML = '';
       document.getElementById('msgs').innerHTML = `
