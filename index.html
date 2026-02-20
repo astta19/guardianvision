@@ -1145,6 +1145,28 @@
     }
 
     /* ====== PERFIL + NOTIFICAÇÕES ====== */
+    .profile-avatar-wrap { position:relative; width:72px; height:72px; margin:0 auto 12px; }
+    .profile-avatar {
+      width:72px; height:72px; border-radius:50%;
+      background:var(--accent); color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      font-size:26px; font-weight:700; flex-shrink:0;
+      overflow:hidden; border:3px solid var(--border);
+    }
+    .profile-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+    .avatar-upload-btn {
+      position:absolute; bottom:0; right:0;
+      width:24px; height:24px; border-radius:50%;
+      background:var(--accent); color:#fff; border:2px solid var(--card);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:12px;
+    }
+    .avatar-upload-btn:hover { opacity:0.85; }
+    .header-avatar {
+      width:26px; height:26px; border-radius:50%;
+      object-fit:cover; flex-shrink:0;
+      border:2px solid var(--border);
+    }
     .profile-avatar {
       width:64px; height:64px; border-radius:50%;
       background:var(--accent); color:#fff;
@@ -1856,7 +1878,7 @@
 
         <!-- Usuário logado + logout -->
         <div class="user-info" onclick="openProfile()" title="Perfil e configurações" style="cursor:pointer">
-          <i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i>
+          <span id="headerAvatarWrap"><i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i></span>
           <span id="userEmail">—</span>
         </div>
       </div>
@@ -2041,7 +2063,13 @@
       </div>
 
       <!-- Avatar + email -->
-      <div id="profileAvatar" class="profile-avatar">?</div>
+      <div class="profile-avatar-wrap">
+        <div id="profileAvatar" class="profile-avatar">?</div>
+        <label class="avatar-upload-btn" title="Alterar foto" for="avatarInput">
+          <i data-lucide="camera" style="width:12px;height:12px"></i>
+        </label>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+      </div>
       <div class="profile-email" id="profileEmailDisplay"></div>
 
       <!-- Abas -->
@@ -3033,7 +3061,7 @@
     async function showApp() {
       hideLoading();
       document.getElementById('authScreen').classList.add('hidden');
-      atualizarNomeHeader();
+      carregarPerfil().then(() => atualizarNomeHeader());
 
       // Forçar refresh do user para pegar user_metadata atualizado (role, theme)
       const { data: { user } } = await sb.auth.getUser();
@@ -3982,14 +4010,54 @@
       { id: 'dirpf',      label: 'DIRPF (PF)',            desc: 'Até 29/05 anual',           dia: 29, mes: 5        },
     ];
 
+    // ============================================
+    // PERFIS_USUARIOS — banco centralizado de perfil
+    // ============================================
+
+    let perfilCache = null; // cache local para evitar múltiplas queries
+
+    async function carregarPerfil() {
+      if (!currentUser) return null;
+      try {
+        const { data } = await sb
+          .from('perfis_usuarios')
+          .select('nome, avatar_url')
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+        perfilCache = data || {};
+        return perfilCache;
+      } catch(e) {
+        perfilCache = {};
+        return {};
+      }
+    }
+
+    async function salvarPerfilBanco(campos) {
+      if (!currentUser) return false;
+      const { error } = await sb
+        .from('perfis_usuarios')
+        .upsert({ user_id: currentUser.id, ...campos, atualizado_em: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (!error && perfilCache) Object.assign(perfilCache, campos);
+      return !error;
+    }
+
     function atualizarNomeHeader() {
-      const nome = currentUser?.user_metadata?.nome;
+      const nome = perfilCache?.nome || currentUser?.user_metadata?.nome;
       const email = currentUser?.email || '';
       const display = nome || email.split('@')[0] || 'usuário';
       document.getElementById('userEmail').textContent = display;
+
+      // Atualizar avatar no header
+      const wrap = document.getElementById('headerAvatarWrap');
+      if (wrap && perfilCache?.avatar_url) {
+        wrap.innerHTML = `<img src="${perfilCache.avatar_url}" class="header-avatar" alt="avatar">`;
+      } else if (wrap) {
+        wrap.innerHTML = '<i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i>';
+        lucide.createIcons();
+      }
     }
 
-    function openProfile() {
+    async function openProfile() {
       const modal = document.getElementById('profileModal');
       modal.style.display = 'flex';
 
@@ -3999,21 +4067,27 @@
       modal.querySelector('.doc-tab').classList.add('active');
       document.getElementById('profileTabConta').classList.add('active');
 
-      // Preencher avatar e email
+      // Carregar perfil do banco
+      const perfil = await carregarPerfil();
       const email = currentUser?.email || '';
-      const inicial = (currentUser?.user_metadata?.nome || email)[0]?.toUpperCase() || '?';
-      document.getElementById('profileAvatar').textContent = inicial;
+
+      // Avatar — foto ou inicial
+      const avatarEl = document.getElementById('profileAvatar');
+      if (perfil?.avatar_url) {
+        avatarEl.innerHTML = `<img src="${perfil.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="avatar">`;
+      } else {
+        const inicial = (perfil?.nome || email)[0]?.toUpperCase() || '?';
+        avatarEl.textContent = inicial;
+      }
+
       document.getElementById('profileEmailDisplay').textContent = email;
+      document.getElementById('profileNome').value = perfil?.nome || '';
 
       // Tema atual
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       document.getElementById('profileThemeToggle').checked = isDark;
 
-      // Preencher nome atual
-      const nomeAtual = currentUser?.user_metadata?.nome || '';
-      document.getElementById('profileNome').value = nomeAtual;
-
-      // pwdBar2 usa checkPasswordStrengthEl para não colidir com pwdBar do setPassword
+      // pwdBar2
       document.getElementById('profileNewPwd').oninput = function() {
         checkPasswordStrengthEl(this.value, 'pwdBar2', 'pwdHint2');
       };
@@ -4058,15 +4132,13 @@
       const btn = event.target;
 
       btn.disabled = true; btn.textContent = 'Salvando...';
-      const { error } = await sb.auth.updateUser({ data: { nome } });
+      const ok = await salvarPerfilBanco({ nome });
       btn.disabled = false; btn.textContent = 'Salvar nome';
 
-      if (error) {
+      if (!ok) {
         msgEl.textContent = 'Erro ao salvar. Tente novamente.';
         msgEl.className = 'auth-msg error';
       } else {
-        // Atualizar currentUser e header imediatamente
-        if (currentUser?.user_metadata) currentUser.user_metadata.nome = nome;
         atualizarNomeHeader();
         msgEl.textContent = '✅ Nome salvo com sucesso.';
         msgEl.className = 'auth-msg success';
@@ -4108,6 +4180,54 @@
     }
 
     // ---- NOTIFICAÇÕES ----
+
+    async function uploadAvatar(input) {
+      const file = input.files[0];
+      if (!file || !currentUser) return;
+
+      // Validar tipo e tamanho (máx 2MB)
+      if (!file.type.startsWith('image/')) {
+        alert('Selecione uma imagem válida (JPG, PNG, WebP).');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        alert('A imagem deve ter no máximo 2MB.');
+        return;
+      }
+
+      const avatarEl = document.getElementById('profileAvatar');
+      avatarEl.innerHTML = '<i data-lucide="loader" style="width:20px;height:20px;animation:spin 1s linear infinite"></i>';
+      lucide.createIcons();
+
+      try {
+        // Upload para Supabase Storage bucket 'avatars'
+        const ext = file.name.split('.').pop();
+        const path = `${currentUser.id}/avatar.${ext}`;
+
+        const { error: upErr } = await sb.storage
+          .from('avatars')
+          .upload(path, file, { upsert: true, contentType: file.type });
+
+        if (upErr) throw upErr;
+
+        // Gerar URL pública
+        const { data: urlData } = sb.storage.from('avatars').getPublicUrl(path);
+        const avatar_url = urlData.publicUrl + '?t=' + Date.now(); // cache bust
+
+        // Salvar URL no banco
+        await salvarPerfilBanco({ avatar_url });
+
+        // Atualizar UI
+        avatarEl.innerHTML = `<img src="${avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="avatar">`;
+        atualizarNomeHeader();
+
+      } catch(e) {
+        avatarEl.textContent = (perfilCache?.nome || currentUser?.email || '?')[0]?.toUpperCase();
+        alert('Erro ao enviar imagem. Verifique se o bucket "avatars" existe no Supabase Storage.');
+      }
+
+      input.value = ''; // resetar input
+    }
 
     async function carregarConfigNotif() {
       const listEl = document.getElementById('notifObrigacoesList');
