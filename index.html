@@ -977,7 +977,8 @@
       #calcModal,
       #statsModal,
       #shareModal,
-      #learningStatsModal {
+      #learningStatsModal,
+      #profileModal {
         align-items: flex-end;
         justify-content: stretch;
         padding: 0;
@@ -1179,9 +1180,10 @@
     .profile-field { margin-bottom:12px; }
     .profile-field label { font-size:12px; font-weight:500; color:var(--text-light); display:block; margin-bottom:4px; }
     .profile-field input { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:14px; }
-    .notif-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); gap:12px; }
+    .notif-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); gap:12px; min-width:0; }
     .notif-item:last-child { border-bottom:none; }
-    .notif-item-info { flex:1; }
+    .notif-item-info { flex:1; min-width:0; overflow:hidden; }
+    .notif-item-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .notif-item-title { font-size:13px; font-weight:500; }
     .notif-item-desc { font-size:11px; color:var(--text-light); margin-top:2px; }
     .notif-toggle { position:relative; width:36px; height:20px; flex-shrink:0; }
@@ -1197,7 +1199,7 @@
     #profileModal .doc-panel { display:none; }
     #profileModal .doc-panel.active { display:block; }
     #profileModal .profile-section h4 { color:var(--text-light); }
-    #profileModal .profile-field input { box-sizing:border-box; }
+    #profileModal .profile-field input { box-sizing:border-box; font-size:16px; } /* 16px evita zoom no iOS */
 
     .pwd-strength { height:4px; border-radius:2px; margin-top:6px; transition:all 0.3s; background:var(--border); }
     .pwd-strength-bar { height:100%; border-radius:2px; transition:all 0.3s; width:0%; }
@@ -1214,7 +1216,8 @@
 
     @media (max-width: 600px) {
       #docModal, #profileModal { align-items:flex-end; justify-content:stretch; padding:0; }
-      #docModal .m-box {
+      #docModal .m-box,
+      #profileModal .m-box {
         width:100%; max-width:100%; border-radius:20px 20px 0 0;
         max-height:92vh; padding:20px 14px 32px;
         box-shadow:0 -4px 24px rgba(0,0,0,0.18);
@@ -1385,6 +1388,7 @@
     /* drag handle visual nos bottom sheets */
     @media (max-width: 600px) {
       .m-box::before,
+      #profileModal .m-box::before,
       .client-modal-box::before {
         content: '';
         display: block;
@@ -1627,6 +1631,7 @@
       .user-info span { display: none; }
       .m-head .m-title { font-size: 14px; }
       #msgInput { font-size: 16px; }
+      #charCount { font-size: 10px; max-width: 56px; }
     }
   </style>
 </head>
