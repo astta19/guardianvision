@@ -1,8 +1,4 @@
 // netlify/functions/notificacoes-prazos.js
-// Scheduled via netlify.toml — roda todo dia às 11h UTC (08h Brasília)
-// SEM dependência de @netlify/functions — funciona com exports.handler padrão
-//
-// Adicionar no netlify.toml:
 // [functions."notificacoes-prazos"]
 //   schedule = "0 11 * * *"
 
@@ -53,7 +49,11 @@ async function buscarUsuariosComNotif() {
       }
     }
   );
-  return res.ok ? res.json() : [];
+  if (!res.ok) {
+    console.error('Supabase erro:', res.status, await res.text());
+    return [];
+  }
+  return res.json();
 }
 
 async function enviarEmail(para, assunto, html) {
@@ -70,7 +70,15 @@ async function enviarEmail(para, assunto, html) {
       html
     })
   });
-  return res.ok;
+
+  const body = await res.json();
+  if (!res.ok) {
+    // Log detalhado do erro do Resend
+    console.error(`Resend erro [${res.status}]:`, JSON.stringify(body));
+    return false;
+  }
+  console.log(`E-mail enviado para ${para} — ID: ${body.id}`);
+  return true;
 }
 
 function gerarHtml(prazos) {
@@ -107,13 +115,23 @@ function gerarHtml(prazos) {
 }
 
 exports.handler = async () => {
+  console.log('Iniciando envio de notificações —', new Date().toISOString());
+  console.log('RESEND_API_KEY configurada:', !!process.env.RESEND_API_KEY);
+  console.log('SUPABASE_URL configurada:', !!process.env.SUPABASE_URL);
+
   try {
     const configs = await buscarUsuariosComNotif();
+    console.log(`Usuários com notificações configuradas: ${configs.length}`);
+
     let enviados = 0;
 
     for (const config of configs) {
       const { email_notif, antecedencia_dias = 7, obrigacoes_ativas = [] } = config;
-      if (!email_notif || !obrigacoes_ativas.length) continue;
+
+      console.log(`Processando: ${email_notif} | antecedência: ${antecedencia_dias}d | obrigações: ${obrigacoes_ativas.join(',')}`);
+
+      if (!email_notif) { console.log('Sem email_notif — pulando'); continue; }
+      if (!obrigacoes_ativas.length) { console.log('Sem obrigações ativas — pulando'); continue; }
 
       const prazos = OBRIGACOES
         .filter(ob => obrigacoes_ativas.includes(ob.id))
@@ -121,7 +139,9 @@ exports.handler = async () => {
         .filter(ob => ob.dias > 0 && ob.dias <= antecedencia_dias)
         .sort((a, b) => a.dias - b.dias);
 
-      if (!prazos.length) continue;
+      console.log(`Prazos dentro da janela (${antecedencia_dias}d): ${prazos.map(p => `${p.label}=${p.dias}d`).join(', ') || 'nenhum'}`);
+
+      if (!prazos.length) { console.log('Nenhum prazo na janela — pulando'); continue; }
 
       const assunto = prazos.length === 1
         ? `⚠️ ${prazos[0].label} vence em ${prazos[0].dias} dia(s) — Fiscal365`
@@ -130,10 +150,10 @@ exports.handler = async () => {
       if (await enviarEmail(email_notif, assunto, gerarHtml(prazos))) enviados++;
     }
 
-    console.log(`Notificações: ${enviados}/${configs.length} enviadas`);
-    return { statusCode: 200, body: JSON.stringify({ enviados }) };
+    console.log(`Resultado: ${enviados}/${configs.length} enviadas`);
+    return { statusCode: 200, body: JSON.stringify({ enviados, total: configs.length }) };
   } catch (e) {
-    console.error('Erro:', e.message);
+    console.error('Erro geral:', e.message);
     return { statusCode: 500, body: e.message };
   }
 };
