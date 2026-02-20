@@ -3094,6 +3094,12 @@
     }
 
     function showAuthScreen() {
+      // Fechar todos os modais abertos
+      ['confirmModal','clientModal','docModal','profileModal','calcModal','statsModal','learningStatsModal','shareModal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+      });
+
       // Esconder app
       ['sidebar', 'chat', 'overlay'].forEach(id => {
         const el = document.getElementById(id);
