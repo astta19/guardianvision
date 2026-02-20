@@ -4243,7 +4243,7 @@
         .from('notificacoes_config')
         .select('*')
         .eq('user_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
       const config = data || {};
       if (config.email_notif) document.getElementById('profileNotifEmail').value = config.email_notif;
@@ -4400,8 +4400,9 @@
     }
 
     async function doLogout() {
-      showConfirm('Tem certeza que deseja sair?', () => { sb.auth.signOut(); }); return;
-      await sb.auth.signOut();
+      showConfirm('Tem certeza que deseja sair?', async () => {
+        await sb.auth.signOut();
+      });
     }
 
     async function checkConnection() {
