@@ -1171,6 +1171,12 @@
     .notif-antecedencia { font-size:12px; color:var(--text-light); display:flex; align-items:center; gap:6px; }
     .notif-antecedencia select { padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12px; }
 
+    /* Garantir visibilidade dos painéis de perfil independente do .doc-panel global */
+    #profileModal .doc-panel { display:none; }
+    #profileModal .doc-panel.active { display:block; }
+    #profileModal .profile-section h4 { color:var(--text-light); }
+    #profileModal .profile-field input { box-sizing:border-box; }
+
     .pwd-strength { height:4px; border-radius:2px; margin-top:6px; transition:all 0.3s; background:var(--border); }
     .pwd-strength-bar { height:100%; border-radius:2px; transition:all 0.3s; width:0%; }
     .pwd-hint { font-size:11px; color:var(--text-light); margin-top:4px; }
@@ -3987,9 +3993,15 @@
       const modal = document.getElementById('profileModal');
       modal.style.display = 'flex';
 
+      // Resetar para aba Conta sempre que abre
+      modal.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
+      modal.querySelectorAll('.doc-panel').forEach(p => p.classList.remove('active'));
+      modal.querySelector('.doc-tab').classList.add('active');
+      document.getElementById('profileTabConta').classList.add('active');
+
       // Preencher avatar e email
       const email = currentUser?.email || '';
-      const inicial = email[0]?.toUpperCase() || '?';
+      const inicial = (currentUser?.user_metadata?.nome || email)[0]?.toUpperCase() || '?';
       document.getElementById('profileAvatar').textContent = inicial;
       document.getElementById('profileEmailDisplay').textContent = email;
 
@@ -4001,8 +4013,7 @@
       const nomeAtual = currentUser?.user_metadata?.nome || '';
       document.getElementById('profileNome').value = nomeAtual;
 
-      // pwdBar2 usa mesmo checkPasswordStrength mas com id diferente
-      // Override temporário para apontar para pwdBar2
+      // pwdBar2 usa checkPasswordStrengthEl para não colidir com pwdBar do setPassword
       document.getElementById('profileNewPwd').oninput = function() {
         checkPasswordStrengthEl(this.value, 'pwdBar2', 'pwdHint2');
       };
@@ -4018,8 +4029,9 @@
     }
 
     function switchProfileTab(tab, btn) {
-      document.querySelectorAll('#profileModal .doc-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('#profileModal .doc-panel').forEach(p => p.classList.remove('active'));
+      const modal = document.getElementById('profileModal');
+      modal.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
+      modal.querySelectorAll('.doc-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       const panelId = tab === 'conta' ? 'profileTabConta' : 'profileTabNotif';
       document.getElementById(panelId).classList.add('active');
