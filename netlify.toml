@@ -2,6 +2,9 @@
   publish = "."
   functions = "netlify/functions"
 
+[functions."notificacoes-prazos"]
+  schedule = "0 11 * * *"
+
 [[headers]]
   for = "/*"
   [headers.values]
