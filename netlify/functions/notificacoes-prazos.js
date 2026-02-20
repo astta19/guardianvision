@@ -1,25 +1,22 @@
 // netlify/functions/notificacoes-prazos.js
-// Executa diariamente às 08h (horário de Brasília = 11h UTC)
-// Instalar dependência: npm install @resend/node
+// Scheduled via netlify.toml — roda todo dia às 11h UTC (08h Brasília)
+// SEM dependência de @netlify/functions — funciona com exports.handler padrão
 //
-// Variáveis de ambiente necessárias no Netlify:
-//   SUPABASE_URL
-//   SUPABASE_SERVICE_KEY
-//   RESEND_API_KEY  ← obter em resend.com (gratuito até 3.000/mês)
-
-const schedule = require('@netlify/functions').schedule;
+// Adicionar no netlify.toml:
+// [functions."notificacoes-prazos"]
+//   schedule = "0 11 * * *"
 
 const OBRIGACOES = [
-  { id: 'das',         label: 'DAS Simples Nacional',  dia: 20, mensal: true  },
-  { id: 'dctfweb',     label: 'DCTFWeb',               dia: 28, mensal: true  },
-  { id: 'efd_reinf',   label: 'EFD-Reinf',             dia: 15, mensal: true  },
-  { id: 'esocial',     label: 'eSocial (folha)',        dia: 15, mensal: true  },
-  { id: 'efd_contrib', label: 'EFD-Contribuições',     dia: 10, mensal: true  },
-  { id: 'dasn_simei',  label: 'DASN-SIMEI (MEI)',      dia: 31, mes: 5        },
-  { id: 'defis',       label: 'DEFIS (Simples)',        dia: 31, mes: 3        },
-  { id: 'ecd',         label: 'ECD',                   dia: 30, mes: 6        },
-  { id: 'ecf',         label: 'ECF',                   dia: 31, mes: 7        },
-  { id: 'dirpf',       label: 'DIRPF (PF)',            dia: 29, mes: 5        },
+  { id: 'das',         label: 'DAS Simples Nacional', dia: 20, mensal: true },
+  { id: 'dctfweb',     label: 'DCTFWeb',              dia: 28, mensal: true },
+  { id: 'efd_reinf',   label: 'EFD-Reinf',            dia: 15, mensal: true },
+  { id: 'esocial',     label: 'eSocial (folha)',       dia: 15, mensal: true },
+  { id: 'efd_contrib', label: 'EFD-Contribuições',    dia: 10, mensal: true },
+  { id: 'dasn_simei',  label: 'DASN-SIMEI (MEI)',     dia: 31, mes: 5       },
+  { id: 'defis',       label: 'DEFIS (Simples)',       dia: 31, mes: 3       },
+  { id: 'ecd',         label: 'ECD',                  dia: 30, mes: 6       },
+  { id: 'ecf',         label: 'ECF',                  dia: 31, mes: 7       },
+  { id: 'dirpf',       label: 'DIRPF (PF)',           dia: 29, mes: 5       },
 ];
 
 function calcularDiasAte(dia, mes, mensal) {
@@ -36,28 +33,25 @@ function calcularDiasAte(dia, mes, mensal) {
 }
 
 function formatarData(dia, mes, mensal) {
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   if (mensal) {
-    const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
     const hoje = new Date();
     const m = new Date(hoje.getFullYear(), hoje.getMonth(), dia) < hoje
       ? hoje.getMonth() + 1 : hoje.getMonth();
     return `${String(dia).padStart(2,'0')}/${meses[m]}`;
   }
-  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  return `${String(dia).padStart(2,'0')}/${meses[mes-1]}`;
+  return `${String(dia).padStart(2,'0')}/${meses[mes - 1]}`;
 }
 
 async function buscarUsuariosComNotif() {
-  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
-  const headers = {
-    'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-    'Content-Type': 'application/json'
-  };
-
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/notificacoes_config?select=user_id,email_notif,antecedencia_dias,obrigacoes_ativas&obrigacoes_ativas=not.eq.{}`,
-    { headers }
+    `${process.env.SUPABASE_URL}/rest/v1/notificacoes_config?select=user_id,email_notif,antecedencia_dias,obrigacoes_ativas`,
+    {
+      headers: {
+        'apikey': process.env.SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
+      }
+    }
   );
   return res.ok ? res.json() : [];
 }
@@ -70,7 +64,7 @@ async function enviarEmail(para, assunto, html) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Fiscal365 <noreply@fiscal365.com.br>',
+      from: 'Fiscal365 <noreply@guardianvisionbrasil.com.br>',
       to: [para],
       subject: assunto,
       html
@@ -79,46 +73,40 @@ async function enviarEmail(para, assunto, html) {
   return res.ok;
 }
 
-function gerarHtmlEmail(prazos) {
+function gerarHtml(prazos) {
   const linhas = prazos.map(p => `
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px">${p.label}</td>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;text-align:center">${p.data}</td>
-      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;text-align:center;color:${p.dias <= 3 ? '#dc2626' : p.dias <= 7 ? '#d97706' : '#16a34a'};font-weight:600">${p.dias} dia(s)</td>
+      <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px;text-align:center;font-weight:600;color:${p.dias <= 3 ? '#dc2626' : p.dias <= 7 ? '#d97706' : '#16a34a'}">${p.dias} dia(s)</td>
     </tr>`).join('');
 
-  return `
-  <!DOCTYPE html>
-  <html>
-  <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;margin:0;padding:24px">
-    <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+  return `<!DOCTYPE html><html><body style="font-family:-apple-system,sans-serif;background:#f8fafc;margin:0;padding:24px">
+    <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
       <div style="background:#000;padding:24px 28px">
         <h1 style="color:#fff;margin:0;font-size:20px">Fiscal365</h1>
-        <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:13px">Alertas de prazos fiscais</p>
+        <p style="color:rgba(255,255,255,.7);margin:4px 0 0;font-size:13px">Alertas de prazos fiscais</p>
       </div>
       <div style="padding:24px 28px">
-        <p style="font-size:15px;color:#1a1a1a;margin-top:0">Você tem <strong>${prazos.length} obrigação(ões) fiscal(is) próxima(s)</strong>:</p>
+        <p style="font-size:15px;color:#1a1a1a;margin-top:0">Você tem <strong>${prazos.length} obrigação(ões) próxima(s)</strong>:</p>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-          <thead>
-            <tr style="background:#f8fafc">
-              <th style="padding:10px 16px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Obrigação</th>
-              <th style="padding:10px 16px;text-align:center;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Vencimento</th>
-              <th style="padding:10px 16px;text-align:center;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Faltam</th>
-            </tr>
-          </thead>
+          <thead><tr style="background:#f8fafc">
+            <th style="padding:10px 16px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase">Obrigação</th>
+            <th style="padding:10px 16px;text-align:center;font-size:12px;color:#64748b;text-transform:uppercase">Vencimento</th>
+            <th style="padding:10px 16px;text-align:center;font-size:12px;color:#64748b;text-transform:uppercase">Faltam</th>
+          </tr></thead>
           <tbody>${linhas}</tbody>
         </table>
         <a href="https://fiscalchat.netlify.app" style="display:inline-block;background:#000;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500">Abrir Fiscal365 →</a>
       </div>
       <div style="padding:16px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">
-        <p style="font-size:11px;color:#94a3b8;margin:0">Para cancelar estas notificações, acesse seu perfil no Fiscal365 e desative as obrigações desejadas.</p>
+        <p style="font-size:11px;color:#94a3b8;margin:0">Para cancelar, acesse Perfil → Notificações no Fiscal365.</p>
       </div>
     </div>
-  </body>
-  </html>`;
+  </body></html>`;
 }
 
-const handler = async () => {
+exports.handler = async () => {
   try {
     const configs = await buscarUsuariosComNotif();
     let enviados = 0;
@@ -127,14 +115,9 @@ const handler = async () => {
       const { email_notif, antecedencia_dias = 7, obrigacoes_ativas = [] } = config;
       if (!email_notif || !obrigacoes_ativas.length) continue;
 
-      // Calcular prazos relevantes dentro da antecedência configurada
       const prazos = OBRIGACOES
         .filter(ob => obrigacoes_ativas.includes(ob.id))
-        .map(ob => ({
-          ...ob,
-          dias: calcularDiasAte(ob.dia, ob.mes, ob.mensal),
-          data: formatarData(ob.dia, ob.mes, ob.mensal)
-        }))
+        .map(ob => ({ ...ob, dias: calcularDiasAte(ob.dia, ob.mes, ob.mensal), data: formatarData(ob.dia, ob.mes, ob.mensal) }))
         .filter(ob => ob.dias > 0 && ob.dias <= antecedencia_dias)
         .sort((a, b) => a.dias - b.dias);
 
@@ -144,17 +127,13 @@ const handler = async () => {
         ? `⚠️ ${prazos[0].label} vence em ${prazos[0].dias} dia(s) — Fiscal365`
         : `⚠️ ${prazos.length} prazos fiscais próximos — Fiscal365`;
 
-      const ok = await enviarEmail(email_notif, assunto, gerarHtmlEmail(prazos));
-      if (ok) enviados++;
+      if (await enviarEmail(email_notif, assunto, gerarHtml(prazos))) enviados++;
     }
 
-    console.log(`Notificações enviadas: ${enviados}/${configs.length}`);
-    return { statusCode: 200 };
+    console.log(`Notificações: ${enviados}/${configs.length} enviadas`);
+    return { statusCode: 200, body: JSON.stringify({ enviados }) };
   } catch (e) {
-    console.error('Erro ao enviar notificações:', e);
-    return { statusCode: 500 };
+    console.error('Erro:', e.message);
+    return { statusCode: 500, body: e.message };
   }
 };
-
-// Rodar todo dia às 11h UTC (08h Brasília)
-exports.handler = schedule('0 11 * * *', handler);
