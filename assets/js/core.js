@@ -3,8 +3,8 @@
 // ============================================================
 
 // --- Configuração Supabase ---
-const SB_URL = 'https://ixqcbvfnvkqfxpvczakg.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cWNidmZudmtxZnhwdmN6YWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3NDA5NDcsImV4cCI6MjA1NTMxNjk0N30.OgOHAn_0GIhDyFt9XCXIW4bIpuUCYPGKMt1MmpqGt0w';
+const SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 // --- Estado global ---
