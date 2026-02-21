@@ -1,0 +1,402 @@
+// ============================================================
+// CLIENTS.JS — Empresas, Acessos, CNPJ
+// ============================================================
+// ====== FUNÇÕES DE CLIENTES ======
+    async function loadClientes() {
+      const { data, error } = await sb
+        .from('clientes')
+        .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+        .order('razao_social');
+      if (error) { return; }
+
+      const clientes = data || [];
+
+      // Auto-selecionar se tiver só 1, ou restaurar último selecionado
+      const lastId = localStorage.getItem('lastClienteId');
+      const found = clientes.find(c => c.id === lastId);
+      if (found) {
+        setCurrentCliente(found);
+      } else if (clientes.length === 1) {
+        setCurrentCliente(clientes[0]);
+      } else if (clientes.length > 1) {
+        // Mostrar modal para escolher
+        openClientModal();
+      }
+
+      loadChats();
+    }
+
+    function setCurrentCliente(cliente) {
+      currentCliente = cliente;
+      localStorage.setItem('lastClienteId', cliente.id);
+
+      const displayName = cliente.nome_fantasia || cliente.razao_social;
+
+      // Atualizar UI
+      document.getElementById('sidebarClientName').textContent = displayName;
+      const badge = document.getElementById('headerClientBadge');
+      document.getElementById('headerClientName').textContent = displayName;
+      badge.style.display = 'flex';
+
+      // Recarregar chats filtrados
+      loadChats();
+    }
+
+    function openClientModal() {
+      closeSidebar(); // fecha sidebar antes de abrir modal no mobile
+      document.getElementById('clientModal').classList.remove('hidden');
+      renderClientList();
+    }
+
+    function closeClientModal() {
+      document.getElementById('clientModal').classList.add('hidden');
+      document.getElementById('newClientForm').classList.remove('show');
+    }
+
+    async function renderClientList() {
+      const el = document.getElementById('clientList');
+      el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando...</p>';
+
+      const { data, error } = await sb
+        .from('clientes')
+        .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+        .order('razao_social');
+
+      if (error || !data?.length) {
+        el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Nenhuma empresa cadastrada ainda.</p>';
+        return;
+      }
+
+      el.innerHTML = data.map(cl => `
+        <div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}" style="position:relative">
+          <div style="flex:1;cursor:pointer" onclick="selectCliente('${cl.id}')">
+            <div class="client-item-name">${escapeHtml(cl.razao_social)}</div>
+            <div class="client-item-cnpj">CNPJ: ${escapeHtml(cl.cnpj)}</div>
+          </div>
+          ${cl.regime_tributario ? `<span class="client-item-regime">${escapeHtml(cl.regime_tributario)}</span>` : ''}
+          ${isAdmin() ? `<button onclick="gerenciarAcessos('${cl.id}','${escapeHtml(cl.razao_social).replace(/'/g,'')}')" title="Gerenciar acessos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center">
+            <i data-lucide="users" style="width:15px;height:15px"></i>
+          </button>` : ''}
+        </div>`).join('');
+
+      // Guardar lista para selectCliente usar
+      window._clientesList = data;
+      lucide.createIcons();
+    }
+
+    function selectCliente(id) {
+      const cliente = (window._clientesList || []).find(c => c.id === id);
+      if (!cliente) return;
+      setCurrentCliente(cliente);
+      closeClientModal();
+      newChat(); // iniciar nova conversa no contexto do cliente
+    }
+
+    function toggleNewClientForm() {
+      const form = document.getElementById('newClientForm');
+      form.classList.toggle('show');
+      document.getElementById('clientFormMsg').className = 'auth-msg';
+      if (form.classList.contains('show') && isAdmin()) {
+        carregarContadoresParaForm();
+      }
+    }
+
+    async function carregarContadoresParaForm() {
+      const listEl = document.getElementById('fContadoresList');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light)">Carregando...</p>';
+
+      try {
+        const res = await supabaseProxy('listar_usuarios', {});
+
+        if (res?.error) {
+          listEl.innerHTML = `<p style="font-size:12px;color:var(--error)">Erro: ${escapeHtml(res.error)}</p>`;
+          return;
+        }
+
+        const usuarios = res?.usuarios || [];
+        if (!usuarios.length) {
+          listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light)">Nenhum contador cadastrado ainda.</p>';
+          return;
+        }
+
+        listEl.innerHTML = usuarios.map(u => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0;border-bottom:1px solid var(--border)">
+            <input type="checkbox" value="${u.id}" style="width:14px;height:14px">
+            <span>${escapeHtml(u.email)}</span>
+          </label>
+        `).join('');
+      } catch(e) {
+        listEl.innerHTML = '<p style="font-size:12px;color:var(--error)">Erro ao carregar contadores. Verifique se você tem permissão de admin.</p>';
+      }
+    }
+
+    function validarCNPJ(cnpj) {
+      cnpj = cnpj.replace(/\D/g, '');
+      if (cnpj.length !== 14) return false;
+      // Rejeitar sequências repetidas (00000000000000, 11111111111111, etc.)
+      if (/^(\d)\1+$/.test(cnpj)) return false;
+      const calc = (cnpj, len) => {
+        let sum = 0, pos = len - 7;
+        for (let i = len; i >= 1; i--) {
+          sum += parseInt(cnpj[len - i]) * pos--;
+          if (pos < 2) pos = 9;
+        }
+        const r = sum % 11;
+        return r < 2 ? 0 : 11 - r;
+      };
+      return calc(cnpj, 12) === parseInt(cnpj[12]) && calc(cnpj, 13) === parseInt(cnpj[13]);
+    }
+
+    function checkPasswordStrength(pwd) {
+      const bar = document.getElementById('pwdBar');
+      const hint = document.getElementById('pwdHint');
+      if (!bar) return;
+      let score = 0;
+      const checks = [
+        [/.{8,}/, 'mínimo 8 caracteres'],
+        [/[A-Z]/, '1 letra maiúscula'],
+        [/[0-9]/, '1 número'],
+        [/[^A-Za-z0-9]/, '1 caractere especial']
+      ];
+      const missing = checks.filter(([rx]) => !rx.test(pwd)).map(([,msg]) => msg);
+      score = checks.filter(([rx]) => rx.test(pwd)).length;
+      const levels = ['', '#ef4444', '#f97316', '#eab308', '#22c55e'];
+      const labels = ['', 'Fraca', 'Razoável', 'Boa', 'Forte'];
+      bar.style.width = `${score * 25}%`;
+      bar.style.background = levels[score] || 'var(--border)';
+      hint.textContent = score === 4 ? '✅ Senha forte' : `Faltando: ${missing.join(', ')}`;
+      hint.style.color = score < 3 ? 'var(--error)' : score === 4 ? '#22c55e' : 'var(--text-light)';
+    }
+
+    function updateCharCount() {
+      const inp = document.getElementById('msgInput');
+      const counter = document.getElementById('charCount');
+      const len = inp.value.length;
+      const max = 8000;
+      counter.style.display = len > 100 ? 'block' : 'none';
+      counter.textContent = `${len.toLocaleString('pt-BR')}/${max.toLocaleString('pt-BR')}`;
+      counter.style.color = len > 7000 ? 'var(--error)' : len > 6000 ? '#d97706' : 'var(--text-light)';
+      document.getElementById('sendBtn').disabled = len > max;
+    }
+
+    function maskCnpj(input) {
+      let v = input.value.replace(/\D/g, '').substring(0, 14);
+      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+      input.value = v;
+    }
+
+    async function autoPreencherCNPJ(valor) {
+      const cnpj = valor.replace(/\D/g, '');
+      if (cnpj.length !== 14) return;
+      if (!validarCNPJ(cnpj)) {
+        const msgEl = document.getElementById('clientFormMsg');
+        msgEl.textContent = 'CNPJ inválido — verifique os dígitos.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+      const msgEl = document.getElementById('clientFormMsg');
+      msgEl.textContent = 'Consultando Receita Federal...';
+      msgEl.className = 'auth-msg';
+
+      const dados = await consultarCNPJ(cnpj);
+      if (!dados) {
+        msgEl.textContent = 'CNPJ não encontrado na Receita Federal.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      // Preencher campos automaticamente
+      const razao = document.getElementById('fRazao');
+      const fantasia = document.getElementById('fFantasia');
+
+      if (!razao.value) razao.value = dados.razao_social || '';
+      if (!fantasia.value) fantasia.value = dados.nome_fantasia || '';
+
+      // Detectar regime pelo Simples/MEI
+      const regime = document.getElementById('fRegime');
+      if (!regime.value) {
+        if (dados.opcao_pelo_mei) regime.value = 'MEI';
+        else if (dados.opcao_pelo_simples) regime.value = 'Simples Nacional';
+      }
+
+      const situacao = dados.descricao_situacao_cadastral || '';
+      const cor = situacao.toLowerCase().includes('ativa') ? 'success' : 'error';
+      msgEl.textContent = `Situação: ${situacao}`;
+      msgEl.className = `auth-msg ${cor}`;
+    }
+
+    async function saveNewClient() {
+      const razao = document.getElementById('fRazao').value.trim();
+      const cnpj = document.getElementById('fCnpj').value.trim();
+      const fantasia = document.getElementById('fFantasia').value.trim();
+      const regime = document.getElementById('fRegime').value;
+      const ie = document.getElementById('fIE').value.trim();
+      const msgEl = document.getElementById('clientFormMsg');
+
+      if (!razao || !cnpj) {
+        msgEl.textContent = 'Razão social e CNPJ são obrigatórios.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      const cnpjLimpo = cnpj.replace(/[^0-9]/g, '').substring(0, 14);
+      if (!validarCNPJ(cnpjLimpo)) {
+        msgEl.textContent = 'CNPJ inválido — verifique os dígitos verificadores.';
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+      const btn = document.querySelector('#newClientForm .btn-save');
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+
+      // Insert separado do select — evita conflito com RLS policy de SELECT
+      const { error: insertError } = await sb.from('clientes').insert({
+        razao_social: razao,
+        cnpj: cnpjLimpo,
+        nome_fantasia: fantasia || null,
+        regime_tributario: regime || null,
+        inscricao_estadual: ie || null,
+        user_id: currentUser.id
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Salvar Empresa';
+
+      if (insertError) {
+        const msg = insertError.message.includes('duplicate') || insertError.code === '23505'
+          ? 'CNPJ já cadastrado para este usuário.'
+          : `Erro ao salvar: ${insertError.message}`;
+        msgEl.textContent = msg;
+        msgEl.className = 'auth-msg error';
+        return;
+      }
+
+      // Buscar o registro recém-inserido para ter o ID
+      const { data: novo, error: selectError } = await sb
+        .from('clientes')
+        .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+        .eq('cnpj', cnpjLimpo)
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (selectError || !novo) {
+        // Insert funcionou mas não conseguiu buscar — recarregar lista
+        await loadClientes();
+        closeClientModal();
+        return;
+      }
+
+      // Inserir vínculos com contadores selecionados
+      if (isAdmin()) {
+        const checkboxes = document.querySelectorAll('#fContadoresList input[type=checkbox]:checked');
+        const userIds = Array.from(checkboxes).map(cb => cb.value);
+        if (userIds.length > 0) {
+          const vinculos = userIds.map(uid => ({
+            cliente_id: novo.id,
+            user_id: uid,
+            criado_por: currentUser.id
+          }));
+          await sb.from('clientes_usuarios').insert(vinculos);
+        }
+      }
+
+      registrarAuditLog('EMPRESA_CADASTRADA', 'clientes', novo.id, {
+        razao_social: novo.razao_social, cnpj: novo.cnpj, regime: novo.regime_tributario
+      });
+      ['fRazao','fCnpj','fFantasia','fIE'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('fRegime').value = '';
+      toggleNewClientForm();
+      setCurrentCliente(novo);
+      closeClientModal();
+      newChat();
+    }
+
+    async function gerenciarAcessos(clienteId, clienteNome) {
+      // Reusar o modal de clientes com conteúdo dinâmico
+      const listEl = document.getElementById('clientList');
+      listEl.innerHTML = `
+        <div style="margin-bottom:12px">
+          <button onclick="renderClientList()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+          </button>
+          <p style="font-weight:600;margin:8px 0 4px">${escapeHtml(clienteNome)}</p>
+          <p style="font-size:12px;color:var(--text-light)">Marque os contadores com acesso a esta empresa</p>
+        </div>
+        <div id="acessosList" style="display:flex;flex-direction:column;gap:6px"></div>
+        <button class="btn-save" style="width:100%;margin-top:12px" onclick="salvarAcessos('${clienteId}')">Salvar acessos</button>
+        <div id="acessosMsg" class="auth-msg" style="margin-top:8px"></div>
+      `;
+      lucide.createIcons();
+
+      // Carregar usuários e acessos atuais em paralelo
+      const [resUsers, { data: atuais }] = await Promise.all([
+        supabaseProxy('listar_usuarios', {}),
+        sb.from('clientes_usuarios').select('user_id').eq('cliente_id', clienteId)
+      ]);
+
+      const comAcesso = new Set((atuais || []).map(a => a.user_id));
+      const usuarios = resUsers?.usuarios || [];
+
+      if (resUsers?.error) {
+        document.getElementById('acessosList').innerHTML =
+          `<p style="font-size:13px;color:var(--error)">Erro ao carregar usuários: ${escapeHtml(resUsers.error)}<br><small>Verifique se sua conta tem role 'admin' no user_metadata do Supabase.</small></p>`;
+        return;
+      }
+
+      if (!usuarios.length) {
+        document.getElementById('acessosList').innerHTML =
+          '<p style="font-size:13px;color:var(--text-light)">Nenhum outro usuário cadastrado no sistema.</p>';
+        return;
+      }
+
+      document.getElementById('acessosList').innerHTML = usuarios.map(u => `
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:6px 0;border-bottom:1px solid var(--border)">
+          <input type="checkbox" value="${u.id}" ${comAcesso.has(u.id) ? 'checked' : ''} style="width:15px;height:15px">
+          <span>${escapeHtml(u.email)}</span>
+        </label>
+      `).join('');
+    }
+
+    async function salvarAcessos(clienteId) {
+      const msgEl = document.getElementById('acessosMsg');
+      const checkboxes = document.querySelectorAll('#acessosList input[type=checkbox]');
+      const selecionados = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+      const desmarcados = Array.from(checkboxes).filter(cb => !cb.checked).map(cb => cb.value);
+
+      msgEl.textContent = 'Salvando...';
+      msgEl.className = 'auth-msg';
+
+      try {
+        // Remover vínculos desmarcados
+        if (desmarcados.length) {
+          await sb.from('clientes_usuarios')
+            .delete()
+            .eq('cliente_id', clienteId)
+            .in('user_id', desmarcados);
+        }
+
+        // Inserir novos vínculos (upsert evita duplicatas)
+        if (selecionados.length) {
+          const vinculos = selecionados.map(uid => ({
+            cliente_id: clienteId,
+            user_id: uid,
+            criado_por: currentUser.id
+          }));
+          await sb.from('clientes_usuarios').upsert(vinculos, { onConflict: 'cliente_id,user_id' });
+        }
+
+        registrarAuditLog('ACESSOS_ATUALIZADOS', 'clientes_usuarios', clienteId, {
+          adicionados: selecionados.length, removidos: desmarcados.length
+        });
+        msgEl.textContent = 'Acessos salvos com sucesso.';
+        msgEl.className = 'auth-msg success';
+      } catch (e) {
+        msgEl.textContent = 'Erro ao salvar acessos.';
+        msgEl.className = 'auth-msg error';
+      }
+    }
+
