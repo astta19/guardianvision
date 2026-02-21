@@ -2,79 +2,79 @@
 // UI.JS — Sidebar, Modais, Dropdowns, Tema
 // ============================================================
 
-function toggleSidebar() {
+async function toggleSidebar() {
   document.getElementById('sidebar')?.classList.toggle('on');
   document.getElementById('overlay')?.classList.toggle('on');
 }
 
-function closeSidebar() {
+async function closeSidebar() {
   document.getElementById('sidebar')?.classList.remove('on');
   document.getElementById('overlay')?.classList.remove('on');
 }
 
-function toggleFullscreen() {
+async function toggleFullscreen() {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
   else document.exitFullscreen?.();
 }
 
-function switchDocTab(tab) {
+async function switchDocTab(tab) {
   document.querySelectorAll('#docModal .doc-panel').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('#docModal .tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`docPanel_${tab}`)?.classList.remove('hidden');
   document.querySelector(`#docModal [onclick="switchDocTab('${tab}')"]`)?.classList.add('active');
 }
 
-function switchProfileTab(tab) {
+async function switchProfileTab(tab) {
   document.querySelectorAll('#profileModal .doc-panel').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('#profileModal .tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`profilePanel_${tab}`)?.classList.remove('hidden');
   document.querySelector(`#profileModal [onclick="switchProfileTab('${tab}')"]`)?.classList.add('active');
 }
 
-function openDocumentos() {
+async function openDocumentos() {
   const modal = document.getElementById('docModal');
   if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
   switchDocTab('nfe');
   lucide.createIcons();
 }
 
-function closeDocumentos() {
+async function closeDocumentos() {
   const modal = document.getElementById('docModal');
   if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
 }
 
-function openCalculator() {
+async function openCalculator() {
   const modal = document.getElementById('calcModal');
   if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
   lucide.createIcons();
 }
 
-function closeCalculator() {
+async function closeCalculator() {
   const modal = document.getElementById('calcModal');
   if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
 }
 
-function showStats() {
+async function showStats() {
   const modal = document.getElementById('statsModal');
   if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
 }
 
-function closeStats() {
+async function closeStats() {
   const modal = document.getElementById('statsModal');
   if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
 }
 
-function openShareModal() {
+async function openShareModal() {
   const modal = document.getElementById('shareModal');
   if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
 }
 
-function closeShareModal() {
+async function closeShareModal() {
   const modal = document.getElementById('shareModal');
   if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
 }
 
-function toggleDropdown(id) {
+async function toggleDropdown(id) {
   const el = document.getElementById(id);
   if (!el) return;
   const isOpen = el.style.display !== 'none';
@@ -82,13 +82,13 @@ function toggleDropdown(id) {
   el.style.display = isOpen ? 'none' : 'block';
 }
 
-function toggleDocGenMenu() {
+async function toggleDocGenMenu() {
   const menu = document.getElementById('docGenMenu');
   if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 }
 
 
-    function exportChat() {
+    async function exportChat() {
       if (!currentChat.messages || currentChat.messages.length === 0) {
         alert('Nenhuma mensagem para exportar');
         return;
@@ -108,7 +108,7 @@ function toggleDocGenMenu() {
       URL.revokeObjectURL(url);
     }
 
-    function shareChat() {
+    async function shareChat() {
       if (!currentChat.messages || currentChat.messages.length === 0) {
         alert('Nenhuma conversa para compartilhar');
         return;
