@@ -2616,7 +2616,7 @@
             .from('interacoes_chat')
             .select('pergunta, resposta')
             .eq('id', interacaoId)
-            .single();
+            .maybeSingle();
 
           if (error || !interacao) return;
 
@@ -3428,7 +3428,7 @@
         .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
         .eq('cnpj', cnpjLimpo)
         .eq('user_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
       if (selectError || !novo) {
         // Insert funcionou mas não conseguiu buscar — recarregar lista
@@ -3724,7 +3724,7 @@
         (erro ? ` · ${erro} inválido(s)` : '');
 
       el.innerHTML = nfeData.map(nf => {
-        if (nf.erro) return `<div class="nfe-card"><span class="risk-error">❌ ${nf.arquivo} — arquivo inválido ou não é XML de NF-e</span></div>`;
+        if (nf.erro) return `<div class="nfe-card"><span class="risk-error">❌ ${escapeHtml(nf.arquivo)} — arquivo inválido ou não é XML de NF-e</span></div>`;
 
         const icon = nf.nivel === 'ok' ? '✅' : nf.nivel === 'warn' ? '⚠️' : '🔴';
         const cls  = nf.nivel === 'ok' ? 'risk-ok' : nf.nivel === 'warn' ? 'risk-warn' : 'risk-error';
@@ -4546,7 +4546,7 @@
           .from('chats')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
 
@@ -5867,6 +5867,7 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
     async function gerarRelatorioFiscal() {
       document.getElementById('docGenMenu').style.display = 'none';
       if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório.'); return; }
+      try {
 
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -5904,6 +5905,7 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
       doc.text('Obrigações do Mês', margin, y); y += 4;
 
       const obrigacoes = getObrigacoesMes();
+      if (typeof doc.autoTable !== 'function') throw new Error('jsPDF autoTable não carregado');
       doc.autoTable({
         startY: y,
         margin: { left: margin, right: margin },
@@ -5991,6 +5993,10 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
       }
 
       doc.save(`relatorio-fiscal-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.pdf`);
+      } catch(e) {
+        console.error('Erro ao gerar PDF:', e);
+        alert('Erro ao gerar o relatório. Verifique se a página carregou completamente e tente novamente.');
+      }
     }
 
     // ----------------------------------------------------------
@@ -6022,8 +6028,7 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
 
       btnGen.title = originalTitle;
 
-
-
+      try {
       // Quebrar resumo em parágrafos
       const chatParas = resumoChat.split('\n\n').filter(Boolean).map(txt =>
         new Paragraph({
@@ -6111,6 +6116,10 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
       a.download = `parecer-fiscal-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.docx`;
       a.click();
       URL.revokeObjectURL(url);
+      } catch(e) {
+        console.error('Erro ao gerar DOCX:', e);
+        alert('Erro ao gerar o parecer. Verifique se a página carregou completamente e tente novamente.');
+      }
     }
 
     // ----------------------------------------------------------
@@ -6119,6 +6128,7 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
     function gerarPlanilha() {
       document.getElementById('docGenMenu').style.display = 'none';
       if (!currentCliente) { alert('Selecione uma empresa antes de gerar a planilha.'); return; }
+      try {
 
       const empresa = currentCliente;
       const mesAno = getMesAno();
@@ -6205,6 +6215,10 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
       XLSX.utils.book_append_sheet(wb, wsLeg, 'Referências Legislativas');
 
       XLSX.writeFile(wb, `apuracao-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.xlsx`);
+      } catch(e) {
+        console.error('Erro ao gerar Excel:', e);
+        alert('Erro ao gerar a planilha. Verifique se a página carregou completamente e tente novamente.');
+      }
     }
 
   </script>
