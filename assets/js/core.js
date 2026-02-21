@@ -41,7 +41,7 @@ function isAdmin() {
 
 function hideLoading() {
   const el = document.getElementById('loadingScreen');
-  if (el) el.classList.add('hidden');
+  if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
 }
 
 function setConnectionStatus(text, icon, color) {
