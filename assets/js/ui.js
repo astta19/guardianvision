@@ -24,11 +24,25 @@ async function switchDocTab(tab) {
   document.querySelector(`#docModal [onclick="switchDocTab('${tab}')"]`)?.classList.add('active');
 }
 
-async function switchProfileTab(tab) {
-  document.querySelectorAll('#profileModal .doc-panel').forEach(p => p.classList.add('hidden'));
-  document.querySelectorAll('#profileModal .tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`profilePanel_${tab}`)?.classList.remove('hidden');
-  document.querySelector(`#profileModal [onclick="switchProfileTab('${tab}')"]`)?.classList.add('active');
+async function switchProfileTab(tab, btn) {
+  // Esconder todos os painéis e desativar todas as abas
+  document.querySelectorAll('#profileModal .doc-panel').forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
+  document.querySelectorAll('#profileModal .doc-tab').forEach(b => b.classList.remove('active'));
+
+  // Mostrar o painel correto — HTML usa id="profileTabConta", "profileTabNotif"
+  const map = { conta: 'profileTabConta', notif: 'profileTabNotif' };
+  const panelId = map[tab] || `profileTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+  const panel = document.getElementById(panelId);
+  if (panel) { panel.classList.add('active'); panel.style.display = ''; }
+
+  // Ativar o botão clicado
+  if (btn) btn.classList.add('active');
+
+  // Carregar notificações ao abrir essa aba
+  if (tab === 'notif' && typeof carregarConfigNotif === 'function') carregarConfigNotif();
 }
 
 async function openDocumentos() {
