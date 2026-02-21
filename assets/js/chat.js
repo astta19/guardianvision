@@ -433,7 +433,14 @@
       }
     }
 
-    let learningService; // inicializado no window.onload
+    let learningService = null;
+
+function getLearningService() {
+  if (!learningService && typeof FiscalLearningService !== "undefined" && sb) {
+    learningService = new FiscalLearningService(sb);
+  }
+  return learningService;
+}
 
 
     // ============================================
@@ -477,7 +484,7 @@
 
     async function enviarFeedback(nota) {
       if (ultimaInteracaoId) {
-        await learningService.registrarFeedback(ultimaInteracaoId, nota);
+        await getLearningService().registrarFeedback(ultimaInteracaoId, nota);
         
         const agradecimento = document.createElement('div');
         agradecimento.className = 'msg assistant';
@@ -531,7 +538,7 @@
           });
 
           // Também salvar em documentos_analisados para RAG
-          await learningService.salvarDocumento(currentChat?.id || null, {
+          await getLearningService().salvarDocumento(currentChat?.id || null, {
             ...fileData,
             summary: `[BASE] ${fileData.summary}`
           });
@@ -556,209 +563,13 @@
       `;
     }
 
-    async function showLearningStats() {
-      const [stats, melhoresPerguntas, countRAG, countDocs, countTreinamento] = await Promise.all([
-        learningService.buscarEstatisticas(),
-        learningService.buscarMelhoresPerguntas(5),
-        sb.from('interacoes_chat').select('id', { count: 'exact', head: true }).gte('feedback_usuario', 4),
-        sb.from('documentos_analisados').select('id', { count: 'exact', head: true }),
-        supabaseProxy('buscar_treinamento_count', {}).catch(() => ({ count: 0 }))
-      ]);
 
-      let statsHTML = '<div class="stats-card">';
-
-      statsHTML += `
-        <div class="stats-item"><span>Respostas na memória RAG</span><strong>${countRAG.count || 0}</strong></div>
-        <div class="stats-item"><span>Documentos salvos</span><strong>${countDocs.count || 0}</strong></div>
-        <div class="stats-item"><span>Base de treinamento</span><strong>${countTreinamento.count || 0} registros</strong></div>
-      `;
-
-      if (stats.length > 0) {
-        statsHTML += '<h4 style="margin-top:14px">Últimos 7 dias</h4>';
-        stats.forEach(s => {
-          statsHTML += `
-            <div class="stats-item">
-              <span>${new Date(s.data).toLocaleDateString('pt-BR')}</span>
-              <span>${s.total_interacoes || 0} perguntas | ${s.taxa_acerto_media?.toFixed(1) || 0}% acerto</span>
-            </div>`;
-        });
-      } else {
-        statsHTML += '<p style="padding:8px 0;font-size:13px;color:var(--text-light)">Nenhuma estatística ainda. Continue usando o chat!</p>';
-      }
-
-      if (melhoresPerguntas.length > 0) {
-        statsHTML += '<h4 style="margin-top:14px">Melhores feedbacks</h4>';
-        melhoresPerguntas.forEach(p => {
-          statsHTML += `
-            <div class="stats-item">
-              <span>${p.pergunta.substring(0, 50)}...</span>
-              <span>Nota: ${p.feedback_usuario}/5</span>
-            </div>`;
-        });
-      }
-
-      statsHTML += '</div>';
-
-      document.getElementById('learningStatsContent').innerHTML = statsHTML;
-      document.getElementById('learningStatsModal').classList.add('on');
-      lucide.createIcons();
-    }
-
-    function closeLearningStats() {
-      document.getElementById('learningStatsModal').classList.remove('on');
-    }
-
-    window.onload = async () => {
-      sb = window.supabase.createClient(SB_URL, SB_KEY);
-      learningService = new FiscalLearningService(sb);
-      setTheme(localStorage.getItem('theme') || 'light');
-      lucide.createIcons(); // inclui o ícone do loading screen
-
-      // Registrar listener ANTES de qualquer coisa — Supabase processa o hash automaticamente
-      sb.auth.onAuthStateChange((event, session) => {
-
-        if (event === 'SIGNED_IN' && session) {
-          currentUser = session.user;
-          const setPassVisible = document.getElementById('setPasswordForm')?.style.display !== 'none';
-          if (!setPassVisible) showApp();
-
-        } else if (event === 'PASSWORD_RECOVERY' && session) {
-          // Token de recuperação de senha processado com sucesso
-          currentUser = session.user;
-          window.history.replaceState(null, '', window.location.pathname);
-          document.getElementById('authScreen').classList.remove('hidden');
-          showAuthState('setPassword', 'Redefina sua senha');
-
-        } else if (event === 'USER_UPDATED' && session) {
-          // Senha redefinida com sucesso
-          currentUser = session.user;
-          showApp();
-
-        } else if (event === 'TOKEN_REFRESHED' && session) {
-          currentUser = session.user;
-
-        } else if (event === 'SIGNED_OUT') {
-          currentUser = null;
-          hideLoading();
-          showAuthScreen();
-        }
-      });
-
-      // Verificar se há token de convite no hash (Supabase usa #access_token + type=invite)
-      const hash = window.location.hash;
-      if (hash.includes('type=invite')) {
-        // Supabase JS v2 processa o hash e dispara SIGNED_IN automaticamente
-        // Só precisamos mostrar a tela de definir senha quando o evento chegar
-        // Mas vamos garantir que a tela de auth está visível enquanto aguarda
-        hideLoading();
-        document.getElementById('authScreen').classList.remove('hidden');
-        showAuthState('setPassword', 'Bem-vindo! Defina sua senha de acesso');
-        window.history.replaceState(null, '', window.location.pathname);
-        return;
-      }
-
-      // Sessão normal (usuário já logado)
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        showApp();
-      } else {
-        // Sem sessão — mostrar login
-        hideLoading();
-        document.getElementById('authScreen').classList.remove('hidden');
-      }
-
-      // Segurança: se por qualquer razão o loading ainda estiver visível após 3s, remove
-      setTimeout(() => hideLoading(), 3000);
-    };
 
     // Modal de confirmação estilizado — substitui confirm() nativo
-    function showConfirm(texto, onOk) {
-      const modal = document.getElementById('confirmModal');
-      document.getElementById('confirmModalText').textContent = texto;
-      modal.style.display = 'flex';
 
-      const ok = document.getElementById('confirmModalOk');
-      const cancel = document.getElementById('confirmModalCancel');
 
-      function fechar() {
-        modal.style.display = 'none';
-        ok.replaceWith(ok.cloneNode(true));
-        cancel.replaceWith(cancel.cloneNode(true));
-      }
 
-      document.getElementById('confirmModalOk').onclick = () => { fechar(); onOk(); };
-      document.getElementById('confirmModalCancel').onclick = fechar;
-    }
 
-    function hideLoading() {
-      const el = document.getElementById('loadingScreen');
-      if (!el) return;
-      el.style.opacity = '0';
-      setTimeout(() => el.remove(), 300);
-    }
-
-    async function showApp() {
-      hideLoading();
-      document.getElementById('authScreen').classList.add('hidden');
-      ['sidebar', 'chat'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); });
-      document.querySelector('header')?.classList.remove('hidden');
-      carregarPerfil().then(() => atualizarNomeHeader());
-
-      // Forçar refresh do user para pegar user_metadata atualizado (role, theme)
-      const { data: { user } } = await sb.auth.getUser();
-      if (user) currentUser = user;
-
-      const savedTheme = currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light';
-      setTheme(savedTheme);
-
-      applyAdminUI();
-      checkConnection();
-      loadClientes();
-      checkDeadlines();
-    }
-
-    function applyAdminUI() {
-      const admin = isAdmin();
-      document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.display = admin ? 'flex' : 'none';
-      });
-      document.querySelectorAll('.admin-menu-item').forEach(el => {
-        el.style.display = admin ? 'flex' : 'none';
-      });
-    }
-
-    function showAuthScreen() {
-      // Fechar todos os modais abertos
-      ['confirmModal','clientModal','docModal','profileModal','calcModal','statsModal','learningStatsModal','shareModal'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
-      });
-
-      // Esconder app
-      ['sidebar', 'chat', 'overlay'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
-      });
-      document.querySelector('header')?.classList.add('hidden');
-
-      // Mostrar tela de login
-      document.getElementById('authScreen').classList.remove('hidden');
-      showAuthState('login');
-      document.getElementById('userEmail').textContent = '—';
-      allChats = [];
-      currentCliente = null;
-      perfilCache = null;
-      currentChat = { id: null, title: 'Nova Conversa', messages: [] };
-      document.getElementById('hList').innerHTML = '';
-      document.getElementById('msgs').innerHTML = `
-        <div class="empty">
-          <i data-lucide="message-circle"></i>
-          <h3>Olá! Sou seu especialista fiscal</h3>
-          <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
-        </div>`;
-      lucide.createIcons();
-    }
 
     
 
@@ -873,13 +684,6 @@
       return t;
     }
 
-    function escapeHtml(text) {
-      if (!text) return '';
-      return text.replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
-    }
 
     function showTypingIndicator() {
       hideTypingIndicator();
@@ -996,8 +800,8 @@
 
         // Buscar contexto RAG — aguardar antes de montar o prompt
         const [ragInteracoes, ragDocumentos] = await Promise.all([
-          learningService.buscarContextoRAG(text || '').catch(() => null),
-          learningService.buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
+          getLearningService().buscarContextoRAG(text || '').catch(() => null),
+          getLearningService().buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
         ]);
 
         // Consultar CNPJ se detectado na mensagem
@@ -1342,7 +1146,7 @@ POSTURA PROFISSIONAL:
         // Registrar interação (opcional)
         let interacaoId = null;
         try {
-          interacaoId = await learningService.registrarInteracao(
+          interacaoId = await getLearningService().registrarInteracao(
             currentChat.id,
             text || 'Arquivos enviados',
             reply,
@@ -1411,7 +1215,7 @@ POSTURA PROFISSIONAL:
           const fileData = await processFile(file);
           currentFiles.push(fileData);
 
-          await learningService.salvarDocumento(currentChat.id, fileData);
+          await getLearningService().salvarDocumento(currentChat.id, fileData);
 
         } catch (error) {
         } finally {
@@ -1637,16 +1441,7 @@ POSTURA PROFISSIONAL:
     }
 
 
-    function toggleDropdown(id) {
-      const target = document.getElementById(id);
-      const isOpen = target.classList.contains('on');
-      closeDropdowns();
-      if (!isOpen) target.classList.add('on');
-    }
 
-    function closeDropdowns() {
-      document.querySelectorAll('.hdr-dropdown').forEach(d => d.classList.remove('on'));
-    }
 
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.dropdown-wrap')) closeDropdowns();
@@ -1657,51 +1452,12 @@ POSTURA PROFISSIONAL:
       document.getElementById('msgInput').focus();
     }
 
-    function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('on');
-      document.getElementById('overlay').classList.toggle('on');
-    }
 
-    function closeSidebar() {
-      document.getElementById('sidebar').classList.remove('on');
-      document.getElementById('overlay').classList.remove('on');
-    }
 
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    }
 
-    function setTheme(theme) {
-      document.documentElement.setAttribute('data-theme', theme);
-      const icon = document.getElementById('themeIcon');
-      if (icon) {
-        icon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
-        lucide.createIcons();
-      }
-    }
 
-    async function toggleTheme() {
-      const current = document.documentElement.getAttribute('data-theme');
-      const next = current === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('theme', next);
-      setTheme(next);
-      // Salvar preferência no perfil do usuário (por usuário, não por dispositivo)
-      if (currentUser) {
-        await sb.auth.updateUser({ data: { theme: next } });
-      }
-    }
 
-    function openCalculator() {
-      document.getElementById('calcModal').classList.add('on');
-    }
 
-    function closeCalculator() {
-      document.getElementById('calcModal').classList.remove('on');
-    }
 
     function calculateTaxes() {
       const v = parseFloat(document.getElementById('cV').value) || 0;
@@ -1721,99 +1477,11 @@ POSTURA PROFISSIONAL:
       document.getElementById('cResult').style.display = 'block';
     }
 
-    function exportChat() {
-      if (!currentChat.messages || currentChat.messages.length === 0) {
-        alert('Nenhuma mensagem para exportar');
-        return;
-      }
 
-      const chatText = currentChat.messages.map(msg => {
-        const role = msg.role === 'user' ? 'USUÁRIO' : 'ASSISTENTE';
-        return `${role}:\n${msg.content}\n`;
-      }).join('\n' + '='.repeat(50) + '\n\n');
 
-      const blob = new Blob([chatText], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `conversa_${new Date().toISOString().slice(0, 10)}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
 
-    function showStats() {
-      const totalMessages = currentChat.messages?.length || 0;
-      const userMessages = currentChat.messages?.filter(m => m.role === 'user').length || 0;
-      const assistantMessages = currentChat.messages?.filter(m => m.role === 'assistant').length || 0;
 
-      const statsHTML = `
-        <div class="stats-card">
-          <div class="stats-item">
-            <span>Total de mensagens</span>
-            <strong>${totalMessages}</strong>
-          </div>
-          <div class="stats-item">
-            <span>Suas perguntas</span>
-            <strong>${userMessages}</strong>
-          </div>
-          <div class="stats-item">
-            <span>Respostas</span>
-            <strong>${assistantMessages}</strong>
-          </div>
-          <div class="stats-item">
-            <span>Arquivos analisados</span>
-            <strong>—</strong>
-          </div>
-          <div class="stats-item">
-            <span>Conquistas</span>
-            <strong>—</strong>
-          </div>
-          <div class="stats-item">
-            <span>Cache</span>
-            <strong>${responseCache.size} respostas</strong>
-          </div>
-        </div>
-      `;
 
-      document.getElementById('statsContent').innerHTML = statsHTML;
-      document.getElementById('statsModal').classList.add('on');
-      lucide.createIcons();
-    }
-
-    function closeStats() {
-      document.getElementById('statsModal').classList.remove('on');
-    }
-
-    function shareChat() {
-      if (!currentChat.messages || currentChat.messages.length === 0) {
-        alert('Nenhuma conversa para compartilhar');
-        return;
-      }
-
-      const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      const shareLink = `${window.location.origin}?shared=${token}`;
-
-      const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
-      sharedChats[token] = {
-        chat: currentChat,
-        expires: Date.now() + (24 * 60 * 60 * 1000)
-      };
-      localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
-
-      document.getElementById('shareLink').value = shareLink;
-      document.getElementById('shareModal').classList.add('on');
-    }
-
-    function copyShareLink() {
-      const link = document.getElementById('shareLink');
-      link.select();
-      navigator.clipboard.writeText(link.value);
-      alert('Link copiado!');
-    }
-
-    function closeShareModal() {
-      document.getElementById('shareModal').classList.remove('on');
-    }
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
@@ -1842,4 +1510,3 @@ POSTURA PROFISSIONAL:
         saveChat();
       }
     });
-
