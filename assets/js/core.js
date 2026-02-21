@@ -8,13 +8,13 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 // --- Estado global ---
-let currentUser   = null;
+let currentUser    = null;
 let currentCliente = null;
-let currentChat   = { id: null, title: 'Nova Conversa', messages: [] };
-let perfilCache   = null;
-let allChats      = [];
-let chatsPage     = 0;
-let nfeData       = [];
+let currentChat    = { id: null, title: 'Nova Conversa', messages: [] };
+let perfilCache    = null;
+let allChats       = [];
+let chatsPage      = 0;
+let nfeData        = [];
 let rateLimitUntil = 0;
 
 const CHATS_PER_PAGE = 50;
@@ -45,9 +45,9 @@ function hideLoading() {
 }
 
 function setConnectionStatus(text, icon, color) {
-  const el = document.getElementById('connStatus');
+  const el = document.getElementById('conn');
   if (!el) return;
-  el.innerHTML = `<i data-lucide="${icon}" style="width:13px;height:13px"></i> ${text}`;
+  el.innerHTML = '<i data-lucide="' + icon + '" style="width:13px;height:13px"></i> <span>' + text + '</span>';
   el.style.color = color;
   if (window.lucide) lucide.createIcons();
 }
@@ -66,7 +66,8 @@ async function checkConnection() {
 }
 
 function handleSessionExpired() {
-  if (document.getElementById('authScreen')?.classList.contains('hidden') === false) return;
+  const authScreen = document.getElementById('authScreen');
+  if (authScreen && !authScreen.classList.contains('hidden')) return;
   showConfirm('Sua sessão expirou. Faça login novamente.', () => {
     sb.auth.signOut();
   }, true);
@@ -86,60 +87,101 @@ function applyAdminUI() {
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isAdmin() ? '' : 'none';
   });
+  document.querySelectorAll('.admin-menu-item').forEach(el => {
+    el.style.display = isAdmin() ? '' : 'none';
+  });
 }
 
-// --- Auth ---
+// --- Auth: mostrar formulários corretos ---
+// HTML usa: loginForm, resetForm, setPasswordForm, confirmSentForm
 function showAuthState(state) {
-  document.querySelectorAll('.auth-state').forEach(el => el.classList.add('hidden'));
-  const target = document.getElementById(`authState_${state}`);
-  if (target) target.classList.remove('hidden');
+  ['loginForm','resetForm','setPasswordForm','confirmSentForm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const map = { login:'loginForm', reset:'resetForm', setPassword:'setPasswordForm', confirmSent:'confirmSentForm' };
+  const target = document.getElementById(map[state] || state);
+  if (target) target.style.display = '';
 }
 
-function setAuthMsg(msg, isError = true) {
-  const el = document.getElementById('authMsg');
+// Mostrar mensagem no form correto
+// HTML usa: loginMsg, resetMsg, setPasswordMsg
+function setAuthMsg(msg, isError, formState) {
+  isError = isError !== false;
+  let elId = 'loginMsg';
+  if (formState) {
+    const map = { login:'loginMsg', reset:'resetMsg', setPassword:'setPasswordMsg' };
+    elId = map[formState] || 'loginMsg';
+  } else {
+    if (document.getElementById('resetForm')?.style.display !== 'none') elId = 'resetMsg';
+    else if (document.getElementById('setPasswordForm')?.style.display !== 'none') elId = 'setPasswordMsg';
+  }
+  const el = document.getElementById(elId);
   if (!el) return;
   el.textContent = msg;
-  el.className = `auth-msg ${isError ? 'error' : 'success'}`;
+  el.className = 'auth-msg ' + (isError ? 'error' : 'success');
 }
 
+// --- Auth: ações ---
+// HTML usa: loginEmail, loginPassword, loginBtn
 async function doLogin() {
   const email = document.getElementById('loginEmail')?.value.trim();
-  const pass  = document.getElementById('loginPass')?.value;
-  if (!email || !pass) { setAuthMsg('Preencha e-mail e senha.'); return; }
-  const btn = document.querySelector('#authState_login .btn-auth');
+  const pass  = document.getElementById('loginPassword')?.value;
+  if (!email || !pass) { setAuthMsg('Preencha e-mail e senha.', true, 'login'); return; }
+  const btn = document.getElementById('loginBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
-  if (error) setAuthMsg(error.message || 'Erro ao fazer login.');
+  if (error) setAuthMsg(error.message || 'Erro ao fazer login.', true, 'login');
 }
 
+// HTML usa: resetEmail
 async function doReset() {
   const email = document.getElementById('resetEmail')?.value.trim();
-  if (!email) { setAuthMsg('Informe seu e-mail.'); return; }
+  if (!email) { setAuthMsg('Informe seu e-mail.', true, 'reset'); return; }
   const { error } = await sb.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + '/?reset=true'
   });
-  if (error) setAuthMsg(error.message);
-  else setAuthMsg('E-mail de recuperação enviado!', false);
+  if (error) setAuthMsg(error.message, true, 'reset');
+  else setAuthMsg('E-mail de recuperação enviado!', false, 'reset');
 }
 
+// HTML usa: newPassword, confirmPassword
 async function doSetPassword() {
-  const pass  = document.getElementById('newPassInput')?.value;
-  const pass2 = document.getElementById('newPassInput2')?.value;
-  if (!pass || pass.length < 8) { setAuthMsg('Senha deve ter pelo menos 8 caracteres.'); return; }
-  if (pass !== pass2) { setAuthMsg('As senhas não coincidem.'); return; }
+  const pass  = document.getElementById('newPassword')?.value;
+  const pass2 = document.getElementById('confirmPassword')?.value;
+  if (!pass || pass.length < 8) { setAuthMsg('Mínimo 8 caracteres.', true, 'setPassword'); return; }
+  if (pass !== pass2) { setAuthMsg('As senhas não coincidem.', true, 'setPassword'); return; }
   const { error } = await sb.auth.updateUser({ password: pass });
-  if (error) setAuthMsg(error.message);
-  else { setAuthMsg('Senha definida com sucesso!', false); setTimeout(() => showAuthState('login'), 2000); }
+  if (error) setAuthMsg(error.message, true, 'setPassword');
+  else { setAuthMsg('Senha definida!', false, 'setPassword'); setTimeout(() => showAuthState('login'), 2000); }
 }
 
 function doLogout() {
-  showConfirm('Tem certeza que deseja sair?', async () => {
-    await sb.auth.signOut();
-  });
+  showConfirm('Tem certeza que deseja sair?', async () => { await sb.auth.signOut(); });
 }
 
-// --- Telas ---
+// --- Confirm dialog ---
+// HTML usa: confirmModal, confirmModalText, confirmModalCancel, confirmModalOk
+function showConfirm(msg, onConfirm, hideCancel) {
+  const modal = document.getElementById('confirmModal');
+  if (!modal) return;
+  const txt = document.getElementById('confirmModalText');
+  if (txt) txt.textContent = msg;
+  const cancelBtn = document.getElementById('confirmModalCancel');
+  if (cancelBtn) cancelBtn.style.display = hideCancel ? 'none' : '';
+  modal.style.display = 'flex';
+  window._confirmCallback = onConfirm;
+}
+
+function closeConfirm(confirmed) {
+  const modal = document.getElementById('confirmModal');
+  if (modal) modal.style.display = 'none';
+  if (confirmed && typeof window._confirmCallback === 'function') window._confirmCallback();
+  window._confirmCallback = null;
+}
+
+// --- Telas principal ---
 function showAuthScreen() {
   ['confirmModal','clientModal','docModal','profileModal','calcModal',
    'statsModal','learningStatsModal','shareModal'].forEach(id => {
@@ -148,76 +190,53 @@ function showAuthScreen() {
   });
   ['sidebar','chat','overlay'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
+    if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
   document.querySelector('header')?.classList.add('hidden');
-
-  document.getElementById('authScreen').classList.remove('hidden');
+  const auth = document.getElementById('authScreen');
+  if (auth) { auth.classList.remove('hidden'); auth.style.display = ''; }
   showAuthState('login');
-  document.getElementById('userEmail').textContent = '—';
-  allChats      = [];
-  currentCliente = null;
-  perfilCache   = null;
-  currentChat   = { id: null, title: 'Nova Conversa', messages: [] };
-  document.getElementById('hList').innerHTML = '';
-  document.getElementById('msgs').innerHTML = `
-    <div class="empty">
-      <i data-lucide="message-circle"></i>
-      <h3>Olá! Sou seu especialista fiscal</h3>
-      <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
-    </div>`;
-  lucide.createIcons();
+  const ue = document.getElementById('userEmail');
+  if (ue) ue.textContent = '—';
+  allChats = []; currentCliente = null; perfilCache = null;
+  currentChat = { id: null, title: 'Nova Conversa', messages: [] };
+  const hList = document.getElementById('hList');
+  if (hList) hList.innerHTML = '';
+  const msgs = document.getElementById('msgs');
+  if (msgs) msgs.innerHTML = '<div class="empty"><i data-lucide="message-circle"></i><h3>Olá! Sou seu especialista fiscal</h3><p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p></div>';
+  if (window.lucide) lucide.createIcons();
 }
 
 async function showApp() {
   hideLoading();
-  document.getElementById('authScreen').classList.add('hidden');
+  const auth = document.getElementById('authScreen');
+  if (auth) { auth.classList.add('hidden'); auth.style.display = 'none'; }
   ['sidebar','chat'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.classList.remove('hidden');
+    if (el) { el.classList.remove('hidden'); el.style.removeProperty('display'); }
   });
   document.querySelector('header')?.classList.remove('hidden');
-
-  carregarPerfil().then(() => atualizarNomeHeader());
-
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
-
-  const savedTheme = currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light';
-  setTheme(savedTheme);
-
+  setTheme(currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light');
   applyAdminUI();
   checkConnection();
-  loadClientes();
-  checkDeadlines();
-}
-
-// --- Confirm dialog ---
-function showConfirm(msg, onConfirm, hideCancel = false) {
-  const modal = document.getElementById('confirmModal');
-  document.getElementById('confirmMsg').textContent = msg;
-  const cancelBtn = document.getElementById('confirmCancel');
-  if (cancelBtn) cancelBtn.style.display = hideCancel ? 'none' : '';
-  modal.style.display = 'flex';
-  window._confirmCallback = onConfirm;
-}
-
-function closeConfirm(confirmed) {
-  document.getElementById('confirmModal').style.display = 'none';
-  if (confirmed && typeof window._confirmCallback === 'function') {
-    window._confirmCallback();
-  }
-  window._confirmCallback = null;
+  if (typeof loadClientes === 'function') loadClientes();
+  if (typeof checkDeadlines === 'function') checkDeadlines();
+  if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
+    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
+  });
+  if (window.lucide) lucide.createIcons();
 }
 
 // --- Audit log ---
-async function registrarAuditLog(acao, detalhes = {}) {
+async function registrarAuditLog(acao, detalhes) {
   try {
     await sb.from('audit_log').insert({
       user_id: currentUser?.id,
       cliente_id: currentCliente?.id || null,
       acao,
-      detalhes,
+      detalhes: detalhes || {},
       created_at: new Date().toISOString()
     });
   } catch (e) { /* silencioso */ }
@@ -232,18 +251,15 @@ async function supabaseProxy(action, payload) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Erro ${res.status}`);
+    throw new Error(err.error || 'Erro ' + res.status);
   }
   return res.json();
 }
 
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
-  // Tema salvo
-  const saved = localStorage.getItem('theme') || 'light';
-  setTheme(saved);
+  setTheme(localStorage.getItem('theme') || 'light');
 
-  // Fechar dropdowns ao clicar fora
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#docGenBtn') && !e.target.closest('#docGenMenu')) {
       const menu = document.getElementById('docGenMenu');
@@ -251,47 +267,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Auth state listener
+  // Eventos futuros de auth
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
-      if (event === 'SIGNED_IN') showApp();
+      showApp();
+    } else if (event === 'TOKEN_REFRESHED') {
+      if (session) currentUser = session.user;
     } else if (event === 'SIGNED_OUT') {
       currentUser = null;
-      hideLoading();
       showAuthScreen();
     } else if (event === 'PASSWORD_RECOVERY') {
+      hideLoading();
       showAuthState('setPassword');
     }
   });
 
-  // Verificar sessão existente imediatamente — resolve o loading eterno
-  // onAuthStateChange pode não disparar se não houver sessão
+  // Sessão existente (carregamento inicial)
   sb.auth.getSession().then(({ data: { session } }) => {
-    if (session) {
-      currentUser = session.user;
-      showApp();
-    } else {
-      hideLoading();
-      showAuthScreen();
-    }
-  }).catch(() => {
-    hideLoading();
-    showAuthScreen();
-  });
+    if (session) { currentUser = session.user; showApp(); }
+    else { hideLoading(); showAuthScreen(); }
+  }).catch(() => { hideLoading(); showAuthScreen(); });
 
-  // Failsafe: se nada resolver em 5s, esconde o loading
+  // Failsafe 6s
   setTimeout(() => {
     const loading = document.getElementById('loadingScreen');
-    if (loading && !loading.classList.contains('hidden')) {
-      hideLoading();
-      showAuthScreen();
-    }
-  }, 5000);
-
-  // Verificar token de convite/reset no hash
-  const hash = window.location.hash;
-  if (hash.includes('access_token') && hash.includes('type=recovery')) {
-    showAuthState('setPassword');
-  }
+    if (loading && loading.style.display !== 'none') { hideLoading(); showAuthScreen(); }
+  }, 6000);
 });
