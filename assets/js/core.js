@@ -265,6 +265,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Verificar sessão existente imediatamente — resolve o loading eterno
+  // onAuthStateChange pode não disparar se não houver sessão
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      currentUser = session.user;
+      showApp();
+    } else {
+      hideLoading();
+      showAuthScreen();
+    }
+  }).catch(() => {
+    hideLoading();
+    showAuthScreen();
+  });
+
+  // Failsafe: se nada resolver em 5s, esconde o loading
+  setTimeout(() => {
+    const loading = document.getElementById('loadingScreen');
+    if (loading && !loading.classList.contains('hidden')) {
+      hideLoading();
+      showAuthScreen();
+    }
+  }, 5000);
+
   // Verificar token de convite/reset no hash
   const hash = window.location.hash;
   if (hash.includes('access_token') && hash.includes('type=recovery')) {
