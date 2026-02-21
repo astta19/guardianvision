@@ -24,7 +24,6 @@
     // PERFIS_USUARIOS — banco centralizado de perfil
     // ============================================
 
-    let perfilCache = null; // cache local para evitar múltiplas queries
 
     async function carregarPerfil() {
       if (!currentUser) return null;
@@ -114,14 +113,6 @@
       document.getElementById('profileNotifMsg').className = 'auth-msg';
     }
 
-    function switchProfileTab(tab, btn) {
-      const modal = document.getElementById('profileModal');
-      modal.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
-      modal.querySelectorAll('.doc-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const panelId = tab === 'conta' ? 'profileTabConta' : 'profileTabNotif';
-      document.getElementById(panelId).classList.add('active');
-    }
 
     function checkPasswordStrengthEl(pwd, barId, hintId) {
       const bar = document.getElementById(barId);
@@ -314,139 +305,13 @@
     }
 
     // ====== FUNÇÕES DE AUTENTICAÇÃO ======
-    function setAuthMsg(id, msg, type) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = msg;
-      el.className = `auth-msg ${type}`;
-    }
 
-    function showAuthState(state, subtitle) {
-      const forms = ['loginForm', 'setPasswordForm', 'resetForm', 'confirmSentForm'];
-      forms.forEach(f => { const el = document.getElementById(f); if (el) el.style.display = 'none'; });
-      const subtitles = {
-        login: 'Acesso exclusivo para colaboradores',
-        setPassword: 'Defina sua senha para ativar o acesso',
-        reset: 'Recuperação de senha',
-        confirmSent: ''
-      };
-      document.getElementById('authSubtitle').textContent = subtitle || subtitles[state] || '';
-      const map = { login: 'loginForm', setPassword: 'setPasswordForm', reset: 'resetForm', confirmSent: 'confirmSentForm' };
-      const el = document.getElementById(map[state]);
-      if (el) el.style.display = 'block';
-      lucide.createIcons();
-    }
 
-    async function doLogin() {
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      if (!email || !password) return setAuthMsg('loginMsg', 'Preencha e-mail e senha.', 'error');
 
-      const btn = document.getElementById('loginBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block"></span>Entrando...</span>';
 
-      const { error } = await sb.auth.signInWithPassword({ email, password });
 
-      btn.disabled = false;
-      btn.innerHTML = 'Entrar';
 
-      if (error) {
-        const msg = error.message.includes('Invalid login') || error.message.includes('invalid_credentials')
-          ? 'E-mail ou senha incorretos.'
-          : error.message.includes('Email not confirmed')
-          ? 'Confirme seu e-mail antes de entrar.'
-          : 'Erro ao entrar. Tente novamente.';
-        setAuthMsg('loginMsg', msg, 'error');
-      }
-    }
 
-    async function doReset() {
-      const email = document.getElementById('resetEmail').value.trim();
-      if (!email) return setAuthMsg('resetMsg', 'Informe seu e-mail.', 'error');
-
-      const btn = document.getElementById('resetBtn');
-      btn.disabled = true;
-      btn.textContent = 'Enviando...';
-
-      const { error } = await sb.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin
-      });
-
-      btn.disabled = false;
-      btn.textContent = 'Enviar link';
-
-      if (error) {
-        setAuthMsg('resetMsg', 'Erro ao enviar. Verifique o e-mail informado.', 'error');
-      } else {
-        document.getElementById('confirmSentTitle').textContent = 'Link de recuperação enviado!';
-        document.getElementById('confirmSentText').textContent =
-          'Verifique sua caixa de entrada e clique no link para redefinir sua senha.';
-        showAuthState('confirmSent');
-      }
-    }
-
-    async function doSetPassword() {
-      const password = document.getElementById('newPassword').value;
-      const confirm = document.getElementById('confirmPassword').value;
-      if (!password || !confirm) return setAuthMsg('setPasswordMsg', 'Preencha os dois campos.', 'error');
-      if (password.length < 8) return setAuthMsg('setPasswordMsg', 'Senha deve ter mínimo 8 caracteres.', 'error');
-      if (!/[A-Z]/.test(password)) return setAuthMsg('setPasswordMsg', 'Senha precisa de ao menos 1 letra maiúscula.', 'error');
-      if (!/[0-9]/.test(password)) return setAuthMsg('setPasswordMsg', 'Senha precisa de ao menos 1 número.', 'error');
-      if (password !== confirm) return setAuthMsg('setPasswordMsg', 'As senhas não coincidem.', 'error');
-
-      const btn = document.getElementById('setPasswordBtn');
-      btn.disabled = true;
-      btn.textContent = 'Salvando...';
-
-      const { error } = await sb.auth.updateUser({ password });
-
-      btn.disabled = false;
-      btn.textContent = 'Definir senha e entrar';
-
-      if (error) setAuthMsg('setPasswordMsg', 'Erro ao definir senha. Tente novamente.', 'error');
-    }
-
-    async function doLogout() {
-      showConfirm('Tem certeza que deseja sair?', async () => {
-        await sb.auth.signOut();
-      });
-    }
-
-    async function checkConnection() {
-      try {
-        const { error } = await sb.from('chats').select('id', { count: 'exact', head: true });
-        if (error) {
-          if (error.status === 401 || error.message?.includes('JWT')) {
-            handleSessionExpired();
-            return;
-          }
-          throw error;
-        }
-        setConnectionStatus('Online', 'cloud', '#10b981');
-      } catch (e) {
-        setConnectionStatus('Offline', 'cloud-off', '#ef4444');
-      }
-    }
-
-    function handleSessionExpired() {
-      currentUser = null;
-      hideLoading();
-      showAuthScreen();
-      // Mostrar mensagem após tela de login renderizar
-      setTimeout(() => {
-        setAuthMsg('loginMsg', 'Sua sessão expirou. Faça login novamente.', 'error');
-      }, 100);
-    }
-
-    function setConnectionStatus(label, icon, color) {
-      document.getElementById('conn').innerHTML =
-        `<i data-lucide="${icon}" style="width:12px;height:12px;color:${color}"></i><span>${label}</span>`;
-      lucide.createIcons();
-    }
-
-    let chatsPage = 0;
-    const CHATS_PER_PAGE = 50;
 
     async function loadChats(reset = true) {
       try {
@@ -621,4 +486,3 @@
       }
       lucide.createIcons();
     }
-
