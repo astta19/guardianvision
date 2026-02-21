@@ -6,23 +6,8 @@
     // MÓDULO DOCUMENTOS FISCAIS
     // ============================================
 
-    let nfeData = []; // resultados da conferência NF-e
     let darfData = null; // resultado do cálculo DARF
 
-    function openDocumentos() {
-      document.getElementById('docModal').classList.add('on');
-      lucide.createIcons();
-    }
-    function closeDocumentos() {
-      document.getElementById('docModal').classList.remove('on');
-    }
-    function switchDocTab(tab, btn) {
-      // Escopo restrito ao docModal para não afetar outros modais
-      document.querySelectorAll('#docModal .doc-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('#docModal .doc-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('docPanel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
-    }
 
     // ---- CONFERÊNCIA NF-e ----
 
@@ -478,18 +463,3 @@
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'DARF');
       XLSX.writeFile(wb, `darf-${darfData.regime}-${darfData.competencia.replace('/','')}.xlsx`);
     }
-
-    async function registrarAuditLog(acao, entidade, entidadeId, dados = {}) {
-      if (!currentUser) return;
-      try {
-        await sb.from('audit_log').insert({
-          user_id: currentUser.id,
-          acao,
-          entidade,
-          entidade_id: entidadeId || null,
-          dados,
-          criado_em: new Date().toISOString()
-        });
-      } catch(e) {} // falha silenciosa — não bloqueia fluxo principal
-    }
-
