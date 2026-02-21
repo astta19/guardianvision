@@ -21,12 +21,12 @@ async function openSped() {
   lucide.createIcons();
 }
 
-function closeSped() {
+async function closeSped() {
   const modal = document.getElementById('spedModal');
   if (modal) modal.style.display = 'none';
 }
 
-function switchSpedTab(tab) {
+async function switchSpedTab(tab) {
   document.querySelectorAll('.sped-panel').forEach(p => p.classList.add('hidden'));
   document.querySelectorAll('.sped-tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`spedPanel_${tab}`)?.classList.remove('hidden');
@@ -80,7 +80,7 @@ async function spedCarregarPeriodos() {
   lucide.createIcons();
 }
 
-function formatarPeriodo(periodo) {
+async function formatarPeriodo(periodo) {
   if (!periodo || periodo.length !== 6) return periodo;
   const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const m = parseInt(periodo.substring(0,2)) - 1;
@@ -165,7 +165,7 @@ async function spedCarregarDocs() {
   spedRenderDocs();
 }
 
-function spedRenderDocs() {
+async function spedRenderDocs() {
   const lista = document.getElementById('spedListaDocs');
   if (!lista) return;
 
@@ -271,7 +271,7 @@ async function spedCarregarParticipantes() {
   spedRenderParticipantes();
 }
 
-function spedRenderParticipantes() {
+async function spedRenderParticipantes() {
   const lista = document.getElementById('spedListaParts');
   if (!lista) return;
   if (!spedParts.length) {
@@ -342,7 +342,7 @@ async function spedCarregarProdutos() {
   spedRenderProdutos();
 }
 
-function spedRenderProdutos() {
+async function spedRenderProdutos() {
   const lista = document.getElementById('spedListaProds');
   if (!lista) return;
   if (!spedProds.length) {
@@ -417,7 +417,7 @@ async function spedCarregarApuracao() {
   spedRenderApuracao();
 }
 
-function spedRenderApuracao() {
+async function spedRenderApuracao() {
   if (!spedApuracao) { spedRecalcularApuracao(); return; }
   const a = spedApuracao;
   const saldo = parseFloat(a.vl_icms_recolher || 0);
