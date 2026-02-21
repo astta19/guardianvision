@@ -50,7 +50,7 @@
       return !error;
     }
 
-    function atualizarNomeHeader() {
+    async function atualizarNomeHeader() {
       const nome = perfilCache?.nome || currentUser?.user_metadata?.nome;
       const email = currentUser?.email || '';
       const display = nome || email.split('@')[0] || 'usuário';
@@ -107,14 +107,14 @@
       lucide.createIcons();
     }
 
-    function closeProfile() {
+    async function closeProfile() {
       document.getElementById('profileModal').style.display = 'none';
       document.getElementById('profilePwdMsg').className = 'auth-msg';
       document.getElementById('profileNotifMsg').className = 'auth-msg';
     }
 
 
-    function checkPasswordStrengthEl(pwd, barId, hintId) {
+    async function checkPasswordStrengthEl(pwd, barId, hintId) {
       const bar = document.getElementById(barId);
       const hint = document.getElementById(hintId);
       if (!bar || !hint) return;
@@ -176,7 +176,7 @@
       }
     }
 
-    function toggleThemeFromProfile(isDark) {
+    async function toggleThemeFromProfile(isDark) {
       const theme = isDark ? 'dark' : 'light';
       localStorage.setItem('theme', theme);
       setTheme(theme);
@@ -339,7 +339,7 @@
       }
     }
 
-    function renderHistoryList(list, hasMore = false) {
+    async function renderHistoryList(list, hasMore = false) {
       const el = document.getElementById('hList');
       if (!list || list.length === 0) {
         el.innerHTML = '<p style="padding:16px;text-align:center;color:var(--text-light);font-size:13px">Nenhuma conversa ainda</p>';
@@ -364,7 +364,7 @@
       lucide.createIcons();
     }
 
-    function filterChats() {
+    async function filterChats() {
       const q = document.getElementById('searchInput').value.toLowerCase();
       const filtered = q ? allChats.filter(c => (c.title || '').toLowerCase().includes(q)) : allChats;
       renderHistoryList(filtered);
@@ -439,7 +439,7 @@
       }
     }
 
-    function deleteChat(id) {
+    async function deleteChat(id) {
       showConfirm('Tem certeza que deseja excluir esta conversa?', async () => {
         try {
           const { error } = await sb.from('chats').delete().eq('id', id);
