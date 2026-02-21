@@ -42,10 +42,6 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
       }
     }
 
-    function toggleDocGenMenu() {
-      const menu = document.getElementById('docGenMenu');
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    }
 
     function getMesAno() {
       const d = new Date();
@@ -119,7 +115,7 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
         }));
     }
 
-    function getResumoChatTexto() {
+    async function getResumoChatTexto() {
       if (!currentChat.messages?.length) return 'Nenhuma conversa registrada nesta sessão.';
       return currentChat.messages
         .map(m => `[${m.role === 'user' ? 'Usuário' : 'Assistente'}] ${(m.content || '').replace(/<[^>]+>/g, '').substring(0, 500)}`)
