@@ -99,7 +99,10 @@ function setTheme(theme) {
 
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
-  setTheme(current === 'light' ? 'dark' : 'light');
+  const next = current === 'light' ? 'dark' : 'light';
+  setTheme(next);
+  // Persistir no Supabase para sobreviver entre sessões
+  if (currentUser) sb.auth.updateUser({ data: { theme: next } }).catch(() => {});
 }
 
 function applyAdminUI() {
@@ -237,7 +240,8 @@ async function showApp() {
   document.querySelector('header')?.classList.remove('hidden');
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
-  setTheme(currentUser?.user_metadata?.theme || localStorage.getItem('theme') || 'light');
+  // localStorage tem prioridade — é atualizado imediatamente ao trocar o tema
+  setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
   applyAdminUI();
   checkConnection();
   if (typeof loadClientes === 'function') loadClientes();
