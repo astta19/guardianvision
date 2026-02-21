@@ -24,6 +24,25 @@ const MODELS = [
   'mixtral-8x7b-32768',
 ];
 
+const fiscalDeadlines = {
+      'sped_fiscal': { day: 15, month: 'monthly', description: 'Entrega SPED Fiscal' },
+      'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
+      'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
+    };
+let currentFiles = [];
+let isProcessingFile = false;
+let typingIndicator = null;
+const responseCache = new Map();
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
+let currentModelIndex = 0;
+let consecutiveErrors = 0;
+const badges = {
+      'primeira_pergunta': { name: 'Primeiros Passos', icon: '', condition: (s) => s.questions >= 1 },
+      'analista_10': { name: 'Analista Experiente', icon: '', condition: (s) => s.questions >= 10 },
+      'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '', condition: (s) => s.filesAnalyzed >= 5 },
+      'fiscal_pro': { name: 'Fiscal Pro', icon: '', condition: (s) => s.correctAnswers >= 20 }
+    };
+
 // --- Utilitários ---
 function escapeHtml(str) {
   if (!str) return '';
