@@ -7,6 +7,7 @@ const ALLOWED_ACTIONS = [
   'buscar_treinamento_count',
   'listar_usuarios',
   'definir_permissoes',
+  'buscar_permissoes',
 ];
 
 exports.handler = async (event) => {
@@ -116,13 +117,53 @@ exports.handler = async (event) => {
       if (!userId || !Array.isArray(permissions)) {
         return { statusCode: 400, body: JSON.stringify({ error: 'userId e permissions são obrigatórios' }) };
       }
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+
+      // 1. Buscar user_metadata atual para fazer MERGE (não sobrescrever role/theme/nome)
+      const userRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'apikey': SUPABASE_SERVICE_KEY }
+      });
+      if (!userRes.ok) {
+        return { statusCode: 404, body: JSON.stringify({ error: 'Usuário não encontrado' }) };
+      }
+      const userData = await userRes.json();
+      const existingMeta = userData.user_metadata || {};
+
+      // 2. Salvar no auth.users fazendo MERGE do user_metadata
+      const updateRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'apikey': SUPABASE_SERVICE_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_metadata: { permissions } })
+        body: JSON.stringify({ user_metadata: { ...existingMeta, permissions } })
+      });
+      if (!updateRes.ok) {
+        const err = await updateRes.json().catch(() => ({}));
+        return { statusCode: updateRes.status, body: JSON.stringify({ error: err.message || 'Falha ao atualizar user_metadata' }) };
+      }
+
+      // 3. Persistir também na tabela user_permissions (upsert)
+      const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/user_permissions`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ user_id: userId, permissions, updated_at: new Date().toISOString() })
+      });
+
+      const updatedUser = await updateRes.json().catch(() => ({}));
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, user_metadata: updatedUser.user_metadata }) };
+    }
+
+    // ── buscar_permissoes ────────────────────────────────────────────
+    if (action === 'buscar_permissoes') {
+      // Qualquer usuário autenticado pode buscar suas próprias permissões
+      const targetId = payload?.userId || authUser.id;
+      // Apenas admin pode buscar permissões de outro usuário
+      if (targetId !== authUser.id && userRole !== 'admin') {
+        return { statusCode: 403, body: JSON.stringify({ error: 'Acesso negado' }) };
+      }
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/user_permissions?user_id=eq.${targetId}&select=permissions`, {
+        headers
       });
       const data = await res.json();
-      return { statusCode: res.status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
+      const permissions = data?.[0]?.permissions || [];
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions }) };
     }
 
   } catch (error) {
