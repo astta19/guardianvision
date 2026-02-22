@@ -173,6 +173,37 @@ function setAuthMsg(msg, isError, formState) {
 
 // --- Auth: ações ---
 // HTML usa: loginEmail, loginPassword, loginBtn
+
+async function doGoogleLogin() {
+  const btn = document.querySelector('.google-btn');
+  const msg = document.getElementById('loginMsg');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31.4" stroke-dashoffset="0" style="animation:spin .75s linear infinite"/></svg> Redirecionando...';
+  }
+  if (msg) { msg.textContent = ''; msg.className = 'auth-msg'; }
+
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin,
+      queryParams: { access_type: 'offline', prompt: 'consent' }
+    }
+  });
+
+  if (error) {
+    if (msg) {
+      msg.textContent = 'Erro ao conectar com Google: ' + error.message;
+      msg.className = 'auth-msg error';
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.96 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continuar com Google';
+    }
+  }
+  // Se sem erro: Supabase redireciona para Google automaticamente
+}
+
 async function doLogin() {
   const email = document.getElementById('loginEmail')?.value.trim();
   const pass  = document.getElementById('loginPassword')?.value;
@@ -353,4 +384,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const loading = document.getElementById('loadingScreen');
     if (loading && loading.style.display !== 'none') { hideLoading(); showAuthScreen(); }
   }, 6000);
+});
+
+// ── FECHAR MODAIS COM ESC ────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  // Fechar em ordem de prioridade (modal mais aberto fecha primeiro)
+  if (typeof closeSped === 'function' && document.getElementById('spedModal')?.style.display !== 'none') { closeSped(); return; }
+  if (typeof closeProfile === 'function' && document.getElementById('profileModal')?.style.display !== 'none') { closeProfile(); return; }
+  if (document.getElementById('statsModal')?.style.display !== 'none') { if (typeof closeStats === 'function') closeStats(); return; }
+  if (document.getElementById('learningStatsModal')?.style.display !== 'none') { if (typeof closeLearningStats === 'function') closeLearningStats(); return; }
+  if (document.getElementById('shareModal')?.style.display !== 'none') { if (typeof closeShareModal === 'function') closeShareModal(); return; }
+  if (!document.getElementById('clientModal')?.classList.contains('hidden')) { if (typeof closeClientModal === 'function') closeClientModal(); return; }
 });
