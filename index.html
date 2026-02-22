@@ -690,14 +690,14 @@
         <div id="profileTabConta" class="doc-panel" style="display:block;">
 
           <!-- Seção: Dados pessoais -->
-          <div style="margin-bottom:20px;">
+          <div class="profile-section" style="margin-bottom:20px;">
             <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Dados pessoais</h4>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <div>
+              <div class="profile-field">
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Nome completo</label>
                 <input type="text" id="profileNome" placeholder="Seu nome" style="width:100%;box-sizing:border-box;">
               </div>
-              <div>
+              <div class="profile-field">
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">CRC</label>
                 <input type="text" id="profileCRC" placeholder="Ex: SP-123456/O-1" style="width:100%;box-sizing:border-box;">
               </div>
@@ -709,7 +709,7 @@
           <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
 
           <!-- Seção: Aparência -->
-          <div style="margin-bottom:20px;">
+          <div class="profile-section" style="margin-bottom:20px;">
             <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Aparência</h4>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--sidebar-hover);border-radius:10px;">
               <div>
@@ -727,16 +727,16 @@
           <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
 
           <!-- Seção: Alterar senha -->
-          <div>
+          <div class="profile-section">
             <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Segurança</h4>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <div>
+              <div class="profile-field">
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Nova senha</label>
                 <input type="password" id="profileNewPwd" placeholder="Mínimo 8 caracteres" style="width:100%;box-sizing:border-box;" oninput="checkPasswordStrengthEl(this.value,'pwdBar2','pwdHint2')">
                 <div id="pwdBar2" style="height:3px;border-radius:2px;margin-top:6px;background:var(--border);transition:all .3s"></div>
                 <div id="pwdHint2" style="font-size:11px;color:var(--text-light);margin-top:4px"></div>
               </div>
-              <div>
+              <div class="profile-field">
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Confirmar nova senha</label>
                 <input type="password" id="profileConfirmPwd" placeholder="Repita a senha" style="width:100%;box-sizing:border-box;">
               </div>
@@ -753,11 +753,11 @@
           </p>
 
           <div style="display:flex;flex-direction:column;gap:14px;">
-            <div>
+            <div class="profile-field">
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">E-mail para notificações</label>
               <input type="email" id="profileNotifEmail" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;">
             </div>
-            <div>
+            <div class="profile-field">
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Antecedência (dias antes do prazo)</label>
               <select id="profileAntecedencia" style="width:100%;box-sizing:border-box;">
                 <option value="1">1 dia</option>
