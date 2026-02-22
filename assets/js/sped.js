@@ -220,10 +220,13 @@ async function spedAdicionarDoc() {
   const vlIcms  = parseFloat(document.getElementById('docIcms')?.value || 0);
   const vlBcIcms= parseFloat(document.getElementById('docBcIcms')?.value || 0);
   const chvNfe  = document.getElementById('docChave')?.value?.trim() || '';
+  const cfop    = document.getElementById('docCfop')?.value?.trim() || '';
+  const cstIcms = document.getElementById('docCst')?.value?.trim() || '000';
+  const aliqIcms= parseFloat(document.getElementById('docAliq')?.value || 0);
   const msg     = document.getElementById('spedDocMsg');
 
-  if (!numDoc || !dtDoc) {
-    if (msg) { msg.textContent = 'Número e data são obrigatórios.'; msg.className = 'sped-msg error'; }
+  if (!numDoc || !dtDoc || !cfop) {
+    if (msg) { msg.textContent = 'Número, data e CFOP são obrigatórios.'; msg.className = 'sped-msg error'; }
     return;
   }
 
@@ -233,7 +236,8 @@ async function spedAdicionarDoc() {
     cod_part: codPart, num_doc: numDoc, ser, chv_nfe: chvNfe,
     dt_doc: dtDoc, dt_e_s: dtDoc,
     vl_doc: vlDoc, vl_merc: vlDoc,
-    vl_bc_icms: vlBcIcms, vl_icms: vlIcms
+    vl_bc_icms: vlBcIcms, vl_icms: vlIcms,
+    cfop, cst_icms: cstIcms, aliq_icms: aliqIcms
   });
 
   if (error) {
@@ -553,78 +557,93 @@ async function spedGerarTxt(periodoId) {
     const cnpjLimpo = (per.cnpj || '').replace(/\D/g,'');
     const dtIni = fmtDate(per.dt_ini);
     const dtFin = fmtDate(per.dt_fin);
+    const perfil = perfilCache || {};
+    const cpfContab = (perfil.cpf || '').replace(/\D/g,'');
+    const cnpjContab = (perfil.cnpj_escritorio || '').replace(/\D/g,'');
 
     // ===== BLOCO 0 =====
-    // 0000 — Abertura
-    add(`0000|${dtIni}|${dtFin}|${per.nome_emp||''}|${cnpjLimpo}||${per.uf||''}|${per.ie||''}|${per.cod_mun||''}|${per.im||''}|${per.suframa||''}|${per.ind_perfil||'A'}|${per.ind_ativ||'0'}`);
-    // 0001 — Abertura do Bloco 0
+    // 0000: REG|COD_VER|COD_FIN|DT_INI|DT_FIN|NOME|CNPJ|CPF|UF|IE|COD_MUN|IM|SUFRAMA|IND_PERFIL|IND_ATIV
+    add(`0000|019|0|${dtIni}|${dtFin}|${per.nome_emp||''}|${cnpjLimpo}||${per.uf||''}|${per.ie||''}|${per.cod_mun||''}|${per.im||''}|${per.suframa||''}|${per.ind_perfil||'A'}|${per.ind_ativ||'1'}`);
+    // 0001: abertura bloco 0
     add(`0001|0`);
-    // 0005 — Dados complementares
-    add(`0005|EFD|${per.ie||''}|||${per.nome_emp||''}||||`);
-    // 0100 — Dados do contabilista
-    const perfil = perfilCache || {};
-    add(`0100|${perfil.nome||''}|${cnpjLimpo}||||||||${perfil.crc||''}|`);
-    // 0150 — Participantes
+    // 0005: REG|FANTASIA|CEP|END|NUM|COMPL|BAIRRO|FONE|FAX|EMAIL
+    add(`0005|${per.fantasia||per.nome_emp||''}|${per.cep||''}|${per.end||''}|${per.num||''}|${per.compl||''}|${per.bairro||''}|${per.fone||''}||`);
+    // 0100: REG|NOME|CPF|CRC|CNPJ|CEP|END|NUM|COMPL|BAIRRO|FONE|FAX|EMAIL|COD_MUN
+    add(`0100|${perfil.nome||''}|${cpfContab}|${perfil.crc||''}|${cnpjContab}|||||||||${perfil.cod_mun||''}`);
+    // 0150 — Participantes: REG|COD_PART|NOME|COD_PAIS|CNPJ|CPF|IE|COD_MUN|SUFRAMA|END|NUM|COMPL|BAIRRO
     (parts||[]).forEach(p => {
       add(`0150|${p.cod_part}|${p.nome}|${p.cod_pais||'1058'}|${(p.cnpj||'').replace(/\D/g,'')}|${(p.cpf||'').replace(/\D/g,'')}|${p.ie||''}|${p.cod_mun||''}|${p.suframa||''}|${p.end_part||''}|${p.num_part||''}|${p.compl_part||''}|${p.bairro_part||''}`);
     });
-    // 0190 — Unidades de medida (extrair das únicas dos produtos)
+    // 0190 — Unidades de medida: REG|UNID|DESCR
     const unidades = [...new Set((prods||[]).map(p => p.unid_inv).filter(Boolean))];
     unidades.forEach(u => add(`0190|${u}|`));
-    // 0200 — Produtos
+    // 0200 — Produtos: REG|COD_ITEM|DESCR_ITEM|COD_BARRA|COD_ANT_ITEM|UNID_INV|TIPO_ITEM|COD_NCM|EX_IPI|COD_GEN|COD_LST|ALIQ_ICMS
     (prods||[]).forEach(p => {
       add(`0200|${p.cod_item}|${p.descr_item}|${p.cod_barra||''}|${p.cod_ant_item||''}|${p.unid_inv}|${p.tipo_item||'00'}|${p.cod_ncm||''}|${p.ex_ipi||''}|${p.cod_gen||''}|${p.cod_lst||''}|${fmt(p.aliq_icms)}`);
     });
-    // 0990 — Encerramento do Bloco 0
-    const cnt0 = linhas.length + 1;
-    add(`0990|${cnt0}`);
+    // 0990 — encerramento bloco 0 (conta todas as linhas do bloco + o próprio 0990)
+    add(`0990|${linhas.length + 1}`);
 
     // ===== BLOCO C =====
     add(`C001|0`);
     (docs||[]).forEach(d => {
+      // C100: REG|IND_OPER|IND_EMIT|COD_PART|COD_MOD|COD_SIT|SER|NUM_DOC|CHV_NFE|DT_DOC|DT_E_S|VL_DOC|IND_PGTO|VL_DESC|VL_ABAT_NT|VL_MERC|IND_FRT|VL_FRT|VL_SEG|VL_OUT_DA|VL_BC_ICMS|VL_ICMS|VL_BC_ICMS_ST|VL_ICMS_ST|VL_IPI|VL_PIS|VL_COFINS|VL_PIS_ST|VL_COFINS_ST
       add(`C100|${d.ind_oper}|${d.ind_emit||'0'}|${d.cod_part||''}|${d.cod_mod||'55'}|${d.cod_sit||'00'}|${d.ser||''}|${d.num_doc}|${d.chv_nfe||''}|${fmtDate(d.dt_doc)}|${fmtDate(d.dt_e_s||d.dt_doc)}|${fmt(d.vl_doc)}|${d.ind_pgto||'0'}|${fmt(d.vl_desc)}|${fmt(d.vl_abat_nt)}|${fmt(d.vl_merc||d.vl_doc)}|${d.ind_frt||'9'}|${fmt(d.vl_frt)}|${fmt(d.vl_seg)}|${fmt(d.vl_out_da)}|${fmt(d.vl_bc_icms)}|${fmt(d.vl_icms)}|${fmt(d.vl_bc_icms_st)}|${fmt(d.vl_icms_st)}|${fmt(d.vl_ipi)}|${fmt(d.vl_pis)}|${fmt(d.vl_cofins)}|${fmt(d.vl_pis_st)}|${fmt(d.vl_cofins_st)}`);
-      // C190 — registro analítico (resumo por CST/CFOP)
-      // Simplificado: uma linha por documento
-      if (parseFloat(d.vl_bc_icms) > 0 || parseFloat(d.vl_icms) > 0) {
-        const cfopBase = d.ind_oper === '0' ? '1102' : '5102'; // CFOP genérico se não informado
-        add(`C190|000|${cfopBase}|${fmt(0)}|${fmt(d.vl_doc)}|${fmt(d.vl_bc_icms)}|${fmt(0)}|${fmt(d.vl_icms)}|${fmt(0)}|${fmt(0)}|${fmt(0)}|${fmt(0)}|${fmt(0)}|${fmt(0)}|${fmt(0)}|${fmt(0)}`);
-      }
+      // C190: REG|CST_ICMS|CFOP|ALIQ_ICMS|VL_OPR|VL_BC_ICMS|VL_ICMS|VL_BC_ICMS_ST|VL_ICMS_ST|VL_RED_BC|VL_IPI|COD_OBS
+      // Obrigatório: gerar mesmo que zerado (só omitir se doc sem tributação nenhuma)
+      const cfop = d.cfop || (d.ind_oper === '0' ? '1102' : '5102');
+      const cst  = d.cst_icms || '000';
+      const aliq = fmt(d.aliq_icms || 0);
+      add(`C190|${cst}|${cfop}|${aliq}|${fmt(d.vl_doc)}|${fmt(d.vl_bc_icms)}|${fmt(d.vl_icms)}|${fmt(d.vl_bc_icms_st)}|${fmt(d.vl_icms_st)}|${fmt(d.vl_red_bc)}|${fmt(d.vl_ipi)}|`);
     });
-    const cntC = linhas.filter(l => l.startsWith('|C')).length + 1;
-    add(`C990|${cntC + 1}`);
+    add(`C990|${linhas.filter(l => l.startsWith('|C')).length + 1}`);
 
     // ===== BLOCO E — Apuração do ICMS =====
     add(`E001|0`);
+    // E100: REG|DT_INI|DT_FIN  (obrigatório — abre o período de apuração)
+    add(`E100|${dtIni}|${dtFin}`);
+    // E110: REG|VL_TOT_DEBITOS|VL_AJ_DEBITOS|VL_TOT_AJ_DEBITOS|VL_ESTORNOS_CRED|VL_TOT_CREDITOS|VL_AJ_CREDITOS|VL_TOT_AJ_CREDITOS|VL_ESTORNOS_DEB|VL_SLD_CREDOR_ANT|VL_SLD_APURADO|VL_TOT_DED|VL_ICMS_RECOLHER|VL_SLD_CREDOR_TRANSPORTAR|DEB_ESP
     const ap = apuracao || {};
     add(`E110|${fmt(ap.vl_tot_debitos)}|${fmt(ap.vl_aj_debitos)}|${fmt(ap.vl_tot_aj_deb)}|${fmt(ap.vl_estornos_cred)}|${fmt(ap.vl_tot_creditos)}|${fmt(ap.vl_aj_creditos)}|${fmt(ap.vl_tot_aj_cred)}|${fmt(ap.vl_estornos_deb)}|${fmt(ap.vl_sld_credor_ant)}|${fmt(ap.vl_sld_apurado)}|${fmt(ap.vl_tot_ded)}|${fmt(ap.vl_icms_recolher)}|${fmt(ap.vl_sld_credor_transportar)}|${fmt(ap.deb_esp)}`);
-    const cntE = linhas.filter(l => l.startsWith('|E')).length + 1;
-    add(`E990|${cntE + 1}`);
+    add(`E990|${linhas.filter(l => l.startsWith('|E')).length + 1}`);
 
-    // ===== BLOCO G — CIAP (vazio para caso base) =====
+    // ===== BLOCO G — CIAP (vazio) =====
     add(`G001|1`);
     add(`G990|2`);
 
-    // ===== BLOCO H — Inventário (vazio para caso base) =====
+    // ===== BLOCO H — Inventário (vazio) =====
     add(`H001|1`);
     add(`H990|2`);
 
-    // ===== BLOCO K — Produção (vazio — apenas indústria) =====
-    if (per.ind_ativ === '1') {
-      add(`K001|1`);
-      add(`K990|2`);
-    }
+    // ===== BLOCO K — obrigatório para todos; IND_MOV=1 (sem dados) para não-industriais =====
+    add(`K001|1`);
+    add(`K990|2`);
 
-    // ===== BLOCO 9 — Encerramento =====
+    // ===== BLOCO 1 — obrigatório (vazio) =====
+    add(`1001|1`);
+    add(`1990|2`);
+
+    // ===== BLOCO 9 — Controle e encerramento =====
     add(`9001|0`);
-    // 9900 — Totais por bloco
-    const blocos = ['0','C','E','G','H','9'];
-    blocos.forEach(b => {
-      const cnt = linhas.filter(l => l.startsWith(`|${b}`)).length;
-      if (cnt > 0) add(`9900|${b}|${cnt}`);
+    // 9900: REG|REG_BLC|QTD_REG_BLC — um registro por tipo de registro presente no arquivo
+    const contagem = {};
+    linhas.forEach(l => {
+      const reg = l.replace(/^\|/, '').split('|')[0];
+      contagem[reg] = (contagem[reg] || 0) + 1;
     });
-    const totalFinal = linhas.length + 2; // +9001 +9990
-    add(`9990|${totalFinal}`);
-    add(`9999|${totalFinal}`);
+    // Adicionar o próprio 9900 na contagem (será gerado N vezes, uma por tipo)
+    const tiposOrdenados = Object.keys(contagem).sort();
+    // +1 para cada 9900 que vamos adicionar + o próprio 9900
+    const total9900 = tiposOrdenados.length + 1; // +1 para 9900 em si
+    contagem['9900'] = total9900;
+    [...tiposOrdenados, '9900'].forEach(reg => {
+      add(`9900|${reg}|${contagem[reg]}`);
+    });
+    // 9990: total de linhas do bloco 9 (9001 + todos 9900 + 9990 + 9999)
+    const qtd9 = linhas.filter(l => l.startsWith('|9')).length + 2; // +9990 +9999
+    add(`9990|${qtd9}`);
+    // 9999: total geral do arquivo inteiro (inclui a si mesmo)
+    add(`9999|${linhas.length + 1}`);
 
     // Montar arquivo
     const conteudo = linhas.join('\r\n') + '\r\n';
