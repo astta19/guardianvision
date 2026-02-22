@@ -268,6 +268,9 @@
           <div class="field"><label>Cód. Participante</label><input type="text" id="docPart" placeholder="FORN001"></div>
           <div class="field"><label>Data *</label><input type="date" id="docData"></div>
           <div class="field"><label>Valor Total *</label><input type="number" id="docValor" step="0.01" placeholder="0,00"></div>
+          <div class="field"><label>CFOP *</label><input type="text" id="docCfop" placeholder="5102" maxlength="4"></div>
+          <div class="field"><label>CST ICMS</label><input type="text" id="docCst" placeholder="000" maxlength="3"></div>
+          <div class="field"><label>Alíq. ICMS (%)</label><input type="number" id="docAliq" step="0.01" placeholder="12,00"></div>
           <div class="field"><label>Base Cálc. ICMS</label><input type="number" id="docBcIcms" step="0.01" placeholder="0,00"></div>
           <div class="field"><label>Valor ICMS</label><input type="number" id="docIcms" step="0.01" placeholder="0,00"></div>
           <div class="field" style="grid-column:span 2"><label>Chave NF-e (44 dígitos)</label><input type="text" id="docChave" placeholder="00000000000000000000000000000000000000000000" maxlength="44"></div>
@@ -718,6 +721,18 @@
               <div>
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">CRC</label>
                 <input type="text" id="profileCRC" placeholder="Ex: SP-123456/O-1" style="width:100%;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">CPF (contabilista)</label>
+                <input type="text" id="profileCPF" placeholder="000.000.000-00" maxlength="14" style="width:100%;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">CNPJ do escritório (opcional)</label>
+                <input type="text" id="profileCNPJEsc" placeholder="00.000.000/0001-00" maxlength="18" style="width:100%;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Cód. Município IBGE (7 dígitos)</label>
+                <input type="text" id="profileCodMun" placeholder="3550308" maxlength="7" style="width:100%;box-sizing:border-box;">
               </div>
               <div id="profileNomeMsg" class="auth-msg"></div>
               <button onclick="salvarNome()" class="btn-sa" style="align-self:flex-end;padding:8px 20px;font-size:13px;">Salvar dados</button>
