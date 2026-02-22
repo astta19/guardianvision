@@ -291,72 +291,74 @@ async function showLearningStats() {
   if (statsDiv) statsDiv.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:24px">Carregando...</p>';
 
   try {
-    const [ragResult, docsResult] = await Promise.all([
-      sb.from('interacoes_chat')
+    let countRAG = 0, countDocs = 0, total = 0, avgFeedback = '—';
+
+    // Feedbacks positivos
+    try {
+      const r = await sb.from('interacoes_chat')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', currentUser.id)
-        .gte('feedback_usuario', 4)
-        .catch(() => ({ count: 0 })),
-      sb.from('documentos_fiscais')
+        .gte('feedback_usuario', 4);
+      countRAG = r.count || 0;
+    } catch(e) {}
+
+    // Documentos analisados
+    try {
+      const r = await sb.from('documentos_fiscais')
         .select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id);
+      countDocs = r.count || 0;
+    } catch(e) {}
+
+    // Interações recentes
+    try {
+      const { data } = await sb.from('interacoes_chat')
+        .select('feedback_usuario')
         .eq('user_id', currentUser.id)
-        .catch(() => ({ count: 0 }))
-    ]);
+        .order('criado_em', { ascending: false })
+        .limit(50);
+      total = data?.length || 0;
+      if (total > 0) {
+        const soma = data.reduce((s, r) => s + (r.feedback_usuario || 0), 0);
+        avgFeedback = (soma / total).toFixed(1);
+      }
+    } catch(e) {}
 
-    const countRAG  = ragResult?.count  || 0;
-    const countDocs = docsResult?.count || 0;
-
-    const { data: interacoes } = await sb
-      .from('interacoes_chat')
-      .select('feedback_usuario, criado_em')
-      .eq('user_id', currentUser.id)
-      .order('criado_em', { ascending: false })
-      .limit(50)
-      .catch(() => ({ data: [] }));
-
-    const total = interacoes?.length || 0;
-    const avgFeedback = total > 0
-      ? ((interacoes || []).reduce((s, r) => s + (r.feedback_usuario || 0), 0) / total).toFixed(1)
-      : '—';
-
+    // Treinamento — só admin
     let countTreinamento = '—';
     if (isAdmin()) {
       try {
         const r = await supabaseProxy('buscar_treinamento_count', {});
         countTreinamento = r?.count ?? 0;
-      } catch (e) { countTreinamento = '—'; }
+      } catch(e) {}
     }
 
     if (!statsDiv) return;
 
-    let adminCard = '';
+    const cards = [
+      { valor: countRAG,  label: 'Feedbacks positivos' },
+      { valor: countDocs, label: 'Docs analisados' },
+      { valor: total,     label: 'Interações recentes' },
+      { valor: avgFeedback, label: 'Feedback médio' }
+    ];
+
+    let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+    cards.forEach(function(c) {
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+        '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + c.valor + '</div>' +
+        '<div style="font-size:11px;color:var(--text-light);margin-top:3px">' + c.label + '</div>' +
+        '</div>';
+    });
+
     if (isAdmin()) {
-      adminCard = '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;grid-column:1/-1">' +
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;grid-column:1/-1">' +
         '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + countTreinamento + '</div>' +
         '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Dados de treinamento (admin)</div>' +
         '</div>';
     }
 
-    statsDiv.innerHTML =
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">' +
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + countRAG + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Feedbacks positivos</div>' +
-        '</div>' +
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + countDocs + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Docs analisados</div>' +
-        '</div>' +
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + total + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Interações recentes</div>' +
-        '</div>' +
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:28px;font-weight:700;color:var(--accent)">' + avgFeedback + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Feedback m\u00e9dio</div>' +
-        '</div>' +
-        adminCard +
-      '</div>';
+    html += '</div>';
+    statsDiv.innerHTML = html;
 
   } catch(e) {
     console.error('showLearningStats:', e);
