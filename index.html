@@ -464,6 +464,9 @@
         <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado">
           <i data-lucide="brain"></i>
         </button>
+        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários">
+          <i data-lucide="shield"></i>
+        </button>
         <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
           <i data-lucide="maximize-2"></i>
         </button>
@@ -882,5 +885,22 @@
   <script src="assets/js/profile.js?v=6"></script>
   <script src="assets/js/documents.js?v=6"></script>
   <script src="assets/js/sped.js?v=6"></script>
+
+  <!-- MODAL PERMISSÕES DE USUÁRIOS (admin only) -->
+  <div id="permissoesModal" style="display:none;position:fixed;inset:0;z-index:8600;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;" onclick="if(event.target===this)fecharPermissoesModal()">
+    <div style="background:var(--bg);border-radius:16px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <span style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;">
+          <i data-lucide="shield" style="width:16px;height:16px"></i>Permissões de usuários
+        </span>
+        <button onclick="fecharPermissoesModal()" style="background:var(--sidebar-hover);border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light);">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+      <div id="permissoesContent" style="overflow-y:auto;flex:1;padding:16px 20px 20px;-webkit-overflow-scrolling:touch;">
+        <p style="color:var(--text-light);text-align:center;padding:24px;font-size:13px">Carregando...</p>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
