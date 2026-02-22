@@ -42,7 +42,10 @@ async function carregarPerfil() {
     perfilCache = {
       nome: data?.nome || googleName || '',
       avatar_url: data?.avatar_url || googleAvatar || '',
-      crc: data?.crc || ''
+      crc: data?.crc || '',
+      cpf: data?.cpf || '',
+      cod_mun: data?.cod_mun || '',
+      cnpj_escritorio: data?.cnpj_escritorio || ''
     };
 
     // Primeira vez com Google: salvar no banco automaticamente
@@ -117,6 +120,12 @@ async function openProfile() {
   document.getElementById('profileNome').value = perfil?.nome || '';
   const crcEl = document.getElementById('profileCRC');
   if (crcEl) crcEl.value = perfil?.crc || '';
+  const cpfEl = document.getElementById('profileCPF');
+  if (cpfEl) cpfEl.value = perfil?.cpf || '';
+  const cnpjEscEl = document.getElementById('profileCNPJEsc');
+  if (cnpjEscEl) cnpjEscEl.value = perfil?.cnpj_escritorio || '';
+  const codMunEl = document.getElementById('profileCodMun');
+  if (codMunEl) codMunEl.value = perfil?.cod_mun || '';
 
   // Tema atual
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -156,13 +165,16 @@ async function checkPasswordStrengthEl(pwd, barId, hintId) {
 }
 
 async function salvarNome() {
-  const nome = document.getElementById('profileNome').value.trim();
-  const crc  = document.getElementById('profileCRC')?.value.trim() || '';
+  const nome         = document.getElementById('profileNome').value.trim();
+  const crc          = document.getElementById('profileCRC')?.value.trim() || '';
+  const cpf          = (document.getElementById('profileCPF')?.value || '').replace(/\D/g,'');
+  const cnpj_escritorio = (document.getElementById('profileCNPJEsc')?.value || '').replace(/\D/g,'');
+  const cod_mun      = document.getElementById('profileCodMun')?.value.trim() || '';
   const msgEl = document.getElementById('profileNomeMsg');
   const btn = event.target;
 
   btn.disabled = true; btn.textContent = 'Salvando...';
-  const ok = await salvarPerfilBanco({ nome, crc });
+  const ok = await salvarPerfilBanco({ nome, crc, cpf, cnpj_escritorio, cod_mun });
   btn.disabled = false; btn.textContent = 'Salvar dados';
 
   if (!ok) {
