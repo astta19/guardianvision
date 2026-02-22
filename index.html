@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Fiscal365</title>
   <meta name="theme-color" content="#1a1a1a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  
 
   <!-- Ícones e UI -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -22,7 +25,7 @@
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="stylesheet" href="assets/css/app.css?v=6">
 </head>
 <body>
 <!-- TELA DE LOADING -->
@@ -62,6 +65,13 @@
             onkeypress="if(event.key==='Enter') doLogin()">
         </div>
         <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
+
+        <div class="auth-divider"><span>ou</span></div>
+
+        <button class="google-btn" onclick="doGoogleLogin()" type="button">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.96 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Continuar com Google
+        </button>
         <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
         <div class="auth-msg" id="loginMsg"></div>
       </div>
@@ -167,7 +177,7 @@
   </div>
 
   <!-- MODAL SPED EFD-ICMS/IPI -->
-  <div id="spedModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px">
+  <div id="spedModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeSped()">
     <div class="sped-modal-box">
       <div class="sped-header">
         <div>
@@ -392,6 +402,9 @@
 
       <div class="c-right">
         <!-- Botões sempre visíveis -->
+        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped">
+          <i data-lucide="file-code-2"></i>
+        </button>
         <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
           <i data-lucide="calculator"></i>
         </button>
@@ -690,14 +703,14 @@
         <div id="profileTabConta" class="doc-panel" style="display:block;">
 
           <!-- Seção: Dados pessoais -->
-          <div class="profile-section" style="margin-bottom:20px;">
+          <div style="margin-bottom:20px;">
             <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Dados pessoais</h4>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <div class="profile-field">
+              <div>
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Nome completo</label>
                 <input type="text" id="profileNome" placeholder="Seu nome" style="width:100%;box-sizing:border-box;">
               </div>
-              <div class="profile-field">
+              <div>
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">CRC</label>
                 <input type="text" id="profileCRC" placeholder="Ex: SP-123456/O-1" style="width:100%;box-sizing:border-box;">
               </div>
@@ -709,7 +722,7 @@
           <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
 
           <!-- Seção: Aparência -->
-          <div class="profile-section" style="margin-bottom:20px;">
+          <div style="margin-bottom:20px;">
             <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Aparência</h4>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--sidebar-hover);border-radius:10px;">
               <div>
@@ -727,16 +740,16 @@
           <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
 
           <!-- Seção: Alterar senha -->
-          <div class="profile-section">
+          <div>
             <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Segurança</h4>
             <div style="display:flex;flex-direction:column;gap:10px;">
-              <div class="profile-field">
+              <div>
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Nova senha</label>
                 <input type="password" id="profileNewPwd" placeholder="Mínimo 8 caracteres" style="width:100%;box-sizing:border-box;" oninput="checkPasswordStrengthEl(this.value,'pwdBar2','pwdHint2')">
                 <div id="pwdBar2" style="height:3px;border-radius:2px;margin-top:6px;background:var(--border);transition:all .3s"></div>
                 <div id="pwdHint2" style="font-size:11px;color:var(--text-light);margin-top:4px"></div>
               </div>
-              <div class="profile-field">
+              <div>
                 <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Confirmar nova senha</label>
                 <input type="password" id="profileConfirmPwd" placeholder="Repita a senha" style="width:100%;box-sizing:border-box;">
               </div>
@@ -753,11 +766,11 @@
           </p>
 
           <div style="display:flex;flex-direction:column;gap:14px;">
-            <div class="profile-field">
+            <div>
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">E-mail para notificações</label>
               <input type="email" id="profileNotifEmail" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;">
             </div>
-            <div class="profile-field">
+            <div>
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Antecedência (dias antes do prazo)</label>
               <select id="profileAntecedencia" style="width:100%;box-sizing:border-box;">
                 <option value="1">1 dia</option>
@@ -859,13 +872,13 @@
   <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <!-- Scripts — ordem importa: core → ui → clients → chat → fiscal → profile → documents → sped -->
-  <script src="assets/js/core.js"></script>
-  <script src="assets/js/ui.js"></script>
-  <script src="assets/js/clients.js"></script>
-  <script src="assets/js/chat.js"></script>
-  <script src="assets/js/fiscal.js"></script>
-  <script src="assets/js/profile.js"></script>
-  <script src="assets/js/documents.js"></script>
-  <script src="assets/js/sped.js"></script>
+  <script src="assets/js/core.js?v=6"></script>
+  <script src="assets/js/ui.js?v=6"></script>
+  <script src="assets/js/clients.js?v=6"></script>
+  <script src="assets/js/chat.js?v=6"></script>
+  <script src="assets/js/fiscal.js?v=6"></script>
+  <script src="assets/js/profile.js?v=6"></script>
+  <script src="assets/js/documents.js?v=6"></script>
+  <script src="assets/js/sped.js?v=6"></script>
 </body>
 </html>
