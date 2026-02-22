@@ -15,13 +15,14 @@ let perfilCache    = null;
 let allChats       = [];
 let chatsPage      = 0;
 let nfeData        = [];
+let darfData = null;
 let rateLimitUntil = 0;
 
 const CHATS_PER_PAGE = 50;
 const MODELS = [
   'llama-3.3-70b-versatile',
-  'llama-3.1-70b-versatile',
-  'mixtral-8x7b-32768',
+  'llama-3.1-8b-instant',
+  'llama3-8b-8192',
 ];
 
 const fiscalDeadlines = {
@@ -106,12 +107,38 @@ function toggleTheme() {
 }
 
 function applyAdminUI() {
+  const admin = isAdmin();
+  const perms = currentUser?.user_metadata?.permissions || [];
+
+  // admin-only: apenas para admins
   document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = isAdmin() ? '' : 'none';
+    el.style.display = admin ? '' : 'none';
   });
+
+  // admin-menu-item: admin vê tudo; contador vê se tiver permissão
   document.querySelectorAll('.admin-menu-item').forEach(el => {
-    el.style.display = isAdmin() ? '' : 'none';
+    el.style.display = admin ? '' : 'none';
   });
+
+  // data-perm: itens com permissão específica
+  document.querySelectorAll('[data-perm]').forEach(el => {
+    const perm = el.getAttribute('data-perm');
+    el.style.display = (admin || perms.includes(perm)) ? '' : 'none';
+  });
+}
+
+// Chamada pelo admin para definir permissões de um contador
+async function definirPermissoes(userId, permissions) {
+  if (!isAdmin()) return;
+  // Usa supabase-proxy com service key para updateUser
+  const session = await sb.auth.getSession();
+  const token = session?.data?.session?.access_token;
+  const res = await fetch('/.netlify/functions/supabase-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'definir_permissoes', payload: { userId, permissions }, token })
+  });
+  return res.ok;
 }
 
 // --- Auth: mostrar formulários corretos ---
@@ -180,7 +207,10 @@ async function doSetPassword() {
 }
 
 function doLogout() {
-  showConfirm('Tem certeza que deseja sair?', async () => { await sb.auth.signOut(); });
+  showConfirm('Tem certeza que deseja sair?', async () => {
+    await sb.auth.signOut();
+    window.location.reload();
+  });
 }
 
 // --- Confirm dialog ---
@@ -292,17 +322,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Eventos futuros de auth
   sb.auth.onAuthStateChange(async (event, session) => {
+    // PASSWORD_RECOVERY DEVE ser tratado ANTES de SIGNED_IN
+    // Supabase dispara SIGNED_IN junto com PASSWORD_RECOVERY — ignorar o SIGNED_IN nesses casos
+    if (event === 'PASSWORD_RECOVERY') {
+      currentUser = session?.user || null;
+      hideLoading();
+      showAuthState('setPassword');
+      return; // não chamar showApp()
+    }
+
     if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
       showApp();
     } else if (event === 'TOKEN_REFRESHED') {
       if (session) currentUser = session.user;
-    } else if (event === 'SIGNED_OUT') {
+    } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
       currentUser = null;
       showAuthScreen();
-    } else if (event === 'PASSWORD_RECOVERY') {
-      hideLoading();
-      showAuthState('setPassword');
     }
   });
 
