@@ -1186,10 +1186,9 @@
     #profileModal .profile-section h4 { color:var(--text-light); }
     #profileModal .profile-field input { box-sizing:border-box; font-size:16px; } /* 16px evita zoom no iOS */
 
-    #profileTabConta, #profileTabNotif { display: none;}
-    #profileTabConta[style*="display:block"], 
-    #profileTabNotif[style*="display:block"] {display: block !important;}
-    #profileThemeToggle:checked + span + span { transform: translateX(20px);}
+    #profileTabConta, #profileTabNotif { display: none !important;}
+    #profileTabConta[style*="display: block"], 
+    #profileTabNotif[style*="display: block"] { display: block !important;}
 
     .pwd-strength { height:4px; border-radius:2px; margin-top:6px; transition:all 0.3s; background:var(--border); }
     .pwd-strength-bar { height:100%; border-radius:2px; transition:all 0.3s; width:0%; }
