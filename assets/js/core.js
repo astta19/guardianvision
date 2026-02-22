@@ -129,16 +129,21 @@ function applyAdminUI() {
 
 // Chamada pelo admin para definir permissões de um contador
 async function definirPermissoes(userId, permissions) {
-  if (!isAdmin()) return;
-  // Usa supabase-proxy com service key para updateUser
-  const session = await sb.auth.getSession();
-  const token = session?.data?.session?.access_token;
-  const res = await fetch('/.netlify/functions/supabase-proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'definir_permissoes', payload: { userId, permissions }, token })
-  });
-  return res.ok;
+  if (!isAdmin()) return false;
+  try {
+    const session = await sb.auth.getSession();
+    const token = session?.data?.session?.access_token;
+    const res = await fetch('/.netlify/functions/supabase-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'definir_permissoes', payload: { userId, permissions }, token })
+    });
+    const data = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true } : false;
+  } catch(e) {
+    console.error('definirPermissoes:', e);
+    return false;
+  }
 }
 
 // --- Auth: mostrar formulários corretos ---
@@ -303,6 +308,17 @@ async function showApp() {
   if (user) currentUser = user;
   // localStorage tem prioridade — é atualizado imediatamente ao trocar o tema
   setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
+  // Buscar permissões atualizadas da tabela (sem depender só do JWT)
+  if (currentUser && !isAdmin()) {
+    try {
+      const r = await supabaseProxy('buscar_permissoes', { userId: currentUser.id });
+      if (r?.permissions && Array.isArray(r.permissions)) {
+        // Mesclar no objeto currentUser para applyAdminUI usar
+        if (!currentUser.user_metadata) currentUser.user_metadata = {};
+        currentUser.user_metadata.permissions = r.permissions;
+      }
+    } catch(e) {} // silencioso — fallback para user_metadata do JWT
+  }
   applyAdminUI();
   checkConnection();
   if (typeof loadClientes === 'function') loadClientes();
@@ -396,4 +412,5 @@ document.addEventListener('keydown', (e) => {
   if (document.getElementById('learningStatsModal')?.style.display !== 'none') { if (typeof closeLearningStats === 'function') closeLearningStats(); return; }
   if (document.getElementById('shareModal')?.style.display !== 'none') { if (typeof closeShareModal === 'function') closeShareModal(); return; }
   if (!document.getElementById('clientModal')?.classList.contains('hidden')) { if (typeof closeClientModal === 'function') closeClientModal(); return; }
+  if (document.getElementById('permissoesModal')?.style.display !== 'none') { if (typeof fecharPermissoesModal === 'function') fecharPermissoesModal(); return; }
 });
