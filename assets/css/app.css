@@ -7,6 +7,8 @@
 
     :root {
       --bg: #fafafa;
+      --primary: #1a1a1a;
+      --sidebar-hover: #f5f5f5;
       --card: #fff;
       --text: #1a1a1a;
       --text-light: #666;
@@ -26,6 +28,8 @@
 
     [data-theme="dark"] {
       --bg: #1a1a1a;
+      --primary: #f5f5f5;
+      --sidebar-hover: #2a2a2a;
       --card: #2d2d2d;
       --text: #f5f5f5;
       --text-light: #a0a0a0;
@@ -1720,8 +1724,8 @@
       transform: translateX(20px);
     }
     /* Forma correta para o toggle inline do HTML */
-    #profileModal input[type="checkbox"]:checked + span { background: var(--primary); }
-    #profileModal input[type="checkbox"]:checked + span + span { left: 22px; }
+    #profileModal input[type="checkbox"]:checked + span { background: var(--primary) !important; }
+    #profileModal input[type="checkbox"]:checked + span + span { left: 22px !important; }
 
     /* ── RESPONSIVIDADE MOBILE GERAL ───────────────*/
     @media (max-width: 480px) {
