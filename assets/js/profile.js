@@ -30,7 +30,7 @@
       try {
         const { data } = await sb
           .from('perfis_usuarios')
-          .select('nome, avatar_url')
+          .select('nome, avatar_url, crc')
           .eq('user_id', currentUser.id)
           .maybeSingle();
         perfilCache = data || {};
@@ -69,10 +69,13 @@
     async function openProfile() {
       const modal = document.getElementById('profileModal');
       modal.style.display = 'flex';
-      document.body.style.overflow = 'hidden'; // prevenir scroll do body
+      document.body.style.overflow = 'hidden';
 
       // Resetar para aba Conta
-      switchProfileTab('conta', modal.querySelector('.doc-tab'));
+      document.querySelectorAll('#profileModal .doc-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelector('#profileModal .doc-tab').classList.add('active');
+      document.getElementById('profileTabConta').style.display = 'block';
+      document.getElementById('profileTabNotif').style.display = 'none';
 
       // Carregar perfil
       const perfil = await carregarPerfil();
@@ -85,6 +88,7 @@
       } else {
         const inicial = (perfil?.nome || email)[0]?.toUpperCase() || '?';
         avatarEl.textContent = inicial;
+        avatarEl.style.background = 'var(--accent)';
       }
 
       // Nome e email no header do modal
@@ -104,25 +108,51 @@
 
       // Listener de força de senha
       const pwdInput = document.getElementById('profileNewPwd');
-      if (pwdInput) pwdInput.oninput = function() {
-        checkPasswordStrengthEl(this.value, 'pwdBar2', 'pwdHint2');
-      };
+      if (pwdInput) {
+        pwdInput.oninput = function() {
+          checkPasswordStrengthEl(this.value, 'pwdBar2', 'pwdHint2');
+        };
+      }
+
+      // Carregar configurações de notificação
+      await carregarConfigNotif();
 
       lucide.createIcons();
     }
 
     async function closeProfile() {
-      document.body.style.overflow = ''; // restaurar scroll
+      document.body.style.overflow = '';
       document.getElementById('profileModal').style.display = 'none';
       document.getElementById('profilePwdMsg').className = 'auth-msg';
       document.getElementById('profileNotifMsg').className = 'auth-msg';
     }
 
+    function switchProfileTab(tabName, btn) {
+      // Atualizar abas
+      document.querySelectorAll('#profileModal .doc-tab').forEach(tab => tab.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Mostrar painel correto
+      if (tabName === 'conta') {
+        document.getElementById('profileTabConta').style.display = 'block';
+        document.getElementById('profileTabNotif').style.display = 'none';
+      } else {
+        document.getElementById('profileTabConta').style.display = 'none';
+        document.getElementById('profileTabNotif').style.display = 'block';
+      }
+    }
 
     async function checkPasswordStrengthEl(pwd, barId, hintId) {
       const bar = document.getElementById(barId);
       const hint = document.getElementById(hintId);
       if (!bar || !hint) return;
+      
+      if (!pwd) {
+        bar.style.width = '0%';
+        hint.textContent = '';
+        return;
+      }
+      
       const checks = [/.{8,}/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/];
       const labels = ['mín. 8 chars', '1 maiúscula', '1 número', '1 especial'];
       const missing = checks.map((rx, i) => rx.test(pwd) ? null : labels[i]).filter(Boolean);
@@ -140,9 +170,11 @@
       const msgEl = document.getElementById('profileNomeMsg');
       const btn = event.target;
 
-      btn.disabled = true; btn.textContent = 'Salvando...';
+      btn.disabled = true; 
+      btn.textContent = 'Salvando...';
       const ok = await salvarPerfilBanco({ nome, crc });
-      btn.disabled = false; btn.textContent = 'Salvar dados';
+      btn.disabled = false; 
+      btn.textContent = 'Salvar dados';
 
       if (!ok) {
         msgEl.textContent = 'Erro ao salvar. Tente novamente.';
@@ -160,15 +192,33 @@
       const msgEl = document.getElementById('profilePwdMsg');
 
       if (!pwd) return;
-      if (pwd.length < 8) { msgEl.textContent = 'Mínimo 8 caracteres.'; msgEl.className = 'auth-msg error'; return; }
-      if (!/[A-Z]/.test(pwd)) { msgEl.textContent = 'Inclua ao menos 1 letra maiúscula.'; msgEl.className = 'auth-msg error'; return; }
-      if (!/[0-9]/.test(pwd)) { msgEl.textContent = 'Inclua ao menos 1 número.'; msgEl.className = 'auth-msg error'; return; }
-      if (pwd !== confirm) { msgEl.textContent = 'As senhas não coincidem.'; msgEl.className = 'auth-msg error'; return; }
+      if (pwd.length < 8) { 
+        msgEl.textContent = 'Mínimo 8 caracteres.'; 
+        msgEl.className = 'auth-msg error'; 
+        return; 
+      }
+      if (!/[A-Z]/.test(pwd)) { 
+        msgEl.textContent = 'Inclua ao menos 1 letra maiúscula.'; 
+        msgEl.className = 'auth-msg error'; 
+        return; 
+      }
+      if (!/[0-9]/.test(pwd)) { 
+        msgEl.textContent = 'Inclua ao menos 1 número.'; 
+        msgEl.className = 'auth-msg error'; 
+        return; 
+      }
+      if (pwd !== confirm) { 
+        msgEl.textContent = 'As senhas não coincidem.'; 
+        msgEl.className = 'auth-msg error'; 
+        return; 
+      }
 
       const btn = event.target;
-      btn.disabled = true; btn.textContent = 'Salvando...';
+      btn.disabled = true; 
+      btn.textContent = 'Salvando...';
       const { error } = await sb.auth.updateUser({ password: pwd });
-      btn.disabled = false; btn.textContent = 'Salvar nova senha';
+      btn.disabled = false; 
+      btn.textContent = 'Salvar nova senha';
 
       if (error) {
         msgEl.textContent = 'Erro ao salvar. Tente novamente.';
@@ -178,13 +228,25 @@
         msgEl.className = 'auth-msg success';
         document.getElementById('profileNewPwd').value = '';
         document.getElementById('profileConfirmPwd').value = '';
+        document.getElementById('pwdBar2').style.width = '0%';
+        document.getElementById('pwdHint2').textContent = '';
       }
     }
 
     async function toggleThemeFromProfile(isDark) {
       const theme = isDark ? 'dark' : 'light';
       localStorage.setItem('theme', theme);
-      setTheme(theme);
+      
+      // Aplicar tema
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('themeIcon').setAttribute('data-lucide', 'sun');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('themeIcon').setAttribute('data-lucide', 'moon');
+      }
+      lucide.createIcons();
+      
       if (currentUser) sb.auth.updateUser({ data: { theme } });
     }
 
@@ -231,16 +293,21 @@
         atualizarNomeHeader();
 
       } catch(e) {
-        avatarEl.textContent = (perfilCache?.nome || currentUser?.email || '?')[0]?.toUpperCase();
+        console.error(e);
+        const inicial = (perfilCache?.nome || currentUser?.email || '?')[0]?.toUpperCase();
+        avatarEl.textContent = inicial;
+        avatarEl.style.background = 'var(--accent)';
         alert('Erro ao enviar imagem. Verifique se o bucket "avatars" existe no Supabase Storage.');
       }
 
-      input.value = ''; // resetar input
+      input.value = '';
     }
 
     async function carregarConfigNotif() {
       const listEl = document.getElementById('notifObrigacoesList');
-      listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light)">Carregando...</p>';
+      if (!listEl) return;
+      
+      listEl.innerHTML = '<p style="font-size:12px;color:var(--text-light);padding:12px;text-align:center">Carregando...</p>';
 
       // Buscar config salva do usuário
       const { data } = await sb
@@ -310,13 +377,6 @@
     }
 
     // ====== FUNÇÕES DE AUTENTICAÇÃO ======
-
-
-
-
-
-
-
 
     async function loadChats(reset = true) {
       try {
