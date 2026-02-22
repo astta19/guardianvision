@@ -1189,6 +1189,7 @@
     #profileTabConta, #profileTabNotif { display: none !important;}
     #profileTabConta[style*="display: block"], 
     #profileTabNotif[style*="display: block"] { display: block !important;}
+    #profileThemeToggle:checked ~ span:last-child {left: 22px !important;}
 
     .pwd-strength { height:4px; border-radius:2px; margin-top:6px; transition:all 0.3s; background:var(--border); }
     .pwd-strength-bar { height:100%; border-radius:2px; transition:all 0.3s; width:0%; }
