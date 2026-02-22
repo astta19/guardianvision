@@ -1,7 +1,53 @@
 // ============================================================
 // CLIENTS.JS — Empresas, Acessos, CNPJ
 // ============================================================
-// ====== FUNÇÕES DE CLIENTES ======
+// ====== FUNÇÕES CNPJ ======
+
+    function extrairCNPJ(texto) {
+      const match = texto.match(/\d{2}[\.\-]?\d{3}[\.\-]?\d{3}[\/]?\d{4}[\-]?\d{2}/);
+      if (!match) return null;
+      return match[0].replace(/\D/g, '');
+    }
+
+    async function consultarCNPJ(cnpj) {
+      try {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        if (!res.ok) return null;
+        const d = await res.json();
+        return d;
+      } catch {
+        return null;
+      }
+    }
+
+    function formatarDadosCNPJ(d) {
+      if (!d) return null;
+      const situacao = d.descricao_situacao_cadastral || 'Não informado';
+      const atividade = d.cnae_fiscal_descricao || d.atividade_principal?.[0]?.text || 'Não informado';
+      const socios = d.qsa?.map(s => `${s.nome_socio} (${s.qualificacao_socio})`).join(', ') || 'Não informado';
+      const endereco = [d.logradouro, d.numero, d.complemento, d.bairro, d.municipio, d.uf]
+        .filter(Boolean).join(', ');
+
+      return `DADOS DA RECEITA FEDERAL — CNPJ ${d.cnpj}:
+- Razão Social: ${d.razao_social}
+- Nome Fantasia: ${d.nome_fantasia || '—'}
+- Situação Cadastral: ${situacao}
+- Data Abertura: ${d.data_inicio_atividade || '—'}
+- Atividade Principal: ${atividade}
+- Natureza Jurídica: ${d.natureza_juridica || '—'}
+- Capital Social: R$ ${Number(d.capital_social || 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}
+- Endereço: ${endereco || '—'}
+- Município/UF: ${d.municipio || '—'}/${d.uf || '—'}
+- CEP: ${d.cep || '—'}
+- Telefone: ${d.ddd_telefone_1 ? `(${d.ddd_telefone_1}) ${d.telefone_1}` : '—'}
+- E-mail: ${d.email || '—'}
+- Sócios/Administradores: ${socios}
+- Porte: ${d.porte || '—'}
+- Optante Simples Nacional: ${d.opcao_pelo_simples ? 'Sim' : 'Não'}
+- Optante MEI: ${d.opcao_pelo_mei ? 'Sim' : 'Não'}`;
+    }
+
+    // ====== FUNÇÕES DE CLIENTES ======
     async function loadClientes() {
       // Admin busca todos; outros buscam via vínculo clientes_usuarios
       let data, error;
@@ -431,5 +477,66 @@
       } catch (e) {
         msgEl.textContent = 'Erro ao salvar acessos.';
         msgEl.className = 'auth-msg error';
+      }
+    }
+
+
+    // ══════════════════════════════════════════════════
+    // PERMISSÕES GLOBAIS POR USUÁRIO (admin only)
+    // ══════════════════════════════════════════════════
+    async function abrirGerenciarPermissoes() {
+      if (!isAdmin()) return;
+      // Reusar clientModal para isso
+      document.getElementById('clientModal').classList.remove('hidden');
+      const listEl = document.getElementById('clientList');
+      listEl.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando usuários...</p>';
+
+      const res = await supabaseProxy('listar_usuarios', {});
+      if (res?.error || !res?.usuarios) {
+        listEl.innerHTML = `<p style="color:var(--error);font-size:13px">Erro: ${res?.error || 'Falha ao carregar'}</p>`;
+        return;
+      }
+
+      const PERMS = [
+        { id: 'documentos', label: 'Documentos Fiscais' },
+        { id: 'sped', label: 'SPED EFD' },
+        { id: 'exportar', label: 'Exportar Conversa' },
+        { id: 'calculadora', label: 'Calculadora' },
+      ];
+
+      listEl.innerHTML = `
+        <div style="margin-bottom:12px">
+          <button onclick="renderClientList()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+          </button>
+          <p style="font-weight:600;margin:8px 0 4px">Permissões por usuário</p>
+          <p style="font-size:12px;color:var(--text-light)">Defina o que cada contador pode acessar</p>
+        </div>
+        ${res.usuarios.map(u => `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px">${escapeHtml(u.email)}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              ${PERMS.map(p => `
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;background:var(--sidebar-hover);padding:5px 10px;border-radius:6px">
+                  <input type="checkbox" data-uid="${u.id}" data-perm="${p.id}" ${(u.permissions||[]).includes(p.id) ? 'checked' : ''} style="width:13px;height:13px">
+                  ${escapeHtml(p.label)}
+                </label>`).join('')}
+            </div>
+            <button onclick="salvarPermissoesUsuario('${u.id}', '${escapeHtml(u.email)}')" style="margin-top:8px;background:var(--primary);color:#fff;border:none;border-radius:7px;padding:5px 14px;font-size:12px;cursor:pointer">
+              Salvar
+            </button>
+          </div>`).join('')}
+      `;
+      lucide.createIcons();
+    }
+
+    async function salvarPermissoesUsuario(userId, email) {
+      const checkboxes = document.querySelectorAll(`input[data-uid="${userId}"]`);
+      const permissions = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.dataset.perm);
+      const ok = await definirPermissoes(userId, permissions);
+      if (ok) {
+        alert(`Permissões de ${email} salvas.`);
+      } else {
+        alert('Erro ao salvar permissões. Verifique os logs.');
       }
     }
