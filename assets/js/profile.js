@@ -69,18 +69,16 @@
     async function openProfile() {
       const modal = document.getElementById('profileModal');
       modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden'; // prevenir scroll do body
 
-      // Resetar para aba Conta sempre que abre
-      modal.querySelectorAll('.doc-tab').forEach(t => t.classList.remove('active'));
-      modal.querySelectorAll('.doc-panel').forEach(p => p.classList.remove('active'));
-      modal.querySelector('.doc-tab').classList.add('active');
-      document.getElementById('profileTabConta').classList.add('active');
+      // Resetar para aba Conta
+      switchProfileTab('conta', modal.querySelector('.doc-tab'));
 
-      // Carregar perfil do banco
+      // Carregar perfil
       const perfil = await carregarPerfil();
       const email = currentUser?.email || '';
 
-      // Avatar — foto ou inicial
+      // Avatar
       const avatarEl = document.getElementById('profileAvatar');
       if (perfil?.avatar_url) {
         avatarEl.innerHTML = `<img src="${perfil.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="avatar">`;
@@ -89,25 +87,32 @@
         avatarEl.textContent = inicial;
       }
 
+      // Nome e email no header do modal
+      const nomeDisplay = document.getElementById('profileNomeDisplay');
+      if (nomeDisplay) nomeDisplay.textContent = perfil?.nome || email;
       document.getElementById('profileEmailDisplay').textContent = email;
+
+      // Campos editáveis
       document.getElementById('profileNome').value = perfil?.nome || '';
       const crcEl = document.getElementById('profileCRC');
       if (crcEl) crcEl.value = perfil?.crc || '';
 
       // Tema atual
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.getElementById('profileThemeToggle').checked = isDark;
+      const toggle = document.getElementById('profileThemeToggle');
+      if (toggle) toggle.checked = isDark;
 
-      // pwdBar2
-      document.getElementById('profileNewPwd').oninput = function() {
+      // Listener de força de senha
+      const pwdInput = document.getElementById('profileNewPwd');
+      if (pwdInput) pwdInput.oninput = function() {
         checkPasswordStrengthEl(this.value, 'pwdBar2', 'pwdHint2');
       };
 
-      carregarConfigNotif();
       lucide.createIcons();
     }
 
     async function closeProfile() {
+      document.body.style.overflow = ''; // restaurar scroll
       document.getElementById('profileModal').style.display = 'none';
       document.getElementById('profilePwdMsg').className = 'auth-msg';
       document.getElementById('profileNotifMsg').className = 'auth-msg';
@@ -137,7 +142,7 @@
 
       btn.disabled = true; btn.textContent = 'Salvando...';
       const ok = await salvarPerfilBanco({ nome, crc });
-      btn.disabled = false; btn.textContent = 'Salvar informações';
+      btn.disabled = false; btn.textContent = 'Salvar dados';
 
       if (!ok) {
         msgEl.textContent = 'Erro ao salvar. Tente novamente.';
