@@ -1709,3 +1709,69 @@
 .sped-resultado.credit { border-color: #86efac; background: #dcfce7; }
 .sped-resultado.credit strong { color: #16a34a; }
 .sped-section-title { font-size: 13px; font-weight: 600; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+
+    /* ── TOGGLE SWITCH DO PERFIL ────────────────── */
+    #profileThemeToggle:checked + span {
+      background: var(--primary);
+    }
+    #profileThemeToggle:checked + span + span,
+    #profileThemeToggle:checked ~ span:last-child {
+      transform: translateX(20px);
+    }
+    /* Forma correta para o toggle inline do HTML */
+    #profileModal input[type="checkbox"]:checked + span { background: var(--primary); }
+    #profileModal input[type="checkbox"]:checked + span + span { left: 22px; }
+
+    /* ── RESPONSIVIDADE MOBILE GERAL ───────────────*/
+    @media (max-width: 480px) {
+      .m-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 16px 16px 0 0;
+      }
+      #profileModal > div,
+      #statsModal .m-box,
+      #learningStatsModal .m-box,
+      #shareModal .m-box {
+        max-height: 92vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      /* Modais em mobile: bottom sheet */
+      #profileModal,
+      #statsModal,
+      #learningStatsModal,
+      #shareModal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+      }
+      /* clientModal */
+      #clientModal .client-modal-box {
+        max-height: 88vh;
+        border-radius: 16px 16px 0 0;
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+
+    /* ── MODAL PERFIL: centralizado em desktop ─── */
+    @media (min-width: 481px) {
+      #profileModal {
+        align-items: center !important;
+        padding: 16px !important;
+      }
+      #profileModal > div {
+        border-radius: 16px !important;
+      }
+    }
+
+    /* ── GARANTIR SCROLL NOS MODAIS ──────────────── */
+    #profileModal > div > div:last-child {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .client-modal-box, .m-box {
+      -webkit-overflow-scrolling: touch;
+    }
