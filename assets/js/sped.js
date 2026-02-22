@@ -80,7 +80,7 @@ async function spedCarregarPeriodos() {
   lucide.createIcons();
 }
 
-async function formatarPeriodo(periodo) {
+function formatarPeriodo(periodo) {
   if (!periodo || periodo.length !== 6) return periodo;
   const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const m = parseInt(periodo.substring(0,2)) - 1;
