@@ -16,12 +16,15 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Body inválido' }) };
   }
 
-  const { model, messages, temperature = 0.7, max_tokens = 2000 } = body;
+  const { model, messages, temperature = 0.7, max_tokens = 4000 } = body;
 
   const ALLOWED_MODELS = [
     'llama-3.3-70b-versatile',
+    'llama-3.1-70b-versatile',
     'llama-3.1-8b-instant',
-    'llama3-8b-8192'
+    'llama3-8b-8192',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it'
   ];
 
   if (!model || !ALLOWED_MODELS.includes(model)) {
