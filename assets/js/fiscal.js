@@ -4,9 +4,7 @@
 
     // ============================================
     // MÓDULO DOCUMENTOS FISCAIS
-    // ============================================
-
-    let darfData = null; // resultado do cálculo DARF
+    // ============================================ // resultado do cálculo DARF
 
 
     // ---- CONFERÊNCIA NF-e ----
