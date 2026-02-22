@@ -406,10 +406,10 @@
           </button>
           <div class="hdr-dropdown" id="moreMenu">
             <div class="hdr-dropdown-title">Opções</div>
-            <button class="menu-item" onclick="openDocumentos(); closeDropdowns()">
+            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()">
               <i data-lucide="file-text"></i> Documentos Fiscais
             </button>
-            <button class="menu-item" onclick="openSped(); closeDropdowns()">
+            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()">
               <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
             </button>
             <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()">
@@ -418,7 +418,10 @@
             <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()">
               <i data-lucide="brain"></i> Aprendizado
             </button>
-            <button class="menu-item" onclick="exportChat(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()">
+              <i data-lucide="shield"></i> Permissões de usuários
+            </button>
+            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()">
               <i data-lucide="download"></i> Exportar conversa
             </button>
             <button class="menu-item" onclick="shareChat(); closeDropdowns()">
@@ -648,120 +651,132 @@
   </div>
 
   <!-- MODAL PERFIL -->
-  <div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:8000;align-items:flex-end;justify-content:stretch;padding:0">
-    <div class="m-box" style="border-radius:20px 20px 0 0;width:100%;max-width:520px;margin:0 auto;max-height:92vh;overflow-y:auto;padding:20px 20px 32px">
-      <div class="m-head">
-        <span class="m-title"><i data-lucide="user" style="width:15px;height:15px;vertical-align:middle;margin-right:6px"></i>Meu Perfil</span>
-        <button class="btn-close" onclick="closeProfile()"><i data-lucide="x"></i></button>
-      </div>
+  <div id="profileModal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;" onclick="if(event.target===this)closeProfile()">
+    <div style="background:var(--bg);border-radius:16px;width:100%;max-width:480px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;position:relative;">
 
-      <!-- Avatar + email -->
-      <div class="profile-avatar-wrap">
-        <div id="profileAvatar" class="profile-avatar">?</div>
-        <label class="avatar-upload-btn" title="Alterar foto" for="avatarInput">
-          <i data-lucide="camera" style="width:12px;height:12px"></i>
-        </label>
-        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
-      </div>
-      <div class="profile-email" id="profileEmailDisplay"></div>
-
-      <!-- Abas -->
-      <div class="doc-tabs" style="margin-bottom:20px">
-        <button class="doc-tab active" onclick="switchProfileTab('conta', this)">Conta</button>
-        <button class="doc-tab" onclick="switchProfileTab('notif', this)">Notificações</button>
-      </div>
-
-      <!-- ABA CONTA -->
-      <div id="profileTabConta" class="doc-panel active">
-        <div class="profile-section">
-          <h4>Informações pessoais</h4>
-          <div class="profile-field">
-            <label>Nome de exibição</label>
-            <input type="text" id="profileNome" placeholder="Como você quer ser chamado" maxlength="50">
-          </div>
-          <div class="profile-field">
-            <label>CRC (opcional)</label>
-            <input type="text" id="profileCRC" placeholder="Ex: CRC/SP 123456/O-5" maxlength="30">
-          </div>
-          <button class="btn-save" style="width:100%" onclick="salvarNome()">Salvar informações</button>
-          <div id="profileNomeMsg" class="auth-msg" style="margin-top:8px"></div>
-        </div>
-
-        <div class="profile-section">
-          <h4>Alterar senha</h4>
-          <div class="profile-field">
-            <label>Nova senha</label>
-            <input type="password" id="profileNewPwd" placeholder="Mínimo 8 caracteres" oninput="checkPasswordStrength(this.value)">
-            <div class="pwd-strength"><div class="pwd-strength-bar" id="pwdBar2"></div></div>
-            <div class="pwd-hint" id="pwdHint2"></div>
-          </div>
-          <div class="profile-field">
-            <label>Confirmar nova senha</label>
-            <input type="password" id="profileConfirmPwd" placeholder="Repita a nova senha">
-          </div>
-          <button class="btn-save" style="width:100%" onclick="salvarSenha()">Salvar nova senha</button>
-          <div id="profilePwdMsg" class="auth-msg" style="margin-top:8px"></div>
-        </div>
-
-        <div class="profile-section">
-          <h4>Preferências</h4>
-          <div class="notif-item">
-            <div class="notif-item-info">
-              <div class="notif-item-title">Tema escuro</div>
-              <div class="notif-item-desc">Alterna entre tema claro e escuro</div>
-            </div>
-            <label class="notif-toggle">
-              <input type="checkbox" id="profileThemeToggle" onchange="toggleThemeFromProfile(this.checked)">
-              <span class="notif-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="profile-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
-          <button onclick="doLogout()" style="width:100%;padding:10px;border:1px solid var(--error);border-radius:8px;background:none;color:var(--error);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-            <i data-lucide="log-out" style="width:14px;height:14px"></i> Sair da conta
+      <!-- HEADER FIXO -->
+      <div style="padding:20px 24px 0;flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="font-size:17px;font-weight:700;color:var(--text);margin:0">Minha Conta</h2>
+          <button onclick="closeProfile()" style="background:var(--sidebar-hover);border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
+            <i data-lucide="x" style="width:16px;height:16px"></i>
           </button>
         </div>
+
+        <!-- AVATAR + NOME -->
+        <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--sidebar-hover);border-radius:12px;margin-bottom:16px;">
+          <div id="profileAvatar" onclick="document.getElementById('avatarInput').click()" title="Trocar foto" style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden;border:2px solid var(--primary)">?</div>
+          <div style="flex:1;min-width:0;">
+            <div id="profileNomeDisplay" style="font-weight:600;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+            <div id="profileEmailDisplay" style="font-size:12px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+          </div>
+          <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text-light);cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            <i data-lucide="log-out" style="width:13px;height:13px"></i> Sair
+          </button>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+
+        <!-- ABAS -->
+        <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:0;">
+          <button class="doc-tab active" onclick="switchProfileTab('conta',this)" style="font-size:13px;padding:8px 14px;">Conta</button>
+          <button class="doc-tab" onclick="switchProfileTab('notif',this)" style="font-size:13px;padding:8px 14px;">Notificações</button>
+        </div>
       </div>
 
-      <!-- ABA NOTIFICAÇÕES -->
-      <div id="profileTabNotif" class="doc-panel">
-        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">
-          Receba alertas por e-mail sobre prazos fiscais. Os avisos são enviados automaticamente com a antecedência configurada.
-        </p>
+      <!-- CONTEÚDO COM SCROLL -->
+      <div style="overflow-y:auto;flex:1;padding:20px 24px 24px;-webkit-overflow-scrolling:touch;">
 
-        <div class="profile-section">
-          <h4>E-mail para notificações</h4>
-          <div class="profile-field">
-            <input type="email" id="profileNotifEmail" placeholder="seu@email.com" style="margin-bottom:6px">
-            <div style="font-size:11px;color:var(--text-light)">Deixe em branco para usar o e-mail da conta</div>
+        <!-- ABA CONTA -->
+        <div id="profileTabConta" class="doc-panel" style="display:block;">
+
+          <!-- Seção: Dados pessoais -->
+          <div style="margin-bottom:20px;">
+            <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Dados pessoais</h4>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Nome completo</label>
+                <input type="text" id="profileNome" placeholder="Seu nome" style="width:100%;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">CRC</label>
+                <input type="text" id="profileCRC" placeholder="Ex: SP-123456/O-1" style="width:100%;box-sizing:border-box;">
+              </div>
+              <div id="profileNomeMsg" class="auth-msg"></div>
+              <button onclick="salvarNome()" class="btn-sa" style="align-self:flex-end;padding:8px 20px;font-size:13px;">Salvar dados</button>
+            </div>
+          </div>
+
+          <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
+
+          <!-- Seção: Aparência -->
+          <div style="margin-bottom:20px;">
+            <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Aparência</h4>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--sidebar-hover);border-radius:10px;">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">Modo escuro</div>
+                <div style="font-size:11px;color:var(--text-light);margin-top:2px">Altera o tema visual do sistema</div>
+              </div>
+              <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;">
+                <input type="checkbox" id="profileThemeToggle" onchange="toggleThemeFromProfile(this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+                <span style="position:absolute;inset:0;background:var(--border);border-radius:24px;cursor:pointer;transition:.2s;"></span>
+                <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2);"></span>
+              </label>
+            </div>
+          </div>
+
+          <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
+
+          <!-- Seção: Alterar senha -->
+          <div>
+            <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Segurança</h4>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Nova senha</label>
+                <input type="password" id="profileNewPwd" placeholder="Mínimo 8 caracteres" style="width:100%;box-sizing:border-box;" oninput="checkPasswordStrengthEl(this.value,'pwdBar2','pwdHint2')">
+                <div id="pwdBar2" style="height:3px;border-radius:2px;margin-top:6px;background:var(--border);transition:all .3s"></div>
+                <div id="pwdHint2" style="font-size:11px;color:var(--text-light);margin-top:4px"></div>
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Confirmar nova senha</label>
+                <input type="password" id="profileConfirmPwd" placeholder="Repita a senha" style="width:100%;box-sizing:border-box;">
+              </div>
+              <div id="profilePwdMsg" class="auth-msg"></div>
+              <button onclick="salvarSenha()" class="btn-sa" style="align-self:flex-end;padding:8px 20px;font-size:13px;">Alterar senha</button>
+            </div>
           </div>
         </div>
 
-        <div class="profile-section">
-          <h4>Antecedência padrão</h4>
-          <div class="notif-antecedencia" style="margin-bottom:16px">
-            <span>Avisar com</span>
-            <select id="profileAntecedencia">
-              <option value="1">1 dia</option>
-              <option value="3">3 dias</option>
-              <option value="7" selected>7 dias</option>
-              <option value="15">15 dias</option>
-            </select>
-            <span>de antecedência</span>
+        <!-- ABA NOTIFICAÇÕES -->
+        <div id="profileTabNotif" class="doc-panel" style="display:none;">
+          <p style="font-size:13px;color:var(--text-light);margin:0 0 20px;line-height:1.5">
+            Receba alertas por e-mail sobre prazos fiscais das suas empresas com a antecedência que preferir.
+          </p>
+
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">E-mail para notificações</label>
+              <input type="email" id="profileNotifEmail" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Antecedência (dias antes do prazo)</label>
+              <select id="profileAntecedencia" style="width:100%;box-sizing:border-box;">
+                <option value="1">1 dia</option>
+                <option value="3" selected>3 dias</option>
+                <option value="5">5 dias</option>
+                <option value="7">7 dias</option>
+                <option value="15">15 dias</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:8px;">Obrigações monitoradas</label>
+              <div id="notifObrigacoesList" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+            <div id="profileNotifMsg" class="auth-msg"></div>
+            <button onclick="salvarConfigNotif()" class="btn-sa" style="align-self:flex-end;padding:8px 20px;font-size:13px;">Salvar notificações</button>
           </div>
         </div>
 
-        <div class="profile-section">
-          <h4>Obrigações a monitorar</h4>
-          <div id="notifObrigacoesList">
-            <!-- gerado por JS -->
-          </div>
-        </div>
-
-        <button class="btn-save" style="width:100%;margin-top:8px" onclick="salvarConfigNotif()">Salvar configurações</button>
-        <div id="profileNotifMsg" class="auth-msg" style="margin-top:8px"></div>
-      </div>
+      </div><!-- fim scroll -->
     </div>
   </div>
 
