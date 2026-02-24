@@ -330,13 +330,21 @@ async function showApp() {
 }
 
 // --- Audit log ---
-async function registrarAuditLog(acao, detalhes) {
+async function registrarAuditLog(acao, tabelaOuDetalhes, id, detalhes) {
+  // Aceita (acao, detalhes) ou (acao, tabela, id, detalhes)
+  let tabela = null, dados = {};
+  if (typeof tabelaOuDetalhes === 'string') {
+    tabela = tabelaOuDetalhes;
+    dados = { ...(detalhes || {}), registro_id: id };
+  } else {
+    dados = tabelaOuDetalhes || {};
+  }
   try {
     await sb.from('audit_log').insert({
       user_id: currentUser?.id,
       cliente_id: currentCliente?.id || null,
       acao,
-      detalhes: detalhes || {},
+      detalhes: { tabela, ...dados },
       created_at: new Date().toISOString()
     });
   } catch (e) { /* silencioso */ }
