@@ -80,6 +80,8 @@ async function closeCalculator() {
 async function showStats() {
   const modal = document.getElementById('statsModal');
   if (!modal) return;
+  if (!currentUser) return;
+  modal.classList.remove('hidden');
   modal.style.display = 'flex';
   const content = document.getElementById('statsContent');
   if (content) content.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
@@ -280,12 +282,13 @@ async function shareChat() {
   localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
 
   document.getElementById('shareLink').value = shareLink;
-  document.getElementById('shareModal').classList.add('on');
+  openShareModal();
 }
 
 async function showLearningStats() {
   const modal = document.getElementById('learningStatsModal');
-  if (modal) modal.style.display = 'flex';
+  if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+  if (!currentUser) return;
   const statsDiv = document.getElementById('learningStatsContent');
   if (statsDiv) statsDiv.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:24px">Carregando...</p>';
 
@@ -376,13 +379,4 @@ function fechar(id) {
   if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
 }
 
-// Fechar modais com ESC
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-closeDocumentos();
-closeCalculator();
-closeStats();
-closeShareModal();
-if (typeof closeProfile === 'function') closeProfile();
-  }
-});
+// ESC: tratado globalmente em core.js
