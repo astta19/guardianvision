@@ -30,7 +30,7 @@ async function carregarPerfil() {
   try {
     const { data } = await sb
       .from('perfis_usuarios')
-      .select('nome, avatar_url, crc')
+      .select('nome, avatar_url, crc, cpf, cod_mun, cnpj_escritorio')
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
