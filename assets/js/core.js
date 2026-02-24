@@ -133,7 +133,7 @@ async function definirPermissoes(userId, permissions) {
   try {
     const session = await sb.auth.getSession();
     const token = session?.data?.session?.access_token;
-    const res = await fetch('/.netlify/functions/supabase-proxy', {
+    const res = await fetch('/api/supabase-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'definir_permissoes', payload: { userId, permissions }, token })
@@ -352,7 +352,7 @@ async function registrarAuditLog(acao, tabelaOuDetalhes, id, detalhes) {
 
 // --- Supabase proxy (admin) ---
 async function supabaseProxy(action, payload) {
-  const res = await fetch('/.netlify/functions/supabase-proxy', {
+  const res = await fetch('/api/supabase-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, payload, token: (await sb.auth.getSession()).data.session?.access_token })
