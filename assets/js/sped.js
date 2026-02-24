@@ -95,6 +95,13 @@ async function spedCriarPeriodo() {
   const ie    = document.getElementById('spedIE')?.value?.trim();
   const perfil = document.getElementById('spedPerfil')?.value || 'A';
   const ativ  = document.getElementById('spedAtiv')?.value || '0';
+  const fantasia = document.getElementById('spedFan')?.value?.trim() || '';
+  const cod_mun  = document.getElementById('spedCodMun')?.value?.trim() || '';
+  const cep      = (document.getElementById('spedCep')?.value || '').replace(/\D/g,'');
+  const end      = document.getElementById('spedEnd')?.value?.trim() || '';
+  const num      = document.getElementById('spedNum')?.value?.trim() || '';
+  const bairro   = document.getElementById('spedBairro')?.value?.trim() || '';
+  const fone     = (document.getElementById('spedFone')?.value || '').replace(/\D/g,'');
   const msg   = document.getElementById('spedPeriodoMsg');
 
   if (!mes || !ano || !uf) {
@@ -116,6 +123,7 @@ async function spedCriarPeriodo() {
     uf, ie: ie || '',
     ind_perfil: perfil,
     ind_ativ: ativ,
+    fantasia, cod_mun, cep, end, num, bairro, fone,
     status: 'rascunho'
   }).select().single();
 
