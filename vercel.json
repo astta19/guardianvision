@@ -1,0 +1,60 @@
+{
+  "version": 2,
+
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "installCommand": null,
+  "framework": null,
+
+  "functions": {
+    "api/chat.js": {
+      "memory": 256,
+      "maxDuration": 30
+    },
+    "api/supabase-proxy.js": {
+      "memory": 256,
+      "maxDuration": 15
+    },
+    "api/notificacoes-prazos.js": {
+      "memory": 256,
+      "maxDuration": 60
+    }
+  },
+
+  "crons": [
+    {
+      "path": "/api/notificacoes-prazos",
+      "schedule": "0 11 * * *"
+    }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options",        "value": "DENY" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy",         "value": "strict-origin-when-cross-origin" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.groq.com https://brasilapi.com.br; img-src 'self' data: https://*.supabase.co; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin",  "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "POST, GET, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    }
+  ],
+
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
