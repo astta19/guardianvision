@@ -1,6 +1,6 @@
-// netlify/functions/notificacoes-prazos.js
-// [functions."notificacoes-prazos"]
-//   schedule = "0 11 * * *"
+// api/notificacoes-prazos.js — Vercel Cron Function
+// Agendamento configurado no vercel.json: "0 11 * * *" (11h UTC = 08h BRT)
+// Acionado via GET pelo runtime de cron da Vercel
 
 const OBRIGACOES = [
   { id: 'das',         label: 'DAS Simples Nacional', dia: 20, mensal: true },
@@ -33,7 +33,8 @@ function formatarData(dia, mes, mensal) {
   if (mensal) {
     const hoje = new Date();
     const m = new Date(hoje.getFullYear(), hoje.getMonth(), dia) < hoje
-      ? hoje.getMonth() + 1 : hoje.getMonth();
+      ? hoje.getMonth() + 1
+      : hoje.getMonth();
     return `${String(dia).padStart(2,'0')}/${meses[m]}`;
   }
   return `${String(dia).padStart(2,'0')}/${meses[mes - 1]}`;
@@ -45,8 +46,8 @@ async function buscarUsuariosComNotif() {
     {
       headers: {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
-      }
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+      },
     }
   );
   if (!res.ok) {
@@ -61,19 +62,17 @@ async function enviarEmail(para, assunto, html) {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       from: 'Fiscal365 <noreply@guardianvisionbrasil.com.br>',
       to: [para],
       subject: assunto,
-      html
-    })
+      html,
+    }),
   });
-
   const body = await res.json();
   if (!res.ok) {
-    // Log detalhado do erro do Resend
     console.error(`Resend erro [${res.status}]:`, JSON.stringify(body));
     return false;
   }
@@ -82,6 +81,7 @@ async function enviarEmail(para, assunto, html) {
 }
 
 function gerarHtml(prazos) {
+  const appUrl = process.env.APP_URL || 'https://fiscal365.vercel.app';
   const linhas = prazos.map(p => `
     <tr>
       <td style="padding:10px 16px;border-bottom:1px solid #f0f0f0;font-size:14px">${p.label}</td>
@@ -105,7 +105,7 @@ function gerarHtml(prazos) {
           </tr></thead>
           <tbody>${linhas}</tbody>
         </table>
-        <a href="https://fiscalchat.netlify.app" style="display:inline-block;background:#000;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500">Abrir Fiscal365 →</a>
+        <a href="${appUrl}" style="display:inline-block;background:#000;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500">Abrir Fiscal365 →</a>
       </div>
       <div style="padding:16px 28px;background:#f8fafc;border-top:1px solid #e2e8f0">
         <p style="font-size:11px;color:#94a3b8;margin:0">Para cancelar, acesse Perfil → Notificações no Fiscal365.</p>
@@ -114,10 +114,19 @@ function gerarHtml(prazos) {
   </body></html>`;
 }
 
-exports.handler = async () => {
+export default async function handler(req, res) {
+  // Vercel cron dispara via GET; bloquear qualquer outro método
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  // Proteção: só aceitar requisições autorizadas pelo runtime da Vercel
+  const cronSecret = req.headers['authorization'];
+  if (process.env.CRON_SECRET && cronSecret !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+
   console.log('Iniciando envio de notificações —', new Date().toISOString());
-  console.log('RESEND_API_KEY configurada:', !!process.env.RESEND_API_KEY);
-  console.log('SUPABASE_URL configurada:', !!process.env.SUPABASE_URL);
 
   try {
     const configs = await buscarUsuariosComNotif();
@@ -128,20 +137,19 @@ exports.handler = async () => {
     for (const config of configs) {
       const { email_notif, antecedencia_dias = 7, obrigacoes_ativas = [] } = config;
 
-      console.log(`Processando: ${email_notif} | antecedência: ${antecedencia_dias}d | obrigações: ${obrigacoes_ativas.join(',')}`);
-
-      if (!email_notif) { console.log('Sem email_notif — pulando'); continue; }
-      if (!obrigacoes_ativas.length) { console.log('Sem obrigações ativas — pulando'); continue; }
+      if (!email_notif || !obrigacoes_ativas.length) continue;
 
       const prazos = OBRIGACOES
         .filter(ob => obrigacoes_ativas.includes(ob.id))
-        .map(ob => ({ ...ob, dias: calcularDiasAte(ob.dia, ob.mes, ob.mensal), data: formatarData(ob.dia, ob.mes, ob.mensal) }))
+        .map(ob => ({
+          ...ob,
+          dias: calcularDiasAte(ob.dia, ob.mes, ob.mensal),
+          data: formatarData(ob.dia, ob.mes, ob.mensal),
+        }))
         .filter(ob => ob.dias > 0 && ob.dias <= antecedencia_dias)
         .sort((a, b) => a.dias - b.dias);
 
-      console.log(`Prazos dentro da janela (${antecedencia_dias}d): ${prazos.map(p => `${p.label}=${p.dias}d`).join(', ') || 'nenhum'}`);
-
-      if (!prazos.length) { console.log('Nenhum prazo na janela — pulando'); continue; }
+      if (!prazos.length) continue;
 
       const assunto = prazos.length === 1
         ? `⚠️ ${prazos[0].label} vence em ${prazos[0].dias} dia(s) — Fiscal365`
@@ -151,9 +159,10 @@ exports.handler = async () => {
     }
 
     console.log(`Resultado: ${enviados}/${configs.length} enviadas`);
-    return { statusCode: 200, body: JSON.stringify({ enviados, total: configs.length }) };
+    return res.status(200).json({ enviados, total: configs.length });
+
   } catch (e) {
     console.error('Erro geral:', e.message);
-    return { statusCode: 500, body: e.message };
+    return res.status(500).json({ error: e.message });
   }
-};
+}
