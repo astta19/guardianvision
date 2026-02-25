@@ -69,8 +69,9 @@ function getObrigacoesMes() {
       venc: new Date(ano, mes, 28),
       valor: null,
       base: 'IN RFB nº 2005/2021, art. 7º; Portaria RFB nº 402/2019',
-      desc: 'Declaração de Débitos e Créditos Tributários Federais Web',
-      aplica: true
+      desc: 'Declaração de Débitos e Créditos Tributários Federais Web — MEI: obrigado apenas se possuir empregado',
+      aplica: !isSimplesOuMEI || true, // todos listados; MEI sem empregado pode ignorar
+      obs: isSimplesOuMEI ? '(MEI: verificar obrigatoriedade — só obrigado com empregado)' : null
     },
     {
       nome: 'EFD-Reinf',
@@ -103,6 +104,14 @@ function getObrigacoesMes() {
       base: 'Lei nº 9.430/1996, art. 2º; IN RFB nº 1700/2017',
       desc: 'Imposto de Renda Pessoa Jurídica e Contribuição Social sobre Lucro Líquido',
       aplica: /lucro real|lucro presumido/i.test(regime)
+    },
+    {
+      nome: 'DASN-SIMEI',
+      venc: new Date(ano, 4, 31), // 31/05 anual
+      valor: null,
+      base: 'LC 123/2006, art. 25-A; Resolução CGSN nº 140/2018, art. 106',
+      desc: 'Declaração Anual Simplificada para o Microempreendedor Individual',
+      aplica: /mei/i.test(regime)
     },
   ];
 
@@ -172,7 +181,7 @@ async function gerarRelatorioFiscal() {
     margin: { left: margin, right: margin },
     head: [['Obrigação', 'Vencimento', 'Status', 'Fundamentação Legal']],
     body: obrigacoes.map(ob => [
-      ob.nome, ob.vencStr, ob.status, ob.base || '—'
+      ob.obs ? ob.nome + ' ' + ob.obs : ob.nome, ob.vencStr, ob.status, ob.base || '—'
     ]),
     headStyles: { fillColor: [0,0,0], textColor: 255, fontSize: 9, fontStyle: 'bold' },
     bodyStyles: { fontSize: 9 },
@@ -479,5 +488,376 @@ function gerarPlanilha() {
   } catch(e) {
     console.error('Erro ao gerar Excel:', e);
     alert('Erro ao gerar a planilha. Verifique se a página carregou completamente e tente novamente.');
+  }
+}
+
+// ----------------------------------------------------------
+// PDF — DASN-SIMEI (Declaração Anual do MEI)
+// ----------------------------------------------------------
+async function gerarDasnSimei() {
+  document.getElementById('docGenMenu').style.display = 'none';
+  if (!currentCliente) { alert('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.'); return; }
+
+  const regime = currentCliente.regime_tributario || '';
+  if (!/mei/i.test(regime)) {
+    alert('A DASN-SIMEI é exclusiva para Microempreendedores Individuais (MEI).\n\nEsta empresa está cadastrada como: ' + (regime || 'regime não informado'));
+    return;
+  }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const perfil = perfilCache || {};
+    const empresa = currentCliente;
+    const anoRef = new Date().getFullYear() - 1; // Declaração do ano anterior
+    const W = 210, M = 15;
+
+    // ── Cabeçalho ──────────────────────────────────────────────────
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, W, 34, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+    doc.text('Fiscal365', M, 13);
+    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+    doc.text('DASN-SIMEI — Declaração Anual Simplificada para o MEI', M, 21);
+    doc.setFontSize(9);
+    doc.text(`Ano-Calendário: ${anoRef}  |  Prazo de entrega: 31/05/${anoRef + 1}`, M, 28);
+    doc.setTextColor(0, 0, 0);
+
+    // ── Dados do MEI ───────────────────────────────────────────────
+    let y = 44;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(M, y, W - M * 2, 30, 3, 3, 'F');
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text(empresa.razao_social || 'MEI', M + 4, y + 8);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`CNPJ: ${empresa.cnpj || '—'}`, M + 4, y + 15);
+    doc.text(`Regime: Microempreendedor Individual (MEI)`, M + 4, y + 21);
+    doc.text(`Contador responsável: ${perfil.nome || currentUser?.email || '—'}  |  CRC: ${perfil.crc || '—'}`, M + 4, y + 27);
+    doc.setTextColor(0, 0, 0);
+    y += 38;
+
+    // ── Alerta legal ───────────────────────────────────────────────
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(M, y, W - M * 2, 14, 2, 2, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(146, 64, 14);
+    doc.text('⚠  ATENÇÃO — OBRIGAÇÃO ANUAL', M + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Prazo: até 31 de maio de ${anoRef + 1}. Multa mínima por atraso: R$ 50,00 (LC 123/2006, art. 38-A).`, M + 4, y + 11);
+    doc.setTextColor(0, 0, 0);
+    y += 22;
+
+    // ── O que é a DASN-SIMEI ────────────────────────────────────────
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text('O que é a DASN-SIMEI', M, y); y += 6;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    const desc = 'A Declaração Anual Simplificada para o Microempreendedor Individual (DASN-SIMEI) é a obrigação acessória anual do MEI, ' +
+      'por meio da qual se informa à Receita Federal a receita bruta obtida no ano-calendário anterior, separada por atividade. ' +
+      'É gerada e entregue exclusivamente pelo Portal do Empreendedor (gov.br/mei) ou pelo e-CAC.';
+    const descLines = doc.splitTextToSize(desc, W - M * 2);
+    doc.text(descLines, M, y); y += descLines.length * 4.5 + 6;
+
+    // ── Receita Bruta — Tabela de preenchimento ─────────────────────
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text(`Receita Bruta Anual — ${anoRef}`, M, y); y += 4;
+
+    doc.autoTable({
+      startY: y,
+      margin: { left: M, right: M },
+      head: [['Atividade', 'Limite Anual', 'Receita Obtida (R$)', 'Observação']],
+      body: [
+        ['Comércio e Indústria',  'R$ 81.000,00', '___________________', 'Venda de mercadorias e produção'],
+        ['Prestação de Serviços', 'R$ 81.000,00', '___________________', 'Serviços em geral'],
+        ['Atividade Mista\n(Comércio + Serviços)', 'R$ 81.000,00 total\n(Serviços: até R$ 32.400)', '___________________', 'Limite conjunto proporcional'],
+        ['TOTAL GERAL', 'R$ 81.000,00', '___________________', 'Soma das atividades acima'],
+      ],
+      headStyles: { fillColor: [0,0,0], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, minCellHeight: 12 },
+      alternateRowStyles: { fillColor: [248,250,252] },
+      columnStyles: { 2: { halign: 'center', fontStyle: 'bold' } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // ── Empregado ───────────────────────────────────────────────────
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Informação sobre Empregado', M, y); y += 5;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text('O MEI pode ter 1 empregado. Informe na DASN se houve empregado no período:', M, y); y += 5;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(M, y, W - M * 2, 10, 2, 2, 'F');
+    doc.text('(  ) Não possuo / não possei empregado no ano-calendário', M + 4, y + 4);
+    doc.text('(  ) Possuo / possei 1 empregado no ano-calendário', M + 4, y + 9);
+    y += 16;
+
+    // ── Como declarar ───────────────────────────────────────────────
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Como Declarar — Passo a Passo', M, y); y += 5;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    const passos = [
+      '1. Acesse: gov.br/mei → "Já sou MEI" → "Declaração Anual" (DASN-SIMEI)',
+      '2. Informe o CNPJ e confirme os dados cadastrais',
+      '3. Preencha a receita bruta de cada atividade separadamente',
+      '4. Informe se houve empregado no período',
+      '5. Revise os dados e transmita a declaração',
+      '6. Guarde o recibo de entrega (protocolo) por pelo menos 5 anos',
+    ];
+    passos.forEach(p => { doc.text(p, M, y); y += 5; });
+    y += 4;
+
+    // ── Fundamentação legal ─────────────────────────────────────────
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Fundamentação Legal', M, y); y += 4;
+    doc.autoTable({
+      startY: y,
+      margin: { left: M, right: M },
+      head: [['Norma', 'Conteúdo']],
+      body: [
+        ['LC 123/2006, art. 25-A',         'Obrigação de entrega da DASN-SIMEI'],
+        ['Resolução CGSN nº 140/2018, art. 106', 'Prazo e forma de entrega'],
+        ['LC 123/2006, art. 38-A',         'Multa mínima de R$ 50,00 por atraso'],
+        ['LC 123/2006, art. 18-A',         'Regime de tributação do MEI (SIMEI)'],
+        ['IN RFB nº 2133/2023',            'Atualização dos limites MEI para R$ 81.000,00'],
+      ],
+      headStyles: { fillColor: [0,0,0], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [248,250,252] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 70 } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // ── Assinatura ──────────────────────────────────────────────────
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Elaborado por: ${perfil.nome || '—'}  |  CRC: ${perfil.crc || '—'}  |  ${new Date().toLocaleDateString('pt-BR')}`, M, y); y += 5;
+    doc.text('Este documento é um auxiliar de apoio ao preenchimento. A entrega deve ser feita no Portal do Empreendedor (gov.br/mei).', M, y);
+    doc.setTextColor(0, 0, 0);
+
+    // ── Rodapé ──────────────────────────────────────────────────────
+    const pages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p);
+      doc.setDrawColor(226, 232, 240); doc.line(M, 287, W - M, 287);
+      doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+      doc.text('Fiscal365 — Documento auxiliar DASN-SIMEI. Entrega oficial apenas em gov.br/mei ou e-CAC.', M, 291);
+      doc.text(`Página ${p}/${pages}`, W - M, 291, { align: 'right' });
+    }
+
+    doc.save(`dasn-simei-${empresa.cnpj?.replace(/\D/g,'') || 'mei'}-${anoRef}.pdf`);
+
+  } catch(e) {
+    console.error('Erro ao gerar DASN-SIMEI:', e);
+    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
+  }
+}
+
+// ----------------------------------------------------------
+// PDF — DCTFWeb (Relatório de Apuração)
+// ----------------------------------------------------------
+async function gerarDctfWeb() {
+  document.getElementById('docGenMenu').style.display = 'none';
+  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório DCTFWeb.'); return; }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const perfil = perfilCache || {};
+    const empresa = currentCliente;
+    const hoje = new Date();
+    const mesRef = hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), 28);
+    const diasRestantes = Math.ceil((vencimento - hoje) / 86400000);
+    const W = 210, M = 15;
+    const regime = empresa.regime_tributario || '';
+    const isMEI = /mei/i.test(regime);
+    const isSimples = /simples/i.test(regime);
+
+    // ── Cabeçalho ──────────────────────────────────────────────────
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, W, 34, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+    doc.text('Fiscal365', M, 13);
+    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+    doc.text('DCTFWeb — Declaração de Débitos e Créditos Tributários Federais', M, 21);
+    doc.setFontSize(9);
+    doc.text(`Competência: ${mesRef.charAt(0).toUpperCase() + mesRef.slice(1)}  |  Vencimento: dia 28`, M, 28);
+    doc.setTextColor(0, 0, 0);
+
+    // ── Dados da empresa ───────────────────────────────────────────
+    let y = 44;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(M, y, W - M * 2, 28, 3, 3, 'F');
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text(empresa.razao_social || 'Empresa', M + 4, y + 8);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${regime || '—'}`, M + 4, y + 15);
+    doc.text(`Contador: ${perfil.nome || currentUser?.email || '—'}  |  CRC: ${perfil.crc || '—'}`, M + 4, y + 21);
+    doc.text(`Gerado em: ${hoje.toLocaleDateString('pt-BR')}  |  Vence em: ${vencimento.toLocaleDateString('pt-BR')} (${diasRestantes > 0 ? diasRestantes + ' dias' : 'VENCIDA'})`, M + 4, y + 27);
+    doc.setTextColor(0, 0, 0);
+    y += 36;
+
+    // ── Alerta de prazo ────────────────────────────────────────────
+    const alertColor = diasRestantes <= 0 ? [220,38,38] : diasRestantes <= 7 ? [217,119,6] : [22,163,74];
+    const alertBg   = diasRestantes <= 0 ? [254,226,226] : diasRestantes <= 7 ? [254,243,199] : [220,252,231];
+    doc.setFillColor(...alertBg);
+    doc.roundedRect(M, y, W - M * 2, 10, 2, 2, 'F');
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...alertColor);
+    const statusMsg = diasRestantes <= 0 ? 'DECLARAÇÃO VENCIDA — regularize imediatamente para evitar multa' :
+                      diasRestantes <= 7  ? `PRAZO PRÓXIMO — ${diasRestantes} dia(s) para o vencimento` :
+                                            `Prazo normal — ${diasRestantes} dia(s) restantes`;
+    doc.text(statusMsg, M + 4, y + 6);
+    doc.setTextColor(0, 0, 0);
+    y += 16;
+
+    // ── Obrigados / Não obrigados ──────────────────────────────────
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Obrigatoriedade', M, y); y += 5;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+
+    if (isMEI) {
+      doc.setFillColor(220, 252, 231);
+      doc.roundedRect(M, y, W - M * 2, 12, 2, 2, 'F');
+      doc.setTextColor(22, 163, 74);
+      doc.setFont('helvetica', 'bold');
+      doc.text('✓ MEI com empregado: obrigado à DCTFWeb para INSS do empregado (GPS substituída).', M + 4, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text('  MEI sem empregado: NÃO está obrigado à DCTFWeb.', M + 4, y + 10);
+      doc.setTextColor(0, 0, 0);
+      y += 18;
+    } else if (isSimples) {
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(M, y, W - M * 2, 16, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.text('Simples Nacional — obrigado à DCTFWeb para:', M + 4, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text('• INSS dos empregados (a partir de out/2021)', M + 4, y + 10);
+      doc.text('• Retenções de terceiros (CSRF: CSLL + PIS + COFINS retidos na fonte)', M + 4, y + 15);
+      y += 22;
+    } else {
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(M, y, W - M * 2, 20, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.text('Lucro Real / Presumido — obrigado à DCTFWeb para:', M + 4, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text('• INSS dos empregados e contribuições previdenciárias', M + 4, y + 10);
+      doc.text('• IRRF sobre salários, serviços, aluguéis e outros rendimentos', M + 4, y + 15);
+      doc.text('• CSLL, PIS e COFINS retidos na fonte (CSRF)', M + 4, y + 20);
+      y += 28;
+    }
+
+    // ── Tabela de débitos apuráveis ────────────────────────────────
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Débitos para Apuração e Lançamento na DCTFWeb', M, y); y += 4;
+
+    const linhasMEI = [
+      ['INSS Empregado (11%)', 'Salário do empregado × 11%', '___________________', 'GPS substituída'],
+      ['INSS Patronal MEI (3%)', 'Salário do empregado × 3%', '___________________', 'Parte patronal MEI'],
+      ['FGTS (8%)', 'Recolhido separadamente via SEFIP/GFIP', '—', 'Não entra na DCTFWeb'],
+    ];
+    const linhasCompleto = [
+      ['INSS Empregados (11%)',      'Folha de salários',                             '___________________', 'Previdenciário'],
+      ['INSS Patronal (20%)',         'Folha de salários × 20%',                       '___________________', 'Previdenciário'],
+      ['IRRF — Salários',             'Tabela progressiva IRPF',                       '___________________', 'Retenção na fonte'],
+      ['IRRF — Serviços PJ (1,5%)',   'Pagamentos a PJ por serviços sujeitos',         '___________________', 'Retenção na fonte'],
+      ['IRRF — Aluguéis (p/ PF)',     'Pagamentos de aluguel a PF',                    '___________________', 'Retenção na fonte'],
+      ['CSLL retida (1%)',            'Pagamentos a PJ sujeitos a CSRF',               '___________________', 'CSRF'],
+      ['COFINS retida (3%)',          'Pagamentos a PJ sujeitos a CSRF',               '___________________', 'CSRF'],
+      ['PIS retido (0,65%)',          'Pagamentos a PJ sujeitos a CSRF',               '___________________', 'CSRF'],
+    ];
+
+    doc.autoTable({
+      startY: y,
+      margin: { left: M, right: M },
+      head: [['Tributo / Contribuição', 'Base de Cálculo', 'Valor Apurado (R$)', 'Grupo DCTFWeb']],
+      body: isMEI ? linhasMEI : linhasCompleto,
+      headStyles: { fillColor: [0,0,0], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, minCellHeight: 10 },
+      alternateRowStyles: { fillColor: [248,250,252] },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 52 },
+        2: { halign: 'center' },
+      }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // ── Linha de totalização ───────────────────────────────────────
+    doc.setFillColor(0, 0, 0);
+    doc.roundedRect(M, y, W - M * 2, 10, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL A DECLARAR / RECOLHER (R$)', M + 4, y + 4);
+    doc.text('R$ ___________________', W - M - 4, y + 4, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+    y += 16;
+
+    // ── Como declarar ───────────────────────────────────────────────
+    if (y > 215) { doc.addPage(); y = 20; }
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Como Transmitir a DCTFWeb', M, y); y += 5;
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    const passosD = [
+      '1. Acesse: receitafederal.gov.br → Meu Imposto de Renda → DCTFWeb, ou use o e-CAC',
+      '2. A DCTFWeb é alimentada automaticamente pelo eSocial (para débitos previdenciários)',
+      '3. Confira os débitos apurados e acrescente retenções de terceiros (CSRF/IRRF)',
+      '4. Verifique créditos disponíveis (compensações) para deduzir do saldo a pagar',
+      '5. Transmita a declaração e gere o DARF para recolhimento (código 6925 — previdenciário)',
+      '6. Guarde a DCTFWeb transmitida e o DARF pago por pelo menos 5 anos',
+    ];
+    passosD.forEach(p => { doc.text(p, M, y); y += 5; });
+    y += 4;
+
+    // ── Fundamentação ───────────────────────────────────────────────
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.text('Fundamentação Legal', M, y); y += 4;
+    doc.autoTable({
+      startY: y,
+      margin: { left: M, right: M },
+      head: [['Norma', 'Conteúdo']],
+      body: [
+        ['IN RFB nº 2005/2021',         'Institui a DCTFWeb e define obrigados e prazos'],
+        ['Portaria RFB nº 402/2019',    'Aprovação do leiaute e manual da DCTFWeb'],
+        ['Lei nº 8.212/1991, art. 32',  'Obrigação de declarar contribuições previdenciárias'],
+        ['Lei nº 10.833/2003, art. 30', 'Retenção de COFINS na fonte'],
+        ['Lei nº 10.637/2002, art. 16', 'Retenção de PIS/Pasep na fonte'],
+        ['Lei nº 7.689/1988, art. 9º',  'Retenção de CSLL na fonte'],
+        ['IN RFB nº 1234/2012',        'Retenções sobre pagamentos a PJ (CSRF)'],
+        ['Resolução CGSN 140/2018, art. 129', 'DCTFWeb para MEI com empregado'],
+      ],
+      headStyles: { fillColor: [0,0,0], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8 },
+      alternateRowStyles: { fillColor: [248,250,252] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 62 } }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // ── Assinatura ──────────────────────────────────────────────────
+    if (y > 265) { doc.addPage(); y = 20; }
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Elaborado por: ${perfil.nome || '—'}  |  CRC: ${perfil.crc || '—'}  |  ${hoje.toLocaleDateString('pt-BR')}`, M, y);
+    doc.setTextColor(0, 0, 0);
+
+    // ── Rodapé ──────────────────────────────────────────────────────
+    const pages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p);
+      doc.setDrawColor(226, 232, 240); doc.line(M, 287, W - M, 287);
+      doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+      doc.text('Fiscal365 — Documento auxiliar DCTFWeb. Transmissão oficial pelo e-CAC ou Portal da Receita Federal.', M, 291);
+      doc.text(`Página ${p}/${pages}`, W - M, 291, { align: 'right' });
+    }
+
+    doc.save(`dctfweb-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${hoje.toISOString().slice(0,7)}.pdf`);
+
+  } catch(e) {
+    console.error('Erro ao gerar DCTFWeb:', e);
+    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
   }
 }
