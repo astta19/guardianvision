@@ -46,7 +46,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.groq.com https://brasilapi.com.br; img-src 'self' data: https://*.supabase.co; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.groq.com https://brasilapi.com.br https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: https://*.supabase.co; frame-ancestors 'none'"
         }
       ]
     },
@@ -70,11 +70,7 @@
   ],
   "rewrites": [
     {
-      "source": "/portal.html",
-      "destination": "/portal.html"
-    },
-    {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|assets/|portal\\.html$).*)",
       "destination": "/index.html"
     }
   ]
