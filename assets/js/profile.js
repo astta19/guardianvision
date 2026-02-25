@@ -12,7 +12,7 @@ const OBRIGACOES_FISCAIS = [
   { id: 'efd_reinf',  label: 'EFD-Reinf',             desc: 'Dia 15 de cada mês',        dia: 15, mensal: true  },
   { id: 'esocial',    label: 'eSocial (folha)',        desc: 'Dia 15 de cada mês',        dia: 15, mensal: true  },
   { id: 'efd_contrib',label: 'EFD-Contribuições',     desc: '10º dia útil do 2º mês',    dia: 10, mensal: true  },
-  { id: 'dasn_simei', label: 'DASN-SIMEI (MEI)',      desc: 'Até 31/05 anual',           dia: 31, mes: 5        },
+  { id: 'dasn_simei', label: 'DASN-SIMEI (MEI) ⚠ Exclusivo MEI', desc: 'Declaração anual — Até 31/05 de cada ano', dia: 31, mes: 5, somenteMei: true },
   { id: 'defis',      label: 'DEFIS (Simples)',        desc: 'Até 31/03 anual',           dia: 31, mes: 3        },
   { id: 'ecd',        label: 'ECD',                   desc: 'Até 30/06 anual',           dia: 30, mes: 6        },
   { id: 'ecf',        label: 'ECF',                   desc: 'Até 31/07 anual',           dia: 31, mes: 7        },
@@ -287,18 +287,23 @@ async function carregarConfigNotif() {
   if (config.antecedencia_dias) document.getElementById('profileAntecedencia').value = config.antecedencia_dias;
 
   const ativas = config.obrigacoes_ativas || [];
+  const regime = currentCliente?.regime_tributario || '';
+  const isMEI = /mei/i.test(regime);
 
-  listEl.innerHTML = OBRIGACOES_FISCAIS.map(ob => `
-    <div class="notif-item">
+  listEl.innerHTML = OBRIGACOES_FISCAIS.map(ob => {
+    const bloqueada = ob.somenteMei && !isMEI;
+    return `
+    <div class="notif-item" style="${bloqueada ? 'opacity:0.45;pointer-events:none' : ''}">
       <div class="notif-item-info">
-        <div class="notif-item-title">${ob.label}</div>
+        <div class="notif-item-title">${ob.label}${bloqueada ? ' <span style="font-size:10px;color:var(--text-light)">(apenas MEI)</span>' : ''}</div>
         <div class="notif-item-desc">${ob.desc}</div>
       </div>
       <label class="notif-toggle">
-        <input type="checkbox" value="${ob.id}" ${ativas.includes(ob.id) ? 'checked' : ''}>
+        <input type="checkbox" value="${ob.id}" ${ativas.includes(ob.id) && !bloqueada ? 'checked' : ''} ${bloqueada ? 'disabled' : ''}>
         <span class="notif-slider"></span>
       </label>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function salvarConfigNotif() {
@@ -308,10 +313,18 @@ async function salvarConfigNotif() {
   const checkboxes = document.querySelectorAll('#notifObrigacoesList input[type=checkbox]:checked');
   const ativas = Array.from(checkboxes).map(cb => cb.value);
 
+  // Validações
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msgEl.textContent = 'E-mail inválido. Corrija antes de salvar.';
+    msgEl.className = 'auth-msg error';
+    return;
+  }
+  const diasValidos = isNaN(antecedencia) || antecedencia < 1 ? 7 : Math.min(antecedencia, 30);
+
   const payload = {
     user_id: currentUser.id,
     email_notif: email || currentUser.email,
-    antecedencia_dias: antecedencia,
+    antecedencia_dias: diasValidos,
     obrigacoes_ativas: ativas,
     atualizado_em: new Date().toISOString()
   };
