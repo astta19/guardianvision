@@ -104,15 +104,15 @@ async function portalGerarLink() {
   btn.disabled = false;
   btn.textContent = 'Gerar novo link';
 
-  if (error) {
-    alert('Erro ao gerar link: ' + error.message);
+  if (error || !data?.token) {
+    console.error('portalGerarLink error:', error);
+    alert('Erro ao gerar link. Verifique se a tabela portal_tokens foi criada no Supabase.');
     return;
   }
 
+  const link = `${window.location.origin}/portal.html?token=${data.token}`;
   await portalCarregarLinks();
 
-  // Copiar automaticamente
-  const link = `${window.location.origin}/portal.html?token=${data.token}`;
   try {
     await navigator.clipboard.writeText(link);
     portalShowMsg('✅ Link gerado e copiado para a área de transferência!', 'success');
