@@ -1447,6 +1447,17 @@ function checkDeadlines() {
   } else {
     alertDiv.innerHTML = '';
   }
+
+  // Atualizar badge no botão da agenda
+  const badge = document.getElementById('agendaBadgeCount');
+  if (badge) {
+    if (alerts.length > 0) {
+      badge.textContent = alerts.length > 9 ? '9+' : alerts.length;
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
 }
 
 
