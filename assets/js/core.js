@@ -26,9 +26,20 @@ const MODELS = [
 ];
 
 const fiscalDeadlines = {
-      'sped_fiscal': { day: 15, month: 'monthly', description: 'Entrega SPED Fiscal' },
-      'dctf': { day: 15, month: 'monthly', description: 'Entrega DCTF' },
-      'ecf': { day: 31, month: 7, description: 'Entrega ECF' }
+      // Mensais
+      'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true },
+      'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb'                                   },
+      'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf'                                 },
+      'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)'                            },
+      'efd_contrib': { day: 10, month: 'monthly', description: 'EFD-Contribuições',     naoSimples: true    },
+      'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal'                                },
+      'dctf':        { day: 15, month: 'monthly', description: 'DCTF'                                       },
+      // Anuais
+      'dasn_simei':  { day: 31, month: 5,         description: 'DASN-SIMEI (MEI)',      meiOnly: true       },
+      'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
+      'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
+      'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
+      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
