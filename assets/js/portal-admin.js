@@ -138,15 +138,13 @@ async function portalCopiarLink(link, btn) {
 }
 
 // ── Revogar link ─────────────────────────────────────────────
-async function portalRevogarLink(tokenId) {
-  const ok = await showConfirm('Revogar este link? O cliente perderá o acesso imediatamente.');
-  if (!ok) return;
-
-  const { error } = await sb.from('portal_tokens').delete().eq('id', tokenId);
-  if (error) { alert('Erro ao revogar: ' + error.message); return; }
-
-  await portalCarregarLinks();
-  portalShowMsg('Link revogado.', 'info');
+function portalRevogarLink(tokenId) {
+  showConfirm('Revogar este link? O cliente perderá o acesso imediatamente.', async () => {
+    const { error } = await sb.from('portal_tokens').delete().eq('id', tokenId);
+    if (error) { alert('Erro ao revogar: ' + error.message); return; }
+    await portalCarregarLinks();
+    portalShowMsg('Link revogado.', 'info');
+  });
 }
 
 // ── Mensagem de feedback ─────────────────────────────────────
