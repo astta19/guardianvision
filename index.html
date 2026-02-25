@@ -412,6 +412,10 @@
 
       <div class="c-right">
         <!-- Botões sempre visíveis -->
+        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn">
+          <i data-lucide="calendar-clock"></i>
+          <span id="agendaBadgeCount" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px"></span>
+        </button>
         <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped">
           <i data-lucide="file-code-2"></i>
         </button>
@@ -431,6 +435,9 @@
             <div class="hdr-dropdown-title">Opções</div>
             <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()">
               <i data-lucide="file-text"></i> Documentos Fiscais
+            </button>
+            <button class="menu-item" onclick="openAgenda(); closeDropdowns()">
+              <i data-lucide="calendar-clock"></i> Agenda de Prazos
             </button>
             <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()">
               <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
@@ -542,6 +549,12 @@
             </button>
             <button onclick="gerarPlanilha()" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text);text-align:left" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'">
               <i data-lucide="table-2" style="width:15px;height:15px;color:#16a34a"></i> Planilha de Apuração (Excel)
+            </button>
+            <button onclick="gerarDctfWeb()" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text);text-align:left" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'">
+              <i data-lucide="landmark" style="width:15px;height:15px;color:#7c3aed"></i> DCTFWeb — Apuração (PDF)
+            </button>
+            <button id="btnDasnSimei" onclick="gerarDasnSimei()" style="display:none;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text);text-align:left" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'">
+              <i data-lucide="file-badge" style="width:15px;height:15px;color:#ea580c"></i> DASN-SIMEI — MEI (PDF)
             </button>
           </div>
         </div>
@@ -924,5 +937,82 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL AGENDA -->
+  <div id="agendaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+    <div style="background:var(--bg);border-radius:16px;width:100%;max-width:760px;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;margin:auto">
+
+      <!-- Cabeçalho -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--card)">
+        <span style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          <i data-lucide="calendar-clock" style="width:16px;height:16px"></i>Agenda de Prazos Fiscais
+        </span>
+        <button onclick="closeAgenda()" style="background:var(--sidebar-hover);border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <!-- Contadores de resumo -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);background:var(--card)">
+        <div onclick="document.getElementById('agendaFiltroStatus').value='pendente';agendaAplicarFiltros()" style="padding:12px 16px;text-align:center;border-right:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+          <div id="agendaCountVencidas" style="font-size:20px;font-weight:700;color:#dc2626">0</div>
+          <div style="font-size:11px;color:var(--text-light)">Vencidas</div>
+        </div>
+        <div onclick="document.getElementById('agendaFiltroStatus').value='pendente';agendaAplicarFiltros()" style="padding:12px 16px;text-align:center;border-right:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+          <div id="agendaCountProximas" style="font-size:20px;font-weight:700;color:#d97706">0</div>
+          <div style="font-size:11px;color:var(--text-light)">Próximos 7 dias</div>
+        </div>
+        <div onclick="document.getElementById('agendaFiltroStatus').value='concluida';agendaAplicarFiltros()" style="padding:12px 16px;text-align:center;border-right:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+          <div id="agendaCountConcluidas" style="font-size:20px;font-weight:700;color:#16a34a">0</div>
+          <div style="font-size:11px;color:var(--text-light)">Concluídas</div>
+        </div>
+        <div onclick="document.getElementById('agendaFiltroStatus').value='todos';agendaAplicarFiltros()" style="padding:12px 16px;text-align:center;cursor:pointer" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+          <div id="agendaCountTotal" style="font-size:20px;font-weight:700;color:var(--text)">0</div>
+          <div style="font-size:11px;color:var(--text-light)">Total no mês</div>
+        </div>
+      </div>
+
+      <!-- Barra de filtros -->
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card);flex-wrap:wrap">
+        <button onclick="agendaNavMes(-1)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)">
+          <i data-lucide="chevron-left" style="width:14px;height:14px"></i>
+        </button>
+        <span id="agendaMesLabel" style="font-size:13px;font-weight:600;color:var(--text);min-width:140px;text-align:center"></span>
+        <button onclick="agendaNavMes(1)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)">
+          <i data-lucide="chevron-right" style="width:14px;height:14px"></i>
+        </button>
+        <input type="hidden" id="agendaFiltroMes" value="0">
+        <select id="agendaFiltroStatus" onchange="agendaAplicarFiltros()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;height:32px">
+          <option value="pendente">Pendentes</option>
+          <option value="concluida">Concluídas</option>
+          <option value="ignorada">Ignoradas</option>
+          <option value="todos">Todas</option>
+        </select>
+        <select id="agendaFiltroCliente" onchange="agendaAplicarFiltros()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;height:32px;flex:1;min-width:140px">
+          <option value="todos">Todos os clientes</option>
+        </select>
+        <button onclick="agendaNovaManual()" style="padding:6px 14px;background:var(--accent);color:var(--user-text);border:none;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;height:32px;white-space:nowrap;display:flex;align-items:center;gap:6px">
+          <i data-lucide="plus" style="width:13px;height:13px"></i> Nova tarefa
+        </button>
+      </div>
+
+      <!-- Área do formulário de nova tarefa -->
+      <div id="agendaFormWrap" style="padding:0 16px"></div>
+
+      <!-- Lista de tarefas -->
+      <div id="agendaLista" style="padding:16px;overflow-y:auto;max-height:55vh;-webkit-overflow-scrolling:touch">
+        <p style="text-align:center;color:var(--text-light);padding:32px;font-size:13px">Carregando...</p>
+      </div>
+
+      <!-- Rodapé -->
+      <div style="padding:10px 16px;border-top:1px solid var(--border);background:var(--card);flex-shrink:0">
+        <p style="font-size:11px;color:var(--text-light);text-align:center">
+          Obrigações geradas automaticamente por regime tributário de cada empresa. Tarefas manuais podem ser adicionadas a qualquer cliente.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/agenda.js"></script>
 </body>
 </html>
