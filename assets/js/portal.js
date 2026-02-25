@@ -32,7 +32,9 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ erro: 'Erro interno ao buscar dados do portal' });
   }
 
-  const data = await rpcRes.json();
+  const raw  = await rpcRes.json();
+  // Supabase RPC com retorno JSONB às vezes serializa como string
+  const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
 
   if (data?.erro) {
     return res.status(404).json({ erro: data.erro });
