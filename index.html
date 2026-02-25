@@ -412,6 +412,9 @@
 
       <div class="c-right">
         <!-- Botões sempre visíveis -->
+        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn">
+          <i data-lucide="external-link"></i>
+        </button>
         <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn">
           <i data-lucide="calendar-clock"></i>
           <span id="agendaBadgeCount" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px"></span>
@@ -438,6 +441,9 @@
             </button>
             <button class="menu-item" onclick="openAgenda(); closeDropdowns()">
               <i data-lucide="calendar-clock"></i> Agenda de Prazos
+            </button>
+            <button class="menu-item" onclick="abrirPortalCliente(); closeDropdowns()">
+              <i data-lucide="external-link"></i> Portal do Cliente
             </button>
             <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()">
               <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
@@ -1014,5 +1020,64 @@
   </div>
 
   <script src="assets/js/agenda.js"></script>
+
+  <!-- MODAL PORTAL ADMIN -->
+  <div id="portalAdminModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg);border-radius:16px;width:100%;max-width:500px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden">
+
+      <!-- Cabeçalho -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card);flex-shrink:0">
+        <span style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          <i data-lucide="external-link" style="width:16px;height:16px"></i>Portal do Cliente
+        </span>
+        <button onclick="fecharPortalAdmin()" style="background:var(--sidebar-hover);border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <!-- Empresa selecionada -->
+      <div style="padding:12px 20px;background:var(--card);border-bottom:1px solid var(--border);font-size:13px;color:var(--text-light)">
+        Empresa: <strong id="portalClienteNome" style="color:var(--text)">—</strong>
+      </div>
+
+      <!-- Corpo -->
+      <div style="padding:20px;overflow-y:auto;flex:1">
+
+        <!-- Explicação -->
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text-light);line-height:1.6">
+          <strong style="color:var(--text)">O que é o portal?</strong><br>
+          Um link seguro que você envia ao cliente. Ele abre uma página simples (sem login) onde vê seus prazos fiscais, documentos gerados e seus dados de contato como contador responsável.
+        </div>
+
+        <!-- Gerar novo link -->
+        <div style="margin-bottom:16px">
+          <label class="f-lbl">Validade do link</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <select id="portalValidade" class="c-inp" style="flex:1">
+              <option value="30">30 dias</option>
+              <option value="60">60 dias</option>
+              <option value="90" selected>90 dias (padrão)</option>
+              <option value="180">180 dias</option>
+              <option value="365">1 ano</option>
+            </select>
+            <button id="btnPortalGerar" onclick="portalGerarLink()"
+              style="padding:0 16px;height:40px;background:var(--accent);color:var(--user-text);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap">
+              Gerar novo link
+            </button>
+          </div>
+          <p id="portalMsg" style="display:none;font-size:12px;margin-top:8px"></p>
+        </div>
+
+        <!-- Links existentes -->
+        <div>
+          <p class="f-lbl" style="margin-bottom:10px">Links gerados para este cliente</p>
+          <div id="portalLinksList"></div>
+        </div>
+
+      </div><!-- /corpo -->
+    </div>
+  </div>
+
+  <script src="assets/js/portal-admin.js"></script>
 </body>
 </html>
