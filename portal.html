@@ -309,7 +309,7 @@
       </div>
       <div class="card-body">
         <div class="contador-row">
-          <div class="contador-avatar">
+          <div class="contador-avatar" id="contadorAvatar">
             <i data-lucide="user" style="width:20px;height:20px"></i>
           </div>
           <div>
@@ -385,6 +385,12 @@ const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
   document.getElementById('empresaRegime').textContent = cliente.regime_tributario || 'Regime não informado';
   document.getElementById('contadorNome').textContent  = contador.nome || 'Contador';
   document.getElementById('contadorCrc').textContent   = contador.crc ? `CRC: ${contador.crc}` : 'CRC não informado';
+  if (contador.avatar_url) {
+    const avatarEl = document.getElementById('contadorAvatar');
+    avatarEl.innerHTML = `<img src="${esc(contador.avatar_url)}" alt="Avatar"
+      style="width:44px;height:44px;border-radius:50%;object-fit:cover"
+      onerror="this.parentElement.innerHTML='<i data-lucide=\\'user\\' style=\\'width:20px;height:20px\\'></i>';if(window.lucide)lucide.createIcons()">`;
+  }
 
   // Validade do link
   if (expira_em) {
