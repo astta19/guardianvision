@@ -1235,8 +1235,7 @@
     .pwd-hint { font-size:11px; color:var(--text-light); margin-top:4px; }
 
     /* ====== MÓDULO DOCUMENTOS FISCAIS ====== */
-    #docModal { display:none; }
-    #docModal.on { display:flex; }
+    /* docModal — controlado via style.display em ui.js */
     @media (min-width: 601px) {
       #profileModal { align-items:center; justify-content:center; padding:20px; }
       #profileModal .m-box { border-radius:16px; max-height:85vh; }
@@ -1895,3 +1894,24 @@
       height: 1px;
       background: var(--border);
     }
+
+/* ── Agenda Modal ─────────────────────────────────────────── */
+#agendaModal {
+  display: none;
+}
+#agendaModal.on {
+  display: flex;
+}
+#agendaHeaderBtn {
+  position: relative;
+}
+@media (max-width: 600px) {
+  #agendaModal {
+    padding: 0;
+    align-items: flex-end;
+  }
+  #agendaModal > div {
+    border-radius: 20px 20px 0 0;
+    max-height: 95dvh;
+  }
+}
