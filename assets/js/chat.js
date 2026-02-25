@@ -1397,36 +1397,45 @@ function copyMessage(btn) {
 
 function checkDeadlines() {
   const today = new Date();
+  const regime = currentCliente?.regime_tributario || '';
+  const isMEI       = /mei/i.test(regime);
+  const isSimples   = /simples/i.test(regime);
+  const isSimplesOuMEI = isMEI || isSimples;
+  const isLucro     = /lucro/i.test(regime);
   const alerts = [];
 
   for (const [key, deadline] of Object.entries(fiscalDeadlines)) {
+    if (deadline.meiOnly      && !isMEI)          continue; // DASN-SIMEI: só MEI
+    if (deadline.simplesOuMei && !isSimplesOuMEI) continue; // DAS/DEFIS: só Simples/MEI
+    if (deadline.naoSimples   && isSimplesOuMEI)  continue; // EFD-Contrib: não Simples/MEI
+
+    let daysUntil;
+    let thresholdDays;
+
     if (deadline.month === 'monthly') {
+      // Obrigação mensal — janela de 7 dias
+      thresholdDays = 7;
       const nextDeadline = new Date(today.getFullYear(), today.getMonth(), deadline.day);
-      const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
-
-      if (daysUntil <= 5 && daysUntil >= 0) {
-        alerts.push({
-          message: `${deadline.description} em ${daysUntil} dias`,
-          severity: daysUntil <= 2 ? 'high' : 'medium'
-        });
-      }
+      if (nextDeadline < today) nextDeadline.setMonth(nextDeadline.getMonth() + 1);
+      daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
     } else {
+      // Obrigação anual — janela de 30 dias
+      thresholdDays = 30;
       const nextDeadline = new Date(today.getFullYear(), deadline.month - 1, deadline.day);
-      if (today > nextDeadline) {
-        nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
-      }
-      const daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
+      if (nextDeadline < today) nextDeadline.setFullYear(nextDeadline.getFullYear() + 1);
+      daysUntil = Math.ceil((nextDeadline - today) / (1000 * 60 * 60 * 24));
+    }
 
-      if (daysUntil <= 30 && daysUntil >= 0) {
-        alerts.push({
-          message: `${deadline.description} em ${daysUntil} dias`,
-          severity: daysUntil <= 7 ? 'high' : 'medium'
-        });
-      }
+    if (daysUntil >= 0 && daysUntil <= thresholdDays) {
+      alerts.push({
+        message: `${deadline.description} em ${daysUntil} dia(s)`,
+        severity: daysUntil <= 2 ? 'high' : 'medium'
+      });
     }
   }
 
   const alertDiv = document.getElementById('deadlineAlerts');
+  if (!alertDiv) return;
   if (alerts.length > 0) {
     alertDiv.innerHTML = alerts.map(a => `
       <div class="alert alert-${a.severity}">
