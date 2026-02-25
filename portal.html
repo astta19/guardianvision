@@ -330,9 +330,12 @@
 </div><!-- /portalContent -->
 
 <script>
+const _SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
+
 (async () => {
-  const params  = new URLSearchParams(window.location.search);
-  const token   = params.get('token');
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
 
   const showErro = (titulo, msg) => {
     document.getElementById('loading').style.display = 'none';
@@ -347,17 +350,30 @@
     return;
   }
 
-  // Buscar dados na API
+  // Chamar RPC do Supabase diretamente com anon key
+  // A função portal_buscar_por_token é SECURITY DEFINER — segura com anon key
   let dados;
   try {
-    const res = await fetch(`/api/portal?token=${encodeURIComponent(token)}`);
-    dados = await res.json();
-    if (!res.ok || dados.erro) {
-      showErro('Acesso negado', dados.erro || 'Token inválido ou expirado.');
+    const res = await fetch(`${_SB_URL}/rest/v1/rpc/portal_buscar_por_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey':       _SB_KEY,
+        'Authorization': `Bearer ${_SB_KEY}`,
+      },
+      body: JSON.stringify({ p_token: token }),
+    });
+
+    const raw = await res.json();
+    dados = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+    if (!res.ok || dados?.erro) {
+      showErro('Acesso negado', dados?.erro || 'Token inválido ou expirado.');
       return;
     }
   } catch(e) {
-    showErro('Erro de conexão', 'Não foi possível carregar os dados. Verifique sua conexão e tente novamente.');
+    console.error('Portal fetch error:', e);
+    showErro('Erro de conexão', 'Não foi possível carregar os dados. Verifique sua conexão e tente novamente. (' + e.message + ')');
     return;
   }
 
