@@ -334,10 +334,14 @@ async function showApp() {
   checkConnection();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
+  carregarKPIs();
   if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
     if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
   });
   if (window.lucide) lucide.createIcons();
+  // Carregar chat compartilhado via link (?shared=TOKEN)
+  const _sharedToken = new URLSearchParams(window.location.search).get('shared');
+  if (_sharedToken) carregarChatCompartilhado(_sharedToken);
 }
 
 // --- Audit log ---
@@ -433,3 +437,41 @@ document.addEventListener('keydown', (e) => {
   if (!document.getElementById('clientModal')?.classList.contains('hidden')) { if (typeof closeClientModal === 'function') closeClientModal(); return; }
   if (document.getElementById('permissoesModal')?.style.display !== 'none') { if (typeof fecharPermissoesModal === 'function') fecharPermissoesModal(); return; }
 });
+
+async function carregarKPIs() {
+  if (!currentUser) return;
+  const dashboard = document.getElementById('kpiDashboard');
+  if (!dashboard) return;
+
+  try {
+    const hoje = new Date();
+    const semanaFim = new Date(hoje); semanaFim.setDate(hoje.getDate() + 7);
+    const mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
+    const mesFim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString();
+
+    const [{ count: cTarefas }, { count: cVencidos }, { count: cClientes }, { count: cDarfs }] =
+      await Promise.all([
+        sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id).eq('status', 'pendente')
+          .gte('prazo', hoje.toISOString().slice(0,10))
+          .lte('prazo', semanaFim.toISOString().slice(0,10)),
+        sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id).eq('status', 'pendente')
+          .lt('prazo', hoje.toISOString().slice(0,10)),
+        sb.from('clientes').select('*', { count: 'exact', head: true }),
+        sb.from('documentos_fiscais').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id).eq('tipo', 'darf')
+          .gte('criado_em', mesIni).lte('criado_em', mesFim),
+      ]);
+
+    document.getElementById('kpiTarefas').textContent  = cTarefas  ?? '—';
+    document.getElementById('kpiVencidos').textContent = cVencidos  ?? '—';
+    document.getElementById('kpiClientes').textContent = cClientes  ?? '—';
+    document.getElementById('kpiDarfs').textContent    = cDarfs     ?? '—';
+
+    dashboard.style.display = 'block';
+    if (window.lucide) lucide.createIcons();
+  } catch(e) {
+    console.error('KPI error:', e);
+  }
+}
