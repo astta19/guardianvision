@@ -127,6 +127,17 @@
         <h3><i data-lucide="building-2" style="width:18px;height:18px;vertical-align:middle;margin-right:6px"></i>Selecionar Empresa</h3>
         <button class="btn-close" onclick="closeClientModal()"><i data-lucide="x"></i></button>
       </div>
+      <!-- Busca e filtro de regime -->
+      <div style="display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)">
+        <input id="clientSearchInput" type="text" placeholder="Buscar por nome ou CNPJ..."
+          style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px"
+          oninput="renderClientList(this.value, document.getElementById('clientRegimeFilter').value)">
+        <select id="clientRegimeFilter"
+          style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;max-width:140px"
+          onchange="renderClientList(document.getElementById('clientSearchInput').value, this.value)">
+          <option value="">Todos os regimes</option>
+        </select>
+      </div>
       <div id="clientList" class="client-list">
         <p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Carregando...</p>
       </div>
@@ -529,6 +540,27 @@
         <i data-lucide="message-circle"></i>
         <h3>Olá! Sou seu especialista fiscal</h3>
         <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p>
+        <!-- KPIs — renderizados por carregarKPIs() em core.js -->
+        <div id="kpiDashboard" style="display:none;margin-top:20px;width:100%;max-width:560px">
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;text-align:left">
+            <div class="kpi-card" onclick="openAgenda()">
+              <div class="kpi-icon" style="background:#fef3c7"><i data-lucide="calendar-clock" style="color:#d97706;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="kpiTarefas">—</div><div class="kpi-lbl">Prazos esta semana</div></div>
+            </div>
+            <div class="kpi-card" onclick="openClientModal()">
+              <div class="kpi-icon" style="background:#dbeafe"><i data-lucide="building-2" style="color:#2563eb;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="kpiClientes">—</div><div class="kpi-lbl">Empresas ativas</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#dcfce7"><i data-lucide="file-check" style="color:#16a34a;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="kpiDarfs">—</div><div class="kpi-lbl">DARFs gerados (mês)</div></div>
+            </div>
+            <div class="kpi-card" style="cursor:default">
+              <div class="kpi-icon" style="background:#fce7f3"><i data-lucide="alert-triangle" style="color:#db2777;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="kpiVencidos">—</div><div class="kpi-lbl">Prazos vencidos</div></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -667,10 +699,28 @@
               <input type="number" id="darfFolha" placeholder="0,00" min="0" step="0.01" oninput="calcularDarf()">
             </div>
           </div>
+          <!-- Campos Simples Nacional — mostrados via atualizarCamposDarf() -->
+          <div id="darfSimplesFields" style="display:none">
+            <div class="darf-row">
+              <div class="darf-field">
+                <label>Tipo de atividade</label>
+                <select id="darfAnexo" onchange="calcularDarf()">
+                  <option value="comercio">Comércio / Indústria (Anexo I/II)</option>
+                  <option value="servico">Serviços (Anexo III-V com Fator R)</option>
+                </select>
+              </div>
+              <div class="darf-field">
+                <label>RBT12 — Rec. Bruta 12 meses</label>
+                <input type="number" id="darfRBT12" placeholder="0,00" min="0" step="0.01" oninput="calcularDarf()">
+              </div>
+            </div>
+          </div>
           <div class="darf-row">
             <div class="darf-field">
               <label>Data de vencimento</label>
-              <input type="date" id="darfVencimento">
+              <input type="date" id="darfVencimento" max=""
+                oninput="validarDataDarf(this)"
+                onfocus="this.max=new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split('T')[0]">
             </div>
             <div class="darf-field">
               <label>Data de pagamento (se em atraso)</label>
@@ -910,7 +960,7 @@
         </button>
       </div>
       <p style="margin-top: 15px; font-size: 12px; color: var(--text-light);">
-        <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:middle;margin-right:4px"></i> Link válido apenas neste dispositivo e navegador por 24 horas.
+        <i data-lucide="alert-triangle" style="width:12px;height:12px;vertical-align:middle;margin-right:4px"></i> Link válido por 7 dias em qualquer dispositivo.
       </p>
     </div>
   </div>
