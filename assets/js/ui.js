@@ -148,6 +148,33 @@ async function closeShareModal() {
   if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
 }
 
+async function carregarChatCompartilhado(token) {
+  const { data, error } = await sb
+    .from('shared_chats')
+    .select('title, messages, expires_at')
+    .eq('token', token)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+
+  // Limpar o token da URL sem recarregar
+  const url = new URL(window.location);
+  url.searchParams.delete('shared');
+  history.replaceState({}, '', url);
+
+  if (error || !data) {
+    alert('Link de compartilhamento inválido ou expirado.');
+    return;
+  }
+
+  // Carregar mensagens no chat atual (somente leitura — não salva)
+  currentChat = { id: null, title: data.title, messages: data.messages };
+  if (typeof renderMessages === 'function') renderMessages();
+  if (typeof updateChatTitle === 'function') updateChatTitle(data.title);
+
+  const exp = new Date(data.expires_at).toLocaleDateString('pt-BR');
+  showToast?.(`Chat compartilhado carregado. Válido até ${exp}.`);
+}
+
 async function toggleDropdown(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -271,16 +298,23 @@ async function shareChat() {
     return;
   }
 
-  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  // Gerar token único
+  const token = crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'') 
+                                   : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  const { error } = await sb.from('shared_chats').insert({
+    token,
+    title:      currentChat.title || 'Conversa',
+    messages:   currentChat.messages,
+    created_by: currentUser?.id || null,
+  });
+
+  if (error) {
+    alert('Erro ao gerar link: ' + error.message);
+    return;
+  }
+
   const shareLink = `${window.location.origin}?shared=${token}`;
-
-  const sharedChats = JSON.parse(localStorage.getItem('sharedChats') || '{}');
-  sharedChats[token] = {
-    chat: currentChat,
-    expires: Date.now() + (24 * 60 * 60 * 1000)
-  };
-  localStorage.setItem('sharedChats', JSON.stringify(sharedChats));
-
   document.getElementById('shareLink').value = shareLink;
   openShareModal();
 }
