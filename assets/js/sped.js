@@ -595,10 +595,16 @@ async function spedGerarTxt(periodoId) {
     // ===== BLOCO C =====
     add(`C001|0`);
     (docs||[]).forEach(d => {
-      // C100: REG|IND_OPER|IND_EMIT|COD_PART|COD_MOD|COD_SIT|SER|NUM_DOC|CHV_NFE|DT_DOC|DT_E_S|VL_DOC|IND_PGTO|VL_DESC|VL_ABAT_NT|VL_MERC|IND_FRT|VL_FRT|VL_SEG|VL_OUT_DA|VL_BC_ICMS|VL_ICMS|VL_BC_ICMS_ST|VL_ICMS_ST|VL_IPI|VL_PIS|VL_COFINS|VL_PIS_ST|VL_COFINS_ST
+      // C100: cabeçalho do documento fiscal
       add(`C100|${d.ind_oper}|${d.ind_emit||'0'}|${d.cod_part||''}|${d.cod_mod||'55'}|${d.cod_sit||'00'}|${d.ser||''}|${d.num_doc}|${d.chv_nfe||''}|${fmtDate(d.dt_doc)}|${fmtDate(d.dt_e_s||d.dt_doc)}|${fmt(d.vl_doc)}|${d.ind_pgto||'0'}|${fmt(d.vl_desc)}|${fmt(d.vl_abat_nt)}|${fmt(d.vl_merc||d.vl_doc)}|${d.ind_frt||'9'}|${fmt(d.vl_frt)}|${fmt(d.vl_seg)}|${fmt(d.vl_out_da)}|${fmt(d.vl_bc_icms)}|${fmt(d.vl_icms)}|${fmt(d.vl_bc_icms_st)}|${fmt(d.vl_icms_st)}|${fmt(d.vl_ipi)}|${fmt(d.vl_pis)}|${fmt(d.vl_cofins)}|${fmt(d.vl_pis_st)}|${fmt(d.vl_cofins_st)}`);
-      // C190: REG|CST_ICMS|CFOP|ALIQ_ICMS|VL_OPR|VL_BC_ICMS|VL_ICMS|VL_BC_ICMS_ST|VL_ICMS_ST|VL_RED_BC|VL_IPI|COD_OBS
-      // Obrigatório: gerar mesmo que zerado (só omitir se doc sem tributação nenhuma)
+
+      // C170: item da nota (obrigatório — PVA rejeita C100 sem C170)
+      // REG|NUM_ITEM|COD_ITEM|DESCR_COMPL|QTD|UNID|VL_ITEM|VL_DESC|IND_MOV|CST_ICMS|CFOP|COD_NAT|VL_BC_ICMS|ALIQ_ICMS|VL_ICMS|VL_BC_ICMS_ST|ALIQ_ST|VL_ICMS_ST|VL_IPI|CST_IPI|ALIQ_IPI|VL_BC_IPI|CST_PIS|VL_BC_PIS|ALIQ_PIS_PERC|QUANT_BC_PIS|ALIQ_PIS_REAIS|VL_PIS|CST_COFINS|VL_BC_COFINS|ALIQ_COFINS_PERC|QUANT_BC_COFINS|ALIQ_COFINS_REAIS|VL_COFINS|COD_CTA
+      const cfopC170 = d.cfop || (d.ind_oper === '0' ? '1102' : '5102');
+      const cstC170  = d.cst_icms || '000';
+      add(`C170|1||${d.cfop ? '' : 'Item único'}|1|UN|${fmt(d.vl_merc||d.vl_doc)}|${fmt(d.vl_desc)}|0|${cstC170}|${cfopC170}||${fmt(d.vl_bc_icms)}|${fmt(d.aliq_icms||0)}|${fmt(d.vl_icms)}|${fmt(d.vl_bc_icms_st)}|${fmt(d.aliq_icms_st||0)}|${fmt(d.vl_icms_st)}|${fmt(d.vl_ipi)}|99|0,00||49|${fmt(d.vl_pis)}|0,6500||0,00|${fmt(d.vl_pis)}|49|${fmt(d.vl_cofins)}|3,0000||0,00|${fmt(d.vl_cofins)}|`);
+
+      // C190: totalização por CFOP/CST (obrigatório)
       const cfop = d.cfop || (d.ind_oper === '0' ? '1102' : '5102');
       const cst  = d.cst_icms || '000';
       const aliq = fmt(d.aliq_icms || 0);
@@ -610,9 +616,32 @@ async function spedGerarTxt(periodoId) {
     add(`E001|0`);
     // E100: REG|DT_INI|DT_FIN  (obrigatório — abre o período de apuração)
     add(`E100|${dtIni}|${dtFin}`);
-    // E110: REG|VL_TOT_DEBITOS|VL_AJ_DEBITOS|VL_TOT_AJ_DEBITOS|VL_ESTORNOS_CRED|VL_TOT_CREDITOS|VL_AJ_CREDITOS|VL_TOT_AJ_CREDITOS|VL_ESTORNOS_DEB|VL_SLD_CREDOR_ANT|VL_SLD_APURADO|VL_TOT_DED|VL_ICMS_RECOLHER|VL_SLD_CREDOR_TRANSPORTAR|DEB_ESP
+    // E110: apuração consolidada do período
     const ap = apuracao || {};
     add(`E110|${fmt(ap.vl_tot_debitos)}|${fmt(ap.vl_aj_debitos)}|${fmt(ap.vl_tot_aj_deb)}|${fmt(ap.vl_estornos_cred)}|${fmt(ap.vl_tot_creditos)}|${fmt(ap.vl_aj_creditos)}|${fmt(ap.vl_tot_aj_cred)}|${fmt(ap.vl_estornos_deb)}|${fmt(ap.vl_sld_credor_ant)}|${fmt(ap.vl_sld_apurado)}|${fmt(ap.vl_tot_ded)}|${fmt(ap.vl_icms_recolher)}|${fmt(ap.vl_sld_credor_transportar)}|${fmt(ap.deb_esp)}`);
+
+    // E111: ajustes de débito (quando há vl_aj_debitos > 0)
+    // REG|COD_AJ_APUR|DESCR_COMPL_AJ|VL_AJ_APUR
+    if (parseFloat(ap.vl_aj_debitos || 0) > 0) {
+      add(`E111|${per.uf||'SP'}10000|Ajuste de débito informado|${fmt(ap.vl_aj_debitos)}`);
+    }
+    // E111: ajustes de crédito (quando há vl_aj_creditos > 0)
+    if (parseFloat(ap.vl_aj_creditos || 0) > 0) {
+      add(`E111|${per.uf||'SP'}20000|Ajuste de crédito informado|${fmt(ap.vl_aj_creditos)}`);
+    }
+
+    // E116: obrigação do período (dedução informada no E110)
+    // REG|COD_OR|VL_OR|DT_VCTO|COD_REC|NUM_PROC|IND_PROC|PROC|TXT_COMPL|MES_REF
+    if (parseFloat(ap.vl_tot_ded || 0) > 0) {
+      const dtVcto = fmtDate(`${per.dt_fin}`); // vencimento = último dia do período
+      add(`E116|000|${fmt(ap.vl_tot_ded)}|${dtVcto}|ICMS|||||${per.periodo}`);
+    }
+    // E116: ICMS a recolher (obrigação principal)
+    if (parseFloat(ap.vl_icms_recolher || 0) > 0) {
+      const dtVcto = fmtDate(`${per.dt_fin}`);
+      add(`E116|000|${fmt(ap.vl_icms_recolher)}|${dtVcto}|ICMS|||||${per.periodo}`);
+    }
+
     add(`E990|${linhas.filter(l => l.startsWith('|E')).length + 1}`);
 
     // ===== BLOCO G — CIAP (vazio) =====
