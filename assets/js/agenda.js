@@ -15,11 +15,12 @@ const OBRIGACOES_AGENDA = [
   { id: 'esocial',     label: 'eSocial (folha)',        dia: 15, mensal: true                       },
   { id: 'efd_contrib', label: 'EFD-Contribuições',     dia: 10, mensal: true,  naoSimples: true    },
   { id: 'sped_fiscal', label: 'SPED Fiscal',           dia: 15, mensal: true                       },
+  { id: 'dctf',        label: 'DCTF',                  dia: 15, mensal: true,  naoSimples: true    },
   { id: 'dasn_simei',  label: 'DASN-SIMEI (MEI)',      dia: 31, mes: 5,        meiOnly: true       },
   { id: 'defis',       label: 'DEFIS (Simples)',        dia: 31, mes: 3,        simplesOuMei: true  },
   { id: 'ecd',         label: 'ECD',                   dia: 30, mes: 6                             },
   { id: 'ecf',         label: 'ECF',                   dia: 31, mes: 7                             },
-  { id: 'dirpf',       label: 'DIRPF (PF)',            dia: 29, mes: 5                             },
+  { id: 'dirpf',       label: 'DIRPF (PF)',            dia: 30, mes: 5                             },
 ];
 
 // Estado
@@ -352,13 +353,13 @@ async function agendaPersistirAutomatica(clienteId, obrigacaoId, prazo, titulo, 
   return data?.id || null;
 }
 
-async function agendaExcluir(id) {
+function agendaExcluir(id) {
   if (!id || id === 'null') return;
-  const ok = await showConfirm('Excluir esta tarefa?');
-  if (!ok) return;
-  await sb.from('agenda_tarefas').delete().eq('id', id);
-  agendaTarefas = agendaTarefas.filter(t => t.id !== id);
-  agendaRender();
+  showConfirm('Excluir esta tarefa?', async () => {
+    await sb.from('agenda_tarefas').delete().eq('id', id);
+    agendaTarefas = agendaTarefas.filter(t => t.id !== id);
+    agendaRender();
+  });
 }
 
 // ── Nova tarefa manual ────────────────────────────────────────
