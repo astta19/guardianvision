@@ -59,7 +59,7 @@ function getObrigacoesMes() {
     {
       nome: 'DAS — Simples Nacional',
       venc: new Date(ano, mes, 20),
-      valor: darfResult?.das || null,
+      valor: darfData?.das || null,
       base: 'LC 123/2006, art. 21 § 3º; Resolução CGSN nº 140/2018, art. 38',
       desc: 'Documento de Arrecadação do Simples Nacional',
       aplica: isSimplesOuMEI
@@ -100,7 +100,7 @@ function getObrigacoesMes() {
     {
       nome: 'IRPJ / CSLL — Estimativa',
       venc: new Date(ano, mes, 30),
-      valor: darfResult?.irpj || null,
+      valor: darfData?.irpj || null,
       base: 'Lei nº 9.430/1996, art. 2º; IN RFB nº 1700/2017',
       desc: 'Imposto de Renda Pessoa Jurídica e Contribuição Social sobre Lucro Líquido',
       aplica: /lucro real|lucro presumido/i.test(regime)
@@ -430,9 +430,9 @@ function gerarPlanilha() {
     ]) : []),
     [],
     ['CÁLCULOS TRIBUTÁRIOS'],
-    darfResult ? [
+    darfData ? [
       ['Tipo', 'Valor'],
-      ...Object.entries(darfResult).map(([k,v]) => [k.toUpperCase(), typeof v === 'number' ? v : ''])
+      ...Object.entries(darfData).map(([k,v]) => [k.toUpperCase(), typeof v === 'number' ? v : ''])
     ].flat() : ['Nenhum cálculo realizado nesta sessão']
   ];
 
