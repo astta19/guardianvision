@@ -39,7 +39,7 @@ const fiscalDeadlines = {
       'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
       'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
       'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
-      'dirpf':       { day: 30, month: 5,         description: 'DIRPF (PF)'                                 },
+      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
@@ -429,6 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   // Fechar em ordem de prioridade (modal mais aberto fecha primeiro)
+  if (typeof closeFolha === 'function' && document.getElementById('folhaModal')?.style.display !== 'none') { closeFolha(); return; }
   if (typeof closeSped === 'function' && document.getElementById('spedModal')?.style.display !== 'none') { closeSped(); return; }
   if (typeof closeProfile === 'function' && document.getElementById('profileModal')?.style.display !== 'none') { closeProfile(); return; }
   if (document.getElementById('statsModal')?.style.display !== 'none') { if (typeof closeStats === 'function') closeStats(); return; }
