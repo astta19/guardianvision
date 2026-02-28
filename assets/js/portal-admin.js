@@ -91,35 +91,42 @@ async function portalGerarLink() {
 
   const validade = parseInt(document.getElementById('portalValidade').value) || 90;
 
-  const { data, error } = await sb
-    .from('portal_tokens')
-    .insert({
-      cliente_id: currentCliente.id,
-      user_id:    currentUser.id,
-      expira_em:  new Date(Date.now() + validade * 86400000).toISOString()
-    })
-    .select('token')
-    .single();
-
-  btn.disabled = false;
-  btn.textContent = 'Gerar novo link';
-
-  if (error || !data?.token) {
-    console.error('portalGerarLink error:', error);
-    alert('Erro ao gerar link. Verifique se a tabela portal_tokens foi criada no Supabase.');
-    return;
-  }
-
-  const link = `${window.location.origin}/portal.html?token=${data.token}`;
-  await portalCarregarLinks();
-
   try {
-    await navigator.clipboard.writeText(link);
-    portalShowMsg('✅ Link gerado e copiado para a área de transferência!', 'success');
-  } catch {
-    portalShowMsg('✅ Link gerado! Copie abaixo para enviar ao cliente.', 'success');
+    const { data, error } = await sb
+      .from('portal_tokens')
+      .insert({
+        cliente_id: currentCliente.id,
+        user_id:    currentUser.id,
+        expira_em:  new Date(Date.now() + validade * 86400000).toISOString()
+      })
+      .select('token')
+      .single();
+
+    if (error || !data?.token) {
+      console.error('portalGerarLink error:', error);
+      portalShowMsg('Erro ao gerar link: ' + (error?.message || 'verifique se a tabela portal_tokens existe no Supabase.'), 'error');
+      return;
+    }
+
+    const link = `${window.location.origin}/portal.html?token=${data.token}`;
+    await portalCarregarLinks();
+
+    try {
+      await navigator.clipboard.writeText(link);
+      portalShowMsg('✅ Link gerado e copiado para a área de transferência!', 'success');
+    } catch {
+      portalShowMsg('✅ Link gerado! Copie abaixo para enviar ao cliente.', 'success');
+    }
+  } catch (e) {
+    console.error('portalGerarLink exception:', e);
+    portalShowMsg('Erro inesperado ao gerar link.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gerar novo link';
   }
 }
+
+// ── Copiar link ──────────────────────────────────────────────}
 
 // ── Copiar link ──────────────────────────────────────────────
 async function portalCopiarLink(link, btn) {
