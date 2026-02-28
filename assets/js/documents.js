@@ -59,7 +59,7 @@ function getObrigacoesMes() {
     {
       nome: 'DAS — Simples Nacional',
       venc: new Date(ano, mes, 20),
-      valor: darfData?.das || null,
+      valor: darfData?.linhas?.find(l => l.codigo === '4128')?.valor || null,
       base: 'LC 123/2006, art. 21 § 3º; Resolução CGSN nº 140/2018, art. 38',
       desc: 'Documento de Arrecadação do Simples Nacional',
       aplica: isSimplesOuMEI
@@ -100,7 +100,7 @@ function getObrigacoesMes() {
     {
       nome: 'IRPJ / CSLL — Estimativa',
       venc: new Date(ano, mes, 30),
-      valor: darfData?.irpj || null,
+      valor: darfData?.linhas?.find(l => l.codigo === '2089')?.valor || null,
       base: 'Lei nº 9.430/1996, art. 2º; IN RFB nº 1700/2017',
       desc: 'Imposto de Renda Pessoa Jurídica e Contribuição Social sobre Lucro Líquido',
       aplica: /lucro real|lucro presumido/i.test(regime)
@@ -431,8 +431,14 @@ function gerarPlanilha() {
     [],
     ['CÁLCULOS TRIBUTÁRIOS'],
     darfData ? [
-      ['Tipo', 'Valor'],
-      ...Object.entries(darfData).map(([k,v]) => [k.toUpperCase(), typeof v === 'number' ? v : ''])
+      ['Tipo', 'Código', 'Valor'],
+      ...darfData.linhas.map(l => [l.desc, l.codigo, l.valor]),
+      ['Total Principal', '', darfData.totalPrincipal],
+      ...(darfData.diasAtraso > 0 ? [
+        [`Multa (${darfData.diasAtraso} dias)`, '', darfData.multa],
+        ['Juros Selic', '', darfData.juros],
+      ] : []),
+      ['TOTAL A RECOLHER', '', darfData.totalFinal]
     ].flat() : ['Nenhum cálculo realizado nesta sessão']
   ];
 
