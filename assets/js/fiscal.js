@@ -168,7 +168,7 @@ async function processarNFes(event) {
       nfeData.push({ arquivo: file.name, erro: true });
       continue;
     }
-    const validacao = validarNFe(nf);
+    const validacao = await validarNFe(nf);
     nfeData.push({ ...nf, ...validacao });
   }
 
