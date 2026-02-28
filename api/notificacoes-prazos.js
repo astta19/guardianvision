@@ -12,7 +12,7 @@ const OBRIGACOES = [
   { id: 'defis',       label: 'DEFIS (Simples)',       dia: 31, mes: 3       },
   { id: 'ecd',         label: 'ECD',                  dia: 30, mes: 6       },
   { id: 'ecf',         label: 'ECF',                  dia: 31, mes: 7       },
-  { id: 'dirpf',       label: 'DIRPF (PF)',           dia: 29, mes: 5       },
+  { id: 'dirpf',       label: 'DIRPF (PF)',           dia: 30, mes: 5       },
 ];
 
 function calcularDiasAte(dia, mes, mensal) {
