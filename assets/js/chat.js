@@ -267,8 +267,8 @@ class FiscalLearningService {
         .not('resposta', 'is', null)
         .order('feedback_usuario', { ascending: false })
         .limit(10);
+      // Filtra por cliente apenas se há um ativo; sem cliente, retorna contexto global do usuário
       if (clienteId) qInteracoes = qInteracoes.eq('cliente_id', clienteId);
-      // Contador só vê RAG do próprio usuário; admin vê tudo
       if (!isAdmin() && currentUser?.id) qInteracoes = qInteracoes.eq('user_id', currentUser.id);
 
       let qTreinamento = this.supabase
@@ -277,7 +277,8 @@ class FiscalLearningService {
         .gte('qualidade', 4)
         .order('qualidade', { ascending: false })
         .limit(10);
-      if (clienteId) qTreinamento = qTreinamento.eq('cliente_id', clienteId);
+      // Inclui docs sem cliente (base global) OU do cliente ativo
+      if (clienteId) qTreinamento = qTreinamento.or(`cliente_id.eq.${clienteId},cliente_id.is.null`);
 
       const [{ data: interacoes }, { data: treinamento }] = await Promise.all([
         qInteracoes, qTreinamento
@@ -384,7 +385,9 @@ class FiscalLearningService {
         .not('conteudo_extraido', 'is', null)
         .order('data_upload', { ascending: false })
         .limit(20);
-      if (clienteId) qDocs = qDocs.eq('cliente_id', clienteId);
+      // Inclui docs sem cliente (base global) OU do cliente ativo
+      if (clienteId) qDocs = qDocs.or(`cliente_id.eq.${clienteId},cliente_id.is.null`);
+      else if (!isAdmin() && currentUser?.id) qDocs = qDocs.eq('user_id', currentUser.id);
       const { data } = await qDocs;
 
       if (!data || data.length === 0) return null;
@@ -528,8 +531,10 @@ async function handleBatchUpload(event) {
       const fileData = await processFile(file);
 
       // Salvar na base de conhecimento como dados_treinamento
+      // pergunta usa as primeiras palavras do conteúdo para que o RAG consiga indexar
+      const resumoPergunta = (fileData.content || '').replace(/\s+/g, ' ').trim().substring(0, 300) || file.name;
       await supabaseProxy('inserir_treinamento', {
-        pergunta: `[BASE DE CONHECIMENTO] ${file.name}`,
+        pergunta: resumoPergunta,
         resposta: fileData.content || 'Conteúdo não extraído',
         fonte: 'base_conhecimento',
         qualidade: 5,
@@ -892,7 +897,7 @@ MENSAIS:
 ANUAIS:
 - DASN-SIMEI (MEI): até 31/05/2026 (ano-base 2025)
 - DEFIS (Simples Nacional): até 31/03/2026 (ano-base 2025)
-- DIRPF (Pessoa Física): 15/03 a 30/05/2026
+- DIRPF (Pessoa Física): 15/03 a 29/05/2026
 - ECD (Escrituração Contábil Digital): até 30/06/2026 (ano-base 2025)
 - ECF (Escrituração Contábil Fiscal): até 31/07/2026 (ano-base 2025)
 - DIRF: em extinção — substituída pelo eSocial/EFD-Reinf (Programa Autorregularização até 20/02/2026)
@@ -976,73 +981,6 @@ CST PIS/COFINS:
 - 01: operação tributável (alíquota básica) | 02: alíquota diferenciada
 - 04: operação imune | 05: suspensão | 06: alíquota zero | 07: isenta | 49: outras entradas
 - 50: operação com direito a crédito (alíquota básica) | 70: adq. não tributada
-
-
-========================================
-SIMPLES NACIONAL — ANEXOS COMPLETOS
-========================================
-
-Anexo I (Comércio): faixas de 4% a 19% — empresas de revenda de mercadorias
-Anexo II (Indústria): faixas de 4,5% a 30% — inclui IPI; alíquotas ~0,5pp acima do Anexo I
-Anexo III (Serviços): faixas de 6% a 33% — inclui CPP; Fator R ≥ 28% migra do V para cá
-Anexo IV (Serviços específicos - CPP FORA do DAS): 4,5% a 33%; INSS patronal recolhido separadamente (GPS) — construção civil, vigilância, limpeza, advocacia e atividades do §2º art. 18 LC 123
-Anexo V (Serviços alta tributação): 15,5% a 30,5%; Fator R < 28% neste anexo
-
-Fator R — cálculo mensal:
-- Fator R = folha de salários últimos 12 meses / RBT12 (receita bruta últimos 12 meses)
-- ≥ 28%: Anexo III (menor carga) | < 28%: Anexo V (maior carga)
-- Atividades elegíveis: TI, engenharia, medicina veterinária, etc. (§2º art. 18 LC 123)
-
-Alerta Anexo IV — erro comum: DAS não cobre INSS patronal → omissão gera dívida previdenciária com multa de 75%
-
-========================================
-PARCELAMENTO E REGULARIZAÇÃO DE DÉBITOS
-========================================
-
-Transação Tributária (Lei 13.988/2020 — instrumento permanente):
-- PGFN e RFB publicam editais periódicos com reduções de até 100% de juros/multas
-- Transação por adesão: empresa aceita condições do edital sem negociação individual
-- Transação individual: para débitos > R0 mi (PGFN) ou > R mi (RFB)
-- Monitorar: e-CAC, Regularize (PGFN) e DOU para editais vigentes
-
-Parcelamento ordinário PGFN: até 60 meses; simplificado (débitos ≤ R mi): até 84 meses
-Simples Nacional: até 60 meses — obrigatório parcelar para manter o regime (débito sem parcelamento = exclusão)
-PERT (MP 783/2017): encerrado para novas adesões; quem aderiu, monitorar parcelas
-
-GNRE (Guia Nacional de Recolhimento de Tributos Estaduais):
-- Recolhe ICMS-ST ao estado destinatário em operações interestaduais
-- Quem recolhe: substituto tributário (remetente/fabricante/importador) — antes da saída
-- Prazo: geralmente até dia 9 do mês seguinte; verificar legislação do estado destinatário
-- MVA/IVA-ST: percentual na base de cálculo do ICMS-ST; atualizado periodicamente por cada estado
-- Ressarcimento: quando venda ao consumidor abaixo da pauta — solicitar ao estado de destino
-
-========================================
-ECF — BLOCO K E BLOCO P
-========================================
-
-Bloco K — Controle de Produção e Estoque (obrigatório para industriais):
-- Já exigido: Lucro Real receita > R00 mi
-- K200: estoque escriturado | K230: ordens de produção | K235: insumos consumidos | K250: industrialização por terceiros
-- Atenção: divergência entre estoque contábil e fiscal gera autuação automática no cruzamento SPED
-
-Bloco P — IRPJ/CSLL (Lucro Presumido):
-- P100: apuração trimestral IRPJ | P150: apuração trimestral CSLL
-- Adicional IRPJ: 10% sobre base trimestral > R0.000 (= R0.000/mês)
-
-========================================
-NFS-e NACIONAL, DAE E DOCUMENTOS DE SERVIÇO
-========================================
-
-NFS-e Nacional (ABRASF v3 / RFB — nfse.gov.br):
-- Implementação progressiva desde 2023; municípios aderindo voluntariamente
-- Em 2026: campos IBS/CBS obrigatórios nos municípios que aderiram à Reforma Tributária
-- Simples Nacional: dispensado do destaque IBS/CBS em 2026; obrigatório a partir de 2027
-- ISS continua vigente até 2032 — NFS-e com ISS permanece válida durante a transição
-
-DAE — Documento de Arrecadação do eSocial (empregador doméstico):
-- Gerado via esocial.gov.br/doméstico; unifica INSS + FGTS do trabalhador doméstico
-- Inclui: INSS patronal 8% + INSS empregado (7,5%–9%) + FGTS 8% + seguro acidente 0,8%
-- Substitui GPS individual; vencimento todo dia 7 do mês seguinte (ou dia útil anterior)
 
 ========================================
 SITUAÇÕES FISCAIS COMUNS E ALERTAS
