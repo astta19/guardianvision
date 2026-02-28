@@ -10,6 +10,7 @@
       --primary: #1a1a1a;
       --sidebar-hover: #f5f5f5;
       --card: #fff;
+      --hover: #f5f5f5;
       --text: #1a1a1a;
       --text-light: #666;
       --border: #e5e5e5;
@@ -31,6 +32,7 @@
       --primary: #f5f5f5;
       --sidebar-hover: #2a2a2a;
       --card: #2d2d2d;
+      --hover: #333333;
       --text: #f5f5f5;
       --text-light: #a0a0a0;
       --border: #404040;
@@ -1913,5 +1915,120 @@
   #agendaModal > div {
     border-radius: 20px 20px 0 0;
     max-height: 95dvh;
+  }
+}
+
+/* ── SPED — Responsividade ────────────────────────────────── */
+
+/* Tablet: reduzir padding e ajustar grid */
+@media (max-width: 768px) {
+  .sped-modal-box {
+    width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  #spedModal {
+    padding: 0;
+    align-items: flex-start;
+  }
+  .sped-panel {
+    padding: 14px 16px;
+  }
+  .sped-header {
+    padding: 14px 16px;
+  }
+  .sped-form-row {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+  .sped-apuracao-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile: coluna única, tabelas com scroll horizontal */
+@media (max-width: 600px) {
+  .sped-modal-box {
+    border-radius: 0;
+    width: 100%;
+    max-height: 100dvh;
+  }
+  .sped-header {
+    padding: 12px 14px;
+  }
+  .sped-header h2 {
+    font-size: 14px;
+  }
+  /* Tabs: scroll horizontal com texto menor */
+  .sped-tabs {
+    padding: 8px 12px;
+    gap: 3px;
+    scrollbar-width: none;
+  }
+  .sped-tabs::-webkit-scrollbar { display: none; }
+  .sped-tab-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  /* Formulários: 2 colunas em telas pequenas */
+  .sped-form-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  /* Campos que ocupam span 2 continuam span 2 */
+  .sped-form-row .field[style*="grid-column:span 2"],
+  .sped-form-row .field[style*="grid-column: span 2"] {
+    grid-column: 1 / -1;
+  }
+  .sped-panel {
+    padding: 12px 14px;
+  }
+  /* Tabelas: scroll horizontal obrigatório */
+  .sped-table {
+    min-width: 520px;
+  }
+  #spedListaDocs,
+  #spedListaParts,
+  #spedListaProds {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Totais em coluna */
+  .sped-totais {
+    flex-direction: column;
+    gap: 6px;
+  }
+  /* Apuração: coluna única */
+  .sped-apuracao-grid {
+    grid-template-columns: 1fr;
+  }
+  /* Ações do período em wrap já existe, ajustar tamanho dos botões */
+  .btn-sped-sm {
+    font-size: 11px;
+    padding: 5px 10px;
+    min-height: 34px;
+  }
+  .btn-sped-primary {
+    width: 100%;
+    padding: 10px;
+    font-size: 13px;
+    min-height: 42px;
+  }
+  /* Inputs maiores para evitar zoom no iOS */
+  .sped-form-row input,
+  .sped-form-row select {
+    font-size: 16px;
+    padding: 9px 10px;
+  }
+}
+
+/* Telas muito pequenas: coluna única completa */
+@media (max-width: 380px) {
+  .sped-form-row {
+    grid-template-columns: 1fr;
+  }
+  .sped-tab-btn {
+    font-size: 10px;
+    padding: 5px 8px;
   }
 }
