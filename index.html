@@ -594,10 +594,6 @@
             <button id="btnDasnSimei" onclick="gerarDasnSimei()" style="display:none;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text);text-align:left" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'">
               <i data-lucide="file-badge" style="width:15px;height:15px;color:#ea580c"></i> DASN-SIMEI — MEI (PDF)
             </button>
-            <div style="height:1px;background:var(--border);margin:2px 0"></div>
-            <button onclick="openFolha(); document.getElementById('docGenMenu').style.display='none'" style="display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text);text-align:left" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='none'">
-              <i data-lucide="users" style="width:15px;height:15px;color:#7c3aed"></i> Folha de Pagamento
-            </button>
           </div>
         </div>
         <button class="btn-send" id="sendBtn" onclick="send()">
@@ -704,6 +700,20 @@
             </div>
           </div>
           <!-- Campos Simples Nacional — mostrados via atualizarCamposDarf() -->
+          <!-- Campo atividade Lucro Presumido — presunção IRPJ -->
+          <div class="darf-row" id="darfFieldAtivPresumido" style="display:none">
+            <div class="darf-field" style="grid-column:span 2">
+              <label>Atividade (presunção IRPJ)</label>
+              <select id="darfAtivPresumido" onchange="calcularDarf()">
+                <option value="comercio">Comércio / Indústria — 8%</option>
+                <option value="servicos">Serviços em geral — 32%</option>
+                <option value="servicos_hosp">Serviços hospitalares — 8%</option>
+                <option value="transporte_carga">Transporte de cargas — 8%</option>
+                <option value="transporte_pass">Transporte de passageiros — 16%</option>
+                <option value="construcao">Construção civil (com material) — 8%</option>
+              </select>
+            </div>
+          </div>
           <div id="darfSimplesFields" style="display:none">
             <div class="darf-row">
               <div class="darf-field">
@@ -1132,126 +1142,6 @@
     </div>
   </div>
 
-  <!-- MODAL FOLHA DE PAGAMENTO -->
-  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:8800;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto" onclick="if(event.target===this)closeFolha()">
-    <div style="background:var(--bg);border-radius:16px;width:100%;max-width:620px;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;margin:auto">
-
-      <!-- Cabeçalho -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card);flex-shrink:0">
-        <span style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
-          <i data-lucide="users" style="width:16px;height:16px"></i>Folha de Pagamento Simplificada
-        </span>
-        <button onclick="closeFolha()" style="background:var(--sidebar-hover);border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
-          <i data-lucide="x" style="width:16px;height:16px"></i>
-        </button>
-      </div>
-
-      <!-- Corpo com scroll -->
-      <div style="overflow-y:auto;flex:1;padding:20px;-webkit-overflow-scrolling:touch">
-
-        <p style="font-size:12px;color:var(--text-light);margin:0 0 16px;line-height:1.5">
-          Cálculo auxiliar de INSS, IRRF e FGTS. Tabelas Portaria MF 1.191/2025 (INSS) e 1.206/2025 (IRRF). Não substitui sistemas homologados de RH.
-        </p>
-
-        <!-- Identificação -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Nome do Funcionário *</label>
-            <input type="text" id="folhaNome" placeholder="João da Silva" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Cargo</label>
-            <input type="text" id="folhaCargo" placeholder="Auxiliar Administrativo" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Competência (MM/AAAA)</label>
-            <input type="text" id="folhaCompetencia" placeholder="02/2026" maxlength="7" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Tipo de Contrato</label>
-            <select id="folhaTipoContrato" onchange="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-              <option value="clt">CLT — INSS Patronal 20%</option>
-              <option value="mei">MEI (empregado) — Patronal 3%</option>
-              <option value="autonomo">Autônomo / Sem patronal</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="height:1px;background:var(--border);margin:8px 0 14px"></div>
-
-        <!-- Remuneração -->
-        <div style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Remuneração</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Salário Base (R$) *</label>
-            <input type="number" id="folhaSalario" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Dias trabalhados</label>
-            <input type="number" id="folhaDias" value="30" min="1" max="31" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Horas extras 50%</label>
-            <input type="number" id="folhaHE50" placeholder="0" min="0" step="0.5" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Horas extras 100%</label>
-            <input type="number" id="folhaHE100" placeholder="0" min="0" step="0.5" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Horas adicionais noturnas</label>
-            <input type="number" id="folhaAdicNoturno" placeholder="0" min="0" step="0.5" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Outros acréscimos (R$)</label>
-            <input type="number" id="folhaOutrosAcr" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-        </div>
-
-        <div style="height:1px;background:var(--border);margin:8px 0 14px"></div>
-
-        <!-- Deduções -->
-        <div style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Deduções (base IRRF)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Dependentes (R$ 189,59/dep.)</label>
-            <input type="number" id="folhaDependentes" value="0" min="0" max="20" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <label style="font-size:12px;color:var(--text-light)">Pensão alimentícia (R$)</label>
-            <input type="number" id="folhaPensao" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px;grid-column:span 2">
-            <label style="font-size:12px;color:var(--text-light)">Outros descontos (R$) — vale-transporte, plano saúde, etc.</label>
-            <input type="number" id="folhaOutrosDesc" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          </div>
-        </div>
-
-        <!-- Resultado -->
-        <div id="folhaResult" style="display:none"></div>
-
-        <!-- Ações -->
-        <div id="folhaActions" style="display:none;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <button onclick="exportarFolhaPDF()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;font-weight:500">
-            <i data-lucide="file" style="width:13px;height:13px;color:#dc2626"></i> PDF
-          </button>
-          <button onclick="exportarFolhaExcel()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;font-weight:500">
-            <i data-lucide="table" style="width:13px;height:13px;color:#16a34a"></i> Excel
-          </button>
-          <button onclick="limparFolha()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;font-weight:500">
-            <i data-lucide="refresh-cw" style="width:13px;height:13px"></i> Limpar
-          </button>
-          <button onclick="enviarFolhaParaChat()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:8px;background:var(--accent);color:var(--user-text);font-size:12px;cursor:pointer;font-weight:600;margin-left:auto">
-            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Analisar no Chat
-          </button>
-        </div>
-
-      </div><!-- /scroll -->
-    </div>
-  </div>
-  <!-- FIM MODAL FOLHA DE PAGAMENTO -->
-
   <script src="assets/js/portal-admin.js"></script>
-  <script src="assets/js/folha.js"></script>
 </body>
 </html>
