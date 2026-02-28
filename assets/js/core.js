@@ -39,7 +39,7 @@ const fiscalDeadlines = {
       'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
       'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
       'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
-      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
+      'dirpf':       { day: 30, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
