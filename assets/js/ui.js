@@ -178,9 +178,9 @@ async function carregarChatCompartilhado(token) {
 async function toggleDropdown(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  document.querySelectorAll('.dropdown-menu').forEach(d => d.style.display = 'none');
-  el.style.display = isOpen ? 'none' : 'block';
+  const isOpen = el.classList.contains('on');
+  document.querySelectorAll('.hdr-dropdown').forEach(d => d.classList.remove('on'));
+  if (!isOpen) el.classList.add('on');
 }
 
 async function toggleDocGenMenu() {
@@ -307,6 +307,7 @@ async function shareChat() {
     title:      currentChat.title || 'Conversa',
     messages:   currentChat.messages,
     created_by: currentUser?.id || null,
+    expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
   });
 
   if (error) {
@@ -399,8 +400,12 @@ function closeLearningStats() {
 function copyShareLink() {
   const link = document.getElementById('shareLink');
   link.select();
-  navigator.clipboard.writeText(link.value);
-  alert('Link copiado!');
+  navigator.clipboard.writeText(link.value).then(() => {
+    const btn = link.nextElementSibling;
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ Copiado!'; setTimeout(() => { btn.textContent = orig; }, 2000); }
+  }).catch(() => {
+    document.execCommand('copy');
+  });
 }
 
 function closeDropdowns() {
