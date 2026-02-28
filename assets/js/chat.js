@@ -1071,11 +1071,13 @@ POSTURA PROFISSIONAL:
     // Tentar com modelo atual, se falhar tentar próximo
     let data = null;
     let attempts = 0;
-    const maxAttempts = MODELS.length * 2;
+    const maxAttempts = MODELS.length;
+    let modeloUsado = MODELS[currentModelIndex % MODELS.length];
 
     while (attempts < maxAttempts && !data) {
       const modelIndex = currentModelIndex % MODELS.length;
       const model = MODELS[modelIndex];
+      modeloUsado = model;
       
       try {
         
@@ -1151,7 +1153,7 @@ POSTURA PROFISSIONAL:
         text || 'Arquivos enviados',
         reply,
         data.usage?.total_tokens || 0,
-        MODELS[currentModelIndex % MODELS.length]
+        modeloUsado
       );
     } catch (e) {
     }
