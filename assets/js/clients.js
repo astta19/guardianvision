@@ -115,7 +115,7 @@ async function closeClientModal() {
   document.getElementById('newClientForm').classList.remove('show');
 }
 
-async function renderClientList() {
+async function renderClientList(search = '', regime = '') {
   const el = document.getElementById('clientList');
   el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando...</p>';
 
@@ -147,7 +147,24 @@ async function renderClientList() {
     return;
   }
 
-  el.innerHTML = data.map(cl => `
+  // Guardar lista completa para selectCliente usar (antes de filtrar)
+  window._clientesList = data;
+
+  // Filtrar localmente por busca e regime
+  const q = (search || '').toLowerCase();
+  const r = (regime || '').toLowerCase();
+  const filtrado = data.filter(cl => {
+    const nome = (cl.razao_social + ' ' + (cl.nome_fantasia || '') + ' ' + (cl.cnpj || '')).toLowerCase();
+    const regimeOk = !r || (cl.regime_tributario || '').toLowerCase().includes(r);
+    return (!q || nome.includes(q)) && regimeOk;
+  });
+
+  if (!filtrado.length) {
+    el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Nenhuma empresa encontrada.</p>';
+    return;
+  }
+
+  el.innerHTML = filtrado.map(cl => `
     <div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}" style="position:relative">
       <div style="flex:1;cursor:pointer" onclick="selectCliente('${cl.id}')">
         <div class="client-item-name">${escapeHtml(cl.razao_social)}</div>
@@ -159,8 +176,6 @@ async function renderClientList() {
       </button>` : ''}
     </div>`).join('');
 
-  // Guardar lista para selectCliente usar
-  window._clientesList = data;
   lucide.createIcons();
 }
 
