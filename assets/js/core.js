@@ -39,7 +39,7 @@ const fiscalDeadlines = {
       'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
       'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
       'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
-      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
+      'dirpf':       { day: 30, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
@@ -429,7 +429,6 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   // Fechar em ordem de prioridade (modal mais aberto fecha primeiro)
-  if (typeof closeFolha === 'function' && document.getElementById('folhaModal')?.style.display !== 'none') { closeFolha(); return; }
   if (typeof closeSped === 'function' && document.getElementById('spedModal')?.style.display !== 'none') { closeSped(); return; }
   if (typeof closeProfile === 'function' && document.getElementById('profileModal')?.style.display !== 'none') { closeProfile(); return; }
   if (document.getElementById('statsModal')?.style.display !== 'none') { if (typeof closeStats === 'function') closeStats(); return; }
@@ -459,7 +458,11 @@ async function carregarKPIs() {
         sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('status', 'pendente')
           .lt('prazo', hoje.toISOString().slice(0,10)),
-        sb.from('clientes').select('*', { count: 'exact', head: true }),
+        (() => {
+          let q = sb.from('clientes').select('*', { count: 'exact', head: true });
+          if (!isAdmin()) q = q.eq('user_id', currentUser.id);
+          return q;
+        })(),
         sb.from('documentos_fiscais').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('tipo', 'darf')
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
@@ -475,4 +478,19 @@ async function carregarKPIs() {
   } catch(e) {
     console.error('KPI error:', e);
   }
+}
+
+// salvarDocumentoFiscal — definida aqui (core.js) para garantir disponibilidade
+// antes de fiscal.js ser carregado
+async function salvarDocumentoFiscal(tipo, dados) {
+  if (!currentUser) return;
+  try {
+    await sb.from('documentos_fiscais').insert({
+      user_id: currentUser.id,
+      cliente_id: currentCliente?.id || null,
+      tipo,
+      dados,
+      criado_em: new Date().toISOString()
+    });
+  } catch(e) {}
 }
