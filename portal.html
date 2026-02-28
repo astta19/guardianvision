@@ -86,33 +86,43 @@
 const token = new URLSearchParams(location.search).get('token');
 
 async function init() {
-  const app = document.getElementById('app');
-
   if (!token) {
-    renderErro('Link inválido', 'Este link não contém um token de acesso válido.');
+    mostrar('Link inválido', 'Este link não contém um token de acesso válido.');
     return;
   }
 
   try {
     const res = await fetch(`/api/portal?token=${encodeURIComponent(token)}`);
-    const data = await res.json();
 
-    if (!res.ok || data.erro) {
-      renderErro(
-        data.erro?.includes('expirado') ? 'Link expirado' : 'Acesso inválido',
-        data.erro || 'Este link não é válido ou foi revogado pelo seu contador.'
-      );
+    // res.json() pode falhar se o servidor retornar HTML de erro (ex: 404 do Vercel)
+    let data;
+    try { data = await res.json(); }
+    catch { throw new Error(`HTTP ${res.status}`); }
+
+    if (!res.ok || data?.erro) {
+      const titulo = data?.erro?.includes('expirado') ? 'Link expirado' : 'Acesso inválido';
+      mostrar(titulo, data?.erro || 'Este link não é válido ou foi revogado pelo seu contador.');
       return;
     }
 
     renderPortal(data);
   } catch (e) {
-    renderErro('Erro de conexão', 'Não foi possível carregar os dados. Tente novamente em instantes.');
+    mostrar('Erro de conexão', 'Não foi possível carregar os dados. Tente novamente em instantes.');
+  } finally {
+    // Garantido: loading some e app aparece independente do caminho
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    if (window.lucide) lucide.createIcons();
   }
+}
 
-  document.getElementById('loading').style.display = 'none';
-  app.style.display = 'block';
-  if (window.lucide) lucide.createIcons();
+function mostrar(titulo, msg) {
+  document.getElementById('app').innerHTML = `
+    <div class="erro-box">
+      <i data-lucide="shield-off" style="width:56px;height:56px"></i>
+      <h2>${esc(titulo)}</h2>
+      <p>${esc(msg)}</p>
+    </div>`;
 }
 
 function renderPortal(d) {
@@ -210,18 +220,6 @@ function renderDoc(d) {
         <div class="doc-meta">Gerado em ${data}</div>
       </div>
     </div>`;
-}
-
-function renderErro(titulo, msg) {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('app').innerHTML = `
-    <div class="erro-box">
-      <i data-lucide="shield-off" style="width:56px;height:56px"></i>
-      <h2>${esc(titulo)}</h2>
-      <p>${esc(msg)}</p>
-    </div>`;
-  if (window.lucide) lucide.createIcons();
 }
 
 function mesAtual() {
