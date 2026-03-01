@@ -342,19 +342,6 @@ async function salvarConfigNotif() {
   }
 }
 
-async function salvarDocumentoFiscal(tipo, dados) {
-  if (!currentUser) return;
-  try {
-    await sb.from('documentos_fiscais').insert({
-      user_id: currentUser.id,
-      cliente_id: currentCliente?.id || null,
-      tipo,
-      dados,
-      criado_em: new Date().toISOString()
-    });
-  } catch(e) {}
-}
-
 // ====== FUNÇÕES DE AUTENTICAÇÃO ======
 
 
