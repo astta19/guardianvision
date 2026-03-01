@@ -542,17 +542,13 @@ async function spedGerarTxt(periodoId) {
 
     if (!per) { alert('Período não encontrado.'); return; }
 
-    // ── Validação prévia ──────────────────────────────────────────────
+    // Validações antes de gerar
     const erros = [];
-    if (!per.cnpj)         erros.push('CNPJ do estabelecimento não preenchido (Registro 0000).');
-    if (!per.nome)         erros.push('Razão Social não preenchida (Registro 0000).');
-    if (!per.cod_mun)      erros.push('Código do Município (IBGE) não preenchido (Registro 0000).');
-    if (!docs?.length)     erros.push('Nenhum documento fiscal cadastrado no período (Registro C100).');
-    if (!apuracao)         erros.push('Apuração ICMS não calculada. Acesse a aba Apuração e clique em Recalcular.');
-
-    if (erros.length > 0) {
-      alert('⚠️ O arquivo SPED não pode ser gerado:\n\n' + erros.map(e => '• ' + e).join('\n') +
-        '\n\nCorrija os itens acima antes de prosseguir.');
+    if (!docs?.length)      erros.push('• Nenhum documento fiscal lançado no período.');
+    if (!apuracao)          erros.push('• Apuração de ICMS não calculada. Acesse a aba "Apuração" e recalcule.');
+    if (!currentCliente)    erros.push('• Nenhuma empresa selecionada.');
+    if (erros.length) {
+      alert('Não é possível gerar o SPED:\n\n' + erros.join('\n'));
       return;
     }
 
