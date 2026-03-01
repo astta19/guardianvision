@@ -422,18 +422,18 @@
       </div>
 
       <div class="c-right">
-        <!-- Botões sempre visíveis -->
-        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn">
+        <!-- Botões controlados por permissão — display:none inicial, applyAdminUI revela -->
+        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn" data-perm="portal" style="display:none">
           <i data-lucide="external-link"></i>
         </button>
-        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn">
+        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn" data-perm="agenda" style="display:none">
           <i data-lucide="calendar-clock"></i>
           <span id="agendaBadgeCount" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px"></span>
         </button>
-        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped">
+        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped" style="display:none">
           <i data-lucide="file-code-2"></i>
         </button>
-        <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
+        <button class="icon-btn" onclick="openCalculator()" title="Calculadora" data-perm="calculadora" style="display:none">
           <i data-lucide="calculator"></i>
         </button>
         <button class="icon-btn" onclick="toggleTheme()" title="Tema">
@@ -447,31 +447,31 @@
           </button>
           <div class="hdr-dropdown" id="moreMenu">
             <div class="hdr-dropdown-title">Opções</div>
-            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()">
+            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
               <i data-lucide="file-text"></i> Documentos Fiscais
             </button>
-            <button class="menu-item" onclick="openAgenda(); closeDropdowns()">
+            <button class="menu-item" data-perm="agenda" onclick="openAgenda(); closeDropdowns()" style="display:none">
               <i data-lucide="calendar-clock"></i> Agenda de Prazos
             </button>
-            <button class="menu-item" onclick="abrirPortalCliente(); closeDropdowns()">
+            <button class="menu-item" data-perm="portal" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
               <i data-lucide="external-link"></i> Portal do Cliente
             </button>
-            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()">
+            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()" style="display:none">
               <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
             </button>
-            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()" style="display:none">
               <i data-lucide="bar-chart-2"></i> Estatísticas
             </button>
-            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()" style="display:none">
               <i data-lucide="brain"></i> Aprendizado
             </button>
-            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()" style="display:none">
               <i data-lucide="shield"></i> Permissões de usuários
             </button>
-            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()">
+            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()" style="display:none">
               <i data-lucide="download"></i> Exportar conversa
             </button>
-            <button class="menu-item" onclick="shareChat(); closeDropdowns()">
+            <button class="menu-item" data-perm="compartilhar" onclick="shareChat(); closeDropdowns()" style="display:none">
               <i data-lucide="share-2"></i> Compartilhar
             </button>
             <div class="menu-sep"></div>
@@ -485,20 +485,20 @@
           </div>
         </div>
 
-        <!-- Botões desktop visíveis individualmente -->
-        <button class="icon-btn desktop-only" onclick="openDocumentos()" title="Documentos Fiscais">
+        <!-- Botões desktop controlados por permissão -->
+        <button class="icon-btn desktop-only" onclick="openDocumentos()" title="Documentos Fiscais" data-perm="documentos" style="display:none">
           <i data-lucide="file-text"></i>
         </button>
-        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar">
+        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar" data-perm="exportar" style="display:none">
           <i data-lucide="download"></i>
         </button>
-        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas">
+        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas" style="display:none">
           <i data-lucide="bar-chart-2"></i>
         </button>
-        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado">
+        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado" style="display:none">
           <i data-lucide="brain"></i>
         </button>
-        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários">
+        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários" style="display:none">
           <i data-lucide="shield"></i>
         </button>
         <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
@@ -569,11 +569,11 @@
         <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..." maxlength="8000"
           onkeypress="if(event.key==='Enter' && !event.shiftKey) send()"
           oninput="updateCharCount()" autocomplete="off">
-        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos">
+        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos" data-perm="arquivos" style="display:none">
           <i data-lucide="paperclip"></i>
         </button>
         <span id="charCount" style="font-size:11px;color:var(--text-light);align-self:center;white-space:nowrap;display:none">0/8000</span>
-        <div class="dropdown-wrap" style="position:relative">
+        <div class="dropdown-wrap" style="position:relative" data-perm="gerar_doc" style="display:none">
           <button class="icon-btn" id="docGenBtn" onclick="toggleDocGenMenu()" title="Gerar documento">
             <i data-lucide="file-down"></i>
           </button>
@@ -687,16 +687,6 @@
             <div class="darf-field" id="darfFieldLucro" style="display:none">
               <label>Lucro apurado (R$)</label>
               <input type="number" id="darfLucro" placeholder="0,00" min="0" step="0.01" oninput="calcularDarf()">
-            </div>
-          </div>
-          <div class="darf-row" id="darfFieldAtividade" style="display:none">
-            <div class="darf-field">
-              <label>Atividade predominante</label>
-              <select id="darfAtividade" onchange="calcularDarf()">
-                <option value="comercio">Comércio / Indústria (presunção 8%)</option>
-                <option value="servico">Serviços em geral (presunção 32%)</option>
-                <option value="transporte">Transportadora de cargas (presunção 16%)</option>
-              </select>
             </div>
           </div>
           <div class="darf-row" id="darfFieldPro" style="display:none">
