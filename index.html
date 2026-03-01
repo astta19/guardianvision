@@ -689,6 +689,16 @@
               <input type="number" id="darfLucro" placeholder="0,00" min="0" step="0.01" oninput="calcularDarf()">
             </div>
           </div>
+          <div class="darf-row" id="darfFieldAtividade" style="display:none">
+            <div class="darf-field">
+              <label>Atividade predominante</label>
+              <select id="darfAtividade" onchange="calcularDarf()">
+                <option value="comercio">Comércio / Indústria (presunção 8%)</option>
+                <option value="servico">Serviços em geral (presunção 32%)</option>
+                <option value="transporte">Transportadora de cargas (presunção 16%)</option>
+              </select>
+            </div>
+          </div>
           <div class="darf-row" id="darfFieldPro" style="display:none">
             <div class="darf-field">
               <label>Pró-labore total (R$)</label>
@@ -700,20 +710,6 @@
             </div>
           </div>
           <!-- Campos Simples Nacional — mostrados via atualizarCamposDarf() -->
-          <!-- Campo atividade Lucro Presumido — presunção IRPJ -->
-          <div class="darf-row" id="darfFieldAtivPresumido" style="display:none">
-            <div class="darf-field" style="grid-column:span 2">
-              <label>Atividade (presunção IRPJ)</label>
-              <select id="darfAtivPresumido" onchange="calcularDarf()">
-                <option value="comercio">Comércio / Indústria — 8%</option>
-                <option value="servicos">Serviços em geral — 32%</option>
-                <option value="servicos_hosp">Serviços hospitalares — 8%</option>
-                <option value="transporte_carga">Transporte de cargas — 8%</option>
-                <option value="transporte_pass">Transporte de passageiros — 16%</option>
-                <option value="construcao">Construção civil (com material) — 8%</option>
-              </select>
-            </div>
-          </div>
           <div id="darfSimplesFields" style="display:none">
             <div class="darf-row">
               <div class="darf-field">
