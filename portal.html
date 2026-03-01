@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Portal do Cliente — Fiscal365</title>
+
+  <!-- Meta tags OG/compartilhamento (#10) -->
+  <meta property="og:title" content="Portal do Cliente — Fiscal365">
+  <meta property="og:description" content="Acompanhe seus prazos fiscais e documentos contábeis.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#000000">
+
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,7 +23,9 @@
     }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; }
 
-    #loading { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 99; }
+    /* Loading (#6) */
+    #loading { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 99; }
+    #loading p { font-size: 13px; color: var(--text-light); }
     .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -26,33 +35,52 @@
     .header-logo { font-size: 13px; font-weight: 700; letter-spacing: .5px; opacity: .7; margin-bottom: 8px; text-transform: uppercase; }
     .header-empresa { font-size: 22px; font-weight: 800; line-height: 1.2; }
     .header-cnpj { font-size: 12px; opacity: .65; margin-top: 4px; }
-    .header-meta { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+    .header-meta { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center; }
     .header-badge { background: rgba(255,255,255,.12); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; }
+    /* (#5) Badge de validade com alerta */
+    .header-badge-warn { background: rgba(217,119,6,.35); border: 1px solid rgba(217,119,6,.5); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; color: #fef3c7; }
 
     .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
     .card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-light); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
 
-    .contador-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .contador-item label { font-size: 11px; color: var(--text-light); display: block; margin-bottom: 2px; }
-    .contador-item span { font-size: 13px; font-weight: 600; color: var(--text); }
+    /* Contador (#1 avatar, #9 contato) */
+    .contador-layout { display: flex; gap: 16px; align-items: flex-start; }
+    .contador-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--bg); border: 2px solid var(--border); object-fit: cover; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: var(--text-light); overflow: hidden; }
+    .contador-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .contador-info { flex: 1; }
+    .contador-nome { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .contador-crc { font-size: 12px; color: var(--text-light); margin-bottom: 12px; }
+    .btn-contato { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--accent); color: var(--accent-fg); border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; }
 
+    /* Prazos (#7 prioridade, #8 origem) */
     .prazo-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .prazo-item:last-child { border-bottom: none; }
     .prazo-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .prazo-nome { flex: 1; font-size: 13px; font-weight: 500; }
+    .prazo-info { flex: 1; min-width: 0; }
+    .prazo-nome { font-size: 13px; font-weight: 500; }
+    .prazo-badges { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+    .badge { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 20px; }
+    .badge-alta     { background: #fee2e2; color: #dc2626; }
+    .badge-media    { background: #fef3c7; color: #d97706; }
+    .badge-baixa    { background: #f1f5f9; color: var(--text-light); }
+    .badge-origem   { background: #ede9fe; color: #7c3aed; }
     .prazo-data { font-size: 12px; color: var(--text-light); white-space: nowrap; }
     .prazo-dias { font-size: 11px; font-weight: 700; white-space: nowrap; padding: 2px 8px; border-radius: 20px; }
     .dias-ok    { background: #dcfce7; color: var(--ok); }
     .dias-warn  { background: #fef3c7; color: var(--warn); }
     .dias-error { background: #fee2e2; color: var(--error); }
-    .dias-done  { background: #f1f5f9; color: var(--text-light); }
 
-    .doc-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    /* Documentos (#3 dados) */
+    .doc-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .doc-item:last-child { border-bottom: none; }
-    .doc-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .doc-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
     .doc-info { flex: 1; min-width: 0; }
-    .doc-nome { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .doc-nome { font-size: 13px; font-weight: 500; }
     .doc-meta { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+    .doc-detalhe { font-size: 11px; color: var(--text-light); margin-top: 3px; }
+
+    /* (#4) Nota de paginação */
+    .paginacao-nota { font-size: 11px; color: var(--text-light); text-align: center; padding-top: 10px; border-top: 1px solid var(--border); margin-top: 4px; }
 
     .erro-box { text-align: center; padding: 60px 24px; }
     .erro-box h2 { font-size: 18px; margin-bottom: 8px; }
@@ -62,13 +90,18 @@
 
     @media (max-width: 480px) {
       .header { border-radius: 0 0 var(--radius) var(--radius); margin: -16px -16px 20px; }
-      .contador-grid { grid-template-columns: 1fr; }
+      .contador-layout { flex-direction: column; }
     }
   </style>
 </head>
 <body>
 
-<div id="loading"><div class="spinner"></div></div>
+<!-- (#6) Loading com mensagem -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Carregando seus dados...</p>
+</div>
+
 <div class="container" id="app" style="display:none"></div>
 
 <script>
@@ -107,8 +140,35 @@ function renderPortal(d) {
   const contador = d.contador  || {};
   const tarefas  = d.tarefas   || [];
   const docs     = d.documentos || [];
-  const expiraEm = d.expira_em ? new Date(d.expira_em).toLocaleDateString('pt-BR') : null;
-  const geradoEm = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // (#10) Atualizar og:title dinamicamente
+  if (cliente.razao_social) {
+    document.title = `${cliente.razao_social} — Portal Fiscal365`;
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', `Portal de ${cliente.razao_social}`);
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', `Prazos fiscais e documentos de ${cliente.razao_social}.`);
+  }
+
+  // (#5) Calcular dias até expiração
+  const expiraEm   = d.expira_em ? new Date(d.expira_em) : null;
+  const diasExpira = expiraEm ? Math.ceil((expiraEm - new Date()) / 86400000) : null;
+  const geradoEm   = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // (#5) Badge de validade com alerta se <= 7 dias
+  let badgeValidade = '';
+  if (diasExpira !== null) {
+    if (diasExpira <= 0) {
+      badgeValidade = `<span class="header-badge-warn">⚠ Link expirado</span>`;
+    } else if (diasExpira <= 7) {
+      badgeValidade = `<span class="header-badge-warn">⚠ Link expira em ${diasExpira}d</span>`;
+    } else {
+      badgeValidade = `<span class="header-badge" style="opacity:.6">Válido até ${expiraEm.toLocaleDateString('pt-BR')}</span>`;
+    }
+  }
+
+  // (#1) Avatar do contador
+  const avatarHtml = contador.avatar_url
+    ? `<div class="contador-avatar"><img src="${esc(contador.avatar_url)}" alt="foto"></div>`
+    : `<div class="contador-avatar">${(contador.nome || '?')[0].toUpperCase()}</div>`;
 
   document.getElementById('app').innerHTML = `
     <div class="header">
@@ -119,15 +179,22 @@ function renderPortal(d) {
         ${cliente.regime_tributario ? `<span class="header-badge">${esc(cliente.regime_tributario)}</span>` : ''}
         ${cliente.nome_fantasia ? `<span class="header-badge">${esc(cliente.nome_fantasia)}</span>` : ''}
         <span class="header-badge">Atualizado em ${geradoEm}</span>
-        ${expiraEm ? `<span class="header-badge" style="opacity:.6">Válido até ${expiraEm}</span>` : ''}
+        ${badgeValidade}
       </div>
     </div>
 
+    <!-- (#1 avatar, #9 contato) -->
     <div class="card">
       <div class="card-title"><i data-lucide="user-check" style="width:14px;height:14px"></i> Contador Responsável</div>
-      <div class="contador-grid">
-        <div class="contador-item"><label>Nome</label><span>${esc(contador.nome || '—')}</span></div>
-        <div class="contador-item"><label>CRC</label><span>${esc(contador.crc || '—')}</span></div>
+      <div class="contador-layout">
+        ${avatarHtml}
+        <div class="contador-info">
+          <div class="contador-nome">${esc(contador.nome || '—')}</div>
+          <div class="contador-crc">${contador.crc ? `CRC ${esc(contador.crc)}` : ''}</div>
+          <a class="btn-contato" href="https://wa.me/?text=${encodeURIComponent(`Olá ${contador.nome || 'contador'}, tenho uma dúvida sobre minha contabilidade.`)}" target="_blank" rel="noopener">
+            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Falar com o contador
+          </a>
+        </div>
       </div>
     </div>
 
@@ -143,6 +210,7 @@ function renderPortal(d) {
     <div class="card">
       <div class="card-title"><i data-lucide="file-text" style="width:14px;height:14px"></i> Documentos Recentes</div>
       ${docs.map(doc => renderDoc(doc)).join('')}
+      ${docs.length === 10 ? '<div class="paginacao-nota">Exibindo os 10 documentos mais recentes. Solicite ao seu contador para ver mais.</div>' : ''}
     </div>` : ''}
 
     <div class="footer">
@@ -152,10 +220,11 @@ function renderPortal(d) {
   `;
 }
 
+// (#7 prioridade com cor, #8 origem como badge)
 function renderTarefa(t) {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const prazo = new Date(t.prazo + 'T00:00:00');
-  const dias = Math.ceil((prazo - hoje) / 86400000);
+  const dias  = Math.ceil((prazo - hoje) / 86400000);
 
   let corDot, classDias, textoDias;
   if (dias < 0) {
@@ -166,25 +235,48 @@ function renderTarefa(t) {
     corDot = '#16a34a'; classDias = 'dias-ok'; textoDias = `${dias}d restantes`;
   }
 
+  // (#7) Badge de prioridade com cor
+  const prioMap = { alta: 'badge-alta', media: 'badge-media', baixa: 'badge-baixa' };
+  const prioClass = prioMap[t.prioridade?.toLowerCase()] || 'badge-baixa';
+  const badgePrio = t.prioridade ? `<span class="badge ${prioClass}">${esc(t.prioridade)}</span>` : '';
+
+  // (#8) Badge de origem
+  const badgeOrigem = t.origem ? `<span class="badge badge-origem">${esc(t.origem)}</span>` : '';
+
   return `
     <div class="prazo-item">
       <div class="prazo-dot" style="background:${corDot}"></div>
-      <div class="prazo-nome">${esc(t.titulo)}${t.prioridade ? `<span style="font-size:10px;color:var(--text-light);margin-left:6px">${esc(t.prioridade)}</span>` : ''}</div>
+      <div class="prazo-info">
+        <div class="prazo-nome">${esc(t.titulo)}</div>
+        ${(badgePrio || badgeOrigem) ? `<div class="prazo-badges">${badgePrio}${badgeOrigem}</div>` : ''}
+      </div>
       <div class="prazo-data">${prazo.toLocaleDateString('pt-BR')}</div>
       <span class="prazo-dias ${classDias}">${textoDias}</span>
     </div>`;
 }
 
+// (#3) Exibir dados do documento (valor DARF, competência, etc.)
 function renderDoc(d) {
   const data  = d.criado_em ? new Date(d.criado_em).toLocaleDateString('pt-BR') : '—';
   const icone = d.tipo === 'nfe' ? 'scan-line' : d.tipo === 'darf' ? 'receipt' : 'file-text';
   const cor   = d.tipo === 'nfe' ? '#2563eb' : d.tipo === 'darf' ? '#dc2626' : '#7c3aed';
+
+  // Extrair informações relevantes do campo dados (JSONB)
+  const dados = d.dados || {};
+  const detalhes = [];
+  if (dados.totalFinal)    detalhes.push(`Valor: R$ ${Number(dados.totalFinal).toLocaleString('pt-BR', {minimumFractionDigits:2})}`);
+  if (dados.valorPrincipal) detalhes.push(`Principal: R$ ${Number(dados.valorPrincipal).toLocaleString('pt-BR', {minimumFractionDigits:2})}`);
+  if (dados.competencia)   detalhes.push(`Competência: ${esc(dados.competencia)}`);
+  if (dados.numero)        detalhes.push(`Nº ${esc(dados.numero)}`);
+  if (dados.codigoReceita) detalhes.push(`Código: ${esc(dados.codigoReceita)}`);
+
   return `
     <div class="doc-item">
       <div class="doc-icon"><i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i></div>
       <div class="doc-info">
         <div class="doc-nome">${esc((d.tipo || 'documento').toUpperCase())}</div>
         <div class="doc-meta">Gerado em ${data}</div>
+        ${detalhes.length ? `<div class="doc-detalhe">${detalhes.join(' · ')}</div>` : ''}
       </div>
     </div>`;
 }
