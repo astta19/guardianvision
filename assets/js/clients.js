@@ -115,7 +115,7 @@ async function closeClientModal() {
   document.getElementById('newClientForm').classList.remove('show');
 }
 
-async function renderClientList(search = '', regime = '') {
+async function renderClientList() {
   const el = document.getElementById('clientList');
   el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando...</p>';
 
@@ -147,24 +147,7 @@ async function renderClientList(search = '', regime = '') {
     return;
   }
 
-  // Guardar lista completa para selectCliente usar (antes de filtrar)
-  window._clientesList = data;
-
-  // Filtrar localmente por busca e regime
-  const q = (search || '').toLowerCase();
-  const r = (regime || '').toLowerCase();
-  const filtrado = data.filter(cl => {
-    const nome = (cl.razao_social + ' ' + (cl.nome_fantasia || '') + ' ' + (cl.cnpj || '')).toLowerCase();
-    const regimeOk = !r || (cl.regime_tributario || '').toLowerCase().includes(r);
-    return (!q || nome.includes(q)) && regimeOk;
-  });
-
-  if (!filtrado.length) {
-    el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:12px">Nenhuma empresa encontrada.</p>';
-    return;
-  }
-
-  el.innerHTML = filtrado.map(cl => `
+  el.innerHTML = data.map(cl => `
     <div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}" style="position:relative">
       <div style="flex:1;cursor:pointer" onclick="selectCliente('${cl.id}')">
         <div class="client-item-name">${escapeHtml(cl.razao_social)}</div>
@@ -176,6 +159,8 @@ async function renderClientList(search = '', regime = '') {
       </button>` : ''}
     </div>`).join('');
 
+  // Guardar lista para selectCliente usar
+  window._clientesList = data;
   lucide.createIcons();
 }
 
@@ -501,10 +486,15 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'documentos',  label: 'Documentos Fiscais', icon: 'file-text' },
-  { id: 'sped',        label: 'SPED EFD',           icon: 'layers' },
-  { id: 'exportar',    label: 'Exportar Conversa',  icon: 'download' },
-  { id: 'calculadora', label: 'Calculadora',         icon: 'calculator' },
+  { id: 'portal',        label: 'Portal do Cliente',    icon: 'external-link' },
+  { id: 'agenda',        label: 'Agenda de Prazos',     icon: 'calendar-clock' },
+  { id: 'documentos',    label: 'Documentos Fiscais',   icon: 'file-text' },
+  { id: 'sped',          label: 'SPED EFD',             icon: 'layers' },
+  { id: 'calculadora',   label: 'Calculadora',          icon: 'calculator' },
+  { id: 'arquivos',      label: 'Anexar Arquivos',      icon: 'paperclip' },
+  { id: 'gerar_doc',     label: 'Gerar Documentos',     icon: 'file-down' },
+  { id: 'exportar',      label: 'Exportar Conversa',    icon: 'download' },
+  { id: 'compartilhar',  label: 'Compartilhar Chat',    icon: 'share-2' },
 ];
 
 async function abrirGerenciarPermissoes() {
