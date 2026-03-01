@@ -342,6 +342,19 @@ async function salvarConfigNotif() {
   }
 }
 
+async function salvarDocumentoFiscal(tipo, dados) {
+  if (!currentUser) return;
+  try {
+    await sb.from('documentos_fiscais').insert({
+      user_id: currentUser.id,
+      cliente_id: currentCliente?.id || null,
+      tipo,
+      dados,
+      criado_em: new Date().toISOString()
+    });
+  } catch(e) {}
+}
+
 // ====== FUNÇÕES DE AUTENTICAÇÃO ======
 
 
@@ -356,8 +369,10 @@ async function loadChats(reset = true) {
     if (reset) { chatsPage = 0; allChats = []; }
 
     const from = chatsPage * CHATS_PER_PAGE;
+    // SEMPRE filtrar por user_id — chats são estritamente privados por usuário
     let query = sb.from('chats')
       .select('id, title, created_at, updated_at, cliente_id')
+      .eq('user_id', currentUser.id)
       .order('updated_at', { ascending: false })
       .range(from, from + CHATS_PER_PAGE - 1);
 
@@ -414,6 +429,7 @@ async function openChat(id) {
       .from('chats')
       .select('*')
       .eq('id', id)
+      .eq('user_id', currentUser.id)
       .maybeSingle();
 
     if (error) throw error;
@@ -480,7 +496,7 @@ async function saveChat() {
 async function deleteChat(id) {
   showConfirm('Tem certeza que deseja excluir esta conversa?', async () => {
     try {
-      const { error } = await sb.from('chats').delete().eq('id', id);
+      const { error } = await sb.from('chats').delete().eq('id', id).eq('user_id', currentUser.id);
       if (error) throw error;
       if (currentChat.id === id) newChat();
       else await loadChats();
