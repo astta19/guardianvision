@@ -39,7 +39,7 @@ const fiscalDeadlines = {
       'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
       'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
       'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
-      'dirpf':       { day: 30, month: 5,         description: 'DIRPF (PF)'                                 },
+      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
@@ -126,16 +126,19 @@ function applyAdminUI() {
     el.style.display = admin ? '' : 'none';
   });
 
-  // admin-menu-item: admin vê tudo; contador vê se tiver permissão
+  // admin-menu-item: apenas para admins
   document.querySelectorAll('.admin-menu-item').forEach(el => {
     el.style.display = admin ? '' : 'none';
   });
 
-  // data-perm: itens com permissão específica
+  // data-perm: admin vê tudo; contador vê apenas o que tiver permissão
   document.querySelectorAll('[data-perm]').forEach(el => {
     const perm = el.getAttribute('data-perm');
     el.style.display = (admin || perms.includes(perm)) ? '' : 'none';
   });
+
+  // Sidebar — seletor de empresa: admin sempre vê; contador só se tiver clientes atribuídos
+  // (mantido visível para ambos — filtragem ocorre no loadClientes)
 }
 
 // Chamada pelo admin para definir permissões de um contador
@@ -458,8 +461,7 @@ async function carregarKPIs() {
         sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('status', 'pendente')
           .lt('prazo', hoje.toISOString().slice(0,10)),
-        sb.from('clientes').select('*', { count: 'exact', head: true })
-          .eq('user_id', currentUser.id),
+        sb.from('clientes').select('*', { count: 'exact', head: true }),
         sb.from('documentos_fiscais').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('tipo', 'darf')
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
