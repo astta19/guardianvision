@@ -458,11 +458,8 @@ async function carregarKPIs() {
         sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('status', 'pendente')
           .lt('prazo', hoje.toISOString().slice(0,10)),
-        (() => {
-          let q = sb.from('clientes').select('*', { count: 'exact', head: true });
-          if (!isAdmin()) q = q.eq('user_id', currentUser.id);
-          return q;
-        })(),
+        sb.from('clientes').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id),
         sb.from('documentos_fiscais').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('tipo', 'darf')
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
@@ -478,19 +475,4 @@ async function carregarKPIs() {
   } catch(e) {
     console.error('KPI error:', e);
   }
-}
-
-// salvarDocumentoFiscal — definida aqui (core.js) para garantir disponibilidade
-// antes de fiscal.js ser carregado
-async function salvarDocumentoFiscal(tipo, dados) {
-  if (!currentUser) return;
-  try {
-    await sb.from('documentos_fiscais').insert({
-      user_id: currentUser.id,
-      cliente_id: currentCliente?.id || null,
-      tipo,
-      dados,
-      criado_em: new Date().toISOString()
-    });
-  } catch(e) {}
 }
