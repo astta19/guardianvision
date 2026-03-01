@@ -42,10 +42,10 @@
     .prazo-nome { flex: 1; font-size: 13px; font-weight: 500; }
     .prazo-data { font-size: 12px; color: var(--text-light); white-space: nowrap; }
     .prazo-dias { font-size: 11px; font-weight: 700; white-space: nowrap; padding: 2px 8px; border-radius: 20px; }
-    .dias-ok   { background: #dcfce7; color: var(--ok); }
-    .dias-warn { background: #fef3c7; color: var(--warn); }
-    .dias-error{ background: #fee2e2; color: var(--error); }
-    .dias-done { background: #f1f5f9; color: var(--text-light); }
+    .dias-ok    { background: #dcfce7; color: var(--ok); }
+    .dias-warn  { background: #fef3c7; color: var(--warn); }
+    .dias-error { background: #fee2e2; color: var(--error); }
+    .dias-done  { background: #f1f5f9; color: var(--text-light); }
 
     .doc-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
     .doc-item:last-child { border-bottom: none; }
@@ -81,7 +81,7 @@ async function init() {
   }
 
   try {
-    const res = await fetch(`/api/portal?token=${encodeURIComponent(token)}`);
+    const res  = await fetch(`/api/portal?token=${encodeURIComponent(token)}`);
     const data = await res.json();
 
     if (!res.ok || data.erro) {
@@ -103,23 +103,23 @@ async function init() {
 }
 
 function renderPortal(d) {
-  const empresa  = d.empresa  || {};
-  const contador = d.contador || {};
-  const prazos   = d.prazos   || [];
+  const cliente  = d.cliente   || {};
+  const contador = d.contador  || {};
+  const tarefas  = d.tarefas   || [];
   const docs     = d.documentos || [];
-
-  const regime = empresa.regime_tributario || '—';
+  const expiraEm = d.expira_em ? new Date(d.expira_em).toLocaleDateString('pt-BR') : null;
   const geradoEm = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   document.getElementById('app').innerHTML = `
     <div class="header">
       <div class="header-logo">Fiscal365 · Portal do Cliente</div>
-      <div class="header-empresa">${esc(empresa.razao_social || 'Empresa')}</div>
-      ${empresa.cnpj ? `<div class="header-cnpj">CNPJ: ${esc(empresa.cnpj)}</div>` : ''}
+      <div class="header-empresa">${esc(cliente.razao_social || 'Empresa')}</div>
+      ${cliente.cnpj ? `<div class="header-cnpj">CNPJ: ${esc(cliente.cnpj)}</div>` : ''}
       <div class="header-meta">
-        <span class="header-badge">${esc(regime)}</span>
-        ${empresa.nome_fantasia ? `<span class="header-badge">${esc(empresa.nome_fantasia)}</span>` : ''}
+        ${cliente.regime_tributario ? `<span class="header-badge">${esc(cliente.regime_tributario)}</span>` : ''}
+        ${cliente.nome_fantasia ? `<span class="header-badge">${esc(cliente.nome_fantasia)}</span>` : ''}
         <span class="header-badge">Atualizado em ${geradoEm}</span>
+        ${expiraEm ? `<span class="header-badge" style="opacity:.6">Válido até ${expiraEm}</span>` : ''}
       </div>
     </div>
 
@@ -128,16 +128,14 @@ function renderPortal(d) {
       <div class="contador-grid">
         <div class="contador-item"><label>Nome</label><span>${esc(contador.nome || '—')}</span></div>
         <div class="contador-item"><label>CRC</label><span>${esc(contador.crc || '—')}</span></div>
-        <div class="contador-item"><label>E-mail</label><span>${esc(contador.email || '—')}</span></div>
-        <div class="contador-item"><label>CNPJ Escritório</label><span>${esc(contador.cnpj_escritorio || '—')}</span></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title"><i data-lucide="calendar-clock" style="width:14px;height:14px"></i> Prazos Fiscais — ${mesAtual()}</div>
-      ${prazos.length
-        ? prazos.map(p => renderPrazo(p)).join('')
-        : '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:16px 0">Nenhum prazo cadastrado para este período.</p>'
+      <div class="card-title"><i data-lucide="calendar-clock" style="width:14px;height:14px"></i> Prazos Fiscais — próximos 60 dias</div>
+      ${tarefas.length
+        ? tarefas.map(t => renderTarefa(t)).join('')
+        : '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:16px 0">Nenhum prazo pendente nos próximos 60 dias.</p>'
       }
     </div>
 
@@ -154,16 +152,13 @@ function renderPortal(d) {
   `;
 }
 
-function renderPrazo(p) {
+function renderTarefa(t) {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const prazo = new Date(p.prazo + 'T00:00:00');
+  const prazo = new Date(t.prazo + 'T00:00:00');
   const dias = Math.ceil((prazo - hoje) / 86400000);
-  const concluida = p.status === 'concluida';
 
   let corDot, classDias, textoDias;
-  if (concluida) {
-    corDot = '#94a3b8'; classDias = 'dias-done'; textoDias = '✓ Concluído';
-  } else if (dias < 0) {
+  if (dias < 0) {
     corDot = '#dc2626'; classDias = 'dias-error'; textoDias = `${Math.abs(dias)}d vencido`;
   } else if (dias <= 5) {
     corDot = '#d97706'; classDias = 'dias-warn'; textoDias = `${dias}d restante${dias !== 1 ? 's' : ''}`;
@@ -174,21 +169,21 @@ function renderPrazo(p) {
   return `
     <div class="prazo-item">
       <div class="prazo-dot" style="background:${corDot}"></div>
-      <div class="prazo-nome">${esc(p.obrigacao)}</div>
+      <div class="prazo-nome">${esc(t.titulo)}${t.prioridade ? `<span style="font-size:10px;color:var(--text-light);margin-left:6px">${esc(t.prioridade)}</span>` : ''}</div>
       <div class="prazo-data">${prazo.toLocaleDateString('pt-BR')}</div>
       <span class="prazo-dias ${classDias}">${textoDias}</span>
     </div>`;
 }
 
 function renderDoc(d) {
-  const data = d.criado_em ? new Date(d.criado_em).toLocaleDateString('pt-BR') : '—';
+  const data  = d.criado_em ? new Date(d.criado_em).toLocaleDateString('pt-BR') : '—';
   const icone = d.tipo === 'nfe' ? 'scan-line' : d.tipo === 'darf' ? 'receipt' : 'file-text';
   const cor   = d.tipo === 'nfe' ? '#2563eb' : d.tipo === 'darf' ? '#dc2626' : '#7c3aed';
   return `
     <div class="doc-item">
       <div class="doc-icon"><i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i></div>
       <div class="doc-info">
-        <div class="doc-nome">${esc(d.tipo?.toUpperCase() || 'Documento')}</div>
+        <div class="doc-nome">${esc((d.tipo || 'documento').toUpperCase())}</div>
         <div class="doc-meta">Gerado em ${data}</div>
       </div>
     </div>`;
@@ -201,10 +196,6 @@ function renderErro(titulo, msg) {
       <h2>${esc(titulo)}</h2>
       <p>${esc(msg)}</p>
     </div>`;
-}
-
-function mesAtual() {
-  return new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 
 function esc(str) {
