@@ -431,14 +431,12 @@ function gerarPlanilha() {
     [],
     ['CÁLCULOS TRIBUTÁRIOS'],
     darfData ? [
-      ['Tipo', 'Código', 'Valor'],
-      ...darfData.linhas.map(l => [l.desc, l.codigo, l.valor]),
-      ['Total Principal', '', darfData.totalPrincipal],
-      ...(darfData.diasAtraso > 0 ? [
-        [`Multa (${darfData.diasAtraso} dias)`, '', darfData.multa],
-        ['Juros Selic', '', darfData.juros],
-      ] : []),
-      ['TOTAL A RECOLHER', '', darfData.totalFinal]
+      ['Tipo', 'Valor'],
+      ...darfData.linhas.map(l => [l.desc, l.valor]),
+      ['TOTAL PRINCIPAL', darfData.totalPrincipal],
+      ['MULTA', darfData.multa],
+      ['JUROS', darfData.juros],
+      ['TOTAL FINAL', darfData.totalFinal]
     ].flat() : ['Nenhum cálculo realizado nesta sessão']
   ];
 
