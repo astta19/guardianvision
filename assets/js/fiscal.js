@@ -2,6 +2,20 @@
 // FISCAL.JS — NF-e, DARF, Prazos
 // ============================================================
 
+// ---- UTILITÁRIO: Salvar documento fiscal no banco ----
+async function salvarDocumentoFiscal(tipo, dados) {
+  if (!currentUser) return;
+  try {
+    await sb.from('documentos_fiscais').insert({
+      user_id: currentUser.id,
+      cliente_id: currentCliente?.id || null,
+      tipo,
+      dados,
+      criado_em: new Date().toISOString()
+    });
+  } catch(e) {}
+}
+
 // ============================================
 // MÓDULO DOCUMENTOS FISCAIS
 // ============================================ // resultado do cálculo DARF
@@ -265,11 +279,10 @@ function maskCompetencia(input) {
 
 function atualizarCamposDarf() {
   const regime = document.getElementById('darfRegime').value;
-  document.getElementById('darfFieldLucro').style.display    = ['presumido','real'].includes(regime) ? 'block' : 'none';
-  document.getElementById('darfFieldPro').style.display      = ['presumido','real','simples'].includes(regime) ? 'grid' : 'none';
+  document.getElementById('darfFieldLucro').style.display      = ['presumido','real'].includes(regime) ? 'block' : 'none';
+  document.getElementById('darfFieldAtividade').style.display  = regime === 'presumido' ? 'grid' : 'none';
+  document.getElementById('darfFieldPro').style.display        = ['presumido','real','simples'].includes(regime) ? 'grid' : 'none';
   document.getElementById('darfSimplesFields').style.display = regime === 'simples' ? 'block' : 'none';
-  const darfAtivEl = document.getElementById('darfFieldAtivPresumido');
-  if (darfAtivEl) darfAtivEl.style.display = regime === 'presumido' ? 'grid' : 'none';
 
   // Preencher vencimento padrão
   const comp = document.getElementById('darfCompetencia').value;
@@ -389,19 +402,17 @@ function calcularDarf() {
     totalPrincipal = das;
 
   } else if (regime === 'presumido') {
-    const atividade = document.getElementById('darfAtivPresumido')?.value || 'comercio';
-    const presuncaoIRPJ = { comercio: 0.08, servicos: 0.32, servicos_hosp: 0.08, transporte_carga: 0.08, transporte_pass: 0.16, construcao: 0.08 };
-    const presuncaoCSLL = { comercio: 0.12, servicos: 0.32, servicos_hosp: 0.12, transporte_carga: 0.12, transporte_pass: 0.12, construcao: 0.12 };
-    const pIRPJ = presuncaoIRPJ[atividade] || 0.08;
-    const pCSLL = presuncaoCSLL[atividade] || 0.12;
-    const bcIRPJ  = fat * pIRPJ;
-    const bcCSLL  = fat * pCSLL;
+    const atividade = document.getElementById('darfAtividade')?.value || 'comercio';
+    const percIRPJ  = atividade === 'servico' ? 0.32 : atividade === 'transporte' ? 0.16 : 0.08;
+    const percCSLL  = atividade === 'servico' ? 0.32 : 0.12;
+    const bcIRPJ  = fat * percIRPJ;
+    const bcCSLL  = fat * percCSLL;
     const irpj    = Math.max(0, bcIRPJ * 0.15 + Math.max(0, bcIRPJ - 60000) * 0.10);
     const csll    = bcCSLL * 0.09;
     const pis     = fat * 0.0065;
     const cofins  = fat * 0.03;
     const inss    = (prolabore + folha) * 0.20;
-    linhas.push({ desc: 'IRPJ (DARF 2089)', codigo: '2089', valor: irpj, obs: `BC R$${bcIRPJ.toFixed(2)} × 15% (presunção ${(pIRPJ*100).toFixed(0)}%)` });
+    linhas.push({ desc: 'IRPJ (DARF 2089)', codigo: '2089', valor: irpj, obs: `BC R$${bcIRPJ.toFixed(2)} × 15% (presunção ${(percIRPJ*100).toFixed(0)}%)` });
     linhas.push({ desc: 'CSLL (DARF 2372)', codigo: '2372', valor: csll, obs: `BC R$${bcCSLL.toFixed(2)} × 9%` });
     linhas.push({ desc: 'PIS  (DARF 8109)', codigo: '8109', valor: pis,  obs: `Faturamento × 0,65%` });
     linhas.push({ desc: 'COFINS (DARF 2172)', codigo: '2172', valor: cofins, obs: `Faturamento × 3%` });
