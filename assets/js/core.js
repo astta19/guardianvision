@@ -27,19 +27,19 @@ const MODELS = [
 
 const fiscalDeadlines = {
       // Mensais
-      'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true },
-      'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb'                                   },
-      'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf'                                 },
-      'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)'                            },
+      'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true  },
+      'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb',               comEmpregado: true  },
+      'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf',             comEmpregado: true  },
+      'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)',        comEmpregado: true  },
       'efd_contrib': { day: 10, month: 'monthly', description: 'EFD-Contribuições',     naoSimples: true    },
-      'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal'                                },
-      'dctf':        { day: 15, month: 'monthly', description: 'DCTF'                                       },
+      'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal',           naoSimples: true    },
+      'dctf':        { day: 15, month: 'monthly', description: 'DCTF',                  naoSimples: true    },
       // Anuais
       'dasn_simei':  { day: 31, month: 5,         description: 'DASN-SIMEI (MEI)',      meiOnly: true       },
-      'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
-      'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
-      'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
-      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
+      'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true  },
+      'ecd':         { day: 30, month: 6,         description: 'ECD',                   naoSimples: true    },
+      'ecf':         { day: 31, month: 7,         description: 'ECF',                   naoSimples: true    },
+      'dirpf':       { day: 30, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
@@ -126,19 +126,34 @@ function applyAdminUI() {
     el.style.display = admin ? '' : 'none';
   });
 
-  // admin-menu-item: apenas para admins
+  // admin-menu-item: admin vê tudo; contador vê se tiver permissão
   document.querySelectorAll('.admin-menu-item').forEach(el => {
     el.style.display = admin ? '' : 'none';
   });
 
-  // data-perm: admin vê tudo; contador vê apenas o que tiver permissão
+  // data-perm: itens com permissão específica
   document.querySelectorAll('[data-perm]').forEach(el => {
     const perm = el.getAttribute('data-perm');
     el.style.display = (admin || perms.includes(perm)) ? '' : 'none';
   });
 
-  // Sidebar — seletor de empresa: admin sempre vê; contador só se tiver clientes atribuídos
-  // (mantido visível para ambos — filtragem ocorre no loadClientes)
+  // Aviso orientativo para usuário sem nenhuma permissão
+  if (!admin && perms.length === 0) {
+    const msgs = document.getElementById('msgs');
+    if (msgs && !msgs.querySelector('.sem-permissao-aviso')) {
+      const aviso = document.createElement('div');
+      aviso.className = 'msg assistant sem-permissao-aviso';
+      aviso.innerHTML = `
+        <div class="ava"><i data-lucide="info"></i></div>
+        <div class="bubble" style="background:var(--sidebar-hover);border:1px solid var(--border)">
+          <strong>Aguardando liberação de acesso</strong><br>
+          <span style="font-size:13px;color:var(--text-light)">Seu acesso ainda está sendo configurado pelo administrador. Assim que as permissões forem liberadas, os recursos do sistema aparecerão automaticamente. O chat já está disponível para uso.</span>
+        </div>`;
+      msgs.querySelector('.empty')?.remove();
+      msgs.appendChild(aviso);
+      if (window.lucide) lucide.createIcons();
+    }
+  }
 }
 
 // Chamada pelo admin para definir permissões de um contador
