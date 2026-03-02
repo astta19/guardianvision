@@ -429,18 +429,18 @@
       </div>
 
       <div class="c-right">
-        <!-- Botões sempre visíveis -->
-        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn">
+        <!-- Botões controlados por permissão — ocultos por padrão, applyAdminUI revela -->
+        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn" data-perm="portal" style="display:none">
           <i data-lucide="external-link"></i>
         </button>
-        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn">
+        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn" data-perm="agenda" style="display:none">
           <i data-lucide="calendar-clock"></i>
           <span id="agendaBadgeCount" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px"></span>
         </button>
-        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped">
+        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped" style="display:none">
           <i data-lucide="file-code-2"></i>
         </button>
-        <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
+        <button class="icon-btn" onclick="openCalculator()" title="Calculadora" data-perm="calculadora" style="display:none">
           <i data-lucide="calculator"></i>
         </button>
         <button class="icon-btn" onclick="toggleTheme()" title="Tema">
@@ -454,31 +454,31 @@
           </button>
           <div class="hdr-dropdown" id="moreMenu">
             <div class="hdr-dropdown-title">Opções</div>
-            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()">
+            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
               <i data-lucide="file-text"></i> Documentos Fiscais
             </button>
-            <button class="menu-item" onclick="openAgenda(); closeDropdowns()">
+            <button class="menu-item" data-perm="agenda" onclick="openAgenda(); closeDropdowns()" style="display:none">
               <i data-lucide="calendar-clock"></i> Agenda de Prazos
             </button>
-            <button class="menu-item" onclick="abrirPortalCliente(); closeDropdowns()">
+            <button class="menu-item" data-perm="portal" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
               <i data-lucide="external-link"></i> Portal do Cliente
             </button>
-            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()">
+            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()" style="display:none">
               <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
             </button>
-            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()" style="display:none">
               <i data-lucide="bar-chart-2"></i> Estatísticas
             </button>
-            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()" style="display:none">
               <i data-lucide="brain"></i> Aprendizado
             </button>
-            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()">
+            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()" style="display:none">
               <i data-lucide="shield"></i> Permissões de usuários
             </button>
-            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()">
+            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()" style="display:none">
               <i data-lucide="download"></i> Exportar conversa
             </button>
-            <button class="menu-item" onclick="shareChat(); closeDropdowns()">
+            <button class="menu-item" data-perm="compartilhar" onclick="shareChat(); closeDropdowns()" style="display:none">
               <i data-lucide="share-2"></i> Compartilhar
             </button>
             <div class="menu-sep"></div>
@@ -492,20 +492,20 @@
           </div>
         </div>
 
-        <!-- Botões desktop visíveis individualmente -->
-        <button class="icon-btn desktop-only" onclick="openDocumentos()" title="Documentos Fiscais">
+        <!-- Botões desktop controlados por permissão -->
+        <button class="icon-btn desktop-only" onclick="openDocumentos()" title="Documentos Fiscais" data-perm="documentos" style="display:none">
           <i data-lucide="file-text"></i>
         </button>
-        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar">
+        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar" data-perm="exportar" style="display:none">
           <i data-lucide="download"></i>
         </button>
-        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas">
+        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas" style="display:none">
           <i data-lucide="bar-chart-2"></i>
         </button>
-        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado">
+        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado" style="display:none">
           <i data-lucide="brain"></i>
         </button>
-        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários">
+        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários" style="display:none">
           <i data-lucide="shield"></i>
         </button>
         <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
@@ -576,12 +576,12 @@
         <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..." maxlength="8000"
           onkeypress="if(event.key==='Enter' && !event.shiftKey) send()"
           oninput="updateCharCount()" autocomplete="off">
-        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos">
+        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos" data-perm="arquivos" style="display:none">
           <i data-lucide="paperclip"></i>
         </button>
         <span id="charCount" style="font-size:11px;color:var(--text-light);align-self:center;white-space:nowrap;display:none">0/8000</span>
         <div class="dropdown-wrap" style="position:relative">
-          <button class="icon-btn" id="docGenBtn" onclick="toggleDocGenMenu()" title="Gerar documento">
+          <button class="icon-btn" id="docGenBtn" onclick="toggleDocGenMenu()" title="Gerar documento" data-perm="gerar_doc" style="display:none">
             <i data-lucide="file-down"></i>
           </button>
           <div id="docGenMenu" style="display:none;position:absolute;bottom:44px;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:220px;z-index:200;overflow:hidden">
