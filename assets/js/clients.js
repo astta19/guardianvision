@@ -54,7 +54,7 @@ async function loadClientes() {
   if (isAdmin()) {
     ({ data, error } = await sb
       .from('clientes')
-      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
@@ -124,7 +124,7 @@ async function renderClientList() {
   if (isAdmin()) {
     ({ data, error } = await sb
       .from('clientes')
-      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
@@ -315,6 +315,7 @@ async function saveNewClient() {
   const fantasia = document.getElementById('fFantasia').value.trim();
   const regime = document.getElementById('fRegime').value;
   const ie = document.getElementById('fIE').value.trim();
+  const temEmpregado = document.getElementById('fTemEmpregado')?.value === 'true';
   const msgEl = document.getElementById('clientFormMsg');
 
   if (!razao || !cnpj) {
@@ -340,6 +341,7 @@ async function saveNewClient() {
     nome_fantasia: fantasia || null,
     regime_tributario: regime || null,
     inscricao_estadual: ie || null,
+    tem_empregado: temEmpregado,
     user_id: currentUser.id
   });
 
@@ -358,7 +360,7 @@ async function saveNewClient() {
   // Buscar o registro recém-inserido para ter o ID
   const { data: novo, error: selectError } = await sb
     .from('clientes')
-    .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+    .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
     .eq('cnpj', cnpjLimpo)
     .eq('user_id', currentUser.id)
     .maybeSingle();
@@ -486,15 +488,10 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'portal',        label: 'Portal do Cliente',    icon: 'external-link' },
-  { id: 'agenda',        label: 'Agenda de Prazos',     icon: 'calendar-clock' },
-  { id: 'documentos',    label: 'Documentos Fiscais',   icon: 'file-text' },
-  { id: 'sped',          label: 'SPED EFD',             icon: 'layers' },
-  { id: 'calculadora',   label: 'Calculadora',          icon: 'calculator' },
-  { id: 'arquivos',      label: 'Anexar Arquivos',      icon: 'paperclip' },
-  { id: 'gerar_doc',     label: 'Gerar Documentos',     icon: 'file-down' },
-  { id: 'exportar',      label: 'Exportar Conversa',    icon: 'download' },
-  { id: 'compartilhar',  label: 'Compartilhar Chat',    icon: 'share-2' },
+  { id: 'documentos',  label: 'Documentos Fiscais', icon: 'file-text' },
+  { id: 'sped',        label: 'SPED EFD',           icon: 'layers' },
+  { id: 'exportar',    label: 'Exportar Conversa',  icon: 'download' },
+  { id: 'calculadora', label: 'Calculadora',         icon: 'calculator' },
 ];
 
 async function abrirGerenciarPermissoes() {
