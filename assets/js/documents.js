@@ -54,6 +54,7 @@ function getObrigacoesMes() {
   const ano = hoje.getFullYear();
   const regime = currentCliente?.regime_tributario || '';
   const isSimplesOuMEI = /simples|mei/i.test(regime);
+  const temEmpregado   = currentCliente?.tem_empregado === true;
 
   const todas = [
     {
@@ -69,9 +70,8 @@ function getObrigacoesMes() {
       venc: new Date(ano, mes, 28),
       valor: null,
       base: 'IN RFB nº 2005/2021, art. 7º; Portaria RFB nº 402/2019',
-      desc: 'Declaração de Débitos e Créditos Tributários Federais Web — MEI: obrigado apenas se possuir empregado',
-      aplica: !isSimplesOuMEI || true, // todos listados; MEI sem empregado pode ignorar
-      obs: isSimplesOuMEI ? '(MEI: verificar obrigatoriedade — só obrigado com empregado)' : null
+      desc: 'Declaração de Débitos e Créditos Tributários Federais Web',
+      aplica: temEmpregado // só obrigatório para quem tem empregado
     },
     {
       nome: 'EFD-Reinf',
@@ -79,7 +79,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'IN RFB nº 2043/2021; Resolução do Comitê Gestor do eSocial nº 2/2016',
       desc: 'Escrituração Fiscal Digital de Retenções e Outras Informações Fiscais',
-      aplica: true
+      aplica: temEmpregado
     },
     {
       nome: 'eSocial — Folha de Pagamento',
@@ -87,7 +87,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'Lei nº 8.212/1991, art. 32; Decreto nº 3.048/1999; Resolução eSocial nº 2/2016',
       desc: 'Obrigação acessória de informações trabalhistas, previdenciárias e fiscais',
-      aplica: true
+      aplica: temEmpregado
     },
     {
       nome: 'EFD-Contribuições',
@@ -95,7 +95,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'IN RFB nº 1252/2012; Lei nº 10.637/2002 e 10.833/2003',
       desc: 'Escrituração Fiscal Digital do PIS/Pasep e da COFINS',
-      aplica: !/simples|mei/i.test(regime)
+      aplica: !isSimplesOuMEI
     },
     {
       nome: 'IRPJ / CSLL — Estimativa',
@@ -138,6 +138,22 @@ async function gerarRelatorioFiscal() {
   document.getElementById('docGenMenu').style.display = 'none';
   if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório.'); return; }
   try {
+
+  // Se darfData não está na sessão, buscar último cálculo salvo no banco
+  if (!darfData && currentCliente?.id) {
+    try {
+      const { data: saved } = await sb
+        .from('documentos_fiscais')
+        .select('dados')
+        .eq('user_id', currentUser.id)
+        .eq('cliente_id', currentCliente.id)
+        .eq('tipo', 'darf')
+        .order('criado_em', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (saved?.dados) darfData = saved.dados;
+    } catch(e) {} // silencioso — PDF gerado sem dados de DARF se não houver
+  }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -430,13 +446,9 @@ function gerarPlanilha() {
     ]) : []),
     [],
     ['CÁLCULOS TRIBUTÁRIOS'],
-    darfData ? [
+    darfResult ? [
       ['Tipo', 'Valor'],
-      ...darfData.linhas.map(l => [l.desc, l.valor]),
-      ['TOTAL PRINCIPAL', darfData.totalPrincipal],
-      ['MULTA', darfData.multa],
-      ['JUROS', darfData.juros],
-      ['TOTAL FINAL', darfData.totalFinal]
+      ...Object.entries(darfResult).map(([k,v]) => [k.toUpperCase(), typeof v === 'number' ? v : ''])
     ].flat() : ['Nenhum cálculo realizado nesta sessão']
   ];
 
