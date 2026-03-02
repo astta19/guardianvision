@@ -267,8 +267,8 @@ class FiscalLearningService {
         .not('resposta', 'is', null)
         .order('feedback_usuario', { ascending: false })
         .limit(10);
-      // Filtra por cliente apenas se há um ativo; sem cliente, retorna contexto global do usuário
       if (clienteId) qInteracoes = qInteracoes.eq('cliente_id', clienteId);
+      // Contador só vê RAG do próprio usuário; admin vê tudo
       if (!isAdmin() && currentUser?.id) qInteracoes = qInteracoes.eq('user_id', currentUser.id);
 
       let qTreinamento = this.supabase
@@ -277,8 +277,7 @@ class FiscalLearningService {
         .gte('qualidade', 4)
         .order('qualidade', { ascending: false })
         .limit(10);
-      // Inclui docs sem cliente (base global) OU do cliente ativo
-      if (clienteId) qTreinamento = qTreinamento.or(`cliente_id.eq.${clienteId},cliente_id.is.null`);
+      if (clienteId) qTreinamento = qTreinamento.eq('cliente_id', clienteId);
 
       const [{ data: interacoes }, { data: treinamento }] = await Promise.all([
         qInteracoes, qTreinamento
@@ -385,9 +384,7 @@ class FiscalLearningService {
         .not('conteudo_extraido', 'is', null)
         .order('data_upload', { ascending: false })
         .limit(20);
-      // Inclui docs sem cliente (base global) OU do cliente ativo
-      if (clienteId) qDocs = qDocs.or(`cliente_id.eq.${clienteId},cliente_id.is.null`);
-      else if (!isAdmin() && currentUser?.id) qDocs = qDocs.eq('user_id', currentUser.id);
+      if (clienteId) qDocs = qDocs.eq('cliente_id', clienteId);
       const { data } = await qDocs;
 
       if (!data || data.length === 0) return null;
@@ -531,10 +528,8 @@ async function handleBatchUpload(event) {
       const fileData = await processFile(file);
 
       // Salvar na base de conhecimento como dados_treinamento
-      // pergunta usa as primeiras palavras do conteúdo para que o RAG consiga indexar
-      const resumoPergunta = (fileData.content || '').replace(/\s+/g, ' ').trim().substring(0, 300) || file.name;
       await supabaseProxy('inserir_treinamento', {
-        pergunta: resumoPergunta,
+        pergunta: `[BASE DE CONHECIMENTO] ${file.name}`,
         resposta: fileData.content || 'Conteúdo não extraído',
         fonte: 'base_conhecimento',
         qualidade: 5,
@@ -1403,16 +1398,18 @@ function copyMessage(btn) {
 function checkDeadlines() {
   const today = new Date();
   const regime = currentCliente?.regime_tributario || '';
-  const isMEI       = /mei/i.test(regime);
-  const isSimples   = /simples/i.test(regime);
+  const isMEI          = /mei/i.test(regime);
+  const isSimples      = /simples/i.test(regime);
   const isSimplesOuMEI = isMEI || isSimples;
-  const isLucro     = /lucro/i.test(regime);
+  const isLucro        = /lucro/i.test(regime);
+  const temEmpregado   = currentCliente?.tem_empregado === true;
   const alerts = [];
 
   for (const [key, deadline] of Object.entries(fiscalDeadlines)) {
     if (deadline.meiOnly      && !isMEI)          continue; // DASN-SIMEI: só MEI
     if (deadline.simplesOuMei && !isSimplesOuMEI) continue; // DAS/DEFIS: só Simples/MEI
-    if (deadline.naoSimples   && isSimplesOuMEI)  continue; // EFD-Contrib: não Simples/MEI
+    if (deadline.naoSimples   && isSimplesOuMEI)  continue; // EFD-Contrib/SPED/DCTF: não Simples/MEI
+    if (deadline.comEmpregado && !temEmpregado)   continue; // eSocial/EFD-Reinf/DCTFWeb: só com empregado
 
     let daysUntil;
     let thresholdDays;
