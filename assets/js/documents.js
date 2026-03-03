@@ -71,7 +71,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'IN RFB nº 2005/2021, art. 7º; Portaria RFB nº 402/2019',
       desc: 'Declaração de Débitos e Créditos Tributários Federais Web',
-      aplica: temEmpregado // só obrigatório para quem tem empregado
+      aplica: temEmpregado
     },
     {
       nome: 'EFD-Reinf',
@@ -95,7 +95,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'IN RFB nº 1252/2012; Lei nº 10.637/2002 e 10.833/2003',
       desc: 'Escrituração Fiscal Digital do PIS/Pasep e da COFINS',
-      aplica: !isSimplesOuMEI
+      aplica: !/simples|mei/i.test(regime)
     },
     {
       nome: 'IRPJ / CSLL — Estimativa',
@@ -137,7 +137,6 @@ async function getResumoChatTexto() {
 async function gerarRelatorioFiscal() {
   document.getElementById('docGenMenu').style.display = 'none';
   if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório.'); return; }
-  try {
 
   // Se darfData não está na sessão, buscar último cálculo salvo no banco
   if (!darfData && currentCliente?.id) {
@@ -154,6 +153,8 @@ async function gerarRelatorioFiscal() {
       if (saved?.dados) darfData = saved.dados;
     } catch(e) {} // silencioso — PDF gerado sem dados de DARF se não houver
   }
+
+  try {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
