@@ -147,7 +147,7 @@ function applyAdminUI() {
         <div class="ava"><i data-lucide="info"></i></div>
         <div class="bubble" style="background:var(--sidebar-hover);border:1px solid var(--border)">
           <strong>Aguardando liberação de acesso</strong><br>
-          <span style="font-size:13px;color:var(--text-light)">Seu acesso ainda está sendo configurado pelo administrador. Assim que as permissões forem liberadas, os recursos do sistema aparecerão automaticamente. O chat já está disponível para uso.</span>
+          <span style="font-size:13px;color:var(--text-light)">Seu acesso ainda está sendo configurado pelo administrador. Assim que as permissões forem liberadas, os recursos aparecerão automaticamente. O chat já está disponível.</span>
         </div>`;
       msgs.querySelector('.empty')?.remove();
       msgs.appendChild(aviso);
