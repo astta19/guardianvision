@@ -315,7 +315,6 @@ async function saveNewClient() {
   const fantasia = document.getElementById('fFantasia').value.trim();
   const regime = document.getElementById('fRegime').value;
   const ie = document.getElementById('fIE').value.trim();
-  const temEmpregado = document.getElementById('fTemEmpregado')?.value === 'true';
   const msgEl = document.getElementById('clientFormMsg');
 
   if (!razao || !cnpj) {
@@ -341,7 +340,7 @@ async function saveNewClient() {
     nome_fantasia: fantasia || null,
     regime_tributario: regime || null,
     inscricao_estadual: ie || null,
-    tem_empregado: temEmpregado,
+    tem_empregado: document.getElementById('fTemEmpregado')?.value === 'true',
     user_id: currentUser.id
   });
 
