@@ -10,12 +10,11 @@ const STATUS_LABEL   = { pendente: 'Pendente', concluida: 'Concluída', ignorada
 // Obrigações fiscais automáticas — sincronizadas com fiscalDeadlines
 const OBRIGACOES_AGENDA = [
   { id: 'das',         label: 'DAS Simples Nacional',  dia: 20, mensal: true,  simplesOuMei: true  },
-  { id: 'dctfweb',     label: 'DCTFWeb',               dia: 28, mensal: true                       },
-  { id: 'efd_reinf',   label: 'EFD-Reinf',             dia: 15, mensal: true                       },
-  { id: 'esocial',     label: 'eSocial (folha)',        dia: 15, mensal: true                       },
+  { id: 'dctfweb',     label: 'DCTFWeb',               dia: 28, mensal: true,  comEmpregado: true  },
+  { id: 'efd_reinf',   label: 'EFD-Reinf',             dia: 15, mensal: true,  comEmpregado: true  },
+  { id: 'esocial',     label: 'eSocial (folha)',        dia: 15, mensal: true,  comEmpregado: true  },
   { id: 'efd_contrib', label: 'EFD-Contribuições',     dia: 10, mensal: true,  naoSimples: true    },
   { id: 'sped_fiscal', label: 'SPED Fiscal',           dia: 15, mensal: true                       },
-  { id: 'dctf',        label: 'DCTF',                  dia: 15, mensal: true,  naoSimples: true    },
   { id: 'dasn_simei',  label: 'DASN-SIMEI (MEI)',      dia: 31, mes: 5,        meiOnly: true       },
   { id: 'defis',       label: 'DEFIS (Simples)',        dia: 31, mes: 3,        simplesOuMei: true  },
   { id: 'ecd',         label: 'ECD',                   dia: 30, mes: 6                             },
@@ -96,12 +95,14 @@ function agendaGerarAutomaticas() {
     const isMEI     = /mei/i.test(regime);
     const isSimples = /simples/i.test(regime);
     const isSimplesOuMEI = isMEI || isSimples;
+    const temEmpregado = cliente.tem_empregado === true;
 
     for (const ob of OBRIGACOES_AGENDA) {
       // Filtrar por regime
       if (ob.meiOnly      && !isMEI)          continue;
       if (ob.simplesOuMei && !isSimplesOuMEI) continue;
       if (ob.naoSimples   && isSimplesOuMEI)  continue;
+      if (ob.comEmpregado && !temEmpregado)   continue;
 
       if (ob.mensal) {
         // Gerar para os meses do ano filtrado
@@ -353,7 +354,7 @@ async function agendaPersistirAutomatica(clienteId, obrigacaoId, prazo, titulo, 
   return data?.id || null;
 }
 
-function agendaExcluir(id) {
+async function agendaExcluir(id) {
   if (!id || id === 'null') return;
   showConfirm('Excluir esta tarefa?', async () => {
     await sb.from('agenda_tarefas').delete().eq('id', id);
