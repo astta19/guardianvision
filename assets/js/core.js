@@ -280,6 +280,36 @@ function doLogout() {
 
 // --- Confirm dialog ---
 // HTML usa: confirmModal, confirmModalText, confirmModalCancel, confirmModalOk
+// ── Toast global (substitui alert() em operações não-críticas) ───────────────
+let _toastTimer = null;
+function showToast(msg, type = 'info', duration = 3500) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.style.cssText = [
+      'position:fixed','bottom:24px','left:50%','transform:translateX(-50%) translateY(20px)',
+      'padding:10px 18px','border-radius:10px','font-size:13px','font-weight:500',
+      'box-shadow:0 4px 20px rgba(0,0,0,0.18)','z-index:99999','pointer-events:none',
+      'transition:opacity .25s,transform .25s','opacity:0','max-width:90vw','text-align:center',
+    ].join(';');
+    document.body.appendChild(t);
+  }
+  const palette = { info:'#1a1a1a', success:'#16a34a', warn:'#d97706', error:'#dc2626' };
+  t.style.background = palette[type] || palette.info;
+  t.style.color = '#fff';
+  t.textContent = msg;
+  clearTimeout(_toastTimer);
+  requestAnimationFrame(() => {
+    t.style.opacity = '1';
+    t.style.transform = 'translateX(-50%) translateY(0)';
+  });
+  _toastTimer = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(20px)';
+  }, duration);
+}
+
 function showConfirm(msg, onConfirm, hideCancel) {
   const modal = document.getElementById('confirmModal');
   if (!modal) return;
