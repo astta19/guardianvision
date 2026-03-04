@@ -892,7 +892,7 @@ MENSAIS:
 ANUAIS:
 - DASN-SIMEI (MEI): até 31/05/2026 (ano-base 2025)
 - DEFIS (Simples Nacional): até 31/03/2026 (ano-base 2025)
-- DIRPF (Pessoa Física): 15/03 a 29/05/2026
+- DIRPF (Pessoa Física): 15/03 a 30/05/2026
 - ECD (Escrituração Contábil Digital): até 30/06/2026 (ano-base 2025)
 - ECF (Escrituração Contábil Fiscal): até 31/07/2026 (ano-base 2025)
 - DIRF: em extinção — substituída pelo eSocial/EFD-Reinf (Programa Autorregularização até 20/02/2026)
