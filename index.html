@@ -412,53 +412,103 @@
   <main id="chat">
     <div class="c-head">
       <div class="c-left">
-        <button class="icon-btn" onclick="toggleSidebar()" title="Conversas">
+        <button class="icon-btn sidebar-toggle" onclick="toggleSidebar()" title="Conversas" aria-label="Abrir menu de conversas">
           <i data-lucide="menu"></i>
         </button>
-        <span class="c-title">Chat Fiscal Pro</span>
-        <div class="conn" id="conn">
+
+        <!-- Logo + título -->
+        <div class="c-brand">
+          <i data-lucide="shield-check" class="c-brand-icon"></i>
+          <span class="c-title">Fiscal365</span>
+        </div>
+
+        <!-- Empresa ativa — badge clicável -->
+        <button class="client-badge desktop-only" id="headerClientBadge" onclick="openClientModal()" title="Trocar empresa" style="display:none" aria-label="Empresa ativa">
+          <i data-lucide="building-2" style="width:12px;height:12px;flex-shrink:0"></i>
+          <span id="headerClientName">—</span>
+          <i data-lucide="chevrons-up-down" style="width:11px;height:11px;opacity:.5;flex-shrink:0"></i>
+        </button>
+
+        <div class="conn" id="conn" aria-live="polite">
           <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
           <span>Conectando...</span>
         </div>
-        <!-- Cliente ativo no header -->
-        <div class="client-badge desktop-only" id="headerClientBadge" onclick="openClientModal()" title="Trocar empresa" style="display:none;cursor:pointer">
-          <i data-lucide="building-2" style="width:12px;height:12px;flex-shrink:0"></i>
-          <span id="headerClientName">—</span>
-        </div>
-
       </div>
 
       <div class="c-right">
-        <!-- Botões sempre visíveis -->
-        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn" data-perm="portal" style="display:none">
-          <i data-lucide="external-link"></i>
-        </button>
-        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn" data-perm="agenda" style="display:none">
-          <i data-lucide="calendar-clock"></i>
-          <span id="agendaBadgeCount" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px"></span>
-        </button>
-        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped" style="display:none">
-          <i data-lucide="file-code-2"></i>
-        </button>
-        <button class="icon-btn" onclick="openCalculator()" title="Calculadora" data-perm="calculadora" style="display:none">
-          <i data-lucide="calculator"></i>
-        </button>
-        <button class="icon-btn" onclick="toggleTheme()" title="Tema">
-          <i data-lucide="moon" id="themeIcon"></i>
+
+        <!-- GRUPO 1: Ferramentas fiscais -->
+        <div class="toolbar-group desktop-only">
+          <button class="tb-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn" data-perm="agenda" style="display:none" aria-label="Agenda">
+            <i data-lucide="calendar-clock"></i>
+            <span class="tb-label">Agenda</span>
+            <span id="agendaBadgeCount" class="tb-badge" style="display:none"></span>
+          </button>
+          <button class="tb-btn" onclick="openDocumentos()" title="Documentos Fiscais" data-perm="documentos" style="display:none" aria-label="Documentos">
+            <i data-lucide="file-text"></i>
+            <span class="tb-label">Docs</span>
+          </button>
+          <button class="tb-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped" style="display:none" aria-label="SPED">
+            <i data-lucide="file-code-2"></i>
+            <span class="tb-label">SPED</span>
+          </button>
+          <button class="tb-btn" onclick="openCalculator()" title="Calculadora" data-perm="calculadora" style="display:none" aria-label="Calculadora">
+            <i data-lucide="calculator"></i>
+            <span class="tb-label">Calc</span>
+          </button>
+          <button class="tb-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn" data-perm="portal" style="display:none" aria-label="Portal">
+            <i data-lucide="external-link"></i>
+            <span class="tb-label">Portal</span>
+          </button>
+        </div>
+
+        <div class="toolbar-sep desktop-only" id="toolbarSepAdmin"></div>
+
+        <!-- GRUPO 2: Admin -->
+        <div class="toolbar-group desktop-only">
+          <button class="tb-btn admin-only" onclick="showStats()" title="Estatísticas" style="display:none" aria-label="Estatísticas">
+            <i data-lucide="bar-chart-2"></i>
+            <span class="tb-label">Stats</span>
+          </button>
+          <button class="tb-btn admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões" style="display:none" aria-label="Permissões">
+            <i data-lucide="shield"></i>
+            <span class="tb-label">Perms</span>
+          </button>
+        </div>
+
+        <div class="toolbar-sep"></div>
+
+        <!-- GRUPO 3: Utilitários sempre visíveis -->
+        <div class="toolbar-group">
+          <button class="tb-btn" onclick="toggleTheme()" title="Alternar tema" aria-label="Tema">
+            <i data-lucide="moon" id="themeIcon"></i>
+          </button>
+          <button class="tb-btn" onclick="toggleFullscreen()" title="Tela cheia" class="desktop-only" aria-label="Tela cheia">
+            <i data-lucide="maximize-2"></i>
+          </button>
+        </div>
+
+        <div class="toolbar-sep"></div>
+
+        <!-- Perfil do usuário -->
+        <button class="user-chip" onclick="openProfile()" title="Perfil e configurações" aria-label="Perfil">
+          <span id="headerAvatarWrap" class="user-chip-avatar"><i data-lucide="user" style="width:14px;height:14px"></i></span>
+          <span id="userEmail" class="user-chip-name">—</span>
+          <i data-lucide="chevron-down" style="width:12px;height:12px;opacity:.5;flex-shrink:0"></i>
         </button>
 
-        <!-- Menu "..." — só mobile, agrupa funções secundárias -->
+        <!-- Menu "..." mobile -->
         <div class="dropdown-wrap mobile-only">
-          <button class="icon-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções">
+          <button class="tb-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções" aria-label="Menu">
             <i data-lucide="more-vertical"></i>
           </button>
           <div class="hdr-dropdown" id="moreMenu">
-            <div class="hdr-dropdown-title">Opções</div>
-            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
-              <i data-lucide="file-text"></i> Documentos Fiscais
-            </button>
+            <div class="hdr-dropdown-title">Ferramentas</div>
             <button class="menu-item" data-perm="agenda" onclick="openAgenda(); closeDropdowns()" style="display:none">
               <i data-lucide="calendar-clock"></i> Agenda de Prazos
+            </button>
+            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
+              <i data-lucide="file-text"></i> Documentos Fiscais
             </button>
             <button class="menu-item" data-perm="portal" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
               <i data-lucide="external-link"></i> Portal do Cliente
@@ -466,6 +516,11 @@
             <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()" style="display:none">
               <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
             </button>
+            <button class="menu-item" data-perm="calculadora" onclick="openCalculator(); closeDropdowns()" style="display:none">
+              <i data-lucide="calculator"></i> Calculadora
+            </button>
+            <div class="menu-sep"></div>
+            <div class="hdr-dropdown-title">Admin</div>
             <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()" style="display:none">
               <i data-lucide="bar-chart-2"></i> Estatísticas
             </button>
@@ -475,6 +530,7 @@
             <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()" style="display:none">
               <i data-lucide="shield"></i> Permissões de usuários
             </button>
+            <div class="menu-sep"></div>
             <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()" style="display:none">
               <i data-lucide="download"></i> Exportar conversa
             </button>
@@ -485,38 +541,12 @@
             <button class="menu-item" onclick="toggleFullscreen(); closeDropdowns()">
               <i data-lucide="maximize-2"></i> Tela cheia
             </button>
-            <div class="menu-sep"></div>
             <button class="menu-item" onclick="doLogout()" style="color:var(--error)">
               <i data-lucide="log-out"></i> Sair
             </button>
           </div>
         </div>
 
-        <!-- Botões desktop visíveis individualmente -->
-        <button class="icon-btn desktop-only" onclick="openDocumentos()" title="Documentos Fiscais" data-perm="documentos" style="display:none">
-          <i data-lucide="file-text"></i>
-        </button>
-        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar" data-perm="exportar" style="display:none">
-          <i data-lucide="download"></i>
-        </button>
-        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas" style="display:none">
-          <i data-lucide="bar-chart-2"></i>
-        </button>
-        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado" style="display:none">
-          <i data-lucide="brain"></i>
-        </button>
-        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários" style="display:none">
-          <i data-lucide="shield"></i>
-        </button>
-        <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
-          <i data-lucide="maximize-2"></i>
-        </button>
-
-        <!-- Usuário logado + logout -->
-        <div class="user-info" onclick="openProfile()" title="Perfil e configurações" style="cursor:pointer">
-          <span id="headerAvatarWrap"><i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i></span>
-          <span id="userEmail">—</span>
-        </div>
       </div>
     </div>
 
@@ -536,7 +566,7 @@
         <button class="chip" onclick="useTemplate('Quando usar CFOP 5102?')">
           <i data-lucide="file-text"></i> CFOPs
         </button>
-        <button class="chip" onclick="useTemplate('Prazo SPED Fiscal 2024')">
+        <button class="chip" onclick="useTemplate('Prazo SPED Fiscal 2026')">
           <i data-lucide="clock"></i> Prazos
         </button>
       </div>
