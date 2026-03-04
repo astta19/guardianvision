@@ -88,6 +88,57 @@ async function loadClientes() {
   loadChats();
 }
 
+// ── Templates dinâmicos por regime ────────────────────────────────────────
+function atualizarTemplates(regime) {
+  const tplRow = document.querySelector('.tpl-row');
+  if (!tplRow) return;
+
+  const r = (regime || '').toLowerCase();
+  const isMEI     = r.includes('mei');
+  const isSimples = r.includes('simples') || isMEI;
+  const isLP      = r.includes('presumido');
+  const isLR      = r.includes('real');
+
+  const templates = isMEI ? [
+    { icon: 'file-badge',   label: 'DASN-SIMEI', q: 'Como declarar o DASN-SIMEI para MEI?' },
+    { icon: 'receipt',      label: 'DAS-MEI',    q: 'Qual o valor do DAS-MEI em 2026?' },
+    { icon: 'alert-circle', label: 'Limites',    q: 'Quais são os limites de faturamento do MEI?' },
+    { icon: 'file-text',    label: 'NF-e MEI',   q: 'Quando o MEI é obrigado a emitir nota fiscal?' },
+    { icon: 'clock',        label: 'Prazos',     q: 'Quais são os prazos obrigatórios do MEI em 2026?' },
+  ] : isSimples ? [
+    { icon: 'calculator',   label: 'DAS',        q: 'Como calcular o DAS do Simples Nacional?' },
+    { icon: 'shield',       label: 'Fator R',    q: 'Como funciona o Fator R no Simples Nacional?' },
+    { icon: 'bar-chart-2',  label: 'Anexos',     q: 'Qual a diferença entre os anexos do Simples Nacional?' },
+    { icon: 'file-text',    label: 'CFOPs',      q: 'Quando usar CFOP 5102?' },
+    { icon: 'clock',        label: 'Prazos',     q: 'Prazo do DAS Simples Nacional 2026' },
+  ] : isLP ? [
+    { icon: 'calculator',   label: 'IRPJ/CSLL',  q: 'Como calcular IRPJ e CSLL no Lucro Presumido?' },
+    { icon: 'receipt',      label: 'PIS/COFINS', q: 'Como calcular PIS e COFINS no Lucro Presumido?' },
+    { icon: 'file-code-2',  label: 'ECF',        q: 'O que é ECF e qual o prazo de entrega?' },
+    { icon: 'file-text',    label: 'CFOPs',      q: 'Quando usar CFOP 5102?' },
+    { icon: 'clock',        label: 'Prazos',     q: 'Calendário fiscal Lucro Presumido 2026' },
+  ] : isLR ? [
+    { icon: 'calculator',   label: 'IRPJ Real',  q: 'Como apurar o IRPJ no Lucro Real?' },
+    { icon: 'receipt',      label: 'PIS/COFINS', q: 'Como calcular créditos de PIS/COFINS no Lucro Real?' },
+    { icon: 'book-open',    label: 'ECD/ECF',    q: 'O que é ECD e ECF no Lucro Real?' },
+    { icon: 'shield',       label: 'CSLL',       q: 'Como calcular CSLL no Lucro Real?' },
+    { icon: 'clock',        label: 'Prazos',     q: 'Calendário fiscal Lucro Real 2026' },
+  ] : [
+    { icon: 'calculator',   label: 'ICMS',       q: 'Como calcular ICMS de R$ 10.000 com alíquota 18%?' },
+    { icon: 'shield',       label: 'ICMS-ST',    q: 'Como funciona o ICMS-ST?' },
+    { icon: 'bar-chart-2',  label: 'Regimes',    q: 'Diferença entre Lucro Real e Presumido' },
+    { icon: 'file-text',    label: 'CFOPs',      q: 'Quando usar CFOP 5102?' },
+    { icon: 'clock',        label: 'Prazos',     q: 'Prazo SPED Fiscal 2026' },
+  ];
+
+  tplRow.innerHTML = templates.map(t =>
+    `<button class="chip" onclick="useTemplate(${JSON.stringify(t.q)})">
+      <i data-lucide="${t.icon}"></i> ${t.label}
+    </button>`
+  ).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
 async function setCurrentCliente(cliente) {
   currentCliente = cliente;
   localStorage.setItem('lastClienteId', cliente.id);
@@ -100,6 +151,9 @@ async function setCurrentCliente(cliente) {
   document.getElementById('headerClientName').textContent = displayName;
   badge.style.display = 'flex';
 
+  // Templates dinâmicos por regime
+  atualizarTemplates(cliente.regime_tributario);
+
   // Recarregar chats filtrados
   loadChats();
 }
@@ -108,6 +162,7 @@ async function openClientModal() {
   closeSidebar(); // fecha sidebar antes de abrir modal no mobile
   document.getElementById('clientModal').classList.remove('hidden');
   renderClientList();
+  setTimeout(() => document.getElementById('clientSearchInput')?.focus(), 80);
 }
 
 async function closeClientModal() {
@@ -394,6 +449,7 @@ async function saveNewClient() {
   setCurrentCliente(novo);
   closeClientModal();
   newChat();
+  showToast('Empresa cadastrada com sucesso!', 'success');
 }
 
 async function gerenciarAcessos(clienteId, clienteNome) {
@@ -495,6 +551,7 @@ const PERMS_LIST = [
   { id: 'arquivos',      label: 'Anexar Arquivos',      icon: 'paperclip' },
   { id: 'gerar_doc',     label: 'Gerar Documentos',     icon: 'file-down' },
   { id: 'exportar',      label: 'Exportar Conversa',    icon: 'download' },
+  { id: 'folha',         label: 'Folha de Pagamento',   icon: 'users' },
   { id: 'compartilhar',  label: 'Compartilhar Chat',    icon: 'share-2' },
 ];
 
