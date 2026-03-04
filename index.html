@@ -407,6 +407,28 @@
       </div>
     </div>
     <div id="hList"></div>
+
+    <!-- Mini KPI bar — sempre visível no rodapé da sidebar -->
+    <div id="sidebarKpi" style="display:none;border-top:1px solid var(--border);padding:10px 12px;background:var(--card);flex-shrink:0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="sb-kpi-card" onclick="openAgenda()" title="Prazos esta semana">
+          <span id="skpiTarefas" class="sb-kpi-val">—</span>
+          <span class="sb-kpi-lbl">Esta semana</span>
+        </div>
+        <div class="sb-kpi-card sb-kpi-danger" onclick="openAgenda()" title="Prazos vencidos">
+          <span id="skpiVencidos" class="sb-kpi-val">—</span>
+          <span class="sb-kpi-lbl">Vencidos</span>
+        </div>
+        <div class="sb-kpi-card" onclick="openClientModal()" title="Empresas ativas">
+          <span id="skpiClientes" class="sb-kpi-val">—</span>
+          <span class="sb-kpi-lbl">Empresas</span>
+        </div>
+        <div class="sb-kpi-card" title="DARFs gerados este mês">
+          <span id="skpiDarfs" class="sb-kpi-val">—</span>
+          <span class="sb-kpi-lbl">DARFs/mês</span>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <main id="chat">
@@ -459,6 +481,10 @@
           <button class="tb-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn" data-perm="portal" style="display:none" aria-label="Portal">
             <i data-lucide="external-link"></i>
             <span class="tb-label">Portal</span>
+          </button>
+          <button class="tb-btn" onclick="openFolha()" title="Folha de Pagamento" data-perm="folha" style="display:none" aria-label="Folha">
+            <i data-lucide="users"></i>
+            <span class="tb-label">Folha</span>
           </button>
         </div>
 
@@ -518,6 +544,9 @@
             </button>
             <button class="menu-item" data-perm="calculadora" onclick="openCalculator(); closeDropdowns()" style="display:none">
               <i data-lucide="calculator"></i> Calculadora
+            </button>
+            <button class="menu-item" data-perm="folha" onclick="openFolha(); closeDropdowns()" style="display:none">
+              <i data-lucide="users"></i> Folha de Pagamento
             </button>
             <div class="menu-sep"></div>
             <div class="hdr-dropdown-title">Admin</div>
@@ -1106,7 +1135,122 @@
     </div>
   </div>
 
+
+  <!-- MODAL FOLHA DE PAGAMENTO -->
+  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5500;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto" onclick="if(event.target===this)closeFolha()">
+    <div style="background:var(--bg);border-radius:16px;width:100%;max-width:620px;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;margin:auto">
+
+      <!-- Cabeçalho -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--card)">
+        <span style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          <i data-lucide="users" style="width:16px;height:16px"></i>Folha de Pagamento
+        </span>
+        <button onclick="closeFolha()" style="background:var(--sidebar-hover);border:none;cursor:pointer;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <!-- Corpo com scroll -->
+      <div style="overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch">
+
+        <!-- Dados do funcionário -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="grid-column:span 2">
+            <label class="f-lbl">Nome do Funcionário</label>
+            <input type="text" id="folhaNome" class="c-inp" placeholder="Ex: João Silva">
+          </div>
+          <div>
+            <label class="f-lbl">Cargo</label>
+            <input type="text" id="folhaCargo" class="c-inp" placeholder="Ex: Auxiliar Administrativo">
+          </div>
+          <div>
+            <label class="f-lbl">Competência (MM/AAAA)</label>
+            <input type="text" id="folhaCompetencia" class="c-inp" placeholder="01/2026" maxlength="7">
+          </div>
+          <div>
+            <label class="f-lbl">Tipo de contrato</label>
+            <select id="folhaTipoContrato" class="c-inp">
+              <option value="clt">CLT</option>
+              <option value="pj">PJ / Autônomo</option>
+              <option value="estagio">Estágio</option>
+            </select>
+          </div>
+          <div>
+            <label class="f-lbl">Dias trabalhados</label>
+            <input type="number" id="folhaDias" class="c-inp" value="30" min="1" max="31">
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border)">
+
+        <!-- Proventos -->
+        <p style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin:0">Proventos</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="f-lbl">Salário Bruto (R$) *</label>
+            <input type="number" id="folhaSalario" class="c-inp" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()">
+          </div>
+          <div>
+            <label class="f-lbl">HE 50% (horas)</label>
+            <input type="number" id="folhaHE50" class="c-inp" placeholder="0" min="0" step="0.5" oninput="calcularFolha()">
+          </div>
+          <div>
+            <label class="f-lbl">HE 100% (horas)</label>
+            <input type="number" id="folhaHE100" class="c-inp" placeholder="0" min="0" step="0.5" oninput="calcularFolha()">
+          </div>
+          <div>
+            <label class="f-lbl">Adicional Noturno (horas)</label>
+            <input type="number" id="folhaAdicNoturno" class="c-inp" placeholder="0" min="0" step="0.5" oninput="calcularFolha()">
+          </div>
+          <div>
+            <label class="f-lbl">Outros Acréscimos (R$)</label>
+            <input type="number" id="folhaOutrosAcr" class="c-inp" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()">
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border)">
+
+        <!-- Descontos -->
+        <p style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin:0">Descontos</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label class="f-lbl">Dependentes (IRRF)</label>
+            <input type="number" id="folhaDependentes" class="c-inp" value="0" min="0" max="20" oninput="calcularFolha()">
+          </div>
+          <div>
+            <label class="f-lbl">Pensão Alimentícia (R$)</label>
+            <input type="number" id="folhaPensao" class="c-inp" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()">
+          </div>
+          <div>
+            <label class="f-lbl">Outros Descontos (R$)</label>
+            <input type="number" id="folhaOutrosDesc" class="c-inp" placeholder="0,00" min="0" step="0.01" oninput="calcularFolha()">
+          </div>
+        </div>
+
+        <!-- Resultado do cálculo -->
+        <div id="folhaResult" style="display:none;background:var(--sidebar-hover);border-radius:10px;padding:14px;font-size:13px"></div>
+
+        <!-- Ações -->
+        <div id="folhaActions" style="display:none;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+          <button onclick="limparFolha()" style="padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;cursor:pointer;font-weight:500">Limpar</button>
+          <button onclick="gerarReciboPDF()" style="padding:9px 18px;border-radius:8px;border:none;background:var(--accent);color:var(--user-text);font-size:13px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px">
+            <i data-lucide="file" style="width:13px;height:13px"></i> Gerar Recibo PDF
+          </button>
+          <button onclick="enviarFolhaParaChat()" style="padding:9px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:13px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px">
+            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Analisar no Chat
+          </button>
+        </div>
+
+        <p style="font-size:11px;color:var(--text-light);line-height:1.5">
+          ⚠️ Tabelas INSS e IRRF vigentes 2025/2026 (Portaria MF 1.191/2025 e 1.206/2025). Valores para referência — confirme com o contador responsável.
+        </p>
+      </div>
+    </div>
+  </div>
+
   <script src="assets/js/agenda.js"></script>
+
+  <script src="assets/js/folha.js"></script>
 
   <!-- MODAL PORTAL ADMIN -->
   <div id="portalAdminModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5000;align-items:center;justify-content:center;padding:20px">
