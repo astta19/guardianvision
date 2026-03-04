@@ -162,6 +162,37 @@
       pointer-events: none;
     }
 
+
+    /* ── Mini KPI bar na sidebar ──────────────────────────── */
+    .sb-kpi-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s;
+      gap: 2px;
+    }
+    .sb-kpi-card:hover { background: var(--sidebar-hover); }
+    .sb-kpi-danger .sb-kpi-val { color: #dc2626; }
+    .sb-kpi-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+    .sb-kpi-lbl {
+      font-size: 10px;
+      color: var(--text-light);
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.2;
+    }
+
     #hList {
       flex: 1;
       overflow-y: auto;
