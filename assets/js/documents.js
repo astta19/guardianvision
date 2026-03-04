@@ -447,9 +447,16 @@ function gerarPlanilha() {
     ]) : []),
     [],
     ['CÁLCULOS TRIBUTÁRIOS'],
-    darfResult ? [
-      ['Tipo', 'Valor'],
-      ...Object.entries(darfResult).map(([k,v]) => [k.toUpperCase(), typeof v === 'number' ? v : ''])
+    darfData?.linhas?.length > 0 ? [
+      ['Descrição', 'Código', 'Valor (R$)', 'Observação'],
+      ...darfData.linhas.map(l => [l.desc, l.codigo, l.valor?.toFixed(2) || '', l.obs || '']),
+      ['', '', '', ''],
+      ['Total Principal', '', darfData.totalPrincipal?.toFixed(2) || '', ''],
+      ...(darfData.diasAtraso > 0 ? [
+        ['Multa', '', darfData.multa?.toFixed(2) || '', `${darfData.diasAtraso} dias de atraso`],
+        ['Juros (Selic)', '', darfData.juros?.toFixed(2) || '', ''],
+      ] : []),
+      ['TOTAL A RECOLHER', '', darfData.totalFinal?.toFixed(2) || '', ''],
     ].flat() : ['Nenhum cálculo realizado nesta sessão']
   ];
 
