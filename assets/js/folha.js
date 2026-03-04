@@ -57,16 +57,16 @@ function calcularIRRF(baseCalculo) {
 
 // ── Cálculo principal ────────────────────────────────────────
 function calcularFolha() {
-  const salarioBruto   = parseFloat(document.getElementById('folhaSalario').value)     || 0;
-  const horasExtras50  = parseFloat(document.getElementById('folhaHE50').value)         || 0;
-  const horasExtras100 = parseFloat(document.getElementById('folhaHE100').value)        || 0;
-  const adicNoturno    = parseFloat(document.getElementById('folhaAdicNoturno').value)  || 0;
-  const dependentes    = parseInt(document.getElementById('folhaDependentes').value)    || 0;
-  const pensaoAlim     = parseFloat(document.getElementById('folhaPensao').value)       || 0;
-  const outrosDescontos= parseFloat(document.getElementById('folhaOutrosDesc').value)   || 0;
-  const outrosAcrescimos=parseFloat(document.getElementById('folhaOutrosAcr').value)    || 0;
-  const diasTrabalhados= parseInt(document.getElementById('folhaDias').value)           || 30;
-  const tipoContrato   = document.getElementById('folhaTipoContrato').value;
+  const salarioBruto    = parseFloat(document.getElementById('folhaSalario').value)      || 0;
+  const horasExtras50   = parseFloat(document.getElementById('folhaHE50').value)          || 0;
+  const horasExtras100  = parseFloat(document.getElementById('folhaHE100').value)         || 0;
+  const adicNoturno     = parseFloat(document.getElementById('folhaAdicNoturno').value)   || 0;
+  const dependentes     = parseInt(document.getElementById('folhaDependentes').value)     || 0;
+  const pensaoAlim      = parseFloat(document.getElementById('folhaPensao').value)        || 0;
+  const outrosDescontos = parseFloat(document.getElementById('folhaOutrosDesc').value)    || 0;
+  const outrosAcrescimos= parseFloat(document.getElementById('folhaOutrosAcr').value)    || 0;
+  const diasTrabalhados = parseInt(document.getElementById('folhaDias').value)            || 30;
+  const tipoContrato    = document.getElementById('folhaTipoContrato').value; // clt | pj | estagio
 
   if (salarioBruto <= 0) {
     document.getElementById('folhaResult').style.display = 'none';
@@ -74,43 +74,67 @@ function calcularFolha() {
     return;
   }
 
-  // Proporcionalidade por dias trabalhados
-  const proporcao = diasTrabalhados / 30;
-  const salarioProporcional = salarioBruto * proporcao;
+  // Proporcionalidade por dias trabalhados (CLT art. 64 — base 30 dias)
+  const proporcao           = diasTrabalhados / 30;
+  const salarioProporcional = Math.round(salarioBruto * proporcao * 100) / 100;
 
-  // Cálculo das horas
+  // Valor hora normal (CLT: 220h/mês = 8h × 5 dias × 4,5 semanas)
   const valorHora = salarioBruto / 220;
-  const vlHE50    = horasExtras50  * valorHora * 1.50;
-  const vlHE100   = horasExtras100 * valorHora * 2.00;
-  const vlAdicNot = adicNoturno    * valorHora * 0.20;
+  const vlHE50    = Math.round(horasExtras50  * valorHora * 1.50 * 100) / 100; // CLT art. 59
+  const vlHE100   = Math.round(horasExtras100 * valorHora * 2.00 * 100) / 100; // feriados/DSR
+  const vlAdicNot = Math.round(adicNoturno    * valorHora * 0.20 * 100) / 100; // CLT art. 73: 20%
 
   // Total de proventos brutos
   const totalBruto = salarioProporcional + vlHE50 + vlHE100 + vlAdicNot + outrosAcrescimos;
 
-  // INSS sobre total bruto (teto aplica ao bruto)
-  const inss = calcularINSS(Math.min(totalBruto, 8157.41));
+  // ── Cálculos por tipo de contrato ────────────────────────
+  let inss = 0, irrf = 0, baseIRRF = 0;
+  let fgts = 0, inssPatronal = 0, ratAcidenteTrabalho = 0;
+  let observacoes = [];
 
-  // FGTS sobre bruto (não retido do empregado — custo patronal)
-  const fgts = Math.round(totalBruto * FGTS_ALIQ * 100) / 100;
+  if (tipoContrato === 'clt') {
+    // CLT padrão — tabelas Portaria MF 1.191/2025 e 1.206/2025
+    inss     = calcularINSS(totalBruto);                                            // progressivo
+    fgts     = Math.round(totalBruto * 0.08 * 100) / 100;                          // FGTS 8%
+    baseIRRF = Math.max(0, totalBruto - inss - (dependentes * IRRF_DEDUCAO_DEPENDENTE) - pensaoAlim);
+    irrf     = calcularIRRF(baseIRRF);
+    inssPatronal        = Math.round(totalBruto * 0.20 * 100) / 100;               // INSS patronal 20%
+    ratAcidenteTrabalho = Math.round(totalBruto * 0.02 * 100) / 100;               // RAT médio 2%
+    observacoes.push('INSS progressivo • IRRF retido na fonte • FGTS 8% (custo empresa)');
+    observacoes.push('Não inclui: 13º salário (1/12), férias (1/3) e outras verbas');
 
-  // Base IRRF = bruto - INSS - dedução dependentes - pensão alimentícia
-  const baseIRRF = Math.max(0, totalBruto - inss - (dependentes * IRRF_DEDUCAO_DEPENDENTE) - pensaoAlim);
-  const irrf = calcularIRRF(baseIRRF);
+  } else if (tipoContrato === 'pj') {
+    // Autônomo / PJ — emite RPA ou nota fiscal, não há vínculo CLT
+    // INSS autônomo: contribuinte individual 20% sobre remuneração (teto R$ 8.157,41)
+    const baseInssAutonomo = Math.min(totalBruto, 8157.41);
+    inss = Math.min(Math.round(baseInssAutonomo * 0.20 * 100) / 100, INSS_TETO);
+    // IRRF retido na fonte pelo tomador (tabela progressiva após INSS)
+    baseIRRF = Math.max(0, totalBruto - inss - (dependentes * IRRF_DEDUCAO_DEPENDENTE) - pensaoAlim);
+    irrf     = calcularIRRF(baseIRRF);
+    // Sem FGTS (não há vínculo empregatício) e sem INSS patronal
+    fgts         = 0;
+    inssPatronal = 0;
+    observacoes.push('INSS contribuinte individual 20% (teto R$ 8.157,41)');
+    observacoes.push('Sem FGTS e sem INSS patronal • Emite RPA ou Nota Fiscal de Serviço');
 
-  // Total descontos e líquido
+  } else if (tipoContrato === 'estagio') {
+    // Estágio — Lei 11.788/2008: não há FGTS, não há INSS, não é vínculo CLT
+    inss         = 0;
+    irrf         = 0; // bolsa-auxílio isenta de IRRF até R$ 2.428,80
+    fgts         = 0;
+    inssPatronal = 0;
+    // IRRF só incide se bolsa superar isenção
+    baseIRRF = Math.max(0, totalBruto - (dependentes * IRRF_DEDUCAO_DEPENDENTE) - pensaoAlim);
+    irrf     = calcularIRRF(baseIRRF);
+    observacoes.push('Estágio (Lei 11.788/2008): sem FGTS e sem INSS previdenciário');
+    observacoes.push('IRRF incide apenas se bolsa superar a faixa isenta (R$ 2.428,80)');
+  }
+
+  // Totais
   const totalDescontos = inss + irrf + pensaoAlim + outrosDescontos;
   const salarioLiquido = Math.max(0, totalBruto - totalDescontos);
+  const custoTotal     = totalBruto + fgts + inssPatronal + ratAcidenteTrabalho;
 
-  // Custo total para empresa (bruto + FGTS + INSS patronal 20%)
-  let inssPatronal = 0;
-  if (tipoContrato === 'clt') {
-    inssPatronal = Math.round(totalBruto * 0.20 * 100) / 100;
-  } else if (tipoContrato === 'mei') {
-    inssPatronal = Math.round(totalBruto * 0.03 * 100) / 100; // MEI: 3%
-  }
-  const custoTotal = totalBruto + fgts + inssPatronal;
-
-  // Renderizar resultado
   renderFolhaResult({
     salarioBruto, proporcao, diasTrabalhados, salarioProporcional,
     vlHE50, horasExtras50, vlHE100, horasExtras100,
@@ -118,7 +142,7 @@ function calcularFolha() {
     totalBruto, inss, irrf, fgts,
     dependentes, pensaoAlim, outrosDescontos,
     baseIRRF, totalDescontos, salarioLiquido,
-    inssPatronal, custoTotal, tipoContrato,
+    inssPatronal, ratAcidenteTrabalho, custoTotal, tipoContrato, observacoes,
   });
 }
 
@@ -183,22 +207,26 @@ function renderFolhaResult(r) {
       </div>
 
       <!-- Custo empresa -->
+      ${r.tipoContrato !== 'pj' && r.tipoContrato !== 'estagio' ? `
       <div style="padding:10px 16px">
-        <div style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Custo para a Empresa</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Custo para a Empresa (CLT)</div>
         <table style="width:100%;border-collapse:collapse">
           ${rowProv('Salário Bruto', r.totalBruto)}
           ${rowProv('FGTS (8%)', r.fgts)}
-          ${r.tipoContrato === 'clt'  ? rowProv('INSS Patronal (20%)', r.inssPatronal) : ''}
-          ${r.tipoContrato === 'mei'  ? rowProv('INSS Patronal MEI (3%)', r.inssPatronal) : ''}
+          ${rowProv('INSS Patronal (20%)', r.inssPatronal)}
+          ${r.ratAcidenteTrabalho > 0 ? rowProv('RAT — Acidente de Trabalho (~2%)', r.ratAcidenteTrabalho) : ''}
           <tr style="border-top:1px solid var(--border)">
-            <td style="padding:7px 8px;font-size:13px;font-weight:600;color:var(--text)">Custo Total</td>
+            <td style="padding:7px 8px;font-size:13px;font-weight:600;color:var(--text)">Custo Total Empresa</td>
             <td style="padding:7px 8px;font-size:13px;font-weight:700;text-align:right;color:var(--text)">R$ ${fmtBRL(r.custoTotal)}</td>
           </tr>
         </table>
-        <p style="font-size:10px;color:var(--text-light);margin:8px 8px 0;line-height:1.5">
-          ⚠️ Valores calculados com tabelas Portaria MF 1.191/2025 e 1.206/2025. Não incluem PLR, vale-refeição, convênios ou outras verbas específicas da empresa.
-        </p>
-      </div>
+      </div>` : ''}
+
+      <!-- Observações -->
+      ${(r.observacoes || []).length > 0 ? `
+      <div style="padding:8px 16px 12px">
+        ${r.observacoes.map(o => `<p style="font-size:10px;color:var(--text-light);line-height:1.5;margin:2px 0">ℹ️ ${o}</p>`).join('')}
+      </div>` : ''}
     </div>`;
 
   el.style.display = 'block';
@@ -252,7 +280,7 @@ async function exportarFolhaPDF() {
   const d = window._folhaData;
   if (!d) return;
   const { jsPDF } = window.jspdf;
-  if (!jsPDF) { alert('jsPDF não carregado. Recarregue a página.'); return; }
+  if (!jsPDF) { showToast('jsPDF não carregado. Recarregue a página.', 'error'); return; }
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210, M = 15;
