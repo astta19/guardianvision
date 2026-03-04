@@ -162,7 +162,7 @@ async function carregarChatCompartilhado(token) {
   history.replaceState({}, '', url);
 
   if (error || !data) {
-    alert('Link de compartilhamento inválido ou expirado.');
+    showToast('Link inválido ou expirado.', 'error');
     return;
   }
 
@@ -191,7 +191,7 @@ async function toggleDocGenMenu() {
 
 async function exportChat() {
   if (!currentChat.messages || currentChat.messages.length === 0) {
-    alert('Nenhuma mensagem para exportar');
+    showToast('Nenhuma mensagem para exportar.', 'warn');
     return;
   }
 
@@ -294,7 +294,7 @@ async function exportChat() {
 
 async function shareChat() {
   if (!currentChat.messages || currentChat.messages.length === 0) {
-    alert('Nenhuma conversa para compartilhar');
+    showToast('Nenhuma conversa para compartilhar.', 'warn');
     return;
   }
 
@@ -310,7 +310,7 @@ async function shareChat() {
   });
 
   if (error) {
-    alert('Erro ao gerar link: ' + error.message);
+    showToast('Erro ao gerar link. Tente novamente.', 'error');
     return;
   }
 
@@ -400,7 +400,7 @@ function copyShareLink() {
   const link = document.getElementById('shareLink');
   link.select();
   navigator.clipboard.writeText(link.value);
-  alert('Link copiado!');
+  showToast('Link copiado!', 'success');
 }
 
 function closeDropdowns() {
