@@ -399,16 +399,46 @@ async function renderHistoryList(list, hasMore = false) {
     return;
   }
 
-  el.innerHTML = list.map(c => `
+  // Agrupar por data relativa
+  const hoje     = new Date(); hoje.setHours(0,0,0,0);
+  const ontem    = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
+  const semana   = new Date(hoje); semana.setDate(semana.getDate() - 7);
+  const mes      = new Date(hoje); mes.setDate(mes.getDate() - 30);
+
+  function label(dateStr) {
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    if (d >= hoje)   return 'Hoje';
+    if (d >= ontem)  return 'Ontem';
+    if (d >= semana) return 'Últimos 7 dias';
+    if (d >= mes)    return 'Últimos 30 dias';
+    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }
+
+  // Agrupar
+  const grupos = {};
+  const ordem  = [];
+  for (const c of list) {
+    const g = label(c.updated_at || c.created_at);
+    if (!grupos[g]) { grupos[g] = []; ordem.push(g); }
+    grupos[g].push(c);
+  }
+
+  let html = '';
+  for (const g of ordem) {
+    html += `<div style="padding:6px 12px 2px;font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">${g}</div>`;
+    html += grupos[g].map(c => `
     <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
         <div class="h-title">${escapeHtml(c.title || 'Nova Conversa')}</div>
-        <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
+        <div class="h-date">${new Date(c.updated_at || c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
         <i data-lucide="trash-2" style="width:14px;height:14px"></i>
       </button>
     </div>`).join('');
+  }
+
+  el.innerHTML = html;
 
   if (hasMore) {
     el.innerHTML += `<button onclick="chatsPage++;loadChats(false)" style="width:100%;padding:10px;border:none;background:none;color:var(--accent);font-size:13px;cursor:pointer;border-top:1px solid var(--border)">Carregar mais conversas</button>`;
