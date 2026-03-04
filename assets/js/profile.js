@@ -97,6 +97,7 @@ async function openProfile() {
 
   // Resetar para aba Conta
   switchProfileTab('conta', modal.querySelector('.doc-tab'));
+  setTimeout(() => document.getElementById('profileNome')?.focus(), 80);
 
   // Carregar perfil
   const perfil = await carregarPerfil();
@@ -229,11 +230,11 @@ async function uploadAvatar(input) {
 
   // Validar tipo e tamanho (máx 2MB)
   if (!file.type.startsWith('image/')) {
-    alert('Selecione uma imagem válida (JPG, PNG, WebP).');
+    showToast('Selecione uma imagem válida (JPG, PNG ou WebP).', 'warn');
     return;
   }
   if (file.size > 2 * 1024 * 1024) {
-    alert('A imagem deve ter no máximo 2MB.');
+    showToast('A imagem deve ter no máximo 2MB.', 'warn');
     return;
   }
 
@@ -265,7 +266,7 @@ async function uploadAvatar(input) {
 
   } catch(e) {
     avatarEl.textContent = (perfilCache?.nome || currentUser?.email || '?')[0]?.toUpperCase();
-    alert('Erro ao enviar imagem. Verifique se o bucket "avatars" existe no Supabase Storage.');
+    showToast('Erro ao enviar imagem. Verifique o bucket avatars no Supabase.', 'error');
   }
 
   input.value = ''; // resetar input
@@ -286,9 +287,21 @@ async function carregarConfigNotif() {
   if (config.email_notif) document.getElementById('profileNotifEmail').value = config.email_notif;
   if (config.antecedencia_dias) document.getElementById('profileAntecedencia').value = config.antecedencia_dias;
 
-  const ativas = config.obrigacoes_ativas || [];
-  const regime = currentCliente?.regime_tributario || '';
-  const isMEI = /mei/i.test(regime);
+  const regime  = currentCliente?.regime_tributario || '';
+  const isMEI    = /mei/i.test(regime);
+  const isSimp   = /simples/i.test(regime) || isMEI;
+  const isLP     = /presumido/i.test(regime);
+  const isLR     = /real/i.test(regime);
+
+  // Pré-seleção por regime quando não há config salva
+  let ativas = config.obrigacoes_ativas || null;
+  if (!ativas) {
+    if (isMEI)         ativas = ['das', 'dasn_simei', 'dirpf'];
+    else if (isSimp)   ativas = ['das', 'defis', 'dirpf'];
+    else if (isLP)     ativas = ['dctfweb', 'efd_contrib', 'ecd', 'ecf', 'dirpf'];
+    else if (isLR)     ativas = ['dctfweb', 'efd_contrib', 'ecd', 'ecf', 'dirpf'];
+    else               ativas = [];
+  }
 
   listEl.innerHTML = OBRIGACOES_FISCAIS.map(ob => {
     const bloqueada = ob.somenteMei && !isMEI;
