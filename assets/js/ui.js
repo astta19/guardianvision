@@ -59,6 +59,9 @@ async function openDocumentos() {
   modal.style.display = 'flex';
   switchDocTab('nfe', modal.querySelector('.doc-tab'));
   lucide.createIcons();
+  setTimeout(() => document.getElementById('nfeFileInput')?.closest('button')?.focus?.(), 50);
+  // Restaurar último DARF calculado se existir na sessão
+  if (typeof carregarUltimoDarf === 'function') carregarUltimoDarf();
 }
 
 async function closeDocumentos() {
@@ -70,6 +73,7 @@ async function openCalculator() {
   const modal = document.getElementById('calcModal');
   if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
   lucide.createIcons();
+  setTimeout(() => document.getElementById('cV')?.focus(), 50);
 }
 
 async function closeCalculator() {
