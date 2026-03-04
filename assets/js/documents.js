@@ -6,6 +6,66 @@
 // GERAÇÃO DE DOCUMENTOS
 // ============================================================
 
+// ── Restaurar último DARF calculado ao abrir o modal ─────────────────────
+async function carregarUltimoDarf() {
+  if (!currentUser || !currentCliente?.id) return;
+  if (darfData) return; // já há dados na sessão
+
+  try {
+    const { data: saved } = await sb
+      .from('documentos_fiscais')
+      .select('dados')
+      .eq('user_id', currentUser.id)
+      .eq('cliente_id', currentCliente.id)
+      .eq('tipo', 'darf')
+      .order('criado_em', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!saved?.dados) return;
+    darfData = saved.dados;
+
+    // Preencher formulário com os dados salvos
+    const d = darfData;
+    if (d.regime)      document.getElementById('darfRegime').value      = d.regime;
+    if (d.competencia) document.getElementById('darfCompetencia').value = d.competencia;
+    if (typeof atualizarCamposDarf === 'function') atualizarCamposDarf();
+
+    // Renderizar resultado sem recalcular (usa darfData diretamente)
+    const linhasHtml = (d.linhas || []).map(l => `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <strong>${l.desc}</strong>
+          ${l.obs ? `<div style="font-size:11px;color:var(--text-light)">${l.obs}</div>` : ''}
+        </div>
+        <strong>R$ ${(l.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+      </div>`).join('');
+
+    const atrasadoHtml = d.diasAtraso > 0 ? `
+      <div style="margin-top:10px;padding:10px;background:#fef2f2;border-radius:8px;font-size:12px">
+        <strong style="color:#dc2626">⚠️ Em atraso — ${d.diasAtraso} dias</strong><br>
+        Multa: R$ ${(d.multa||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} ·
+        Juros: R$ ${(d.juros||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      </div>` : '';
+
+    const resultEl = document.getElementById('darfResult');
+    if (resultEl) {
+      resultEl.innerHTML = `
+        <div style="font-size:11px;color:var(--text-light);margin-bottom:8px;padding:6px 10px;background:var(--sidebar-hover);border-radius:6px">
+          📂 Último cálculo restaurado — ${d.competencia || ''}
+        </div>
+        <div>${linhasHtml}</div>
+        ${atrasadoHtml}
+        <div class="darf-total">Total a recolher: R$ ${(d.totalFinal||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`;
+      resultEl.className = 'darf-result show';
+    }
+    const actionsEl = document.getElementById('darfActions');
+    if (actionsEl) actionsEl.style.display = 'flex';
+
+  } catch(e) {} // silencioso
+}
+
+
 async function gerarConclusaoLLM(empresa, obrigacoes, resumoChat) {
   const prompt = `Você é um contador sênior. Com base na consulta fiscal abaixo, redija um parecer técnico com:
 1. Análise objetiva dos pontos levantados na consulta
@@ -136,7 +196,7 @@ async function getResumoChatTexto() {
 // ----------------------------------------------------------
 async function gerarRelatorioFiscal() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório.', 'warn');  return; }
 
   // Se darfData não está na sessão, buscar último cálculo salvo no banco
   if (!darfData && currentCliente?.id) {
@@ -282,7 +342,7 @@ async function gerarRelatorioFiscal() {
   doc.save(`relatorio-fiscal-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.pdf`);
   } catch(e) {
     console.error('Erro ao gerar PDF:', e);
-    alert('Erro ao gerar o relatório. Verifique se a página carregou completamente e tente novamente.');
+    showToast('Erro ao gerar o relatório. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -291,8 +351,8 @@ async function gerarRelatorioFiscal() {
 // ----------------------------------------------------------
 async function gerarParecer() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o parecer.'); return; }
-  if (typeof docx === 'undefined') { alert('Biblioteca DOCX não carregada. Recarregue a página.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o parecer.', 'warn'); return; }
+  if (typeof docx === 'undefined') { showToast('Biblioteca DOCX não carregada. Recarregue a página.', 'error'); return; }
 
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
           Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType } = docx;
@@ -405,7 +465,7 @@ async function gerarParecer() {
   URL.revokeObjectURL(url);
   } catch(e) {
     console.error('Erro ao gerar DOCX:', e);
-    alert('Erro ao gerar o parecer. Verifique se a página carregou completamente e tente novamente.');
+    showToast('Erro ao gerar o parecer. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -414,7 +474,7 @@ async function gerarParecer() {
 // ----------------------------------------------------------
 function gerarPlanilha() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar a planilha.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar a planilha.', 'warn'); return; }
   try {
 
   const empresa = currentCliente;
@@ -511,7 +571,7 @@ function gerarPlanilha() {
   XLSX.writeFile(wb, `apuracao-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.xlsx`);
   } catch(e) {
     console.error('Erro ao gerar Excel:', e);
-    alert('Erro ao gerar a planilha. Verifique se a página carregou completamente e tente novamente.');
+    showToast('Erro ao gerar a planilha. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -520,11 +580,11 @@ function gerarPlanilha() {
 // ----------------------------------------------------------
 async function gerarDasnSimei() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.', 'warn'); return; }
 
   const regime = currentCliente.regime_tributario || '';
   if (!/mei/i.test(regime)) {
-    alert('A DASN-SIMEI é exclusiva para Microempreendedores Individuais (MEI).\n\nEsta empresa está cadastrada como: ' + (regime || 'regime não informado'));
+    showToast('A DASN-SIMEI é exclusiva para MEI. Regime atual: ' + (regime || 'não informado'), 'warn', 5000);
     return;
   }
 
@@ -674,7 +734,7 @@ async function gerarDasnSimei() {
 
   } catch(e) {
     console.error('Erro ao gerar DASN-SIMEI:', e);
-    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
+    showToast('Erro ao gerar o documento. Recarregue a página.', 'error');
   }
 }
 
@@ -683,7 +743,7 @@ async function gerarDasnSimei() {
 // ----------------------------------------------------------
 async function gerarDctfWeb() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório DCTFWeb.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório DCTFWeb.', 'warn'); return; }
 
   try {
     const { jsPDF } = window.jspdf;
@@ -882,6 +942,6 @@ async function gerarDctfWeb() {
 
   } catch(e) {
     console.error('Erro ao gerar DCTFWeb:', e);
-    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
+    showToast('Erro ao gerar o documento. Recarregue a página.', 'error');
   }
 }
