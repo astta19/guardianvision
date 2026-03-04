@@ -14,11 +14,12 @@ let spedApuracao  = null; // apuração ICMS
 async function openSped() {
   const modal = document.getElementById('spedModal');
   if (!modal) return;
-  if (!currentCliente) { alert('Selecione uma empresa antes de acessar o SPED.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de acessar o SPED.', 'warn'); return; }
   modal.style.display = 'flex';
   await spedCarregarPeriodos();
   switchSpedTab('periodos');
   lucide.createIcons();
+  setTimeout(() => document.getElementById('spedMes')?.focus(), 80);
 }
 
 async function closeSped() {
@@ -132,14 +133,14 @@ async function spedCriarPeriodo() {
     return;
   }
 
-  if (msg) { msg.textContent = 'Período criado!'; msg.className = 'sped-msg success'; }
-  setTimeout(() => { if (msg) msg.textContent = ''; }, 2000);
+  showToast('Período criado com sucesso!', 'success');
+  if (msg) { msg.textContent = ''; }
   await spedCarregarPeriodos();
 }
 
 async function spedAbrirPeriodo(id) {
   const { data, error } = await sb.from('sped_periodos').select('*').eq('id', id).maybeSingle();
-  if (error || !data) { alert('Erro ao abrir período.'); return; }
+  if (error || !data) { showToast('Erro ao abrir período. Tente novamente.', 'error'); return; }
   spedPeriodo = data;
 
   document.getElementById('spedPeriodoAtual').textContent =
@@ -217,7 +218,7 @@ async function spedRenderDocs() {
 }
 
 async function spedAdicionarDoc() {
-  if (!spedPeriodo) { alert('Abra um período primeiro.'); return; }
+  if (!spedPeriodo) { showToast('Abra um período primeiro.', 'warn'); return; }
 
   const oper    = document.getElementById('docOper')?.value;
   const numDoc  = document.getElementById('docNum')?.value?.trim();
@@ -261,6 +262,7 @@ async function spedAdicionarDoc() {
   if (msg) { msg.textContent = 'Documento adicionado!'; msg.className = 'sped-msg success'; }
   setTimeout(() => { if (msg) msg.textContent = ''; }, 2000);
   await spedCarregarDocs();
+  showToast('Documento adicionado!', 'success');
   await spedRecalcularApuracao();
 }
 
@@ -307,7 +309,7 @@ async function spedRenderParticipantes() {
 }
 
 async function spedAdicionarParticipante() {
-  if (!spedPeriodo) { alert('Abra um período primeiro.'); return; }
+  if (!spedPeriodo) { showToast('Abra um período primeiro.', 'warn'); return; }
   const cod  = document.getElementById('partCod')?.value?.trim();
   const nome = document.getElementById('partNome')?.value?.trim();
   const cnpj = document.getElementById('partCnpj')?.value?.replace(/\D/g,'') || '';
@@ -380,7 +382,7 @@ async function spedRenderProdutos() {
 }
 
 async function spedAdicionarProduto() {
-  if (!spedPeriodo) { alert('Abra um período primeiro.'); return; }
+  if (!spedPeriodo) { showToast('Abra um período primeiro.', 'warn'); return; }
   const cod   = document.getElementById('prodCod')?.value?.trim();
   const descr = document.getElementById('prodDescr')?.value?.trim();
   const ncm   = document.getElementById('prodNCM')?.value?.trim() || '';
@@ -527,7 +529,7 @@ async function spedRecalcularApuracao() {
 
 async function spedGerarTxt(periodoId) {
   const pid = periodoId || spedPeriodo?.id;
-  if (!pid) { alert('Abra um período antes de gerar.'); return; }
+  if (!pid) { showToast('Abra um período antes de gerar.', 'warn'); return; }
 
   try {
     // Carregar todos os dados
@@ -540,15 +542,33 @@ async function spedGerarTxt(periodoId) {
         sb.from('sped_apuracao_icms').select('*').eq('periodo_id', pid).maybeSingle()
       ]);
 
-    if (!per) { alert('Período não encontrado.'); return; }
+    if (!per) { showToast('Período não encontrado.', 'error'); return; }
 
     // Validações antes de gerar
     const erros = [];
-    if (!docs?.length)      erros.push('• Nenhum documento fiscal lançado no período.');
-    if (!apuracao)          erros.push('• Apuração de ICMS não calculada. Acesse a aba "Apuração" e recalcule.');
-    if (!currentCliente)    erros.push('• Nenhuma empresa selecionada.');
+    if (!docs?.length)      erros.push('Nenhum documento fiscal lançado no período.');
+    if (!apuracao)          erros.push('Apuração ICMS não calculada. Acesse a aba Apuração.');
+    if (!currentCliente)    erros.push('Nenhuma empresa selecionada.');
+
+    // Validação CFOP x tipo de operação
+    if (docs?.length) {
+      const cfopErros = [];
+      for (const d of docs) {
+        const cfop = (d.cfop || '').toString();
+        const isEntrada = d.ind_oper === '0';
+        const isSaida   = d.ind_oper === '1';
+        if (cfop && isEntrada && !['1','2','3'].includes(cfop[0])) {
+          cfopErros.push(`NF ${d.num_doc}: CFOP ${cfop} inválido para entrada (deve iniciar com 1, 2 ou 3)`);
+        }
+        if (cfop && isSaida && !['5','6','7'].includes(cfop[0])) {
+          cfopErros.push(`NF ${d.num_doc}: CFOP ${cfop} inválido para saída (deve iniciar com 5, 6 ou 7)`);
+        }
+      }
+      if (cfopErros.length) erros.push(...cfopErros);
+    }
+
     if (erros.length) {
-      alert('Não é possível gerar o SPED:\n\n' + erros.join('\n'));
+      showToast('Não é possível gerar: ' + erros.slice(0, 2).join(' · ') + (erros.length > 2 ? ` (+${erros.length - 2})` : ''), 'error', 7000);
       return;
     }
 
@@ -677,10 +697,10 @@ async function spedGerarTxt(periodoId) {
     await sb.from('sped_periodos').update({ status: 'gerado', updated_at: new Date().toISOString() }).eq('id', pid);
     await spedCarregarPeriodos();
 
-    alert(`✅ Arquivo gerado com ${linhas.length} registros.\n\nImporte no PVA (Programa Validador e Assinador) da RFB para validar, assinar com certificado digital e transmitir.\n\nDownload: SPED_EFD_${cnpjLimpo}_${per.periodo}.txt`);
+    showToast(`✅ Arquivo SPED gerado com ${linhas.length} registros. Importe no PVA da RFB, assine e transmita.`, 'success', 7000);
 
   } catch(e) {
     console.error('Erro ao gerar SPED:', e);
-    alert('Erro ao gerar o arquivo: ' + e.message);
+    showToast('Erro ao gerar o arquivo: ' + e.message, 'error');
   }
 }
