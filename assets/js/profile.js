@@ -16,7 +16,7 @@ const OBRIGACOES_FISCAIS = [
   { id: 'defis',      label: 'DEFIS (Simples)',        desc: 'Até 31/03 anual',           dia: 31, mes: 3        },
   { id: 'ecd',        label: 'ECD',                   desc: 'Até 30/06 anual',           dia: 30, mes: 6        },
   { id: 'ecf',        label: 'ECF',                   desc: 'Até 31/07 anual',           dia: 31, mes: 7        },
-  { id: 'dirpf',      label: 'DIRPF (PF)',            desc: 'Até 29/05 anual',           dia: 29, mes: 5        },
+  { id: 'dirpf',      label: 'DIRPF (PF)',            desc: 'Até 30/05 anual',           dia: 30, mes: 5        },
 ];
 
 
