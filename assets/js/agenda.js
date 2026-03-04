@@ -40,6 +40,7 @@ async function openAgenda() {
   document.getElementById('agendaModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   await agendaCarregar();
+  setTimeout(() => document.getElementById('agendaFiltroCliente')?.focus(), 80);
 }
 
 function closeAgenda() {
@@ -423,7 +424,7 @@ async function agendaSalvarManual() {
   const descricao  = document.getElementById('agDesc').value.trim();
 
   if (!titulo || !prazo) {
-    alert('Título e prazo são obrigatórios.');
+    showToast('Título e prazo são obrigatórios.', 'warn');
     return;
   }
 
@@ -444,9 +445,10 @@ async function agendaSalvarManual() {
   };
 
   const { data, error } = await sb.from('agenda_tarefas').insert(payload).select('id').single();
-  if (error) { alert('Erro ao salvar tarefa.'); return; }
+  if (error) { showToast('Erro ao salvar tarefa. Tente novamente.', 'error'); return; }
 
   agendaTarefas.push({ ...payload, id: data.id, cliente_nome: clienteNome });
+  showToast('Tarefa salva com sucesso!', 'success');
   agendaFecharForm();
   agendaRender();
 }
