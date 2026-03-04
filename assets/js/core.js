@@ -512,12 +512,23 @@ async function carregarKPIs() {
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
       ]);
 
+    // Tela vazia
     document.getElementById('kpiTarefas').textContent  = cTarefas  ?? '—';
     document.getElementById('kpiVencidos').textContent = cVencidos  ?? '—';
     document.getElementById('kpiClientes').textContent = cClientes  ?? '—';
     document.getElementById('kpiDarfs').textContent    = cDarfs     ?? '—';
-
     dashboard.style.display = 'block';
+
+    // Sidebar KPI bar — sempre visível
+    const skpi = document.getElementById('sidebarKpi');
+    if (skpi) {
+      document.getElementById('skpiTarefas').textContent  = cTarefas  ?? '—';
+      document.getElementById('skpiVencidos').textContent = cVencidos  ?? '—';
+      document.getElementById('skpiClientes').textContent = cClientes  ?? '—';
+      document.getElementById('skpiDarfs').textContent    = cDarfs     ?? '—';
+      skpi.style.display = 'block';
+    }
+
     if (window.lucide) lucide.createIcons();
   } catch(e) {
     console.error('KPI error:', e);
