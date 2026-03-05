@@ -380,7 +380,11 @@ async function showApp() {
   }
   applyAdminUI();
   checkConnection();
-  if (typeof loadClientes === 'function') loadClientes();
+  // loadClientes APÓS garantir que currentUser está setado (getUser já foi awaited acima)
+  if (typeof loadClientes === 'function') {
+    // Pequeno delay para garantir que o DOM e permissões estejam prontos
+    setTimeout(() => loadClientes(), 50);
+  }
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
   if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
