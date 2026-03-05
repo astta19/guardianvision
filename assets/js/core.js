@@ -154,6 +154,32 @@ function applyAdminUI() {
       if (window.lucide) lucide.createIcons();
     }
   }
+
+  // Banner de empresa não selecionada
+  atualizarBannerEmpresa();
+}
+
+function atualizarBannerEmpresa() {
+  const banner = document.getElementById('semEmpresaBanner');
+  if (!banner) return;
+  if (!currentCliente?.id) {
+    banner.style.display = 'flex';
+    // Esconder ferramentas que dependem de empresa
+    document.querySelectorAll('[data-perm]').forEach(el => {
+      el.style.opacity = '0.4';
+      el.style.pointerEvents = 'none';
+    });
+  } else {
+    banner.style.display = 'none';
+    // Restaurar visibilidade (applyAdminUI já cuida do display)
+    document.querySelectorAll('[data-perm]').forEach(el => {
+      el.style.opacity = '';
+      el.style.pointerEvents = '';
+    });
+    // Atualizar badge de empresa no modal financeiro
+    const badge = document.getElementById('finEmpresaBadge');
+    if (badge) badge.textContent = currentCliente.nome_fantasia || currentCliente.razao_social;
+  }
 }
 
 // Chamada pelo admin para definir permissões de um contador
