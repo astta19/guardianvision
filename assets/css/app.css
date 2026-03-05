@@ -340,47 +340,67 @@
       flex-shrink: 0;
     }
 
-    /* Botão padrão da toolbar — ícone + label pequeno */
+    /* ── Botões do header ─────────────────────────── */
     .tb-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      width: auto;
-      min-width: 44px;
-      height: 44px;
-      padding: 0 10px;
-      background: none;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      color: var(--text-light);
-      position: relative;
-      transition: background .15s, color .15s;
-    }
-    .tb-btn svg {
-      width: 16px;
-      height: 16px;
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; padding: 0;
+      background: none; border: none; border-radius: 8px;
+      cursor: pointer; color: var(--text-light);
+      position: relative; transition: background .15s, color .15s;
       flex-shrink: 0;
     }
-    .tb-btn:hover {
-      background: var(--sidebar-hover);
+    .tb-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .tb-btn:hover { background: var(--sidebar-hover); color: var(--text); }
+    .tb-btn:active { transform: scale(0.93); }
+    .tb-label { display: none; }
+
+    /* ── Botão ⊞ Ferramentas ───────────────────────── */
+    .tb-tools-btn {
+      width: auto;
+      padding: 0 10px;
+      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      height: 34px;
+      font-size: 13px;
+      font-weight: 600;
       color: var(--text);
     }
-    .tb-btn:active {
-      transform: scale(0.95);
+    .tb-tools-btn:hover { background: var(--sidebar-hover); border-color: var(--accent); }
+    .tb-tools-label { font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+    /* ── Dropdown de ferramentas (grid) ─────────────── */
+    .tools-dropdown {
+      width: 280px;
+      padding: 12px;
     }
-    .tb-label {
-      font-size: 9px;
-      font-weight: 600;
-      letter-spacing: .3px;
-      text-transform: uppercase;
-      line-height: 1;
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 4px;
     }
-    @media (max-width: 768px) {
-      .tb-label { display: none; }
-      .tb-btn { min-width: 36px; height: 40px; padding: 0 8px; }
+    .tool-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 5px; padding: 10px 4px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--bg);
+      cursor: pointer; color: var(--text-light);
+      font-size: 10px; font-weight: 600; line-height: 1.2;
+      transition: all .15s; text-align: center;
+    }
+    .tool-card svg { width: 18px; height: 18px; }
+    .tool-card:hover {
+      background: var(--accent); color: #fff;
+      border-color: var(--accent); transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(0,0,0,.12);
+    }
+    .tool-card:active { transform: translateY(0); }
+
+    @media (max-width: 480px) {
+      .tb-tools-label { display: none; }
+      .tb-tools-btn { padding: 0 8px; }
+      .tools-dropdown { width: calc(100vw - 32px); right: 0; left: auto; }
+      .tools-grid { grid-template-columns: repeat(4, 1fr); }
     }
 
     /* Badge de contador no botão da agenda */
