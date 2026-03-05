@@ -432,6 +432,15 @@
   </aside>
 
   <main id="chat">
+    <!-- Banner: nenhuma empresa selecionada -->
+    <div id="semEmpresaBanner" style="display:none;align-items:center;justify-content:center;gap:12px;padding:10px 16px;background:#fef3c7;border-bottom:1px solid #fbbf24;font-size:13px;color:#92400e">
+      <i data-lucide="building-2" style="width:16px;height:16px;flex-shrink:0"></i>
+      <span>Selecione uma empresa para usar as ferramentas.</span>
+      <button onclick="openClientModal()" style="padding:4px 12px;border-radius:6px;background:#f59e0b;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0">
+        Selecionar empresa
+      </button>
+    </div>
+
     <div class="c-head">
       <div class="c-left">
         <button class="icon-btn sidebar-toggle" onclick="toggleSidebar()" title="Conversas" aria-label="Abrir menu de conversas">
@@ -485,6 +494,10 @@
           <button class="tb-btn" onclick="openFolha()" title="Folha de Pagamento" data-perm="folha" style="display:none" aria-label="Folha">
             <i data-lucide="users"></i>
             <span class="tb-label">Folha</span>
+          </button>
+          <button class="tb-btn" onclick="openFinanceiro()" title="Financeiro" data-perm="financeiro" style="display:none" aria-label="Financeiro">
+            <i data-lucide="wallet"></i>
+            <span class="tb-label">Financeiro</span>
           </button>
         </div>
 
@@ -547,6 +560,9 @@
             </button>
             <button class="menu-item" data-perm="folha" onclick="openFolha(); closeDropdowns()" style="display:none">
               <i data-lucide="users"></i> Folha de Pagamento
+            </button>
+            <button class="menu-item" data-perm="financeiro" onclick="openFinanceiro(); closeDropdowns()" style="display:none">
+              <i data-lucide="wallet"></i> Financeiro
             </button>
             <div class="menu-sep"></div>
             <div class="hdr-dropdown-title">Admin</div>
@@ -700,6 +716,9 @@
         <button class="doc-tab" onclick="switchDocTab('darf', this)">
           <i data-lucide="receipt" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>DARF / DAS
         </button>
+        <button class="doc-tab" onclick="switchDocTab('historico', this);darfHistoricoCarregar()">
+          <i data-lucide="history" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Histórico
+        </button>
       </div>
 
       <!-- PAINEL NF-e -->
@@ -811,6 +830,9 @@
         <div id="darfResult" class="darf-result"></div>
 
         <div class="doc-actions" id="darfActions" style="display:none">
+          <button id="darfSalvarHistBtn" class="doc-btn doc-btn-secondary" onclick="darfSalvarHistorico()">
+            <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
+          </button>
           <button class="doc-btn doc-btn-secondary" onclick="exportarDarfPDF()">
             <i data-lucide="file" style="width:13px;height:13px"></i> PDF
           </button>
@@ -818,10 +840,21 @@
             <i data-lucide="table" style="width:13px;height:13px"></i> Excel
           </button>
           <button class="doc-btn doc-btn-primary" onclick="enviarDarfParaChat()">
-            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Analisar no Chat
+            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Chat
           </button>
         </div>
       </div>
+
+      <!-- PAINEL: HISTÓRICO DE DARFS -->
+      <div id="docPanelHistorico" class="doc-panel">
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">
+          Competências calculadas e salvas. Marque como pago após o recolhimento.
+        </p>
+        <div id="darfHistoricoLista">
+          <p class="dp-empty">Selecione uma empresa para ver o histórico.</p>
+        </div>
+      </div>
+
       </div><!-- fim scroll docModal -->
     </div><!-- fim caixa docModal -->
   </div><!-- fim overlay docModal -->
@@ -1047,11 +1080,11 @@
   <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <!-- Scripts — ordem importa: core → ui → clients → chat → fiscal → profile → documents → sped -->
-  <script src="assets/js/core.js?v=6"></script>
+  <script src="assets/js/core.js?v=8"></script>
   <script src="assets/js/ui.js?v=6"></script>
-  <script src="assets/js/clients.js?v=6"></script>
+  <script src="assets/js/clients.js?v=8"></script>
   <script src="assets/js/chat.js?v=6"></script>
-  <script src="assets/js/fiscal.js?v=6"></script>
+  <script src="assets/js/fiscal.js?v=8"></script>
   <script src="assets/js/profile.js?v=6"></script>
   <script src="assets/js/documents.js?v=6"></script>
   <script src="assets/js/sped.js?v=6"></script>
@@ -1151,6 +1184,107 @@
 
 
   <!-- MODAL FOLHA DE PAGAMENTO / DP -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL FINANCEIRO — Lançamentos + Fluxo de Caixa
+  ══════════════════════════════════════════════════════════ -->
+  <div id="finModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFinanceiro()">
+    <div class="dp-modal" style="max-width:720px">
+
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i data-lucide="wallet" style="width:16px;height:16px"></i>
+          <span style="font-weight:700;font-size:14px">Financeiro</span>
+          <span id="finEmpresaBadge" class="dp-empresa-badge"></span>
+        </div>
+        <button onclick="closeFinanceiro()" class="dp-close-btn"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+      </div>
+
+      <div class="dp-body">
+
+        <!-- KPIs -->
+        <div id="finKPIs" class="fin-kpis"></div>
+
+        <!-- Gráfico fluxo anual -->
+        <div id="finFluxo" style="margin:8px 0"></div>
+
+        <!-- Navegação de mês -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px">
+          <button onclick="finNavMes(-1)" class="dp-btn-sec" style="padding:4px 10px">‹</button>
+          <strong id="finMesLabel" style="font-size:13px">—</strong>
+          <button onclick="finNavMes(1)" class="dp-btn-sec" style="padding:4px 10px">›</button>
+        </div>
+
+        <!-- Filtro tipo -->
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button onclick="lancFiltroTipo='todos';finRenderLista()" class="fin-filtro-btn active" id="fFiltTodos">Todos</button>
+          <button onclick="lancFiltroTipo='receita';finRenderLista()" class="fin-filtro-btn" id="fFiltRec">Receitas</button>
+          <button onclick="lancFiltroTipo='despesa';finRenderLista()" class="fin-filtro-btn" id="fFiltDesp">Despesas</button>
+        </div>
+
+        <!-- Lista de lançamentos -->
+        <div id="finLista"></div>
+
+        <!-- Formulário novo/edição -->
+        <div id="lancForm" class="dp-form-section" style="margin-top:12px">
+          <div class="dp-form-title">
+            <span id="lancFormTitulo">Novo Lançamento</span>
+            <button onclick="lancNovoForm()" class="dp-link-btn">Limpar</button>
+          </div>
+          <input type="hidden" id="lancId">
+          <div class="dp-grid2">
+            <div class="dp-field">
+              <label class="dp-lbl">Tipo *</label>
+              <select id="lancTipo" class="c-inp" onchange="lancAtualizarCategorias()">
+                <option value="despesa">Despesa</option>
+                <option value="receita">Receita</option>
+              </select>
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Categoria *</label>
+              <select id="lancCategoria" class="c-inp"></select>
+            </div>
+            <div class="dp-field span2">
+              <label class="dp-lbl">Descrição *</label>
+              <input type="text" id="lancDescricao" class="c-inp" placeholder="Ex: DARF IRPJ jan/2026">
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Valor (R$) *</label>
+              <input type="number" id="lancValor" class="c-inp" placeholder="0,00" step="0.01" min="0.01">
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Status</label>
+              <select id="lancStatus" class="c-inp">
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Vencimento *</label>
+              <input type="date" id="lancVenc" class="c-inp">
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Data de Pagamento</label>
+              <input type="date" id="lancPgto" class="c-inp">
+            </div>
+            <div class="dp-field span2">
+              <label class="dp-lbl">Observação</label>
+              <input type="text" id="lancObs" class="c-inp" placeholder="Opcional">
+            </div>
+          </div>
+          <div class="dp-form-actions">
+            <button onclick="lancNovoForm()" class="dp-btn-sec">Cancelar</button>
+            <button id="finSalvarBtn" onclick="finSalvar()" class="dp-btn-pri">
+              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /dp-body -->
+    </div>
+  </div><!-- /finModal -->
+
   <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFolha()">
     <div class="dp-modal">
 
@@ -1593,6 +1727,7 @@
   </div><!-- /folhaModal -->
 
   <script src="assets/js/agenda.js?v=7"></script>
+  <script src="assets/js/financeiro.js?v=1"></script>
 
 
   <!-- MODAL PORTAL ADMIN -->
