@@ -2642,3 +2642,120 @@
 
     /* ── Mini KPI Sidebar (revisado) ────────────────────────── */
     #sidebarKpi { flex-shrink: 0; }
+
+
+    /* ══════════════════════════════════════════
+       FINANCEIRO — Lançamentos + Fluxo de Caixa
+    ══════════════════════════════════════════ */
+    .fin-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .fin-kpi {
+      background: var(--sidebar-hover);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .fin-kpi-icon { flex-shrink: 0; }
+    .fin-kpi-lbl  { font-size: 11px; color: var(--text-light); margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
+    .fin-kpi-val  { font-size: 15px; font-weight: 700; }
+    .fin-badge-warn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #dc2626; color: #fff; border-radius: 10px;
+      padding: 0 5px; font-size: 10px; font-weight: 700; min-width: 16px;
+    }
+
+    /* Gráfico de barras mensais */
+    .fin-chart-wrap { background: var(--sidebar-hover); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .fin-chart { display: flex; gap: 4px; align-items: flex-end; height: 100px; }
+    .fin-chart-col {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      border-radius: 4px; padding: 2px; transition: background .15s;
+    }
+    .fin-chart-col:hover, .fin-chart-col.active { background: var(--hover); }
+    .fin-chart-bars { display: flex; gap: 2px; align-items: flex-end; height: 70px; width: 100%; }
+    .fin-bar { flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s ease; }
+    .fin-bar-rec  { background: #16a34a; }
+    .fin-bar-desp { background: #dc2626; }
+    .fin-chart-label { font-size: 9px; color: var(--text-light); margin-top: 3px; }
+    .fin-chart-label.hoje { color: var(--accent); font-weight: 700; }
+    .fin-chart-saldo { font-size: 9px; font-weight: 600; }
+    .fin-chart-saldo.pos { color: #16a34a; }
+    .fin-chart-saldo.neg { color: #dc2626; }
+    .fin-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 11px; color: var(--text-light); align-items: center; }
+    .fin-dot-rec  { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #16a34a; margin-right: 4px; }
+    .fin-dot-desp { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #dc2626; margin-right: 4px; }
+
+    /* Filtros */
+    .fin-filtro-btn {
+      padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; cursor: pointer; font-size: 12px; color: var(--text-light);
+      transition: all .15s;
+    }
+    .fin-filtro-btn:hover, .fin-filtro-btn.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+
+    /* Lista de lançamentos */
+    .fin-grupo-label { font-size: 11px; font-weight: 700; color: var(--text-light); padding: 8px 0 4px; text-transform: uppercase; letter-spacing: .5px; }
+    .fin-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 6px; gap: 8px; background: var(--bg);
+      transition: border-color .15s;
+    }
+    .fin-item:hover { border-color: var(--accent); }
+    .fin-item-vencido { border-color: #fca5a5; background: #fff5f5; }
+    .dark .fin-item-vencido { background: rgba(220,38,38,.08); border-color: #7f1d1d; }
+    .fin-item-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .fin-tipo-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .fin-item-desc { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fin-item-meta { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+    .fin-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .fin-item-valor { font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .fin-item-acoes { display: flex; gap: 4px; }
+
+    .fin-btn-sm {
+      padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border);
+      background: transparent; cursor: pointer; font-size: 11px; color: var(--text-light);
+      display: flex; align-items: center; gap: 2px; transition: all .15s;
+    }
+    .fin-btn-sm:hover { background: var(--hover); }
+    .fin-btn-pagar { color: #16a34a; border-color: #16a34a; }
+    .fin-btn-pagar:hover { background: #f0fdf4; }
+    .fin-btn-del { color: #dc2626; }
+    .fin-btn-del:hover { background: #fef2f2; border-color: #dc2626; }
+
+    /* Histórico DARF */
+    .darf-hist-resumo {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .darf-hist-kpi {
+      flex: 1; background: var(--sidebar-hover); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .darf-hist-kpi span { font-size: 11px; color: var(--text-light); }
+    .darf-hist-kpi strong { font-size: 14px; }
+    .darf-hist-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      gap: 8px; background: var(--bg);
+    }
+
+    /* Responsividade financeiro */
+    @media (max-width: 600px) {
+      .fin-kpis { grid-template-columns: repeat(2, 1fr); }
+      .fin-kpi-val { font-size: 13px; }
+      .fin-chart { height: 80px; }
+      .fin-chart-bars { height: 55px; }
+      .fin-chart-saldo { display: none; }
+      .fin-item-valor { font-size: 12px; }
+      .darf-hist-resumo { flex-direction: column; }
+    }
