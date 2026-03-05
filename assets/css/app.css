@@ -2121,6 +2121,14 @@
       transition: background .15s;
     }
     .dp-close-btn:hover { background: var(--hover); }
+    .dp-hd-rel-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent; cursor: pointer; color: var(--text-light);
+      transition: all .15s;
+    }
+    .dp-hd-rel-btn:hover { background: var(--hover); color: var(--text); }
 
     /* Abas */
     .dp-tabs {
@@ -2446,37 +2454,181 @@
     .dp-td-comp { font-weight: 600; font-size: 13px; white-space: nowrap; }
 
     /* ── RESPONSIVIDADE ─────────────────────────────────────── */
-    @media (max-width: 600px) {
-      .dp-modal { border-radius: 12px; max-height: 96vh; }
-      .dp-body { padding: 12px; }
+    /* ── Loading spinner ─────────────────────────────────────── */
+    .dp-loading {
+      display: flex; align-items: center; gap: 10px;
+      justify-content: center; padding: 30px;
+      color: var(--text-light); font-size: 13px;
+    }
+    .dp-spin {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: dp-spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes dp-spin { to { transform: rotate(360deg); } }
 
-      /* Grid → single column em telas pequenas */
+    /* ── KPI aprimorado ──────────────────────────────────────── */
+    .dp-kpi-ico { font-size: 16px; line-height: 1; }
+    .dp-kpi-hl  { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+    .dp-kpi-warn { border-color: #f59e0b; background: #fffbeb; }
+    [data-theme="dark"] .dp-kpi-warn { background: rgba(245,158,11,.1); }
+
+    /* ── Gráfico de barras ───────────────────────────────────── */
+    .dp-chart {
+      display: flex; gap: 8px; align-items: flex-end;
+      padding: 12px 4px 0; height: 140px; margin-top: 4px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .dp-chart-col {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 4px; flex: 1; min-width: 52px;
+    }
+    .dp-chart-bars {
+      display: flex; gap: 3px; align-items: flex-end;
+      height: 100px; width: 100%;
+    }
+    .dp-bar-wrap {
+      flex: 1; display: flex; align-items: flex-end;
+      background: var(--sidebar-hover); border-radius: 4px 4px 0 0;
+      height: 100%; position: relative;
+      cursor: default;
+    }
+    .dp-bar {
+      width: 100%; border-radius: 4px 4px 0 0;
+      transition: height .4s ease;
+      min-height: 2px;
+    }
+    .dp-bar-custo { background: var(--accent); }
+    .dp-bar-liq   { background: #16a34a; }
+    .dp-chart-lbl { font-size: 10px; color: var(--text-light); white-space: nowrap; }
+    .dp-chart-val { font-size: 10px; font-weight: 600; color: var(--text); white-space: nowrap; }
+    .dp-chart-legend {
+      display: flex; gap: 16px; justify-content: center;
+      padding: 8px 0 0; font-size: 11px; color: var(--text-light);
+    }
+    .dp-leg { display: flex; align-items: center; gap: 4px; }
+    .dp-leg-custo { color: var(--accent); }
+    .dp-leg-liq   { color: #16a34a; }
+
+    /* ── Composição horizontal ───────────────────────────────── */
+    .dp-composicao { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+    .dp-comp-row {
+      display: grid;
+      grid-template-columns: 12px 130px 1fr 36px 100px;
+      align-items: center; gap: 8px;
+    }
+    .dp-comp-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .dp-comp-lbl  { font-size: 12px; color: var(--text); }
+    .dp-comp-pct  { font-size: 11px; font-weight: 700; color: var(--text); text-align: right; }
+    .dp-comp-val  { font-size: 11px; color: var(--text-light); text-align: right; }
+    .dp-comp-bar-bg {
+      height: 6px; background: var(--sidebar-hover); border-radius: 3px; overflow: hidden;
+    }
+    .dp-comp-bar { height: 100%; border-radius: 3px; transition: width .5s ease; }
+
+    /* Cores por componente */
+    .dp-comp-bruto     { background: var(--accent); }
+    .dp-comp-pat       { background: #7c3aed; }
+    .dp-comp-fgts      { background: #2563eb; }
+    .dp-comp-inss      { background: #f59e0b; }
+    .dp-comp-irrf      { background: #dc2626; }
+    .dp-comp-bruto-bar { background: var(--accent); }
+    .dp-comp-pat-bar   { background: #7c3aed; }
+    .dp-comp-fgts-bar  { background: #2563eb; }
+    .dp-comp-inss-bar  { background: #f59e0b; }
+    .dp-comp-irrf-bar  { background: #dc2626; }
+
+    /* ── Ranking de funcionários ─────────────────────────────── */
+    .dp-ranking { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+    .dp-rank-row {
+      display: grid; grid-template-columns: 24px 1fr auto;
+      align-items: center; gap: 8px;
+    }
+    .dp-rank-num {
+      font-size: 11px; font-weight: 800; color: var(--text-light);
+      text-align: center; width: 20px;
+    }
+    .dp-rank-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .dp-rank-nome { font-size: 12px; font-weight: 600; color: var(--text); }
+    .dp-rank-nome small { font-weight: 400; color: var(--text-light); }
+    .dp-rank-vals { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+    .dp-rank-custo { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .dp-rank-sub   { font-size: 10px; color: var(--text-light); }
+
+    /* ── Badge tipo contrato ─────────────────────────────────── */
+    .dp-badge-tipo {
+      display: inline-block; padding: 2px 6px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .3px;
+    }
+    .dp-badge-clt     { background: #dbeafe; color: #1d4ed8; }
+    .dp-badge-pj      { background: #fef3c7; color: #92400e; }
+    .dp-badge-estagio { background: #d1fae5; color: #065f46; }
+    [data-theme="dark"] .dp-badge-clt     { background: rgba(29,78,216,.2); color: #93c5fd; }
+    [data-theme="dark"] .dp-badge-pj      { background: rgba(146,64,14,.2); color: #fbbf24; }
+    [data-theme="dark"] .dp-badge-estagio { background: rgba(6,95,70,.2);   color: #6ee7b7; }
+
+    /* ── Responsividade aprimorada ───────────────────────────── */
+    @media (max-width: 600px) {
+      .dp-modal {
+        border-radius: 12px 12px 0 0;
+        max-height: 96dvh;
+        margin-top: auto;
+        width: 100%;
+      }
+
+      /* Modal começa no fundo na mobile */
+      #folhaModal {
+        align-items: flex-end;
+        padding: 0;
+      }
+
+      .dp-body { padding: 10px 12px 16px; }
+
+      /* Grid → coluna única */
       .dp-grid2 { grid-template-columns: 1fr; }
       .dp-field.span2 { grid-column: span 1; }
 
-      /* Abas em scroll horizontal */
-      .dp-tab-btn { padding: 10px 10px; font-size: 11px; }
-      .dp-tab-btn span { display: none; } /* oculta texto, mantém ícone */
-      .dp-tab-btn.active span { display: inline; } /* aba ativa mostra texto */
+      /* Abas compactas: apenas ícone, ativa mostra texto */
+      .dp-tabs { gap: 2px; }
+      .dp-tab-btn { padding: 9px 8px; font-size: 11px; flex: 1; justify-content: center; }
+      .dp-tab-btn span { display: none; }
+      .dp-tab-btn.active { flex: 1.6; }
+      .dp-tab-btn.active span { display: inline; }
 
       /* Recibo */
-      .dp-liq-val { font-size: 16px; }
+      .dp-liq-val { font-size: 15px; }
       .dp-td { font-size: 11px; padding: 3px 2px; }
 
       /* KPIs em 2 colunas */
-      .dp-kpis { grid-template-columns: repeat(2, 1fr); }
-      .dp-kpi-v { font-size: 16px; }
+      .dp-kpis { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+      .dp-kpi-v { font-size: 15px; }
+      .dp-kpi-ico { font-size: 14px; }
 
       /* Ações empilhadas */
-      .dp-actions { flex-direction: column; }
+      .dp-form-actions, .dp-actions { flex-direction: column; gap: 6px; }
       .dp-btn-pri, .dp-btn-sec { width: 100%; justify-content: center; }
+
+      /* Composição: colapsa colunas */
+      .dp-comp-row { grid-template-columns: 12px 1fr 1fr 32px; }
+      .dp-comp-val { display: none; }
+
+      /* Ranking */
+      .dp-rank-row { grid-template-columns: 20px 1fr auto; }
+
+      /* Gráfico menor */
+      .dp-chart { height: 110px; gap: 4px; }
+      .dp-chart-bars { height: 75px; }
+      .dp-chart-val { font-size: 9px; }
     }
 
-    @media (min-width: 601px) and (max-width: 768px) {
+    @media (min-width: 601px) and (max-width: 900px) {
       .dp-modal { max-width: 98vw; }
+      .dp-comp-row { grid-template-columns: 12px 110px 1fr 32px 90px; }
     }
 
     /* ── Mini KPI Sidebar (revisado) ────────────────────────── */
-    #sidebarKpi {
-      flex-shrink: 0;
-    }
+    #sidebarKpi { flex-shrink: 0; }
