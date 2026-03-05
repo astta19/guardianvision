@@ -302,7 +302,7 @@ function validarDataDarf(input) {
   const maxStr = maxDate.toISOString().split('T')[0];
   if (input.value > maxStr) {
     input.value = hoje;
-    alert('Data de vencimento não pode ser superior a 1 ano no futuro.');
+    showToast('Data de vencimento não pode ultrapassar 1 ano.', 'warn');
   }
 }
 
@@ -464,7 +464,12 @@ function calcularDarf() {
   document.getElementById('darfResult').className = 'darf-result show';
   document.getElementById('darfActions').style.display = 'flex';
 
-  darfData = { regime, competencia, linhas, totalPrincipal, juros, multa, totalFinal, diasAtraso };
+  darfData = {
+    regime, competencia, linhas, totalPrincipal, juros, multa,
+    totalFinal, diasAtraso,
+    fat, lucro, prolabore, folha, vencimento,
+    regimeLabel: document.getElementById('darfRegime').options[document.getElementById('darfRegime').selectedIndex]?.text || regime,
+  };
   salvarDocumentoFiscal('darf', darfData);
   lucide.createIcons();
 }
@@ -486,7 +491,7 @@ async function exportarNFePDF() {
   if (!nfeData.length) return;
   const { jsPDF } = window.jspdf || {};
   if (!jsPDF) {
-    alert('Biblioteca jsPDF não carregada. Tente exportar via Excel ou Analisar no Chat.');
+    showToast('jsPDF não carregada. Use Excel ou Analisar no Chat.', 'error');
     return;
   }
   const doc = new jsPDF();
@@ -532,7 +537,7 @@ function exportarNFeExcel() {
 async function exportarDarfPDF() {
   if (!darfData) return;
   const { jsPDF } = window.jspdf || {};
-  if (!jsPDF) { alert('Biblioteca jsPDF não disponível. Use Analisar no Chat para registrar o cálculo.'); return; }
+  if (!jsPDF) { showToast('jsPDF não disponível. Use Analisar no Chat.', 'error'); return; }
   const doc = new jsPDF();
   let y = 20;
   doc.setFontSize(16); doc.text('Documento de Referência — DARF/DAS', 14, y); y += 8;
@@ -582,4 +587,147 @@ function exportarDarfExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'DARF');
   XLSX.writeFile(wb, `darf-${darfData.regime}-${darfData.competencia.replace('/','')}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════════════
+// HISTÓRICO DE DARFS — Persistência por empresa e competência
+// ════════════════════════════════════════════════════════════
+
+// SQL NECESSÁRIO:
+// CREATE TABLE IF NOT EXISTS darf_historico (
+//   id           uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+//   user_id      uuid REFERENCES auth.users NOT NULL,
+//   cliente_id   uuid REFERENCES clientes(id) ON DELETE CASCADE,
+//   competencia  text NOT NULL,
+//   regime       text NOT NULL,
+//   total        numeric(12,2) NOT NULL,
+//   status       text DEFAULT 'pendente' CHECK (status IN ('pendente','pago','cancelado')),
+//   data_pgto    date,
+//   dados        jsonb NOT NULL,
+//   criado_em    timestamptz DEFAULT now(),
+//   atualizado_em timestamptz DEFAULT now(),
+//   UNIQUE(user_id, cliente_id, competencia, regime)
+// );
+// ALTER TABLE darf_historico ENABLE ROW LEVEL SECURITY;
+// CREATE POLICY "darf_hist_own" ON darf_historico
+//   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+// CREATE INDEX idx_darf_hist_cliente ON darf_historico(user_id, cliente_id, competencia DESC);
+
+async function darfSalvarHistorico() {
+  if (!darfData)                   { showToast('Calcule o DARF primeiro.','warn'); return; }
+  if (!currentCliente?.id)         { showToast('Selecione uma empresa.','warn'); return; }
+  if (!darfData.competencia)       { showToast('Informe a competência.','warn'); return; }
+
+  const btn = document.getElementById('darfSalvarHistBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  const { error } = await sb.from('darf_historico').upsert({
+    user_id:      currentUser.id,
+    cliente_id:   currentCliente.id,
+    competencia:  darfData.competencia,
+    regime:       darfData.regime,
+    total:        darfData.totalFinal,
+    dados:        darfData,
+    atualizado_em: new Date().toISOString(),
+  }, { onConflict: 'user_id,cliente_id,competencia,regime' });
+
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar no Histórico'; }
+  if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+  showToast('DARF salvo no histórico.','success');
+  darfHistoricoCarregar();
+}
+
+async function darfHistoricoCarregar() {
+  if (!currentCliente?.id) return;
+  const el = document.getElementById('darfHistoricoLista');
+  if (!el) return;
+
+  el.innerHTML = '<div class="dp-loading"><div class="dp-spin"></div> Carregando...</div>';
+
+  const { data, error } = await sb
+    .from('darf_historico')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('cliente_id', currentCliente.id)
+    .order('competencia', { ascending: false })
+    .limit(36); // 3 anos
+
+  if (error || !data?.length) {
+    el.innerHTML = '<p class="dp-empty">Nenhum DARF salvo ainda. Calcule e clique em "Salvar no Histórico".</p>';
+    return;
+  }
+
+  const totalPendente = data.filter(d => d.status === 'pendente').reduce((a,d) => a + +d.total, 0);
+  const totalPago     = data.filter(d => d.status === 'pago').reduce((a,d) => a + +d.total, 0);
+
+  el.innerHTML = `
+    <div class="darf-hist-resumo">
+      <div class="darf-hist-kpi">
+        <span>Pendentes</span>
+        <strong style="color:#dc2626">R$ ${(+totalPendente).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+      </div>
+      <div class="darf-hist-kpi">
+        <span>Pagos (histórico)</span>
+        <strong style="color:#16a34a">R$ ${(+totalPago).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+      ${data.map(d => darfHistoricoItemHtml(d)).join('')}
+    </div>`;
+  lucide.createIcons();
+}
+
+function darfHistoricoItemHtml(d) {
+  const pago     = d.status === 'pago';
+  const cancelado = d.status === 'cancelado';
+  const cor      = pago ? '#16a34a' : cancelado ? '#9ca3af' : '#d97706';
+  const badge    = pago ? '✅ Pago' : cancelado ? '❌ Cancelado' : '🕐 Pendente';
+  const dtPgto   = d.data_pgto ? ' · Pago em ' + new Date(d.data_pgto+'T00:00').toLocaleDateString('pt-BR') : '';
+  return `
+    <div class="darf-hist-item">
+      <div>
+        <strong style="font-size:13px">${d.competencia} — ${escapeHtml(d.dados?.regimeLabel || d.regime)}</strong>
+        <div style="font-size:11px;color:var(--text-light);margin-top:2px">
+          <span style="color:${cor};font-weight:600">${badge}</span>${dtPgto}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <strong style="color:${cor}">R$ ${(+d.total).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
+        ${!pago && !cancelado ? `<button class="fin-btn-sm fin-btn-pagar" onclick="darfMarcarPago('${d.id}')">Pago</button>` : ''}
+        <button class="fin-btn-sm" onclick="darfRestaurar('${d.id}')" title="Restaurar no formulário">
+          <i data-lucide="rotate-ccw" style="width:11px;height:11px"></i>
+        </button>
+      </div>
+    </div>`;
+}
+
+async function darfMarcarPago(id) {
+  const { error } = await sb.from('darf_historico').update({
+    status: 'pago',
+    data_pgto: new Date().toISOString().slice(0,10),
+    atualizado_em: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) { showToast('Erro ao atualizar.','error'); return; }
+  showToast('DARF marcado como pago.','success');
+  darfHistoricoCarregar();
+}
+
+async function darfRestaurar(id) {
+  const { data, error } = await sb.from('darf_historico').select('dados').eq('id', id).single();
+  if (error || !data) return;
+  const d = data.dados;
+  // Restaurar campos no formulário
+  if (d.regime)      document.getElementById('darfRegime').value      = d.regime;
+  if (d.competencia) document.getElementById('darfCompetencia').value = d.competencia;
+  if (d.fat)         document.getElementById('darfFaturamento').value  = d.fat;
+  if (d.lucro)       document.getElementById('darfLucro').value        = d.lucro;
+  if (d.prolabore)   document.getElementById('darfProlabore').value    = d.prolabore;
+  if (d.folha)       document.getElementById('darfFolha').value        = d.folha;
+  if (d.vencimento)  document.getElementById('darfVencimento').value   = d.vencimento;
+  atualizarCamposDarf();
+  calcularDarf();
+  // Voltar para a aba de cálculo
+  const tabCalc = document.querySelector('.doc-tab[onclick*="darf"]');
+  if (tabCalc) switchDocTab('darf', tabCalc);
+  showToast('Dados restaurados no formulário.','success');
 }
