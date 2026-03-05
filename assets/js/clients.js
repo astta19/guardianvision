@@ -169,6 +169,9 @@ async function setCurrentCliente(cliente) {
   // Templates dinâmicos por regime
   atualizarTemplates(cliente.regime_tributario);
 
+  // Atualizar banner de empresa obrigatória
+  if (typeof atualizarBannerEmpresa === 'function') atualizarBannerEmpresa();
+
   // Recarregar chats filtrados
   loadChats();
 }
