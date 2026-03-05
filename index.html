@@ -1138,62 +1138,80 @@
 
 
   <!-- MODAL FOLHA DE PAGAMENTO / DP -->
-  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5500;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto" onclick="if(event.target===this)closeFolha()">
+  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFolha()">
     <div class="dp-modal">
 
-      <!-- Cabeçalho -->
+      <!-- ── Cabeçalho ── -->
       <div class="dp-modal-hd">
-        <div style="display:flex;align-items:center;gap:8px">
-          <i data-lucide="users" style="width:16px;height:16px"></i>
-          <span>Departamento Pessoal</span>
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <i data-lucide="users" style="width:16px;height:16px;flex-shrink:0"></i>
+          <span style="font-weight:700;font-size:14px">Departamento Pessoal</span>
           <span id="dpEmpresaBadge" class="dp-empresa-badge"></span>
         </div>
-        <button onclick="closeFolha()" class="dp-close-btn" aria-label="Fechar">
-          <i data-lucide="x" style="width:16px;height:16px"></i>
-        </button>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="switchDpTab('relatorios')" class="dp-hd-rel-btn" title="Relatórios">
+            <i data-lucide="bar-chart-2" style="width:14px;height:14px"></i>
+          </button>
+          <button onclick="closeFolha()" class="dp-close-btn" aria-label="Fechar">
+            <i data-lucide="x" style="width:16px;height:16px"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Abas -->
-      <div class="dp-tabs">
-        <button class="dp-tab-btn" data-tab="funcionarios" onclick="switchDpTab('funcionarios')">
-          <i data-lucide="user-plus"></i><span>Funcionários</span>
+      <!-- ── Abas ── -->
+      <div class="dp-tabs" role="tablist">
+        <button class="dp-tab-btn" data-tab="funcionarios" onclick="switchDpTab('funcionarios')" role="tab" title="Funcionários">
+          <i data-lucide="users"></i><span>Funcionários</span>
         </button>
-        <button class="dp-tab-btn" data-tab="folha" onclick="switchDpTab('folha')">
+        <button class="dp-tab-btn" data-tab="folha" onclick="switchDpTab('folha')" role="tab" title="Holerite">
           <i data-lucide="file-text"></i><span>Holerite</span>
         </button>
-        <button class="dp-tab-btn" data-tab="ferias" onclick="switchDpTab('ferias')">
+        <button class="dp-tab-btn" data-tab="ferias" onclick="switchDpTab('ferias')" role="tab" title="Férias">
           <i data-lucide="sun"></i><span>Férias</span>
         </button>
-        <button class="dp-tab-btn" data-tab="decimo" onclick="switchDpTab('decimo')">
+        <button class="dp-tab-btn" data-tab="decimo" onclick="switchDpTab('decimo')" role="tab" title="13º Salário">
           <i data-lucide="gift"></i><span>13º</span>
         </button>
-        <button class="dp-tab-btn" data-tab="rescisao" onclick="switchDpTab('rescisao')">
+        <button class="dp-tab-btn" data-tab="rescisao" onclick="switchDpTab('rescisao')" role="tab" title="Rescisão">
           <i data-lucide="user-x"></i><span>Rescisão</span>
         </button>
-        <button class="dp-tab-btn" data-tab="relatorios" onclick="switchDpTab('relatorios')">
+        <button class="dp-tab-btn" data-tab="relatorios" onclick="switchDpTab('relatorios')" role="tab" title="Relatórios">
           <i data-lucide="bar-chart-2"></i><span>Relatórios</span>
         </button>
       </div>
 
-      <!-- Corpo scrollável -->
+      <!-- ── Corpo ── -->
       <div class="dp-body">
 
-        <!-- ══ PAINEL: FUNCIONÁRIOS ══ -->
+        <!-- ══════════════════════════════════════════════════════
+             PAINEL: FUNCIONÁRIOS
+        ══════════════════════════════════════════════════════ -->
         <div id="dpPanel_funcionarios" class="dp-panel" style="display:none">
+
+          <!-- Lista de funcionários cadastrados -->
           <div id="dpFuncList" class="dp-func-list"></div>
+
+          <!-- Formulário cadastro/edição -->
           <div class="dp-form-section">
             <div class="dp-form-title">
-              <i data-lucide="user-plus"></i> Cadastrar / Editar Funcionário
-              <button onclick="dpNovoFunc()" class="dp-link-btn">Novo</button>
+              <span style="display:flex;align-items:center;gap:6px">
+                <i data-lucide="user-plus"></i>
+                <span id="dpFuncFormTitulo">Cadastrar Funcionário</span>
+              </span>
+              <button onclick="dpNovoFunc()" class="dp-link-btn">+ Novo</button>
             </div>
+
             <input type="hidden" id="dpFuncFormId">
+
+            <!-- Seção: Identificação -->
+            <div class="dp-section-lbl">Identificação</div>
             <div class="dp-grid2">
               <div class="dp-field span2">
                 <label class="dp-lbl">Nome Completo *</label>
-                <input type="text" id="dpFuncNome" class="c-inp" placeholder="Ex: Maria da Silva">
+                <input type="text" id="dpFuncNome" class="c-inp" placeholder="Ex: Maria da Silva" autocomplete="name">
               </div>
               <div class="dp-field">
-                <label class="dp-lbl">Cargo</label>
+                <label class="dp-lbl">Cargo / Função</label>
                 <input type="text" id="dpFuncCargo" class="c-inp" placeholder="Ex: Auxiliar Administrativo">
               </div>
               <div class="dp-field">
@@ -1206,16 +1224,29 @@
               </div>
               <div class="dp-field">
                 <label class="dp-lbl">CPF</label>
-                <input type="text" id="dpFuncCPF" class="c-inp" placeholder="000.000.000-00" maxlength="14">
+                <input type="text" id="dpFuncCPF" class="c-inp" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
               </div>
               <div class="dp-field">
-                <label class="dp-lbl">PIS/PASEP</label>
-                <input type="text" id="dpFuncPIS" class="c-inp" placeholder="000.00000.00-0">
+                <label class="dp-lbl">PIS / PASEP</label>
+                <input type="text" id="dpFuncPIS" class="c-inp" placeholder="000.00000.00-0" inputmode="numeric">
               </div>
               <div class="dp-field">
                 <label class="dp-lbl">CTPS (nº · série)</label>
-                <input type="text" id="dpFuncCTPS" class="c-inp" placeholder="123456 · 001">
+                <input type="text" id="dpFuncCTPS" class="c-inp" placeholder="123456 · 001-SP">
               </div>
+              <div class="dp-field">
+                <label class="dp-lbl">E-mail</label>
+                <input type="email" id="dpFuncEmail" class="c-inp" placeholder="email@exemplo.com" autocomplete="email">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Telefone</label>
+                <input type="tel" id="dpFuncTelefone" class="c-inp" placeholder="(16) 99999-9999" inputmode="tel">
+              </div>
+            </div>
+
+            <!-- Seção: Contrato & Remuneração -->
+            <div class="dp-section-lbl">Contrato &amp; Remuneração</div>
+            <div class="dp-grid2">
               <div class="dp-field">
                 <label class="dp-lbl">Data de Admissão *</label>
                 <input type="date" id="dpFuncAdmissao" class="c-inp">
@@ -1229,27 +1260,49 @@
                 <input type="number" id="dpFuncDep" class="c-inp" value="0" min="0" max="20">
               </div>
               <div class="dp-field">
+                <label class="dp-lbl">Jornada (h/semana)</label>
+                <select id="dpFuncJornada" class="c-inp">
+                  <option value="44">44h — padrão CLT</option>
+                  <option value="40">40h</option>
+                  <option value="36">36h</option>
+                  <option value="30">30h</option>
+                  <option value="20">20h — Estágio</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Seção: Dados Bancários -->
+            <div class="dp-section-lbl">Dados Bancários <span style="font-weight:400;color:var(--text-light)">(para pagamento)</span></div>
+            <div class="dp-grid2">
+              <div class="dp-field">
                 <label class="dp-lbl">Banco</label>
                 <input type="text" id="dpFuncBanco" class="c-inp" placeholder="Ex: 001 — Banco do Brasil">
               </div>
               <div class="dp-field">
                 <label class="dp-lbl">Agência</label>
-                <input type="text" id="dpFuncAgencia" class="c-inp" placeholder="0000-0">
+                <input type="text" id="dpFuncAgencia" class="c-inp" placeholder="0000-0" inputmode="numeric">
               </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Conta</label>
-                <input type="text" id="dpFuncConta" class="c-inp" placeholder="00000-0">
+              <div class="dp-field span2">
+                <label class="dp-lbl">Conta Corrente</label>
+                <input type="text" id="dpFuncConta" class="c-inp" placeholder="00000-0" inputmode="numeric">
               </div>
             </div>
+
             <div class="dp-form-actions">
               <button onclick="dpNovoFunc()" class="dp-btn-sec">Cancelar</button>
-              <button id="dpFuncSalvarBtn" onclick="dpSalvarFunc()" class="dp-btn-pri">Salvar Funcionário</button>
+              <button id="dpFuncSalvarBtn" onclick="dpSalvarFunc()" class="dp-btn-pri">
+                <i data-lucide="save" style="width:13px;height:13px"></i> Salvar Funcionário
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- ══ PAINEL: HOLERITE ══ -->
+        <!-- ══════════════════════════════════════════════════════
+             PAINEL: HOLERITE MENSAL
+        ══════════════════════════════════════════════════════ -->
         <div id="dpPanel_folha" class="dp-panel" style="display:none">
+
+          <div class="dp-section-lbl">Dados da Competência</div>
           <div class="dp-grid2">
             <div class="dp-field span2">
               <label class="dp-lbl">Funcionário</label>
@@ -1258,8 +1311,8 @@
               </select>
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Competência (MM/AAAA)</label>
-              <input type="text" id="folhaCompetencia" class="c-inp" placeholder="01/2026" maxlength="7">
+              <label class="dp-lbl">Competência *</label>
+              <input type="text" id="folhaCompetencia" class="c-inp" placeholder="MM/AAAA" maxlength="7" oninput="formatarCompetencia(this)">
             </div>
             <div class="dp-field">
               <label class="dp-lbl">Tipo de Contrato</label>
@@ -1278,6 +1331,7 @@
               <input type="number" id="folhaDependentes" class="c-inp" value="0" min="0" max="20" oninput="calcularFolha()">
             </div>
           </div>
+
           <div class="dp-section-lbl">Proventos</div>
           <div class="dp-grid2">
             <div class="dp-field">
@@ -1285,22 +1339,23 @@
               <input type="number" id="folhaSalario" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">HE 50% (horas)</label>
+              <label class="dp-lbl">HE 50% — horas</label>
               <input type="number" id="folhaHE50" class="c-inp" placeholder="0" step="0.5" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">HE 100% (horas)</label>
+              <label class="dp-lbl">HE 100% — horas</label>
               <input type="number" id="folhaHE100" class="c-inp" placeholder="0" step="0.5" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Adic. Noturno (horas)</label>
+              <label class="dp-lbl">Adic. Noturno — horas</label>
               <input type="number" id="folhaAdicNoturno" class="c-inp" placeholder="0" step="0.5" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field span2">
-              <label class="dp-lbl">Outros Acréscimos (R$)</label>
+              <label class="dp-lbl">Outros Acréscimos (R$) <small style="color:var(--text-light)">comissões, ajudas de custo…</small></label>
               <input type="number" id="folhaOutrosAcr" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
           </div>
+
           <div class="dp-section-lbl">Descontos Adicionais</div>
           <div class="dp-grid2">
             <div class="dp-field">
@@ -1308,162 +1363,216 @@
               <input type="number" id="folhaPensao" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Outros Descontos (R$)</label>
+              <label class="dp-lbl">Outros Descontos (R$) <small style="color:var(--text-light)">VT, VR, plano…</small></label>
               <input type="number" id="folhaOutrosDesc" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
           </div>
+
+          <!-- Resultado do cálculo -->
           <div id="folhaResult" style="display:none;margin-top:8px"></div>
-          <div id="folhaActions" class="dp-actions" style="display:none">
-            <button onclick="limparFolha()" class="dp-btn-sec">Limpar</button>
-            <button id="dpSalvarHoleriteBtn" onclick="dpSalvarHolerite()" class="dp-btn-sec">💾 Salvar Holerite</button>
+
+          <!-- Ações -->
+          <div id="folhaActions" class="dp-actions" style="display:none;margin-top:8px">
+            <button onclick="limparFolha()" class="dp-btn-sec">
+              <i data-lucide="rotate-ccw" style="width:13px;height:13px"></i> Limpar
+            </button>
+            <button id="dpSalvarHoleriteBtn" onclick="dpSalvarHolerite()" class="dp-btn-sec">
+              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
+            </button>
             <button onclick="exportarFolhaPDF()" class="dp-btn-pri">
-              <i data-lucide="file" style="width:13px;height:13px"></i> Gerar PDF
+              <i data-lucide="file-down" style="width:13px;height:13px"></i> PDF
             </button>
             <button onclick="exportarFolhaExcel()" class="dp-btn-pri" style="background:#16a34a">
-              <i data-lucide="table" style="width:13px;height:13px"></i> Exportar Excel
+              <i data-lucide="table-2" style="width:13px;height:13px"></i> Excel
             </button>
             <button onclick="enviarFolhaParaChat()" class="dp-btn-pri" style="background:#2563eb">
               <i data-lucide="message-circle" style="width:13px;height:13px"></i> Chat
             </button>
           </div>
-          <p class="dp-note" style="margin-top:10px">⚠️ Tabelas Portaria MF 1.191/2025 (INSS) e 1.206/2025 (IRRF). Documento auxiliar — confirme com o contador.</p>
+          <p class="dp-note" style="margin-top:10px">⚠️ Tabelas Portaria MF 1.191/2025 (INSS) · 1.206/2025 (IRRF). Documento auxiliar.</p>
         </div>
 
-        <!-- ══ PAINEL: FÉRIAS ══ -->
+        <!-- ══════════════════════════════════════════════════════
+             PAINEL: FÉRIAS
+        ══════════════════════════════════════════════════════ -->
         <div id="dpPanel_ferias" class="dp-panel" style="display:none">
+
+          <div class="dp-section-lbl">Dados das Férias</div>
           <div class="dp-grid2">
             <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário</label>
-              <select id="dpFeriasFuncSelect" class="c-inp">
+              <label class="dp-lbl">Funcionário *</label>
+              <select id="dpFeriasFuncSelect" class="c-inp" onchange="calcularFerias()">
                 <option value="">— Selecione o funcionário —</option>
               </select>
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Competência (MM/AAAA)</label>
-              <input type="text" id="dpFeriasComp" class="c-inp" placeholder="01/2026" maxlength="7">
+              <label class="dp-lbl">Competência</label>
+              <input type="text" id="dpFeriasComp" class="c-inp" placeholder="MM/AAAA" maxlength="7" oninput="formatarCompetencia(this)">
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Período de Gozo</label>
+              <input type="text" id="dpFeriasInicio" class="c-inp" placeholder="Início (DD/MM/AAAA)">
             </div>
             <div class="dp-field">
               <label class="dp-lbl">Dias de Férias</label>
-              <select id="dpFeriasDias" class="c-inp">
-                <option value="30">30 dias (integral)</option>
+              <select id="dpFeriasDias" class="c-inp" onchange="calcularFerias()">
+                <option value="30">30 dias — integral</option>
                 <option value="20">20 dias</option>
-                <option value="15">15 dias (fracionado)</option>
-                <option value="10">10 dias (fracionado)</option>
+                <option value="15">15 dias — fracionado</option>
+                <option value="10">10 dias — fracionado</option>
               </select>
             </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="dpFeriasAbono">
-                Incluir Abono Pecuniário (10 dias, CLT art. 143)
+            <div class="dp-field span2" style="padding-top:6px">
+              <label class="dp-lbl" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                <input type="checkbox" id="dpFeriasAbono" onchange="calcularFerias()" style="width:16px;height:16px;cursor:pointer">
+                <span>Incluir Abono Pecuniário — 10 dias (CLT art. 143)</span>
               </label>
             </div>
           </div>
-          <button onclick="calcularFerias()" class="dp-btn-pri" style="margin-top:4px">Calcular Férias</button>
+
           <div id="dpFeriasResult" style="display:none;margin-top:12px"></div>
-          <div id="dpFeriasActions" class="dp-actions" style="display:none">
-            <button onclick="dpSalvarFerias()" class="dp-btn-sec">💾 Salvar no Banco</button>
+
+          <div id="dpFeriasActions" class="dp-actions" style="display:none;margin-top:8px">
+            <button onclick="dpSalvarFerias()" class="dp-btn-sec">
+              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar no Banco
+            </button>
+            <button onclick="dpExportarEventoPDF('ferias')" class="dp-btn-pri">
+              <i data-lucide="file-down" style="width:13px;height:13px"></i> Gerar PDF
+            </button>
           </div>
-          <p class="dp-note" style="margin-top:10px">ℹ️ Férias devem ser comunicadas com 30 dias de antecedência e pagas 2 dias antes do início (CLT art. 135 e 145).</p>
+          <p class="dp-note" style="margin-top:10px">ℹ️ Férias pagas 2 dias antes do início. Comunicar com 30 dias de antecedência (CLT art. 135 e 145).</p>
         </div>
 
-        <!-- ══ PAINEL: 13º SALÁRIO ══ -->
+        <!-- ══════════════════════════════════════════════════════
+             PAINEL: 13º SALÁRIO
+        ══════════════════════════════════════════════════════ -->
         <div id="dpPanel_decimo" class="dp-panel" style="display:none">
+
+          <div class="dp-section-lbl">Dados do 13º</div>
           <div class="dp-grid2">
             <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário</label>
-              <select id="dp13FuncSelect" class="c-inp">
+              <label class="dp-lbl">Funcionário *</label>
+              <select id="dp13FuncSelect" class="c-inp" onchange="calcularDecimo()">
                 <option value="">— Selecione o funcionário —</option>
               </select>
             </div>
             <div class="dp-field">
               <label class="dp-lbl">Parcela</label>
-              <select id="dp13Parcela" class="c-inp">
-                <option value="1">1ª Parcela (até 30/11)</option>
-                <option value="2">2ª Parcela (até 20/12)</option>
+              <select id="dp13Parcela" class="c-inp" onchange="calcularDecimo()">
+                <option value="1">1ª Parcela — até 30/11</option>
+                <option value="2">2ª Parcela — até 20/12</option>
               </select>
             </div>
             <div class="dp-field">
               <label class="dp-lbl">Meses Trabalhados no Ano</label>
-              <select id="dp13Meses" class="c-inp">
-                <option value="12">12 (ano completo)</option>
-                <option value="11">11</option>
-                <option value="10">10</option>
-                <option value="9">9</option>
-                <option value="8">8</option>
-                <option value="7">7</option>
-                <option value="6">6</option>
-                <option value="5">5</option>
-                <option value="4">4</option>
-                <option value="3">3</option>
-                <option value="2">2</option>
+              <select id="dp13Meses" class="c-inp" onchange="calcularDecimo()">
+                <option value="12">12 — ano completo</option>
+                <option value="11">11</option><option value="10">10</option>
+                <option value="9">9</option><option value="8">8</option>
+                <option value="7">7</option><option value="6">6</option>
+                <option value="5">5</option><option value="4">4</option>
+                <option value="3">3</option><option value="2">2</option>
                 <option value="1">1</option>
               </select>
             </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Competência (MM/AAAA)</label>
-              <input type="text" id="dp13Comp" class="c-inp" placeholder="12/2026" maxlength="7">
+            <div class="dp-field span2">
+              <label class="dp-lbl">Competência</label>
+              <input type="text" id="dp13Comp" class="c-inp" placeholder="12/2026" maxlength="7" oninput="formatarCompetencia(this);calcularDecimo()">
             </div>
           </div>
-          <button onclick="calcularDecimo()" class="dp-btn-pri" style="margin-top:4px">Calcular 13º</button>
+
           <div id="dp13Result" style="display:none;margin-top:12px"></div>
-          <div id="dp13Actions" class="dp-actions" style="display:none">
-            <button onclick="dpSalvarDecimo()" class="dp-btn-sec">💾 Salvar no Banco</button>
+
+          <div id="dp13Actions" class="dp-actions" style="display:none;margin-top:8px">
+            <button onclick="dpSalvarDecimo()" class="dp-btn-sec">
+              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar no Banco
+            </button>
+            <button onclick="dpExportarEventoPDF('decimo')" class="dp-btn-pri">
+              <i data-lucide="file-down" style="width:13px;height:13px"></i> Gerar PDF
+            </button>
           </div>
-          <p class="dp-note" style="margin-top:10px">ℹ️ Art. 7º CF/88 e Lei 4.090/62. 1ª parcela sem INSS/IRRF; 2ª com INSS e IRRF calculados sobre valor integral.</p>
+          <p class="dp-note" style="margin-top:10px">ℹ️ Art. 7º CF/88 e Lei 4.090/62. 1ª parcela: sem INSS/IRRF. 2ª: INSS e IRRF sobre valor integral.</p>
         </div>
 
-        <!-- ══ PAINEL: RESCISÃO ══ -->
+        <!-- ══════════════════════════════════════════════════════
+             PAINEL: RESCISÃO
+        ══════════════════════════════════════════════════════ -->
         <div id="dpPanel_rescisao" class="dp-panel" style="display:none">
+
+          <div class="dp-section-lbl">Dados do Desligamento</div>
           <div class="dp-grid2">
             <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário</label>
-              <select id="dpRescFuncSelect" class="c-inp">
+              <label class="dp-lbl">Funcionário *</label>
+              <select id="dpRescFuncSelect" class="c-inp" onchange="dpRescAutoPreench()">
                 <option value="">— Selecione o funcionário —</option>
               </select>
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Data de Desligamento</label>
-              <input type="date" id="dpRescData" class="c-inp">
+              <label class="dp-lbl">Data de Desligamento *</label>
+              <input type="date" id="dpRescData" class="c-inp" oninput="dpRescAutoPreench()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Motivo</label>
-              <select id="dpRescMotivo" class="c-inp">
+              <label class="dp-lbl">Motivo do Desligamento</label>
+              <select id="dpRescMotivo" class="c-inp" onchange="dpRescMotivoChanged()">
                 <option value="sem_justa_causa">Demissão Sem Justa Causa</option>
                 <option value="pedido_demissao">Pedido de Demissão</option>
                 <option value="acordo_mutuo">Acordo Mútuo (art. 484-A CLT)</option>
                 <option value="justa_causa">Demissão por Justa Causa</option>
               </select>
             </div>
+          </div>
+
+          <!-- Card de info automática da rescisão -->
+          <div id="dpRescInfoCard" style="display:none;background:var(--sidebar-hover);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:12px;color:var(--text-light)">
+            <span id="dpRescInfoTxt"></span>
+          </div>
+
+          <div class="dp-section-lbl">Verbas Rescisórias</div>
+          <div class="dp-grid2">
             <div class="dp-field">
               <label class="dp-lbl">Saldo de Dias no Mês</label>
               <input type="number" id="dpRescSaldoDias" class="c-inp" placeholder="0" min="0" max="31">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Férias Prop. (meses/12)</label>
+              <label class="dp-lbl">Férias Proporcionais (meses)</label>
               <input type="number" id="dpRescFerProp" class="c-inp" placeholder="0" min="0" max="12">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">13º Prop. (meses/12)</label>
+              <label class="dp-lbl">13º Proporcional (meses)</label>
               <input type="number" id="dpRescDecProp" class="c-inp" placeholder="0" min="0" max="12">
             </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="dpRescAviso" checked>
-                Incluir Aviso Prévio Indenizado (sem justa causa)
+            <div class="dp-field" style="padding-top:6px">
+              <label class="dp-lbl" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+                <input type="checkbox" id="dpRescAviso" checked style="width:16px;height:16px;cursor:pointer">
+                <span>Aviso Prévio Indenizado</span>
               </label>
             </div>
           </div>
-          <button onclick="calcularRescisao()" class="dp-btn-pri" style="margin-top:4px">Calcular Rescisão</button>
+
+          <button onclick="calcularRescisao()" class="dp-btn-pri" style="margin-top:4px;width:100%">
+            <i data-lucide="calculator" style="width:13px;height:13px"></i> Calcular Rescisão
+          </button>
+
           <div id="dpRescResult" style="display:none;margin-top:12px"></div>
-          <div id="dpRescActions" class="dp-actions" style="display:none">
-            <button onclick="dpSalvarRescisao()" class="dp-btn-sec">💾 Salvar + Marcar Rescindido</button>
+
+          <div id="dpRescActions" class="dp-actions" style="display:none;margin-top:8px">
+            <button onclick="dpSalvarRescisao()" class="dp-btn-sec" style="color:#dc2626;border-color:#dc2626">
+              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar + Marcar Rescindido
+            </button>
+            <button onclick="dpExportarEventoPDF('rescisao')" class="dp-btn-pri">
+              <i data-lucide="file-down" style="width:13px;height:13px"></i> Gerar PDF
+            </button>
           </div>
-          <p class="dp-note" style="margin-top:10px">ℹ️ Cálculo auxiliar. Confirme extrato FGTS na CAIXA. Homologação no sindicato obrigatória para vínculos &gt;1 ano.</p>
+          <p class="dp-note" style="margin-top:10px">ℹ️ Cálculo auxiliar. Verifique extrato FGTS na CAIXA. Homologação no sindicato para vínculos &gt; 1 ano.</p>
         </div>
 
-        <!-- ══ PAINEL: RELATÓRIOS ══ -->
+        <!-- ══════════════════════════════════════════════════════
+             PAINEL: RELATÓRIOS
+        ══════════════════════════════════════════════════════ -->
         <div id="dpPanel_relatorios" class="dp-panel" style="display:none">
-          <div id="dpRelContent"><p class="dp-empty">Abrindo relatórios...</p></div>
+          <div id="dpRelContent">
+            <p class="dp-empty">Carregando relatórios...</p>
+          </div>
         </div>
 
       </div><!-- /dp-body -->
