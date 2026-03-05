@@ -169,9 +169,6 @@ async function setCurrentCliente(cliente) {
   // Templates dinâmicos por regime
   atualizarTemplates(cliente.regime_tributario);
 
-  // Atualizar banner de empresa obrigatória
-  if (typeof atualizarBannerEmpresa === 'function') atualizarBannerEmpresa();
-
   // Recarregar chats filtrados
   loadChats();
 }
@@ -572,15 +569,16 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'portal',        label: 'Portal do Cliente',    icon: 'external-link' },
   { id: 'agenda',        label: 'Agenda de Prazos',     icon: 'calendar-clock' },
   { id: 'documentos',    label: 'Documentos Fiscais',   icon: 'file-text' },
   { id: 'sped',          label: 'SPED EFD',             icon: 'layers' },
+  { id: 'folha',         label: 'Folha de Pagamento',   icon: 'users' },
+  { id: 'financeiro',    label: 'Financeiro',           icon: 'wallet' },
   { id: 'calculadora',   label: 'Calculadora',          icon: 'calculator' },
+  { id: 'portal',        label: 'Portal do Cliente',    icon: 'external-link' },
   { id: 'arquivos',      label: 'Anexar Arquivos',      icon: 'paperclip' },
   { id: 'gerar_doc',     label: 'Gerar Documentos',     icon: 'file-down' },
   { id: 'exportar',      label: 'Exportar Conversa',    icon: 'download' },
-  { id: 'folha',         label: 'Folha de Pagamento',   icon: 'users' },
   { id: 'compartilhar',  label: 'Compartilhar Chat',    icon: 'share-2' },
 ];
 
