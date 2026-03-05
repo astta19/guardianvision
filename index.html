@@ -432,15 +432,6 @@
   </aside>
 
   <main id="chat">
-    <!-- Banner: nenhuma empresa selecionada -->
-    <div id="semEmpresaBanner" style="display:none;align-items:center;justify-content:center;gap:12px;padding:10px 16px;background:#fef3c7;border-bottom:1px solid #fbbf24;font-size:13px;color:#92400e">
-      <i data-lucide="building-2" style="width:16px;height:16px;flex-shrink:0"></i>
-      <span>Selecione uma empresa para usar as ferramentas.</span>
-      <button onclick="openClientModal()" style="padding:4px 12px;border-radius:6px;background:#f59e0b;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:600;flex-shrink:0">
-        Selecionar empresa
-      </button>
-    </div>
-
     <div class="c-head">
       <div class="c-left">
         <button class="icon-btn sidebar-toggle" onclick="toggleSidebar()" title="Conversas" aria-label="Abrir menu de conversas">
@@ -468,129 +459,99 @@
 
       <div class="c-right">
 
-        <!-- GRUPO 1: Ferramentas fiscais -->
-        <div class="toolbar-group desktop-only">
-          <button class="tb-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn" data-perm="agenda" style="display:none" aria-label="Agenda">
-            <i data-lucide="calendar-clock"></i>
-            <span class="tb-label">Agenda</span>
+        <!-- Botão ⊞ Ferramentas — dropdown unificado desktop+mobile -->
+        <div class="dropdown-wrap" id="toolsDropWrap">
+          <button class="tb-btn tb-tools-btn" id="toolsDropBtn" onclick="toggleDropdown('toolsMenu')" aria-label="Ferramentas">
+            <i data-lucide="grid-2x2" style="width:17px;height:17px"></i>
+            <span class="tb-tools-label">Ferramentas</span>
+            <i data-lucide="chevron-down" style="width:11px;height:11px;opacity:.5"></i>
             <span id="agendaBadgeCount" class="tb-badge" style="display:none"></span>
           </button>
-          <button class="tb-btn" onclick="openDocumentos()" title="Documentos Fiscais" data-perm="documentos" style="display:none" aria-label="Documentos">
-            <i data-lucide="file-text"></i>
-            <span class="tb-label">Docs</span>
-          </button>
-          <button class="tb-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped" style="display:none" aria-label="SPED">
-            <i data-lucide="file-code-2"></i>
-            <span class="tb-label">SPED</span>
-          </button>
-          <button class="tb-btn" onclick="openCalculator()" title="Calculadora" data-perm="calculadora" style="display:none" aria-label="Calculadora">
-            <i data-lucide="calculator"></i>
-            <span class="tb-label">Calc</span>
-          </button>
-          <button class="tb-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn" data-perm="portal" style="display:none" aria-label="Portal">
-            <i data-lucide="external-link"></i>
-            <span class="tb-label">Portal</span>
-          </button>
-          <button class="tb-btn" onclick="openFolha()" title="Folha de Pagamento" data-perm="folha" style="display:none" aria-label="Folha">
-            <i data-lucide="users"></i>
-            <span class="tb-label">Folha</span>
-          </button>
-          <button class="tb-btn" onclick="openFinanceiro()" title="Financeiro" data-perm="financeiro" style="display:none" aria-label="Financeiro">
-            <i data-lucide="wallet"></i>
-            <span class="tb-label">Financeiro</span>
-          </button>
-        </div>
+          <div class="hdr-dropdown tools-dropdown" id="toolsMenu">
 
-        <div class="toolbar-sep desktop-only" id="toolbarSepAdmin"></div>
+            <!-- Ferramentas do contador -->
+            <div class="tools-grid" id="toolsGridFerramentas">
+              <button class="tool-card" data-perm="agenda" id="agendaHeaderBtn" onclick="openAgenda(); closeDropdowns()" style="display:none">
+                <i data-lucide="calendar-clock"></i>
+                <span>Agenda</span>
+              </button>
+              <button class="tool-card" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
+                <i data-lucide="file-text"></i>
+                <span>Documentos</span>
+              </button>
+              <button class="tool-card" data-perm="sped" id="spedHeaderBtn" onclick="openSped(); closeDropdowns()" style="display:none">
+                <i data-lucide="file-code-2"></i>
+                <span>SPED</span>
+              </button>
+              <button class="tool-card" data-perm="folha" onclick="openFolha(); closeDropdowns()" style="display:none">
+                <i data-lucide="users"></i>
+                <span>Folha</span>
+              </button>
+              <button class="tool-card" data-perm="financeiro" onclick="openFinanceiro(); closeDropdowns()" style="display:none">
+                <i data-lucide="wallet"></i>
+                <span>Financeiro</span>
+              </button>
+              <button class="tool-card" data-perm="calculadora" onclick="openCalculator(); closeDropdowns()" style="display:none">
+                <i data-lucide="calculator"></i>
+                <span>Calculadora</span>
+              </button>
+              <button class="tool-card" data-perm="portal" id="portalHeaderBtn" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
+                <i data-lucide="external-link"></i>
+                <span>Portal</span>
+              </button>
+            </div>
 
-        <!-- GRUPO 2: Admin -->
-        <div class="toolbar-group desktop-only">
-          <button class="tb-btn admin-only" onclick="showStats()" title="Estatísticas" style="display:none" aria-label="Estatísticas">
-            <i data-lucide="bar-chart-2"></i>
-            <span class="tb-label">Stats</span>
-          </button>
-          <button class="tb-btn admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões" style="display:none" aria-label="Permissões">
-            <i data-lucide="shield"></i>
-            <span class="tb-label">Perms</span>
-          </button>
-        </div>
+            <!-- Admin -->
+            <div id="toolsAdminSection" style="display:none">
+              <div class="menu-sep"></div>
+              <div class="hdr-dropdown-title">Administração</div>
+              <div class="tools-grid">
+                <button class="tool-card admin-only" onclick="showStats(); closeDropdowns()" style="display:none">
+                  <i data-lucide="bar-chart-2"></i>
+                  <span>Stats</span>
+                </button>
+                <button class="tool-card admin-only" onclick="showLearningStats(); closeDropdowns()" style="display:none">
+                  <i data-lucide="brain"></i>
+                  <span>Aprendizado</span>
+                </button>
+                <button class="tool-card admin-only" onclick="abrirGerenciarPermissoes(); closeDropdowns()" style="display:none">
+                  <i data-lucide="shield"></i>
+                  <span>Permissões</span>
+                </button>
+              </div>
+            </div>
 
-        <div class="toolbar-sep"></div>
-
-        <!-- GRUPO 3: Utilitários sempre visíveis -->
-        <div class="toolbar-group">
-          <button class="tb-btn" onclick="toggleTheme()" title="Alternar tema" aria-label="Tema">
-            <i data-lucide="moon" id="themeIcon"></i>
-          </button>
-          <button class="tb-btn" onclick="toggleFullscreen()" title="Tela cheia" class="desktop-only" aria-label="Tela cheia">
-            <i data-lucide="maximize-2"></i>
-          </button>
-        </div>
-
-        <div class="toolbar-sep"></div>
-
-        <!-- Perfil do usuário -->
-        <button class="user-chip" onclick="openProfile()" title="Perfil e configurações" aria-label="Perfil">
-          <span id="headerAvatarWrap" class="user-chip-avatar"><i data-lucide="user" style="width:14px;height:14px"></i></span>
-          <span id="userEmail" class="user-chip-name">—</span>
-          <i data-lucide="chevron-down" style="width:12px;height:12px;opacity:.5;flex-shrink:0"></i>
-        </button>
-
-        <!-- Menu "..." mobile -->
-        <div class="dropdown-wrap mobile-only">
-          <button class="tb-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções" aria-label="Menu">
-            <i data-lucide="more-vertical"></i>
-          </button>
-          <div class="hdr-dropdown" id="moreMenu">
-            <div class="hdr-dropdown-title">Ferramentas</div>
-            <button class="menu-item" data-perm="agenda" onclick="openAgenda(); closeDropdowns()" style="display:none">
-              <i data-lucide="calendar-clock"></i> Agenda de Prazos
-            </button>
-            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
-              <i data-lucide="file-text"></i> Documentos Fiscais
-            </button>
-            <button class="menu-item" data-perm="portal" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
-              <i data-lucide="external-link"></i> Portal do Cliente
-            </button>
-            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()" style="display:none">
-              <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
-            </button>
-            <button class="menu-item" data-perm="calculadora" onclick="openCalculator(); closeDropdowns()" style="display:none">
-              <i data-lucide="calculator"></i> Calculadora
-            </button>
-            <button class="menu-item" data-perm="folha" onclick="openFolha(); closeDropdowns()" style="display:none">
-              <i data-lucide="users"></i> Folha de Pagamento
-            </button>
-            <button class="menu-item" data-perm="financeiro" onclick="openFinanceiro(); closeDropdowns()" style="display:none">
-              <i data-lucide="wallet"></i> Financeiro
-            </button>
+            <!-- Ações de chat -->
             <div class="menu-sep"></div>
-            <div class="hdr-dropdown-title">Admin</div>
-            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()" style="display:none">
-              <i data-lucide="bar-chart-2"></i> Estatísticas
-            </button>
-            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()" style="display:none">
-              <i data-lucide="brain"></i> Aprendizado
-            </button>
-            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()" style="display:none">
-              <i data-lucide="shield"></i> Permissões de usuários
-            </button>
-            <div class="menu-sep"></div>
+            <div class="hdr-dropdown-title">Conversa</div>
             <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()" style="display:none">
-              <i data-lucide="download"></i> Exportar conversa
+              <i data-lucide="download" style="width:14px;height:14px"></i> Exportar
             </button>
             <button class="menu-item" data-perm="compartilhar" onclick="shareChat(); closeDropdowns()" style="display:none">
-              <i data-lucide="share-2"></i> Compartilhar
+              <i data-lucide="share-2" style="width:14px;height:14px"></i> Compartilhar
             </button>
-            <div class="menu-sep"></div>
             <button class="menu-item" onclick="toggleFullscreen(); closeDropdowns()">
-              <i data-lucide="maximize-2"></i> Tela cheia
+              <i data-lucide="maximize-2" style="width:14px;height:14px"></i> Tela cheia
             </button>
-            <button class="menu-item" onclick="doLogout()" style="color:var(--error)">
-              <i data-lucide="log-out"></i> Sair
-            </button>
+
           </div>
         </div>
+
+        <div class="toolbar-sep"></div>
+
+        <!-- Tema -->
+        <button class="tb-btn" onclick="toggleTheme()" title="Alternar tema" aria-label="Tema">
+          <i data-lucide="moon" id="themeIcon"></i>
+        </button>
+
+        <div class="toolbar-sep"></div>
+
+        <!-- Perfil -->
+        <button class="user-chip" onclick="openProfile()" title="Perfil e configurações" aria-label="Perfil">
+          <span id="headerAvatarWrap" class="user-chip-avatar"><i data-lucide="user" style="width:14px;height:14px"></i></span>
+          <span id="userEmail" class="user-chip-name desktop-only">—</span>
+          <i data-lucide="chevron-down" style="width:11px;height:11px;opacity:.5;flex-shrink:0"></i>
+        </button>
 
       </div>
     </div>
