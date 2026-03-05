@@ -53,6 +53,11 @@
 // );
 // ALTER TABLE dp_holerites ENABLE ROW LEVEL SECURITY;
 // CREATE POLICY "own" ON dp_holerites USING (user_id = auth.uid());
+// CREATE INDEX idx_holerites_cliente ON dp_holerites(user_id, cliente_id, competencia);
+// CREATE INDEX idx_eventos_cliente   ON dp_eventos(user_id, cliente_id);
+// -- Permitir join dp_holerites → dp_funcionarios:
+// ALTER TABLE dp_holerites DROP CONSTRAINT IF EXISTS dp_holerites_funcionario_id_fkey;
+// ALTER TABLE dp_holerites ADD FOREIGN KEY (funcionario_id) REFERENCES dp_funcionarios(id) ON DELETE SET NULL;
 //
 // CREATE TABLE dp_eventos (
 //   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -225,32 +230,41 @@ function dpEditarFunc(id) {
   const f = dpFuncionarios.find(x => x.id === id);
   if (!f) return;
   dpFuncAtivo = f;
-  document.getElementById('dpFuncFormId').value   = f.id;
-  document.getElementById('dpFuncNome').value     = f.nome || '';
-  document.getElementById('dpFuncCargo').value    = f.cargo || '';
-  document.getElementById('dpFuncCPF').value      = f.cpf || '';
-  document.getElementById('dpFuncCTPS').value     = f.ctps || '';
-  document.getElementById('dpFuncPIS').value      = f.pis || '';
-  document.getElementById('dpFuncAdmissao').value = f.admissao || '';
-  document.getElementById('dpFuncSalario').value  = f.salario_base || '';
-  document.getElementById('dpFuncTipo').value     = f.tipo_contrato || 'clt';
-  document.getElementById('dpFuncDep').value      = f.dependentes || 0;
-  document.getElementById('dpFuncBanco').value    = f.banco || '';
-  document.getElementById('dpFuncAgencia').value  = f.agencia || '';
-  document.getElementById('dpFuncConta').value    = f.conta || '';
+  document.getElementById('dpFuncFormId').value    = f.id;
+  document.getElementById('dpFuncNome').value      = f.nome || '';
+  document.getElementById('dpFuncCargo').value     = f.cargo || '';
+  document.getElementById('dpFuncCPF').value       = f.cpf || '';
+  document.getElementById('dpFuncCTPS').value      = f.ctps || '';
+  document.getElementById('dpFuncPIS').value       = f.pis || '';
+  document.getElementById('dpFuncAdmissao').value  = f.admissao || '';
+  document.getElementById('dpFuncSalario').value   = f.salario_base || '';
+  document.getElementById('dpFuncTipo').value      = f.tipo_contrato || 'clt';
+  document.getElementById('dpFuncDep').value       = f.dependentes || 0;
+  document.getElementById('dpFuncBanco').value     = f.banco || '';
+  document.getElementById('dpFuncAgencia').value   = f.agencia || '';
+  document.getElementById('dpFuncConta').value     = f.conta || '';
+  if (document.getElementById('dpFuncEmail'))    document.getElementById('dpFuncEmail').value    = f.email    || '';
+  if (document.getElementById('dpFuncTelefone')) document.getElementById('dpFuncTelefone').value = f.telefone || '';
+  if (document.getElementById('dpFuncJornada'))  document.getElementById('dpFuncJornada').value  = f.jornada_horas || 44;
+  const titulo = document.getElementById('dpFuncFormTitulo');
+  if (titulo) titulo.textContent = 'Editar Funcionário';
   document.getElementById('dpFuncNome').focus();
 }
 
 function dpNovoFunc() {
   dpFuncAtivo = null;
   ['dpFuncFormId','dpFuncNome','dpFuncCargo','dpFuncCPF','dpFuncCTPS','dpFuncPIS',
-   'dpFuncAdmissao','dpFuncBanco','dpFuncAgencia','dpFuncConta'].forEach(id => {
+   'dpFuncAdmissao','dpFuncBanco','dpFuncAgencia','dpFuncConta',
+   'dpFuncEmail','dpFuncTelefone'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('dpFuncSalario').value = '';
   document.getElementById('dpFuncTipo').value    = 'clt';
   document.getElementById('dpFuncDep').value     = 0;
+  if (document.getElementById('dpFuncJornada')) document.getElementById('dpFuncJornada').value = 44;
+  const titulo = document.getElementById('dpFuncFormTitulo');
+  if (titulo) titulo.textContent = 'Cadastrar Funcionário';
   document.getElementById('dpFuncNome').focus();
 }
 
@@ -266,17 +280,20 @@ async function dpSalvarFunc() {
     user_id:       currentUser.id,
     cliente_id:    currentCliente.id,
     nome,
-    cargo:         document.getElementById('dpFuncCargo').value.trim() || null,
-    cpf:           document.getElementById('dpFuncCPF').value.replace(/\D/g,'') || null,
-    ctps:          document.getElementById('dpFuncCTPS').value.trim() || null,
-    pis:           document.getElementById('dpFuncPIS').value.replace(/\D/g,'') || null,
+    cargo:         document.getElementById('dpFuncCargo')?.value.trim()    || null,
+    cpf:           document.getElementById('dpFuncCPF')?.value.replace(/\D/g,'') || null,
+    ctps:          document.getElementById('dpFuncCTPS')?.value.trim()     || null,
+    pis:           document.getElementById('dpFuncPIS')?.value.replace(/\D/g,'')  || null,
+    email:         document.getElementById('dpFuncEmail')?.value.trim()    || null,
+    telefone:      document.getElementById('dpFuncTelefone')?.value.replace(/\D/g,'') || null,
+    jornada_horas: parseInt(document.getElementById('dpFuncJornada')?.value) || 44,
     admissao,
     salario_base:  salario,
     tipo_contrato: document.getElementById('dpFuncTipo').value,
-    dependentes:   parseInt(document.getElementById('dpFuncDep').value) || 0,
-    banco:         document.getElementById('dpFuncBanco').value.trim() || null,
-    agencia:       document.getElementById('dpFuncAgencia').value.trim() || null,
-    conta:         document.getElementById('dpFuncConta').value.trim() || null,
+    dependentes:   parseInt(document.getElementById('dpFuncDep').value)    || 0,
+    banco:         document.getElementById('dpFuncBanco')?.value.trim()    || null,
+    agencia:       document.getElementById('dpFuncAgencia')?.value.trim()  || null,
+    conta:         document.getElementById('dpFuncConta')?.value.trim()    || null,
     atualizado_em: new Date().toISOString(),
   };
 
@@ -718,117 +735,216 @@ async function dpSalvarRescisao() {
 // ── RELATÓRIOS ─────────────────────────────────────────────────
 async function dpCarregarRelatorio() {
   const el = document.getElementById('dpRelContent');
-  if (!el || !currentUser || !currentCliente?.id) return;
-  el.innerHTML = '<p class="dp-empty">Carregando relatórios...</p>';
+  if (!el) return;
+  if (!currentUser || !currentCliente?.id) {
+    el.innerHTML = '<p class="dp-empty">Selecione uma empresa para ver os relatórios.</p>';
+    return;
+  }
+  el.innerHTML = '<div class="dp-loading"><span class="dp-spin"></span> Carregando dados...</div>';
 
   try {
     const [
       { data: holerites },
       { data: eventos },
-      { count: ativos },
-      { count: rescindidos },
+      { data: funcs },
     ] = await Promise.all([
       sb.from('dp_holerites')
-        .select('competencia,total_bruto,inss,irrf,fgts,inss_patronal,rat,custo_total,salario_liquido')
+        .select('competencia,total_bruto,inss,irrf,fgts,inss_patronal,rat,custo_total,salario_liquido,funcionario_id,dp_funcionarios(nome,cargo)')
         .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
-        .order('competencia', { ascending: false }).limit(60),
+        .order('competencia', { ascending: false }).limit(120),
       sb.from('dp_eventos')
         .select('tipo,competencia,dados,criado_em')
         .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
-        .order('criado_em', { ascending: false }).limit(20),
-      sb.from('dp_funcionarios').select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id).eq('status', 'ativo'),
-      sb.from('dp_funcionarios').select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id).eq('status', 'rescindido'),
+        .order('criado_em', { ascending: false }).limit(30),
+      sb.from('dp_funcionarios')
+        .select('id,nome,cargo,salario_base,tipo_contrato,admissao,status')
+        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .order('nome'),
     ]);
+
+    const ativos      = (funcs||[]).filter(f => f.status === 'ativo').length;
+    const rescindidos = (funcs||[]).filter(f => f.status === 'rescindido').length;
 
     // Agrupar por competência
     const porComp = {};
-    for (const h of (holerites || [])) {
-      if (!porComp[h.competencia]) porComp[h.competencia] = { comp: h.competencia, bruto: 0, inss: 0, irrf: 0, fgts: 0, pat: 0, rat: 0, custo: 0, liq: 0, qtd: 0 };
-      const c = porComp[h.competencia];
-      c.bruto += +h.total_bruto || 0; c.inss   += +h.inss || 0;
-      c.irrf  += +h.irrf || 0;        c.fgts   += +h.fgts || 0;
-      c.pat   += +h.inss_patronal || 0; c.rat  += +h.rat || 0;
-      c.custo += +h.custo_total || 0; c.liq   += +h.salario_liquido || 0;
-      c.qtd++;
+    for (const h of (holerites||[])) {
+      if (!porComp[h.competencia]) porComp[h.competencia] = { comp: h.competencia, bruto:0, inss:0, irrf:0, fgts:0, pat:0, rat:0, custo:0, liq:0, qtd:0 };
+      const cx = porComp[h.competencia];
+      cx.bruto += +h.total_bruto||0; cx.inss  += +h.inss||0;       cx.irrf  += +h.irrf||0;
+      cx.fgts  += +h.fgts||0;        cx.pat   += +h.inss_patronal||0;
+      cx.rat   += +h.rat||0;         cx.custo += +h.custo_total||0; cx.liq   += +h.salario_liquido||0;
+      cx.qtd++;
     }
-    const comps = Object.values(porComp).sort((a, b) => b.comp.localeCompare(a.comp));
-    const totalCusto = comps.reduce((s, c) => s + c.custo, 0);
-    const medCusto   = comps.length ? r2(totalCusto / comps.length) : 0;
+    const comps      = Object.values(porComp).sort((a,b) => b.comp.localeCompare(a.comp));
+    const totalBruto = comps.reduce((s,c)=>s+c.bruto,0);
+    const totalINSS  = comps.reduce((s,c)=>s+c.inss,0);
+    const totalIRRF  = comps.reduce((s,c)=>s+c.irrf,0);
+    const totalFGTS  = comps.reduce((s,c)=>s+c.fgts,0);
+    const totalPat   = comps.reduce((s,c)=>s+c.pat,0);
+    const totalCusto = comps.reduce((s,c)=>s+c.custo,0);
+    const medCusto   = comps.length ? r2(totalCusto/comps.length) : 0;
+    const compAtual  = comps[0] || null;
 
-    el.innerHTML = `
-      <!-- KPIs -->
-      <div class="dp-kpis">
-        <div class="dp-kpi"><span class="dp-kpi-v">${ativos ?? 0}</span><span class="dp-kpi-l">Funcionários Ativos</span></div>
-        <div class="dp-kpi"><span class="dp-kpi-v">${rescindidos ?? 0}</span><span class="dp-kpi-l">Rescindidos</span></div>
-        <div class="dp-kpi"><span class="dp-kpi-v">${comps.length}</span><span class="dp-kpi-l">Meses com Folha</span></div>
-        <div class="dp-kpi"><span class="dp-kpi-v">R$ ${fmtBRL(medCusto)}</span><span class="dp-kpi-l">Custo Médio/Mês</span></div>
-        <div class="dp-kpi"><span class="dp-kpi-v">R$ ${fmtBRL(totalCusto)}</span><span class="dp-kpi-l">Custo Total Acumulado</span></div>
-      </div>
+    // Custo por funcionário
+    const porFunc = {};
+    for (const h of (holerites||[])) {
+      const id = h.funcionario_id;
+      const nome = h.dp_funcionarios?.nome || id;
+      if (!porFunc[id]) porFunc[id] = { nome, cargo: h.dp_funcionarios?.cargo||'', custo:0, liq:0, qtd:0 };
+      porFunc[id].custo += +h.custo_total||0;
+      porFunc[id].liq   += +h.salario_liquido||0;
+      porFunc[id].qtd++;
+    }
+    const funcRank = Object.values(porFunc).sort((a,b) => b.custo-a.custo).slice(0,10);
+    const maxFCusto = funcRank[0]?.custo || 1;
 
-      <!-- Tabela histórico -->
-      <div class="dp-rel-bloco">
-        <div class="dp-rel-title">Histórico de Folhas por Competência
-          <button class="dp-rel-export-btn" onclick="dpExportarRelatorioExcel()">
-            <i data-lucide="download"></i> Exportar Excel
-          </button>
-        </div>
-        ${comps.length ? `
-        <div class="dp-tbl-wrap">
-          <table class="dp-rel-table">
-            <thead><tr>
-              <th>Comp.</th><th>Func.</th><th>Bruto</th>
-              <th>INSS</th><th>IRRF</th><th>FGTS</th>
-              <th>Patronal</th><th>Custo Total</th>
-            </tr></thead>
-            <tbody>
-              ${comps.map(c => `<tr>
-                <td class="dp-td-comp">${c.comp}</td>
-                <td class="n">${c.qtd}</td>
-                <td class="n">R$ ${fmtBRL(c.bruto)}</td>
-                <td class="n">R$ ${fmtBRL(c.inss)}</td>
-                <td class="n">R$ ${fmtBRL(c.irrf)}</td>
-                <td class="n">R$ ${fmtBRL(c.fgts)}</td>
-                <td class="n">R$ ${fmtBRL(c.pat)}</td>
-                <td class="n bold">R$ ${fmtBRL(c.custo)}</td>
-              </tr>`).join('')}
-              <tr class="dp-tr-tot">
-                <td colspan="2" class="dp-td bold">TOTAL</td>
-                <td class="n bold">R$ ${fmtBRL(comps.reduce((s,c)=>s+c.bruto,0))}</td>
-                <td class="n">R$ ${fmtBRL(comps.reduce((s,c)=>s+c.inss,0))}</td>
-                <td class="n">R$ ${fmtBRL(comps.reduce((s,c)=>s+c.irrf,0))}</td>
-                <td class="n">R$ ${fmtBRL(comps.reduce((s,c)=>s+c.fgts,0))}</td>
-                <td class="n">R$ ${fmtBRL(comps.reduce((s,c)=>s+c.pat,0))}</td>
-                <td class="n bold">R$ ${fmtBRL(totalCusto)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>` : '<p class="dp-empty">Nenhum holerite salvo ainda.</p>'}
-      </div>
+    // Últimos 6 meses para gráfico
+    const ultimos6 = [...comps].reverse().slice(-6);
+    const maxBar   = Math.max(...ultimos6.map(c=>c.custo), 1);
 
-      <!-- Eventos DP -->
-      <div class="dp-rel-bloco">
-        <div class="dp-rel-title">Últimos Eventos (Férias · 13º · Rescisões)</div>
-        ${(eventos || []).length ? `
-        <div class="dp-tbl-wrap">
-          <table class="dp-rel-table">
-            <thead><tr><th>Tipo</th><th>Funcionário</th><th>Competência</th><th>Valor Líquido</th></tr></thead>
-            <tbody>
-              ${eventos.map(e => `<tr>
-                <td>${e.tipo === 'ferias' ? '🏖️ Férias' : e.tipo === 'decimo_terceiro' ? '🎁 13º' : '📋 Rescisão'}</td>
-                <td>${escapeHtml(e.dados?.nomeFuncionario || '—')}</td>
-                <td>${e.competencia || '—'}</td>
-                <td class="n">R$ ${fmtBRL(e.dados?.liq || e.dados?.liquido || 0)}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>` : '<p class="dp-empty">Nenhum evento registrado.</p>'}
-      </div>`;
+    // Montar HTML por partes (evita template literals profundos)
+    let html = '';
 
+    // KPIs
+    html += '<div class="dp-kpis">';
+    html += '<div class="dp-kpi dp-kpi-hl"><span class="dp-kpi-ico">👥</span><span class="dp-kpi-v">' + ativos + '</span><span class="dp-kpi-l">Ativos</span></div>';
+    html += '<div class="dp-kpi"><span class="dp-kpi-ico">📅</span><span class="dp-kpi-v">' + comps.length + '</span><span class="dp-kpi-l">Meses com Folha</span></div>';
+    html += '<div class="dp-kpi"><span class="dp-kpi-ico">💰</span><span class="dp-kpi-v">R$ ' + fmtBRL(medCusto) + '</span><span class="dp-kpi-l">Custo Médio/Mês</span></div>';
+    html += '<div class="dp-kpi"><span class="dp-kpi-ico">📊</span><span class="dp-kpi-v">R$ ' + fmtBRL(totalCusto) + '</span><span class="dp-kpi-l">Custo Acumulado</span></div>';
+    if (compAtual) {
+      html += '<div class="dp-kpi"><span class="dp-kpi-ico">🏦</span><span class="dp-kpi-v">R$ ' + fmtBRL(compAtual.liq) + '</span><span class="dp-kpi-l">Líquido ' + compAtual.comp + '</span></div>';
+    }
+    html += '<div class="dp-kpi' + (rescindidos > 0 ? ' dp-kpi-warn' : '') + '"><span class="dp-kpi-ico">📋</span><span class="dp-kpi-v">' + rescindidos + '</span><span class="dp-kpi-l">Rescindidos</span></div>';
+    html += '</div>';
+
+    // Gráfico de barras
+    if (ultimos6.length >= 2) {
+      html += '<div class="dp-rel-bloco">';
+      html += '<div class="dp-rel-title">Evolução de Custo — Últimos ' + ultimos6.length + ' Meses</div>';
+      html += '<div class="dp-chart">';
+      for (const cx of ultimos6) {
+        const pct    = Math.round((cx.custo / maxBar) * 100);
+        const pctLiq = Math.round((cx.liq   / maxBar) * 100);
+        html += '<div class="dp-chart-col">';
+        html += '<div class="dp-chart-bars">';
+        html += '<div class="dp-bar-wrap" title="Custo: R$ ' + fmtBRL(cx.custo) + '"><div class="dp-bar dp-bar-custo" style="height:' + pct + '%"></div></div>';
+        html += '<div class="dp-bar-wrap" title="Líquido: R$ ' + fmtBRL(cx.liq) + '"><div class="dp-bar dp-bar-liq" style="height:' + pctLiq + '%"></div></div>';
+        html += '</div>';
+        html += '<div class="dp-chart-lbl">' + cx.comp + '</div>';
+        html += '<div class="dp-chart-val">R$ ' + fmtBRL(cx.custo) + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<div class="dp-chart-legend"><span class="dp-leg dp-leg-custo">■ Custo Total</span><span class="dp-leg dp-leg-liq">■ Líquido</span></div>';
+      html += '</div>';
+    }
+
+    // Composição do custo
+    if (totalCusto > 0) {
+      const composicao = [
+        { lbl: 'Salário Bruto',   val: totalBruto, cls: 'bruto' },
+        { lbl: 'INSS Patronal',   val: totalPat,   cls: 'pat'   },
+        { lbl: 'FGTS',            val: totalFGTS,  cls: 'fgts'  },
+        { lbl: 'INSS Empregado',  val: totalINSS,  cls: 'inss'  },
+        { lbl: 'IRRF',            val: totalIRRF,  cls: 'irrf'  },
+      ];
+      html += '<div class="dp-rel-bloco">';
+      html += '<div class="dp-rel-title">Composição do Custo Acumulado</div>';
+      html += '<div class="dp-composicao">';
+      for (const item of composicao) {
+        const pct = Math.round((item.val / totalCusto) * 100);
+        html += '<div class="dp-comp-row">';
+        html += '<span class="dp-comp-dot dp-comp-' + item.cls + '"></span>';
+        html += '<span class="dp-comp-lbl">' + item.lbl + '</span>';
+        html += '<div class="dp-comp-bar-bg"><div class="dp-comp-bar dp-comp-' + item.cls + '-bar" style="width:' + pct + '%"></div></div>';
+        html += '<span class="dp-comp-pct">' + pct + '%</span>';
+        html += '<span class="dp-comp-val">R$ ' + fmtBRL(item.val) + '</span>';
+        html += '</div>';
+      }
+      html += '</div></div>';
+    }
+
+    // Ranking por funcionário
+    if (funcRank.length > 1) {
+      html += '<div class="dp-rel-bloco"><div class="dp-rel-title">Custo por Funcionário (acumulado)</div>';
+      html += '<div class="dp-ranking">';
+      funcRank.forEach((f, i) => {
+        const pct = Math.round((f.custo / maxFCusto) * 100);
+        html += '<div class="dp-rank-row">';
+        html += '<span class="dp-rank-num">' + (i+1) + '</span>';
+        html += '<div class="dp-rank-info"><span class="dp-rank-nome">' + escapeHtml(f.nome) + (f.cargo ? ' <small>'+escapeHtml(f.cargo)+'</small>' : '') + '</span>';
+        html += '<div class="dp-comp-bar-bg"><div class="dp-comp-bar dp-comp-bruto-bar" style="width:' + pct + '%"></div></div></div>';
+        html += '<div class="dp-rank-vals"><span class="dp-rank-custo">R$ ' + fmtBRL(f.custo) + '</span><span class="dp-rank-sub">' + f.qtd + ' mês(es)</span></div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    // Quadro de pessoal ativo
+    const atFuncs = (funcs||[]).filter(f => f.status === 'ativo');
+    if (atFuncs.length) {
+      html += '<div class="dp-rel-bloco"><div class="dp-rel-title">Quadro de Pessoal Ativo</div>';
+      html += '<div class="dp-tbl-wrap"><table class="dp-rel-table">';
+      html += '<thead><tr><th>Nome</th><th>Cargo</th><th>Tipo</th><th>Admissão</th><th>Tempo</th><th>Salário Base</th></tr></thead><tbody>';
+      for (const f of atFuncs) {
+        const adm   = f.admissao ? new Date(f.admissao+'T00:00') : null;
+        const meses = adm ? Math.floor((new Date()-adm)/(30.44*86400000)) : null;
+        const tempo = meses !== null ? (meses >= 12 ? Math.floor(meses/12)+'a '+(meses%12||0)+'m' : meses+'m') : '—';
+        const tipo  = (f.tipo_contrato||'clt').toUpperCase();
+        html += '<tr>';
+        html += '<td>' + escapeHtml(f.nome) + '</td>';
+        html += '<td>' + escapeHtml(f.cargo||'—') + '</td>';
+        html += '<td><span class="dp-badge-tipo dp-badge-' + (f.tipo_contrato||'clt') + '">' + tipo + '</span></td>';
+        html += '<td>' + (adm ? adm.toLocaleDateString('pt-BR') : '—') + '</td>';
+        html += '<td>' + tempo + '</td>';
+        html += '<td class="n">R$ ' + fmtBRL(f.salario_base) + '</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table></div></div>';
+    }
+
+    // Tabela histórico
+    html += '<div class="dp-rel-bloco">';
+    html += '<div class="dp-rel-title">Histórico por Competência <button class="dp-rel-export-btn" onclick="dpExportarRelatorioExcel()"><i data-lucide="download"></i> Excel</button></div>';
+    if (comps.length) {
+      html += '<div class="dp-tbl-wrap"><table class="dp-rel-table">';
+      html += '<thead><tr><th>Comp.</th><th>Func.</th><th>Bruto</th><th>INSS</th><th>IRRF</th><th>FGTS</th><th>Patronal</th><th>Custo Total</th></tr></thead><tbody>';
+      for (const cx of comps) {
+        html += '<tr><td class="dp-td-comp">' + cx.comp + '</td><td class="n">' + cx.qtd + '</td>';
+        html += '<td class="n">R$ ' + fmtBRL(cx.bruto) + '</td><td class="n">R$ ' + fmtBRL(cx.inss) + '</td>';
+        html += '<td class="n">R$ ' + fmtBRL(cx.irrf) + '</td><td class="n">R$ ' + fmtBRL(cx.fgts) + '</td>';
+        html += '<td class="n">R$ ' + fmtBRL(cx.pat) + '</td><td class="n bold">R$ ' + fmtBRL(cx.custo) + '</td></tr>';
+      }
+      html += '<tr class="dp-tr-tot"><td colspan="2" class="dp-td bold">TOTAL</td>';
+      html += '<td class="n bold">R$ ' + fmtBRL(totalBruto) + '</td><td class="n">R$ ' + fmtBRL(totalINSS) + '</td>';
+      html += '<td class="n">R$ ' + fmtBRL(totalIRRF) + '</td><td class="n">R$ ' + fmtBRL(totalFGTS) + '</td>';
+      html += '<td class="n">R$ ' + fmtBRL(totalPat) + '</td><td class="n bold">R$ ' + fmtBRL(totalCusto) + '</td></tr>';
+      html += '</tbody></table></div>';
+    } else {
+      html += '<p class="dp-empty">Nenhum holerite salvo. Calcule e salve na aba <strong>Holerite</strong>.</p>';
+    }
+    html += '</div>';
+
+    // Eventos recentes
+    if ((eventos||[]).length) {
+      html += '<div class="dp-rel-bloco"><div class="dp-rel-title">Eventos Recentes</div>';
+      html += '<div class="dp-tbl-wrap"><table class="dp-rel-table">';
+      html += '<thead><tr><th>Tipo</th><th>Funcionário</th><th>Competência</th><th>Valor Líquido</th><th>Data</th></tr></thead><tbody>';
+      for (const ev of eventos) {
+        const tipo = ev.tipo === 'ferias' ? '🏖️ Férias' : ev.tipo === 'decimo_terceiro' ? '🎁 13º' : '📋 Rescisão';
+        html += '<tr><td>' + tipo + '</td><td>' + escapeHtml(ev.dados?.nomeFuncionario||'—') + '</td>';
+        html += '<td>' + (ev.competencia||'—') + '</td>';
+        html += '<td class="n">R$ ' + fmtBRL(ev.dados?.liq||ev.dados?.liquido||0) + '</td>';
+        html += '<td>' + (ev.criado_em ? new Date(ev.criado_em).toLocaleDateString('pt-BR') : '—') + '</td></tr>';
+      }
+      html += '</tbody></table></div></div>';
+    }
+
+    el.innerHTML = html;
     lucide.createIcons();
+
   } catch(e) {
-    el.innerHTML = `<p class="dp-empty" style="color:#dc2626">Erro: ${e.message}</p>`;
+    el.innerHTML = '<p class="dp-empty" style="color:#dc2626">Erro ao carregar: ' + e.message + '</p>';
   }
 }
 
@@ -862,6 +978,144 @@ async function dpExportarRelatorioExcel() {
     XLSX.writeFile(wb, `dp-${(currentCliente.cnpj||'').replace(/\D/g,'')}-${new Date().toISOString().slice(0,7)}.xlsx`);
   } catch { showToast('Erro ao exportar.', 'error'); }
 }
+
+// ── Formatar campo de competência ─────────────────────────────
+function formatarCompetencia(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2,6);
+  el.value = v;
+}
+
+// ── Autopreenchimento de rescisão ao selecionar funcionário ───
+function dpRescAutoPreench() {
+  const funcId  = document.getElementById('dpRescFuncSelect')?.value;
+  const dtDesl  = document.getElementById('dpRescData')?.value;
+  const func    = dpFuncionarios.find(f => f.id === funcId);
+  const card    = document.getElementById('dpRescInfoCard');
+  const txt     = document.getElementById('dpRescInfoTxt');
+  if (!func || !card || !txt) return;
+
+  const adm     = func.admissao ? new Date(func.admissao+'T00:00') : null;
+  const deslig  = dtDesl ? new Date(dtDesl+'T00:00') : new Date();
+  const meses   = adm ? Math.floor((deslig - adm) / (30.44 * 86400000)) : null;
+  const saldo   = dtDesl ? deslig.getDate() : null;
+  const mFer    = meses !== null ? (meses % 12 || 0) : null;
+  const m13     = meses !== null ? Math.ceil((deslig.getMonth() + 1 + (deslig.getDate() >= 15 ? 1 : 0)) / 1) : null;
+
+  // Preencher automaticamente os campos de dias/meses proporcionais
+  if (saldo !== null)  { const el = document.getElementById('dpRescSaldoDias'); if (el && !el.value) el.value = saldo; }
+  if (mFer  !== null)  { const el = document.getElementById('dpRescFerProp');   if (el) el.value = Math.min(mFer, 11); }
+  if (m13   !== null)  { const el = document.getElementById('dpRescDecProp');   if (el) el.value = Math.min(deslig.getMonth() + 1, 12); }
+
+  if (meses !== null) {
+    const anos = Math.floor(meses / 12);
+    const mRest = meses % 12;
+    txt.textContent = func.nome + ' · Admissão: ' +
+      (adm ? adm.toLocaleDateString('pt-BR') : '—') +
+      ' · Tempo: ' + (anos ? anos + 'a ' : '') + mRest + 'm' +
+      (meses >= 12 ? ' · ⚠️ Homologação sindical necessária' : '');
+    card.style.display = 'block';
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+function dpRescMotivoChanged() {
+  const motivo = document.getElementById('dpRescMotivo')?.value;
+  const avisoEl = document.getElementById('dpRescAviso');
+  if (!avisoEl) return;
+  // Justa causa e pedido de demissão não têm aviso indenizado obrigatório
+  avisoEl.checked = (motivo === 'sem_justa_causa');
+}
+
+// ── PDF genérico para férias / 13º / rescisão ─────────────────
+function dpExportarEventoPDF(tipo) {
+  const map = {
+    ferias:   { data: window._dpFeriasData,  titulo: 'RECIBO DE FÉRIAS'     },
+    decimo:   { data: window._dpDecimoData,  titulo: '13º SALÁRIO'          },
+    rescisao: { data: window._dpRescData,    titulo: 'RESCISÃO DE CONTRATO' },
+  };
+  const { data: d, titulo } = map[tipo] || {};
+  if (!d) { showToast('Calcule primeiro.', 'warn'); return; }
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { showToast('jsPDF não carregado.', 'error'); return; }
+
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 15;
+  let y = M;
+
+  // Cabeçalho
+  doc.setFillColor(26,26,26); doc.rect(0,0,W,14,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text('FISCAL365 — ' + titulo, M, 9);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text((d.empresa||'') + (d.cnpj ? ' · CNPJ: '+d.cnpj : ''), W-M, 9, { align:'right' });
+  y = 22;
+
+  doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+  doc.text(escapeHtmlPDF(d.nomeFuncionario||'Funcionário') + (d.cargo ? ' — '+d.cargo : ''), M, y); y += 6;
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+  doc.text('Competência: ' + (d.competencia||d.dtDeslig||'—'), M, y); y += 10;
+  doc.setTextColor(0,0,0);
+
+  // Linhas de valores
+  const row = (label, val, verde) => {
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(label, M+1, y);
+    doc.setTextColor(verde ? 22 : (val < 0 ? 220 : 0), verde ? 163 : 0, verde ? 74 : 0);
+    doc.text('R$ ' + fmtBRL(Math.abs(val)), W-M, y, { align:'right' });
+    doc.setTextColor(0,0,0); y += 6;
+  };
+  const sep = (lbl) => {
+    doc.setFillColor(240,240,240); doc.rect(M, y-5, W-2*M, 8, 'F');
+    doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(60,60,60);
+    doc.text(lbl, M+2, y); doc.setTextColor(0,0,0); y += 7;
+  };
+
+  if (tipo === 'ferias') {
+    sep('PROVENTOS'); row('Férias ('+d.diasFerias+' dias)', d.base, true);
+    row('1/3 Constitucional', d.umTerco, true);
+    if (d.abonoV > 0) row('Abono Pecuniário (10 dias)', d.abonoV, true);
+    sep('DESCONTOS'); row('INSS', d.inss); row('IRRF', d.irrf);
+  } else if (tipo === 'decimo') {
+    sep('13º SALÁRIO');
+    row('Base proporcional ('+d.meses+'/12)', d.prop, true);
+    row((d.parcela==='1'?'1ª Parcela (50%)':'2ª Parcela (saldo)'), d.bruto, true);
+    if (d.inss > 0) { sep('DESCONTOS'); row('INSS', d.inss); row('IRRF', d.irrf); }
+  } else {
+    sep('VERBAS RESCISÓRIAS');
+    if (d.saldo   > 0) row('Saldo de Salário ('+d.saldoDias+' dias)', d.saldo, true);
+    if (d.aviso   > 0) row('Aviso Prévio Indenizado', d.aviso, true);
+    if (d.ferProp > 0) row('Férias Proporcionais ('+d.mesesFer+'/12)', d.ferProp, true);
+    if (d.umTerco > 0) row('1/3 Constitucional', d.umTerco, true);
+    if (d.dec13   > 0) row('13º Proporcional ('+d.meses13+'/12)', d.dec13, true);
+    sep('DESCONTOS'); row('INSS', d.inss); row('IRRF', d.irrf);
+    if (d.multa40 > 0) { sep('ENCARGOS EMPRESA'); row('Multa 40% FGTS', d.multa40); }
+  }
+
+  y += 4;
+  doc.setFillColor(240,253,244); doc.rect(M, y-5, W-2*M, 10, 'F');
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(22,163,74);
+  const liqLabel = tipo === 'rescisao' ? 'RESCISÃO LÍQUIDA' : tipo === 'ferias' ? 'FÉRIAS LÍQUIDAS' : 'VALOR LÍQUIDO';
+  doc.text(liqLabel, M+2, y);
+  doc.text('R$ ' + fmtBRL(d.liq), W-M-2, y, { align:'right' });
+  y += 16; doc.setTextColor(0,0,0);
+
+  // Assinaturas
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.line(M, y, M+70, y); doc.line(W-M-70, y, W-M, y); y += 5;
+  doc.text('Assinatura do Empregado', M+5, y);
+  doc.text('Assinatura do Empregador', W-M-60, y);
+
+  doc.setDrawColor(200,200,200); doc.line(M, 285, W-M, 285);
+  doc.setFontSize(7); doc.setTextColor(150,150,150);
+  doc.text('Fiscal365 · Portaria MF 1.191/2025 e 1.206/2025 · Documento auxiliar', 105, 290, { align:'center' });
+
+  const nome = (d.nomeFuncionario||'func').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  doc.save(tipo+'-'+nome+'-'+(d.competencia||d.dtDeslig||'').replace('/','','')+'.pdf');
+}
+
+function escapeHtmlPDF(s) { return String(s||'').replace(/[<>&"']/g,''); }
 
 // ── PDF Holerite ───────────────────────────────────────────────
 async function exportarFolhaPDF() {
