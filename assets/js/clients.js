@@ -49,6 +49,12 @@ function formatarDadosCNPJ(d) {
 
 // ====== FUNÇÕES DE CLIENTES ======
 async function loadClientes() {
+  // Guard: aguardar currentUser estar disponível
+  if (!currentUser) {
+    const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
+    if (user) currentUser = user;
+    else return; // não autenticado
+  }
   // Admin busca todos; outros buscam via vínculo clientes_usuarios
   let data, error;
   if (isAdmin()) {
@@ -131,12 +137,21 @@ function atualizarTemplates(regime) {
     { icon: 'clock',        label: 'Prazos',     q: 'Prazo SPED Fiscal 2026' },
   ];
 
-  tplRow.innerHTML = templates.map(t =>
-    `<button class="chip" onclick="useTemplate(${JSON.stringify(t.q)})">
+  tplRow.innerHTML = templates.map((t, i) =>
+    `<button class="chip" data-tpl-idx="${i}" onclick="useTplByIdx(this)">
       <i data-lucide="${t.icon}"></i> ${t.label}
     </button>`
   ).join('');
+  // Guardar perguntas sem risco de quebrar HTML com aspas
+  tplRow._tplQuestions = templates.map(t => t.q);
   if (window.lucide) lucide.createIcons();
+}
+
+function useTplByIdx(btn) {
+  const row = btn.closest('.tpl-row');
+  const idx = parseInt(btn.dataset.tplIdx);
+  const q   = row?._tplQuestions?.[idx];
+  if (q && typeof useTemplate === 'function') useTemplate(q);
 }
 
 async function setCurrentCliente(cliente) {
@@ -202,17 +217,28 @@ async function renderClientList() {
     return;
   }
 
-  el.innerHTML = data.map(cl => `
-    <div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}" style="position:relative">
-      <div style="flex:1;cursor:pointer" onclick="selectCliente('${cl.id}')">
-        <div class="client-item-name">${escapeHtml(cl.razao_social)}</div>
+  el.innerHTML = data.map(cl => {
+    const nome = escapeHtml(cl.razao_social);
+    const fantasia = cl.nome_fantasia ? escapeHtml(cl.nome_fantasia) : '';
+    const nomeExibido = fantasia || nome;
+    const regime = cl.regime_tributario ? escapeHtml(cl.regime_tributario) : '';
+    // Regime abreviado para caber no badge sem romper layout
+    const regimeAbrev = regime
+      .replace('Simples Nacional', 'Simples')
+      .replace('Lucro Presumido', 'L. Presumido')
+      .replace('Lucro Real', 'L. Real')
+      .replace('Microempreendedor Individual', 'MEI');
+    return `<div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}">
+      <div class="client-item-info" onclick="selectCliente('${cl.id}')" style="cursor:pointer">
+        <div class="client-item-name" title="${nome}">${nomeExibido}</div>
         <div class="client-item-cnpj">CNPJ: ${escapeHtml(cl.cnpj)}</div>
       </div>
-      ${cl.regime_tributario ? `<span class="client-item-regime">${escapeHtml(cl.regime_tributario)}</span>` : ''}
-      ${isAdmin() ? `<button onclick="gerenciarAcessos('${cl.id}','${escapeHtml(cl.razao_social).replace(/'/g,'')}')" title="Gerenciar acessos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center">
+      ${regimeAbrev ? `<span class="client-item-regime" title="${regime}">${regimeAbrev}</span>` : ''}
+      ${isAdmin() ? `<button onclick="gerenciarAcessos('${cl.id}','${nome.replace(/'/g,'')}')" title="Gerenciar acessos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center;flex-shrink:0">
         <i data-lucide="users" style="width:15px;height:15px"></i>
       </button>` : ''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   // Guardar lista para selectCliente usar
   window._clientesList = data;
