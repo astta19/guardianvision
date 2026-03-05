@@ -1584,27 +1584,37 @@
     .client-item {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       padding: 12px 14px;
       border: 1px solid var(--border);
       border-radius: 10px;
       cursor: pointer;
       transition: all 0.15s;
-      gap: 10px;
+      gap: 8px;
+      min-width: 0;
     }
     .client-item:hover { border-color: var(--accent); background: var(--bg); }
     .client-item.active { border-color: var(--accent); background: var(--bg); }
     .client-item-info { flex: 1; min-width: 0; }
-    .client-item-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-item-name {
+      font-weight: 600;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
     .client-item-cnpj { font-size: 11px; color: var(--text-light); margin-top: 2px; }
     .client-item-regime {
       font-size: 10px;
-      padding: 2px 7px;
+      padding: 2px 6px;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 4px;
       white-space: nowrap;
       flex-shrink: 0;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .btn-add-client {
       width: 100%;
