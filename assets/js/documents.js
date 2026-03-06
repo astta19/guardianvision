@@ -201,6 +201,195 @@ async function getResumoChatTexto() {
     .join('\n\n');
 }
 
+
+// ----------------------------------------------------------
+// PDF LIVRE — gerado com conteúdo direto do chat/IA
+// ----------------------------------------------------------
+async function gerarDocumentoLivrePDF(titulo, conteudo, subtitulo) {
+  if (!window.jspdf) throw new Error('jsPDF não carregado');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const empresa = currentCliente || {};
+  const perfil  = perfilCache || {};
+  const W = 210, M = 15;
+
+  // Cabeçalho
+  doc.setFillColor(0, 0, 0);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text('Fiscal365', M, 11);
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+  doc.text(titulo, M, 19);
+  if (subtitulo) { doc.setFontSize(9); doc.text(subtitulo, M, 25); }
+  doc.setTextColor(0, 0, 0);
+
+  let y = 36;
+
+  // Dados da empresa (se selecionada)
+  if (empresa.razao_social) {
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(M, y, W - M * 2, 18, 3, 3, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(empresa.razao_social, M + 4, y + 7);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${empresa.regime_tributario || '—'}  |  ${new Date().toLocaleDateString('pt-BR')}`,
+      M + 4, y + 13
+    );
+    doc.setTextColor(0, 0, 0);
+    y += 26;
+  }
+
+  // Conteúdo — quebrar em parágrafos e paginar automaticamente
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  const paragrafos = conteudo.split(/\n+/g).filter(p => p.trim());
+
+  for (const para of paragrafos) {
+    const texto = para.trim();
+    if (!texto) continue;
+
+    // Detectar se é título (linha curta em maiúsculas ou começa com número)
+    const ehTitulo = /^(\d+\.|[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ]{4,})/.test(texto) && texto.length < 80;
+
+    if (ehTitulo) {
+      if (y > 265) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(texto, M, y);
+      y += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+    } else {
+      const linhas = doc.splitTextToSize(texto, W - M * 2);
+      const alturaBloco = linhas.length * 5.5;
+      if (y + alturaBloco > 272) { doc.addPage(); y = 20; }
+      doc.text(linhas, M, y);
+      y += alturaBloco + 4;
+    }
+  }
+
+  // Assinatura
+  if (y < 260) {
+    y = Math.max(y + 10, 250);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(M, y, M + 70, y);
+    doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+    doc.text(perfil.nome || currentUser?.email || '—', M, y + 5);
+    if (perfil.crc) doc.text('CRC: ' + perfil.crc, M, y + 10);
+  }
+
+  // Rodapé em todas as páginas
+  const pages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(M, 287, W - M, 287);
+    doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+    doc.text('Fiscal365 — Documento auxiliar. Não substitui orientação de contador habilitado com CRC.', M, 291);
+    doc.text(`Página ${p}/${pages}`, W - M, 291, { align: 'right' });
+  }
+
+  const nomearq = titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40);
+  doc.save(`${nomearq}-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// ----------------------------------------------------------
+// DOCX LIVRE — gerado com conteúdo direto do chat/IA
+// ----------------------------------------------------------
+async function gerarDocumentoLivreDocx(titulo, conteudo, subtitulo) {
+  if (typeof docx === 'undefined') throw new Error('Biblioteca DOCX não carregada');
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+  const empresa = currentCliente || {};
+  const perfil  = perfilCache || {};
+
+  const paragrafos = conteudo.split(/\n+/g).filter(p => p.trim());
+
+  const children = [
+    // Título
+    new Paragraph({
+      children: [new TextRun({ text: 'Fiscal365', bold: true, size: 36, font: 'Calibri', color: '000000' })],
+      spacing: { after: 80 },
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: titulo, bold: true, size: 28, font: 'Calibri', color: '1e293b' })],
+      spacing: { after: subtitulo ? 80 : 300 },
+    }),
+    ...(subtitulo ? [new Paragraph({
+      children: [new TextRun({ text: subtitulo, size: 22, font: 'Calibri', color: '475569' })],
+      spacing: { after: 300 },
+    })] : []),
+
+    // Dados da empresa
+    ...(empresa.razao_social ? [
+      new Paragraph({
+        children: [new TextRun({ text: empresa.razao_social, bold: true, size: 24, font: 'Calibri' })],
+        spacing: { after: 80 },
+      }),
+      new Paragraph({
+        children: [new TextRun({
+          text: `CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${empresa.regime_tributario || '—'}  |  ${new Date().toLocaleDateString('pt-BR')}`,
+          size: 20, font: 'Calibri', color: '64748b',
+        })],
+        spacing: { after: 80 },
+      }),
+      new Paragraph({
+        children: [new TextRun({
+          text: `Responsável: ${perfil.nome || currentUser?.email || '—'}${perfil.crc ? '  |  CRC: ' + perfil.crc : ''}`,
+          size: 20, font: 'Calibri', color: '64748b',
+        })],
+        spacing: { after: 400 },
+      }),
+    ] : []),
+  ];
+
+  // Corpo do documento
+  for (const para of paragrafos) {
+    const texto = para.trim();
+    if (!texto) continue;
+    const ehTitulo = /^(\d+\.|[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ]{4,})/.test(texto) && texto.length < 80;
+    children.push(new Paragraph({
+      ...(ehTitulo ? { heading: HeadingLevel.HEADING_2 } : {}),
+      children: [new TextRun({
+        text: texto,
+        bold: ehTitulo,
+        size: ehTitulo ? 24 : 22,
+        font: 'Calibri',
+      })],
+      spacing: { after: ehTitulo ? 200 : 160 },
+    }));
+  }
+
+  // Assinatura
+  children.push(
+    new Paragraph({ children: [], spacing: { before: 800 } }),
+    new Paragraph({
+      children: [new TextRun({ text: '_'.repeat(40), size: 22, font: 'Calibri' })],
+      spacing: { after: 80 },
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: perfil.nome || currentUser?.email || '—', size: 20, font: 'Calibri', color: '475569' })],
+    }),
+    ...(perfil.crc ? [new Paragraph({
+      children: [new TextRun({ text: 'CRC: ' + perfil.crc, size: 20, font: 'Calibri', color: '475569' })],
+    })] : []),
+  );
+
+  const doc = new Document({
+    sections: [{ 
+      properties: { page: { margin: { top: 1440, bottom: 1440, left: 1800, right: 1440 } } },
+      children 
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: titulo.toLowerCase().replace(/[^a-z0-9]/g,'-').slice(0,40) + '.docx' });
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
 // ----------------------------------------------------------
 // PDF — Relatório Fiscal Mensal
 // ----------------------------------------------------------
