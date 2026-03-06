@@ -2787,3 +2787,15 @@
     .tool-text-reply {
       margin-top: 6px;
     }
+
+    /* ── Badge modelo usado na resposta ─────────────────── */
+    .badge-model {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      background: var(--sidebar-hover);
+      border: 1px solid var(--border);
+      color: var(--text-light);
+      font-weight: 600;
+      letter-spacing: .3px;
+    }
