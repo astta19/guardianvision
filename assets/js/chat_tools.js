@@ -101,10 +101,13 @@ const CHAT_TOOLS = [
     type: 'function',
     function: {
       name: 'gerar_relatorio_pdf',
-      description: 'Gera e baixa o Relatório Fiscal Mensal em PDF com obrigações, status e dados do DARF. Use quando o usuário pedir relatório fiscal, relatório mensal, PDF da empresa ou resumo tributário em PDF.',
+      description: 'Gera e baixa o Relatório Fiscal Mensal em PDF com obrigações, DARFs, financeiro e dados do banco. Use quando o usuário pedir relatório fiscal, relatório mensal, PDF da empresa ou resumo tributário em PDF.',
       parameters: {
         type: 'object',
-        properties: {},
+        properties: {
+          titulo: { type: 'string', description: 'Título personalizado do relatório (opcional)' },
+          conteudo_extra: { type: 'string', description: 'Conteúdo adicional ou correções mencionadas no chat para incluir no relatório' },
+        },
         required: [],
       },
     },
@@ -112,11 +115,45 @@ const CHAT_TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'gerar_parecer_docx',
-      description: 'Gera e baixa o Parecer Fiscal em DOCX (Word). A IA escreve o texto do parecer com base no contexto da conversa. Use quando o usuário pedir parecer, documento Word, relatório Word, parecer fiscal ou DOCX.',
+      name: 'gerar_documento_pdf',
+      description: 'Gera um PDF livre com o conteúdo que o usuário pediu — pode ser um parecer, análise, resumo, cálculo, ou qualquer texto da conversa. Use quando o usuário pedir "gera um PDF disso", "quero isso em PDF", "exporta em PDF", "me dá um documento com essas informações".',
       parameters: {
         type: 'object',
-        properties: {},
+        properties: {
+          titulo: { type: 'string', description: 'Título do documento' },
+          conteudo: { type: 'string', description: 'Conteúdo completo do documento — escreva aqui o texto integral que deve aparecer no PDF, com todas as informações da conversa. Seja detalhado.' },
+          subtitulo: { type: 'string', description: 'Subtítulo ou descrição curta (opcional)' },
+        },
+        required: ['titulo', 'conteudo'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gerar_documento_docx',
+      description: 'Gera um arquivo Word (DOCX) com o conteúdo que o usuário pediu — parecer, relatório, análise, contrato, ou qualquer texto. Use quando o usuário pedir "gera um Word", "quero em DOCX", "documento Word", "exporta em Word".',
+      parameters: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string', description: 'Título do documento' },
+          conteudo: { type: 'string', description: 'Conteúdo completo do documento em texto corrido. Inclua tudo que foi discutido e que o usuário quer no documento.' },
+          subtitulo: { type: 'string', description: 'Subtítulo (opcional)' },
+        },
+        required: ['titulo', 'conteudo'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gerar_parecer_docx',
+      description: 'Gera e baixa o Parecer Fiscal formal em DOCX (Word) com análise técnica e fundamentação legal. Use especificamente quando pedirem parecer fiscal, parecer contábil, parecer técnico.',
+      parameters: {
+        type: 'object',
+        properties: {
+          conteudo_extra: { type: 'string', description: 'Texto do parecer que você já elaborou na resposta — inclua aqui para que o DOCX tenha exatamente o que foi discutido' },
+        },
         required: [],
       },
     },
@@ -244,7 +281,7 @@ const TOOL_EXECUTORS = {
     return { ok: true, msg: 'Módulo financeiro aberto.' };
   },
 
-  gerar_relatorio_pdf: async () => {
+  gerar_relatorio_pdf: async (args) => {
     if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar o relatório.' };
     if (typeof gerarRelatorioFiscal !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
     try {
@@ -255,7 +292,7 @@ const TOOL_EXECUTORS = {
     }
   },
 
-  gerar_parecer_docx: async () => {
+  gerar_parecer_docx: async (args) => {
     if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar o parecer.' };
     if (typeof gerarParecer !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
     try {
@@ -264,6 +301,22 @@ const TOOL_EXECUTORS = {
     } catch(e) {
       return { ok: false, msg: 'Erro ao gerar DOCX: ' + e.message };
     }
+  },
+
+  gerar_documento_pdf: async (args) => {
+    if (!currentCliente) return { ok: false, msg: 'Nenhuma empresa selecionada.' };
+    try {
+      await gerarDocumentoLivrePDF(args?.titulo || 'Documento', args?.conteudo || '', args?.subtitulo || '');
+      return { ok: true, msg: `PDF "${args?.titulo || 'Documento'}" gerado e download iniciado.` };
+    } catch(e) { return { ok: false, msg: 'Erro ao gerar PDF: ' + e.message }; }
+  },
+
+  gerar_documento_docx: async (args) => {
+    if (!currentCliente) return { ok: false, msg: 'Nenhuma empresa selecionada.' };
+    try {
+      await gerarDocumentoLivreDocx(args?.titulo || 'Documento', args?.conteudo || '', args?.subtitulo || '');
+      return { ok: true, msg: `Word "${args?.titulo || 'Documento'}" gerado e download iniciado.` };
+    } catch(e) { return { ok: false, msg: 'Erro ao gerar DOCX: ' + e.message }; }
   },
 
   gerar_planilha_excel: async () => {
@@ -321,10 +374,12 @@ function renderToolCard(resultados) {
       abrir_folha:         'users',
       abrir_agenda:        'calendar-clock',
       abrir_financeiro:    'wallet',
-      gerar_relatorio_pdf: 'file-text',
-      gerar_parecer_docx:  'file-type-2',
-      gerar_planilha_excel:'table-2',
-      gerar_dctfweb_pdf:   'landmark',
+      gerar_relatorio_pdf:  'file-text',
+      gerar_parecer_docx:   'file-type-2',
+      gerar_documento_pdf:  'file-down',
+      gerar_documento_docx: 'file-type',
+      gerar_planilha_excel: 'table-2',
+      gerar_dctfweb_pdf:    'landmark',
     }[r.tool] || 'zap';
     const cor = r.ok ? '#16a34a' : '#dc2626';
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--sidebar-hover);border:1px solid var(--border);border-left:3px solid ${cor};border-radius:8px;margin-bottom:6px;font-size:12px;">
