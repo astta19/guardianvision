@@ -11,7 +11,7 @@ const AI_PROVIDER = {
 
   // ── Configuração ─────────────────────────────────────────
   // 'groq' | 'anthropic'
-  current: 'groq',
+  current: 'anthropic',
 
   models: {
     groq: [
