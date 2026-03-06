@@ -17,13 +17,20 @@ const EmpresaContext = (() => {
     const agora = Date.now();
     if (_cache && _cacheId === clienteId && (agora - _cacheTs) < TTL_MS) return _cache;
 
-    const [darfs, lancamentos, funcionarios, agenda, holerites] = await Promise.allSettled([
+    const [darfs, ultimoDarf, lancamentos, funcionarios, agenda, holerites] = await Promise.allSettled([
 
-      // Últimos 12 DARFs (histórico de pagamentos)
+      // Histórico de DARFs salvos explicitamente
       sb.from('darf_historico')
         .select('competencia, regime, total, status, data_pgto')
         .eq('user_id', userId).eq('cliente_id', clienteId)
         .order('competencia', { ascending: false }).limit(12),
+
+      // Último DARF calculado (salvo automaticamente a cada cálculo)
+      sb.from('documentos_fiscais')
+        .select('dados, criado_em')
+        .eq('user_id', userId).eq('cliente_id', clienteId)
+        .eq('tipo', 'darf')
+        .order('criado_em', { ascending: false }).limit(1),
 
       // Lançamentos do ano corrente
       sb.from('lancamentos')
@@ -55,6 +62,7 @@ const EmpresaContext = (() => {
 
     const result = {
       darfs:       darfs.status       === 'fulfilled' ? darfs.value.data       || [] : [],
+      ultimoDarf:  ultimoDarf.status  === 'fulfilled' ? ultimoDarf.value.data?.[0] || null : null,
       lancamentos: lancamentos.status === 'fulfilled' ? lancamentos.value.data || [] : [],
       funcionarios:funcionarios.status=== 'fulfilled' ? funcionarios.value.data|| [] : [],
       agenda:      agenda.status      === 'fulfilled' ? agenda.value.data      || [] : [],
@@ -87,8 +95,8 @@ const EmpresaContext = (() => {
     lines.push(`Tem empregado: ${cliente.tem_empregado ? 'Sim' : 'Não'}`);
 
     // Histórico de DARFs
+    lines.push('\n── DARFS ────────────────────────────────');
     if (dados.darfs?.length) {
-      lines.push('\n── HISTÓRICO DE DARFS (últimos 12) ──────');
       const pendentes = dados.darfs.filter(d => d.status === 'pendente');
       const pagos     = dados.darfs.filter(d => d.status === 'pago');
       if (pendentes.length) {
@@ -96,6 +104,7 @@ const EmpresaContext = (() => {
         pendentes.forEach(d =>
           lines.push(`  • ${d.competencia} — R$ ${fmt(d.total)} [${d.regime}]`)
         );
+        lines.push(`  Total pendente: R$ ${fmt(pendentes.reduce((a,d) => a + +d.total, 0))}`);
       }
       if (pagos.length) {
         lines.push(`✅ Pagos (${pagos.length}):`);
@@ -103,8 +112,14 @@ const EmpresaContext = (() => {
           lines.push(`  • ${d.competencia} — R$ ${fmt(d.total)} — pago em ${fmtD(d.data_pgto)}`)
         );
       }
-      const totalPendente = pendentes.reduce((a,d) => a + +d.total, 0);
-      if (totalPendente > 0) lines.push(`  Total pendente: R$ ${fmt(totalPendente)}`);
+    } else if (dados.ultimoDarf?.dados) {
+      // Nenhum DARF salvo no histórico — mostrar o último cálculo feito
+      const d = dados.ultimoDarf.dados;
+      lines.push(`  Último cálculo: competência ${d.competencia || '—'} — Total R$ ${fmt(d.totalFinal)} [${d.regime || '—'}]`);
+      lines.push(`  Status: apenas calculado, não foi marcado como pago/pendente no histórico.`);
+      lines.push(`  Dica: o contador pode salvar no histórico pelo botão "Salvar" após calcular.`);
+    } else {
+      lines.push('  Nenhum DARF calculado ou salvo ainda para esta empresa.');
     }
 
     // Situação financeira do ano
@@ -165,7 +180,11 @@ const EmpresaContext = (() => {
     }
 
     lines.push('════════════════════════════════════════');
-    lines.push('Use estes dados reais ao responder. Nunca invente valores — se não souber, diga que o dado não está disponível.');
+    lines.push('INSTRUÇÕES DE USO DO CONTEXTO:');
+    lines.push('- Use SEMPRE os dados acima ao responder perguntas sobre esta empresa.');
+    lines.push('- Se um dado estiver listado como "Nenhum" ou "Sem registros", informe isso diretamente — não diga que "não há informações suficientes".');
+    lines.push('- Se o usuário perguntar sobre DARF pendente e o histórico estiver vazio, explique que nenhum DARF foi salvo no histórico ainda e oriente a calcular pelo módulo Documentos.');
+    lines.push('- Nunca invente valores. Nunca direcione para a Receita Federal quando os dados já estão disponíveis acima.');
 
     return lines.join('\n');
   }
