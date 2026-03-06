@@ -672,17 +672,26 @@ function addMessage(text, isUser, confidence = 'medium', fileData = null, intera
 
 function formatTextWithLinks(text) {
   if (!text) return '';
-  
-  let t = escapeHtml(text);
-  
-  t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  
-  t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  t = t.replace(/`(.*?)`/g, '<code>$1</code>');
-  t = t.replace(/^- (.+)$/gm, '<li>$1</li>');
-  t = t.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, '<ul>$&</ul>');
-  
-  return t;
+  // Usar marked.js se disponível, senão mini-render manual
+  if (typeof marked !== 'undefined') {
+    marked.setOptions({ breaks: true, gfm: true, sanitize: false });
+    return marked.parse(text);
+  }
+  // Mini-renderer de fallback
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^#{3} (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^#{2} (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')
+    .replace(/^(.+)$/, '<p>$1</p>');
 }
 
 
@@ -733,6 +742,188 @@ function calculateConfidence(text) {
 // ============================================
 // FUNÇÃO SEND CORRIGIDA - COM MEMÓRIA PERMANENTE E FALLBACK DE MODELOS
 // ============================================
+
+
+
+// ── Thinking toggle (UI) ──────────────────────────────────
+function toggleThinking(ativo) {
+  if (typeof AI_PROVIDER !== 'undefined') {
+    AI_PROVIDER.ativarThinking(ativo);
+    const lbl = document.getElementById('modelLabel');
+    if (lbl) lbl.textContent = ativo ? 'claude-sonnet-4-6 + thinking' : 'claude-sonnet-4-6';
+  }
+}
+
+// ── Streaming helpers ─────────────────────────────────────
+function addMessageStreaming(isUser) {
+  const container = document.getElementById('msgs');
+  container.querySelector('.empty')?.remove();
+  const div = document.createElement('div');
+  div.className = `msg ${isUser ? 'user' : 'assistant'} streaming`;
+  div.innerHTML = `
+    <div class="ava"><i data-lucide="bot"></i></div>
+    <div class="bubble"><span class="stream-cursor">▍</span></div>`;
+  container.appendChild(div);
+  lucide.createIcons();
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function updateStreamBubble(div, text) {
+  if (!div) return;
+  const bubble = div.querySelector('.bubble');
+  if (!bubble) return;
+  bubble.innerHTML = formatTextWithLinks(text) + '<span class="stream-cursor">▍</span>';
+  const container = document.getElementById('msgs');
+  container.scrollTop = container.scrollHeight;
+}
+
+function finalizeStreamBubble(div, text, footer) {
+  if (!div) return;
+  const bubble = div.querySelector('.bubble');
+  if (!bubble) return;
+  div.classList.remove('streaming');
+  bubble.innerHTML = formatTextWithLinks(text) + (footer || '');
+  lucide.createIcons();
+}
+
+// ── Thinking indicator ────────────────────────────────────
+let _thinkingEl = null;
+
+function showThinkingIndicator() {
+  hideThinkingIndicator();
+  const container = document.getElementById('msgs');
+  _thinkingEl = document.createElement('div');
+  _thinkingEl.className = 'msg assistant thinking-msg';
+  _thinkingEl.innerHTML = `
+    <div class="ava"><i data-lucide="brain"></i></div>
+    <div class="bubble thinking-bubble">
+      <div class="thinking-header">
+        <span class="thinking-dot"></span>
+        <span style="font-size:11px;color:var(--text-light)">Analisando profundamente...</span>
+      </div>
+      <div id="thinkingPreview" style="font-size:11px;color:var(--text-light);max-height:60px;overflow:hidden;margin-top:4px"></div>
+    </div>`;
+  container.appendChild(_thinkingEl);
+  lucide.createIcons();
+  container.scrollTop = container.scrollHeight;
+}
+
+function updateThinkingIndicator(text) {
+  const el = document.getElementById('thinkingPreview');
+  if (el && text) {
+    el.textContent = text.slice(-200); // mostrar últimas 200 chars do raciocínio
+  }
+}
+
+function hideThinkingIndicator() {
+  _thinkingEl?.remove();
+  _thinkingEl = null;
+}
+
+// ── Token/custo counter ───────────────────────────────────
+let _sessionTokens = { input: 0, output: 0, requests: 0 };
+
+function updateTokenCounter(inputT, outputT) {
+  _sessionTokens.input    += inputT  || 0;
+  _sessionTokens.output   += outputT || 0;
+  _sessionTokens.requests += 1;
+
+  // Custo estimado Sonnet 4.6: $3/MTok input, $15/MTok output
+  const custoUSD = (_sessionTokens.input * 3 + _sessionTokens.output * 15) / 1_000_000;
+  const custoBRL = custoUSD * 5.8;
+
+  const el = document.getElementById('tokenCounter');
+  if (el) {
+    el.title = `Tokens: ${_sessionTokens.input.toLocaleString()} entrada + ${_sessionTokens.output.toLocaleString()} saída`;
+    el.textContent = `~R$ ${custoBRL.toFixed(3)} · ${_sessionTokens.requests} msg`;
+  }
+}
+
+// ── Streaming de resposta da API Anthropic ────────────────
+async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onError) {
+  try {
+    const res = await fetch(endpoint, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
+      body:    JSON.stringify({ ...body, stream: true }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      onError(err, res.status);
+      return;
+    }
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
+    let   thinkingText = '';
+    let   responseText = '';
+    let   inputTokens  = 0, outputTokens = 0;
+    let   inThinking   = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // última linha pode estar incompleta
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6).trim();
+        if (raw === '[DONE]') continue;
+
+        let evt;
+        try { evt = JSON.parse(raw); } catch { continue; }
+
+        // Thinking block
+        if (evt.type === 'content_block_start' && evt.content_block?.type === 'thinking') {
+          inThinking = true;
+        }
+        if (evt.type === 'content_block_start' && evt.content_block?.type === 'text') {
+          inThinking = false;
+        }
+        if (evt.type === 'content_block_stop') {
+          inThinking = false;
+        }
+
+        // Deltas
+        if (evt.type === 'content_block_delta') {
+          const delta = evt.delta;
+          if (delta?.type === 'thinking_delta') {
+            thinkingText += delta.thinking || '';
+            onThinking?.(thinkingText);
+          } else if (delta?.type === 'text_delta') {
+            responseText += delta.text || '';
+            onChunk(responseText);
+          }
+        }
+
+        // Uso de tokens
+        if (evt.type === 'message_delta' && evt.usage) {
+          outputTokens = evt.usage.output_tokens || 0;
+        }
+        if (evt.type === 'message_start' && evt.message?.usage) {
+          inputTokens = evt.message.usage.input_tokens || 0;
+        }
+
+        // Tool use — aguardar bloco completo
+        if (evt.type === 'content_block_start' && evt.content_block?.type === 'tool_use') {
+          // Ferramentas chegam como bloco completo no message_stop
+        }
+      }
+    }
+
+    onDone({ text: responseText, thinking: thinkingText, inputTokens, outputTokens });
+
+  } catch(e) {
+    onError({ error: e.message }, 0);
+  }
+}
+
 async function send() {
   const inp = document.getElementById('msgInput');
   const text = inp.value.trim();
@@ -796,6 +987,11 @@ async function send() {
 
     // CRIAR CONTEXTO DOS ARQUIVOS (TODOS OS ARQUIVOS DA CONVERSA)
     const fileContext = createFileContext();
+
+    // Ativar citations automaticamente se há documentos anexados
+    if (currentFiles.some(f => f.content && !f.type?.startsWith('image/'))) {
+      provider?.ativarCitations?.(true);
+    }
 
     showTypingIndicator();
 
@@ -1089,45 +1285,73 @@ POSTURA PROFISSIONAL:
           ? provider.montarBody(model, messagesToSend, tools, currentFiles)
           : { model, temperature: 0.7, max_tokens: 4000, messages: messagesToSend };
 
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': currentUser?.id || '',
-          },
-          body: JSON.stringify(body),
+        // ── Detectar se deve usar thinking ──────────────────────
+        const useThinking = provider?.current === 'anthropic' &&
+          provider?.deveUsarThinking?.(text);
+        if (useThinking && provider) {
+          provider.ativarThinking(true);
+          body = provider.montarBody(model, messagesToSend, systemPrompt, toolsNorm);
+          provider.ativarThinking(false);
+          // Mostrar indicador de raciocínio
+          showThinkingIndicator();
+        }
+
+        // ── Streaming ────────────────────────────────────────
+        let streamDone = false;
+        let streamText = '';
+        let streamThinking = '';
+        let streamTokens  = { input: 0, output: 0 };
+        let msgBubble = null;  // elemento DOM da bolha em construção
+
+        await new Promise((resolve, reject) => {
+          streamResposta(
+            endpoint, body,
+            // onChunk — atualizar bolha em tempo real
+            (text) => {
+              streamText = text;
+              if (!msgBubble) {
+                hideTypingIndicator();
+                hideThinkingIndicator();
+                msgBubble = addMessageStreaming(false);
+              }
+              updateStreamBubble(msgBubble, text);
+            },
+            // onThinking — mostrar raciocínio parcial
+            (thinking) => {
+              streamThinking = thinking;
+              updateThinkingIndicator(thinking);
+            },
+            // onDone
+            (result) => {
+              streamText    = result.text;
+              streamThinking= result.thinking;
+              streamTokens  = { input: result.inputTokens, output: result.outputTokens };
+              streamDone    = true;
+              resolve();
+            },
+            // onError
+            (err, status) => {
+              if (status === 429) {
+                const e = new Error(err.error === 'limite_diario'
+                  ? 'Limite diário de mensagens atingido.'
+                  : 'Rate limit. Aguarde.');
+                reject(e);
+              } else {
+                reject(new Error(err.error || 'Erro na API'));
+              }
+            }
+          );
         });
 
-        // Monitorar uso do dia (header retornado pelo backend)
-        const reqHoje = res.headers.get('X-Requests-Today');
-        const reqLimite = res.headers.get('X-Requests-Limit');
-        if (reqHoje && reqLimite) {
-          const restante = reqLimite - reqHoje;
-          if (restante <= 10) showToast(`⚠️ ${restante} mensagens restantes hoje`, 'warn');
-        }
-
-        if (res.status === 429) {
-          // Verificar se é limite diário do backend ou rate limit do modelo
-          const errData = await res.json().catch(() => ({}));
-          if (errData.error === 'limite_diario') {
-            throw new Error(errData.message || 'Limite diário de mensagens atingido.');
-          }
-          currentModelIndex++;
-          attempts++;
-          if (attempts < maxAttempts) {
-            await new Promise(r => setTimeout(r, 1000));
-            continue;
-          }
-          rateLimitUntil = Date.now() + 60000;
-          throw new Error('Todos os modelos estão em rate limit. Aguarde 60 segundos.');
-        }
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 100)}`);
-        }
-
-        data = await res.json();
+        // Montar data compatível com o restante do fluxo
+        data = {
+          _streaming: true,
+          _text:      streamText,
+          _thinking:  streamThinking,
+          _tokens:    streamTokens,
+          content:    [{ type: 'text', text: streamText }],
+          _bubble:    msgBubble,
+        };
         consecutiveErrors = 0;
 
       } catch (error) {
@@ -1169,9 +1393,18 @@ POSTURA PROFISSIONAL:
     if (!data) throw new Error('Não foi possível obter resposta após múltiplas tentativas');
 
     hideTypingIndicator();
+    hideThinkingIndicator();
 
     // ── Normalizar resposta (Groq ou Anthropic) ──────────
-    const normalized = provider ? provider.normalizarResposta(data) : {
+    // Se veio por streaming, data._streaming está setado
+    const normalized = data._streaming ? {
+      text:      data._text || '',
+      toolCalls: null,   // tools tratadas separadamente em streaming futuro
+      usage:     (data._tokens?.input || 0) + (data._tokens?.output || 0),
+      model,
+      _bubble:   data._bubble,
+      _tokens:   data._tokens,
+    } : provider ? provider.normalizarResposta(data) : {
       text: data.choices?.[0]?.message?.content || '',
       toolCalls: data.choices?.[0]?.message?.tool_calls || null,
       usage: data.usage?.total_tokens || 0,
@@ -1215,7 +1448,33 @@ POSTURA PROFISSIONAL:
     };
 
     currentChat.messages.push(assistantMessage);
-    addMessage(replyFinal, false, confidence, null, interacaoId, null, normalized.model);
+
+    // Se veio por streaming, finalizar a bolha existente em vez de criar nova
+    if (data._streaming && data._bubble) {
+      const hasValidInteraction = interacaoId && String(interacaoId).trim() !== '' && !String(interacaoId).includes('error');
+      const footer = `
+        <div class="mfoot">
+          <button class="btn-copy" onclick="copyMessage(this)">
+            <i data-lucide="copy" style="width:12px;height:12px"></i> Copiar
+          </button>
+          <button class="btn-feedback" id="feedback-btn-${interacaoId || 'temp'}"
+            ${hasValidInteraction ? `onclick="mostrarFeedbackOptions('${interacaoId}')"` : 'disabled style="opacity:0.4;cursor:not-allowed"'}
+            title="${hasValidInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
+            <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
+          </button>
+          <span class="badge-conf badge ${confidence}">
+            ${confidence === 'high' ? 'Alta' : confidence === 'low' ? 'Baixa' : 'Média'} confiança
+          </span>
+          <span class="badge-model" title="Modelo utilizado">✦ Claude</span>
+          ${data._tokens ? `<span class="badge-tokens" title="Tokens usados">${(data._tokens.input||0)+(data._tokens.output||0)} tok</span>` : ''}
+        </div>`;
+      finalizeStreamBubble(data._bubble, toolCardsHtml
+        ? `<div class="tool-cards-wrap">${toolCardsHtml}</div>${replyText ? '<div class="tool-text-reply">' + replyText + '</div>' : ''}`
+        : replyText, footer);
+      if (data._tokens) updateTokenCounter(data._tokens.input, data._tokens.output);
+    } else {
+      addMessage(replyFinal, false, confidence, null, interacaoId, null, normalized.model);
+    }
 
     if (interacaoId) {
       setTimeout(() => {
