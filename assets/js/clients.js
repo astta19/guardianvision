@@ -60,7 +60,7 @@ async function loadClientes() {
   if (isAdmin()) {
     ({ data, error } = await sb
       .from('clientes')
-      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado, cnae_principal, cnae_descricao, natureza_juridica, data_abertura, capital_social, situacao_cadastral, inscricao_estadual, inscricao_municipal, logradouro, numero, bairro, municipio, uf, cep, telefone, email_empresa, socios, prolabore_total, faturamento_mensal, faturamento_anual, regime_apuracao, porte, optante_simples, optante_mei')
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
@@ -171,6 +171,19 @@ async function setCurrentCliente(cliente) {
 
   // Invalidar cache de contexto da empresa
   if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
+
+  // Re-aplicar permissões — garante que botões data-perm aparecem após empresa carregar
+  if (typeof applyAdminUI === 'function') applyAdminUI();
+
+  // Mostrar botão de perfil da empresa (visível para qualquer usuário com empresa)
+  const btnPerfil = document.getElementById('btnEmpresaPerfil');
+  if (btnPerfil) btnPerfil.style.display = 'flex';
+  const btnPerfilCard = document.getElementById('btnPerfilEmpresaCard');
+  if (btnPerfilCard) btnPerfilCard.style.display = '';
+
+  // Mostrar DASN-SIMEI só para MEI
+  const btnDasn = document.getElementById('btnDasnSimei');
+  if (btnDasn) btnDasn.style.display = /mei/i.test(cliente.regime_tributario || '') ? 'flex' : 'none';
 
   // Recarregar chats filtrados
   loadChats();
