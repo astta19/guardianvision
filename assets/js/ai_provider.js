@@ -167,7 +167,6 @@ const AI_PROVIDER = {
         messages:    msgs,
         tools:       toolsNorm,
         tool_choice: toolsNorm ? { type: 'auto' } : undefined,
-        stream:      true,   // sempre usar streaming
       };
       if (thinkingPayload) body.thinking = thinkingPayload;
       return body;
