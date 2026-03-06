@@ -20,6 +20,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
@@ -885,6 +886,17 @@
         <button class="btn-send" id="sendBtn" onclick="send()">
           <i data-lucide="send"></i>
         </button>
+      </div>
+      <!-- Barra de status: thinking toggle + token counter -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 12px 2px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--text-light)" title="Ativa raciocínio profundo para perguntas complexas (usa mais tokens)">
+            <input type="checkbox" id="thinkingToggle" onchange="toggleThinking(this.checked)" style="width:12px;height:12px;cursor:pointer">
+            <i data-lucide="brain" style="width:12px;height:12px"></i> Raciocínio profundo
+          </label>
+          <span id="modelLabel" style="font-size:11px;color:var(--text-light)">claude-sonnet-4-6</span>
+        </div>
+        <span id="tokenCounter" style="font-size:11px;color:var(--text-light);cursor:default" title="Custo estimado da sessão"></span>
       </div>
       <div class="file-info" id="fileContainer" style="display: none; padding: 10px 0;">
         <div class="multiple-files" id="multipleFiles"></div>
