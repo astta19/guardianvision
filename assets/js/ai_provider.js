@@ -14,15 +14,18 @@ const AI_PROVIDER = {
   current: 'anthropic',
 
   models: {
-    groq: [
-      'llama-3.3-70b-versatile',
-      'llama-3.1-8b-instant',
-      'llama3-8b-8192',
-    ],
+    groq: ['llama-3.3-70b-versatile'],
     anthropic: [
-      'claude-sonnet-4-5',  // principal — raciocínio fiscal preciso, tools confiáveis
-      'claude-haiku-4-5',   // fallback — rápido e barato para perguntas simples
+      'claude-sonnet-4-6',           // principal — raciocínio fiscal, tools, streaming
+      'claude-haiku-4-5-20251001',   // fallback rápido e econômico
     ],
+  },
+
+  // Configurações de thinking
+  thinking: {
+    enabled:      false,       // ativado dinamicamente por pergunta
+    budget_tokens: 8000,       // tokens máximos para raciocínio interno
+    threshold:    120,         // palavras na pergunta para ativar thinking
   },
 
   endpoints: {
@@ -146,14 +149,24 @@ const AI_PROVIDER = {
         { type: 'text', text: system, cache_control: { type: 'ephemeral' } }
       ] : undefined;
 
-      return {
+      // Extended thinking — ativar se habilitado e sem tools forçadas
+      const useThinking = this.thinking.enabled && !toolsNorm;
+      const thinkingPayload = useThinking ? {
+        type: 'enabled',
+        budget_tokens: this.thinking.budget_tokens,
+      } : undefined;
+
+      const body = {
         model,
-        max_tokens: 4096,
+        max_tokens:  useThinking ? 16000 : 4096,
         system:      systemPayload,
         messages:    msgs,
         tools:       toolsNorm,
         tool_choice: toolsNorm ? { type: 'auto' } : undefined,
+        stream:      true,   // sempre usar streaming
       };
+      if (thinkingPayload) body.thinking = thinkingPayload;
+      return body;
     }
 
     // Groq / OpenAI — formato original, sem alterações
@@ -169,11 +182,27 @@ const AI_PROVIDER = {
 
   // ── Normalizar resposta → formato interno ─────────────────
   // Retorna: { text, toolCalls, usage, model }
+  // Adicionar citations a um bloco de documento (para PDFs e textos)
+  adicionarCitations(mensagens) {
+    return mensagens.map(m => {
+      if (m.role !== 'user' || !Array.isArray(m.content)) return m;
+      return {
+        ...m,
+        content: m.content.map(blk => {
+          if (blk.type === 'document') return { ...blk, citations: { enabled: true } };
+          return blk;
+        }),
+      };
+    });
+  },
+
   normalizarResposta(data) {
     if (this.current === 'anthropic') {
       const content  = data.content || [];
       const textBlks = content.filter(b => b.type === 'text');
       const toolUses = content.filter(b => b.type === 'tool_use');
+      // Citar blocos — incluir texto de citações inline
+      const citacoes = content.filter(b => b.type === 'text_citation' || b.citations?.length);
 
       return {
         text: textBlks.map(b => b.text).join(''),
@@ -182,6 +211,7 @@ const AI_PROVIDER = {
         })) : null,
         usage: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
         model: data.model || '',
+        citations: citacoes,
       };
     }
 
@@ -196,6 +226,18 @@ const AI_PROVIDER = {
   },
 
   isRateLimit(status) { return status === 429; },
+
+  // Detectar se pergunta é complexa para ativar thinking automaticamente
+  deveUsarThinking(texto) {
+    if (!texto) return false;
+    const palavras = texto.trim().split(/\s+/).length;
+    const keywords = /planejamento|estratégia|comparar|analisar|calcular|otimizar|risco|elisão|estrutur/i;
+    return palavras >= this.thinking.threshold || keywords.test(texto);
+  },
+
+  ativarThinking(ativo) {
+    this.thinking.enabled = ativo;
+  },
 };
 
 // ============================================================
