@@ -1051,7 +1051,7 @@ POSTURA PROFISSIONAL:
 `.trim();
 
     // Preparar mensagens (últimas 8 para manter contexto)
-    const recentChatMessages = currentChat.messages.slice(-16).map(m => ({
+    const recentChatMessages = currentChat.messages.slice(-10).map(m => ({
       role: m.role,
       content: m.role === 'user' && m.files ?
         `${m.content}\n\n[Arquivos anexados nesta mensagem: ${m.files.map(f => f.name).join(', ')}]` :
@@ -1091,11 +1091,27 @@ POSTURA PROFISSIONAL:
 
         const res = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': currentUser?.id || '',
+          },
           body: JSON.stringify(body),
         });
 
+        // Monitorar uso do dia (header retornado pelo backend)
+        const reqHoje = res.headers.get('X-Requests-Today');
+        const reqLimite = res.headers.get('X-Requests-Limit');
+        if (reqHoje && reqLimite) {
+          const restante = reqLimite - reqHoje;
+          if (restante <= 10) showToast(`⚠️ ${restante} mensagens restantes hoje`, 'warn');
+        }
+
         if (res.status === 429) {
+          // Verificar se é limite diário do backend ou rate limit do modelo
+          const errData = await res.json().catch(() => ({}));
+          if (errData.error === 'limite_diario') {
+            throw new Error(errData.message || 'Limite diário de mensagens atingido.');
+          }
           currentModelIndex++;
           attempts++;
           if (attempts < maxAttempts) {
