@@ -191,7 +191,11 @@ function dpRenderFuncionarios() {
   }
   el.innerHTML = dpFuncionarios.map(f => `
     <div class="dp-func-card${f.status === 'rescindido' ? ' dp-rescindido' : ''}" onclick="dpSelecionarFunc('${f.id}')">
-      <div class="dp-func-avatar">${(f.nome||'?')[0].toUpperCase()}</div>
+      <div class="dp-func-avatar" style="overflow:hidden;flex-shrink:0">
+        ${f.foto_base64 || f.foto_url
+          ? `<img src="${f.foto_base64 || f.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+          : `<span>${(f.nome||'?')[0].toUpperCase()}</span>`}
+      </div>
       <div class="dp-func-info">
         <div class="dp-func-nome">${escapeHtml(f.nome)}</div>
         <div class="dp-func-sub">${escapeHtml(f.cargo || '—')} · ${(f.tipo_contrato||'clt').toUpperCase()}</div>
@@ -246,6 +250,14 @@ function dpEditarFunc(id) {
   if (document.getElementById('dpFuncEmail'))    document.getElementById('dpFuncEmail').value    = f.email    || '';
   if (document.getElementById('dpFuncTelefone')) document.getElementById('dpFuncTelefone').value = f.telefone || '';
   if (document.getElementById('dpFuncJornada'))  document.getElementById('dpFuncJornada').value  = f.jornada_horas || 44;
+  if (document.getElementById('dpFuncRG'))        document.getElementById('dpFuncRG').value        = f.rg || '';
+  if (document.getElementById('dpFuncNasc'))      document.getElementById('dpFuncNasc').value      = f.data_nascimento || '';
+  if (document.getElementById('dpFuncEndereco'))  document.getElementById('dpFuncEndereco').value  = f.endereco || '';
+  if (document.getElementById('dpFuncObs'))       document.getElementById('dpFuncObs').value       = f.observacoes || '';
+  // Exibir foto atual no formulário
+  const prevFoto = document.getElementById('dpFuncFotoPreview');
+  if (prevFoto) prevFoto.src = f.foto_base64 || f.foto_url || '';
+  if (prevFoto) prevFoto.style.display = (f.foto_base64 || f.foto_url) ? 'block' : 'none';
   const titulo = document.getElementById('dpFuncFormTitulo');
   if (titulo) titulo.textContent = 'Editar Funcionário';
   document.getElementById('dpFuncNome').focus();
@@ -262,7 +274,14 @@ function dpNovoFunc() {
   document.getElementById('dpFuncSalario').value = '';
   document.getElementById('dpFuncTipo').value    = 'clt';
   document.getElementById('dpFuncDep').value     = 0;
-  if (document.getElementById('dpFuncJornada')) document.getElementById('dpFuncJornada').value = 44;
+  if (document.getElementById('dpFuncJornada'))  document.getElementById('dpFuncJornada').value  = 44;
+  if (document.getElementById('dpFuncRG'))       document.getElementById('dpFuncRG').value       = '';
+  if (document.getElementById('dpFuncNasc'))     document.getElementById('dpFuncNasc').value     = '';
+  if (document.getElementById('dpFuncEndereco')) document.getElementById('dpFuncEndereco').value = '';
+  if (document.getElementById('dpFuncObs'))      document.getElementById('dpFuncObs').value      = '';
+  const prevFoto = document.getElementById('dpFuncFotoPreview');
+  if (prevFoto) { prevFoto.src = ''; prevFoto.style.display = 'none'; }
+  window._dpFuncFotoBase64 = null;
   const titulo = document.getElementById('dpFuncFormTitulo');
   if (titulo) titulo.textContent = 'Cadastrar Funcionário';
   document.getElementById('dpFuncNome').focus();
@@ -293,9 +312,16 @@ async function dpSalvarFunc() {
     dependentes:   parseInt(document.getElementById('dpFuncDep').value)    || 0,
     banco:         document.getElementById('dpFuncBanco')?.value.trim()    || null,
     agencia:       document.getElementById('dpFuncAgencia')?.value.trim()  || null,
-    conta:         document.getElementById('dpFuncConta')?.value.trim()    || null,
-    atualizado_em: new Date().toISOString(),
+    conta:          document.getElementById('dpFuncConta')?.value.trim()     || null,
+    rg:             document.getElementById('dpFuncRG')?.value.trim()         || null,
+    data_nascimento:document.getElementById('dpFuncNasc')?.value              || null,
+    endereco:       document.getElementById('dpFuncEndereco')?.value.trim()   || null,
+    observacoes:    document.getElementById('dpFuncObs')?.value.trim()        || null,
+    foto_base64:    window._dpFuncFotoBase64 || undefined,
+    atualizado_em:  new Date().toISOString(),
   };
+  // Remover foto_base64 se não houve alteração
+  if (payload.foto_base64 === undefined) delete payload.foto_base64;
 
   const btn = document.getElementById('dpFuncSalvarBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
@@ -310,6 +336,31 @@ async function dpSalvarFunc() {
     await dpCarregarFuncionarios();
   } catch(e) { showToast('Erro ao salvar: ' + (e.message || ''), 'error'); }
   finally { if (btn) { btn.disabled = false; btn.textContent = 'Salvar Funcionário'; } }
+}
+
+
+// ── Upload de foto do funcionário ────────────────────────
+function dpFotoSelecionada(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('Foto muito grande. Máximo 2MB.', 'warn'); return; }
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const base64 = e.target.result;
+    window._dpFuncFotoBase64 = base64;
+    const prev = document.getElementById('dpFuncFotoPreview');
+    if (prev) { prev.src = base64; prev.style.display = 'block'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+function dpFotoRemover() {
+  window._dpFuncFotoBase64 = '';  // string vazia = remover
+  const prev = document.getElementById('dpFuncFotoPreview');
+  if (prev) { prev.src = ''; prev.style.display = 'none'; }
+  const input = document.getElementById('dpFuncFotoInput');
+  if (input) input.value = '';
 }
 
 async function dpExcluirFunc(id) {
@@ -885,29 +936,43 @@ async function dpCarregarRelatorio() {
     // Quadro de pessoal ativo
     const atFuncs = (funcs||[]).filter(f => f.status === 'ativo');
     if (atFuncs.length) {
-      html += '<div class="dp-rel-bloco"><div class="dp-rel-title">Quadro de Pessoal Ativo</div>';
-      html += '<div class="dp-tbl-wrap"><table class="dp-rel-table">';
-      html += '<thead><tr><th>Nome</th><th>Cargo</th><th>Tipo</th><th>Admissão</th><th>Tempo</th><th>Salário Base</th></tr></thead><tbody>';
+      // Buscar foto dos funcionários
+      const funcComFoto = await Promise.allSettled(atFuncs.map(f =>
+        sb.from('dp_funcionarios').select('foto_base64,foto_url,rg,data_nascimento,cpf').eq('id',f.id).maybeSingle()
+      ));
+      const fotoMap = {};
+      funcComFoto.forEach((r,i) => {
+        if (r.status==='fulfilled') fotoMap[atFuncs[i].id] = r.value.data;
+      });
+
+      html += '<div class="dp-rel-bloco"><div class="dp-rel-title">Quadro de Pessoal Ativo (' + atFuncs.length + ')</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:8px">';
       for (const f of atFuncs) {
-        const adm   = f.admissao ? new Date(f.admissao+'T00:00') : null;
-        const meses = adm ? Math.floor((new Date()-adm)/(30.44*86400000)) : null;
-        const tempo = meses !== null ? (meses >= 12 ? Math.floor(meses/12)+'a '+(meses%12||0)+'m' : meses+'m') : '—';
-        const tipo  = (f.tipo_contrato||'clt').toUpperCase();
-        html += '<tr>';
-        html += '<td>' + escapeHtml(f.nome) + '</td>';
-        html += '<td>' + escapeHtml(f.cargo||'—') + '</td>';
-        html += '<td><span class="dp-badge-tipo dp-badge-' + (f.tipo_contrato||'clt') + '">' + tipo + '</span></td>';
-        html += '<td>' + (adm ? adm.toLocaleDateString('pt-BR') : '—') + '</td>';
-        html += '<td>' + tempo + '</td>';
-        html += '<td class="n">R$ ' + fmtBRL(f.salario_base) + '</td>';
-        html += '</tr>';
+        const extra   = fotoMap[f.id] || {};
+        const adm     = f.admissao ? new Date(f.admissao+'T00:00') : null;
+        const meses   = adm ? Math.floor((new Date()-adm)/(30.44*86400000)) : null;
+        const tempo   = meses !== null ? (meses >= 12 ? Math.floor(meses/12)+'a '+(meses%12||0)+'m' : meses+'m') : '—';
+        const tipo    = (f.tipo_contrato||'clt').toUpperCase();
+        const fotoSrc = extra.foto_base64 || extra.foto_url || '';
+        const fotoHtml = fotoSrc
+          ? '<img src="' + fotoSrc + '" style="width:44px;height:44px;object-fit:cover;border-radius:50%;border:2px solid var(--border);flex-shrink:0">'
+          : '<div style="width:44px;height:44px;border-radius:50%;background:var(--sidebar-hover);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--text-light);flex-shrink:0">' + (f.nome||'?')[0].toUpperCase() + '</div>';
+        html += '<div style="display:flex;gap:10px;padding:10px;background:var(--sidebar-hover);border-radius:10px;border:1px solid var(--border)">';
+        html += fotoHtml;
+        html += '<div style="flex:1;min-width:0">';
+        html += '<div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(f.nome) + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-light)">' + escapeHtml(f.cargo||'—') + ' · <span class="dp-badge-tipo dp-badge-' + (f.tipo_contrato||'clt') + '" style="font-size:10px">' + tipo + '</span></div>';
+        html += '<div style="font-size:11px;color:var(--text-light);margin-top:2px">Adm: ' + (adm ? adm.toLocaleDateString('pt-BR') : '—') + ' · ' + tempo + '</div>';
+        if (extra.cpf) html += '<div style="font-size:11px;color:var(--text-light)">CPF: ' + extra.cpf + '</div>';
+        html += '<div style="font-size:12px;font-weight:600;color:var(--text);margin-top:4px">R$ ' + fmtBRL(f.salario_base) + '</div>';
+        html += '</div></div>';
       }
-      html += '</tbody></table></div></div>';
+      html += '</div></div>';
     }
 
     // Tabela histórico
     html += '<div class="dp-rel-bloco">';
-    html += '<div class="dp-rel-title">Histórico por Competência <button class="dp-rel-export-btn" onclick="dpExportarRelatorioExcel()"><i data-lucide="download"></i> Excel</button></div>';
+    html += '<div class="dp-rel-title" style="display:flex;justify-content:space-between;align-items:center">Histórico por Competência <span style="display:flex;gap:6px"><button class="dp-rel-export-btn" onclick="dpExportarRelatorioExcel()"><i data-lucide="file-spreadsheet"></i> Excel</button><button class="dp-rel-export-btn" onclick="dpExportarRelatorioPDF()"><i data-lucide="file-text"></i> PDF</button></span></div>';
     if (comps.length) {
       html += '<div class="dp-tbl-wrap"><table class="dp-rel-table">';
       html += '<thead><tr><th>Comp.</th><th>Func.</th><th>Bruto</th><th>INSS</th><th>IRRF</th><th>FGTS</th><th>Patronal</th><th>Custo Total</th></tr></thead><tbody>';
@@ -1245,4 +1310,102 @@ function limparFolha() {
   const res = document.getElementById('folhaResult');     if (res) res.style.display = 'none';
   const ac  = document.getElementById('folhaActions');    if (ac)  ac.style.display  = 'none';
   window._folhaData = null;
+}
+
+// ── Exportar relatório de folha em PDF ────────────────────
+async function dpExportarRelatorioPDF() {
+  if (!currentCliente) { showToast('Selecione uma empresa.', 'warn'); return; }
+  if (!window.jspdf) { showToast('jsPDF não carregado.', 'error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, M = 14, perfil = perfilCache || {};
+  const empresa = currentCliente;
+
+  // Cabeçalho
+  doc.setFillColor(0,0,0);
+  doc.rect(0,0,W,30,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('Fiscal365 — Relatório de Folha de Pagamento', M, 12);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(empresa.razao_social + '  |  CNPJ: ' + (empresa.cnpj||'—') + '  |  ' + new Date().toLocaleDateString('pt-BR'), M, 20);
+  doc.text('Contador: ' + (perfil.nome || currentUser?.email || '—'), M, 26);
+  doc.setTextColor(0,0,0);
+
+  let y = 38;
+  const fmt = v => 'R$ ' + fmtBRL(v);
+
+  // Buscar dados
+  const [{ data: holerites }, { data: funcs }] = await Promise.all([
+    sb.from('dp_holerites')
+      .select('competencia,total_bruto,inss,irrf,fgts,inss_patronal,rat,custo_total,salario_liquido,funcionario_id,dp_funcionarios(nome,cargo)')
+      .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id)
+      .order('competencia',{ascending:false}).limit(120),
+    sb.from('dp_funcionarios')
+      .select('id,nome,cargo,salario_base,tipo_contrato,admissao,cpf,status')
+      .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id).order('nome'),
+  ]);
+
+  const ativos = (funcs||[]).filter(f=>f.status==='ativo');
+
+  // Quadro de pessoal
+  doc.setFontSize(12); doc.setFont('helvetica','bold');
+  doc.text('Quadro de Pessoal Ativo (' + ativos.length + ' funcionário(s))', M, y); y += 4;
+  doc.autoTable({
+    startY: y, margin: { left: M, right: M },
+    head: [['Nome','Cargo','Tipo','CPF','Admissão','Salário Base']],
+    body: ativos.map(f => [
+      f.nome||'—', f.cargo||'—', (f.tipo_contrato||'clt').toUpperCase(),
+      f.cpf||'—',
+      f.admissao ? new Date(f.admissao+'T00:00').toLocaleDateString('pt-BR') : '—',
+      fmt(f.salario_base),
+    ]),
+    headStyles: { fillColor:[0,0,0], textColor:255, fontSize:8, fontStyle:'bold' },
+    bodyStyles: { fontSize:8 }, alternateRowStyles: { fillColor:[248,250,252] },
+    columnStyles: { 5: { halign:'right' } }
+  });
+  y = doc.lastAutoTable.finalY + 10;
+
+  // Agrupar por competência
+  const porComp = {};
+  for (const h of (holerites||[])) {
+    if (!porComp[h.competencia]) porComp[h.competencia] = { comp:h.competencia, bruto:0, inss:0, irrf:0, fgts:0, pat:0, custo:0, liq:0, qtd:0 };
+    const cx = porComp[h.competencia];
+    cx.bruto+=+h.total_bruto||0; cx.inss+=+h.inss||0; cx.irrf+=+h.irrf||0;
+    cx.fgts+=+h.fgts||0; cx.pat+=+h.inss_patronal||0; cx.custo+=+h.custo_total||0; cx.liq+=+h.salario_liquido||0; cx.qtd++;
+  }
+  const comps = Object.values(porComp).sort((a,b)=>b.comp.localeCompare(a.comp));
+  const tot = { bruto:0, inss:0, irrf:0, fgts:0, pat:0, custo:0 };
+  comps.forEach(cx => { tot.bruto+=cx.bruto; tot.inss+=cx.inss; tot.irrf+=cx.irrf; tot.fgts+=cx.fgts; tot.pat+=cx.pat; tot.custo+=cx.custo; });
+
+  if (y > 220) { doc.addPage(); y = 20; }
+  doc.setFontSize(12); doc.setFont('helvetica','bold');
+  doc.text('Histórico por Competência', M, y); y += 4;
+  doc.autoTable({
+    startY: y, margin: { left: M, right: M },
+    head: [['Competência','Func.','Bruto','INSS','IRRF','FGTS','Patronal','Custo Total']],
+    body: [
+      ...comps.map(cx => [cx.comp, cx.qtd, fmt(cx.bruto), fmt(cx.inss), fmt(cx.irrf), fmt(cx.fgts), fmt(cx.pat), fmt(cx.custo)]),
+      ['TOTAL','', fmt(tot.bruto), fmt(tot.inss), fmt(tot.irrf), fmt(tot.fgts), fmt(tot.pat), fmt(tot.custo)],
+    ],
+    headStyles: { fillColor:[0,0,0], textColor:255, fontSize:8, fontStyle:'bold' },
+    bodyStyles: { fontSize:8 }, alternateRowStyles: { fillColor:[248,250,252] },
+    didParseCell: d => {
+      if (d.section==='body' && d.row.index===comps.length) d.cell.styles.fontStyle='bold';
+    }
+  });
+
+  // Rodapé
+  const pages = doc.internal.getNumberOfPages();
+  for (let p=1; p<=pages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(226,232,240); doc.line(M,287,W-M,287);
+    doc.setFontSize(7); doc.setTextColor(148,163,184);
+    doc.text('Fiscal365 — Relatório de Folha. Documento auxiliar.', M, 291);
+    doc.text('Página '+p+'/'+pages, W-M, 291, { align:'right' });
+  }
+
+  doc.save('relatorio-folha-' + (empresa.cnpj||'empresa').replace(/\D/g,'') + '-' + new Date().toISOString().slice(0,7) + '.pdf');
+  showToast('PDF da folha gerado.', 'success');
 }
