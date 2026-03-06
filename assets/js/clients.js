@@ -61,6 +61,7 @@ async function loadClientes() {
     ({ data, error } = await sb
       .from('clientes')
       .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado, cnae_principal, cnae_descricao, natureza_juridica, data_abertura, capital_social, situacao_cadastral, inscricao_estadual, inscricao_municipal, logradouro, numero, bairro, municipio, uf, cep, telefone, email_empresa, socios, prolabore_total, faturamento_mensal, faturamento_anual, regime_apuracao, porte, optante_simples, optante_mei')
+      .eq('user_id', currentUser.id)
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
@@ -211,6 +212,7 @@ async function renderClientList() {
     ({ data, error } = await sb
       .from('clientes')
       .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
+      .eq('user_id', currentUser.id)
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
