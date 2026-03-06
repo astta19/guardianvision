@@ -2799,3 +2799,21 @@
       font-weight: 600;
       letter-spacing: .3px;
     }
+
+    /* ── Perfil da empresa — tabs ────────────────────────── */
+    .ep-tab-btn {
+      border-bottom: 2px solid transparent !important;
+      transition: color .15s, border-color .15s;
+    }
+    .ep-tab-btn.active {
+      color: var(--text) !important;
+      border-bottom-color: var(--text) !important;
+    }
+    .ep-socio-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    @media (max-width: 600px) {
+      .ep-socio-row { flex-wrap: wrap; }
+    }
