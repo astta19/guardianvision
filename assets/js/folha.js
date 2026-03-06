@@ -490,6 +490,8 @@ async function dpSalvarHolerite() {
     }, { onConflict: 'user_id,funcionario_id,competencia' });
     if (error) throw error;
     showToast('Holerite salvo no banco!', 'success');
+  if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
+
   } catch(e) { showToast('Erro ao salvar: ' + (e.message || ''), 'error'); }
   finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Holerite'; } }
 }
