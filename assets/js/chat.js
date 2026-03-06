@@ -843,15 +843,34 @@ function updateTokenCounter(inputT, outputT) {
 // ── Streaming de resposta da API Anthropic ────────────────
 async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onError) {
   try {
+    const isStream = body.stream !== false;
     const res = await fetch(endpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
-      body:    JSON.stringify({ ...body, stream: true }),
+      body:    JSON.stringify({ ...body, stream: isStream }),
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       onError(err, res.status);
+      return;
+    }
+
+    // Resposta não-streaming (JSON normal) — para tool_use
+    if (!isStream) {
+      const data = await res.json();
+      const content = data.content || [];
+      const text = content.filter(b => b.type === 'text').map(b => b.text).join('');
+      const toolUses = content.filter(b => b.type === 'tool_use');
+      onDone({
+        text,
+        thinking: '',
+        inputTokens:  data.usage?.input_tokens  || 0,
+        outputTokens: data.usage?.output_tokens || 0,
+        toolCalls: toolUses.length ? toolUses.map(tu => ({
+          function: { name: tu.name, arguments: JSON.stringify(tu.input || {}) },
+        })) : null,
+      });
       return;
     }
 
@@ -1281,22 +1300,28 @@ POSTURA PROFISSIONAL:
       const model = modelList[currentModelIndex % modelList.length];
 
       try {
+        // Detectar se deve usar thinking antes de montar o body
+        const useThinking = provider?.current === 'anthropic' &&
+          typeof AI_PROVIDER?.deveUsarThinking === 'function' &&
+          AI_PROVIDER.deveUsarThinking(text || '');
+        if (useThinking) {
+          AI_PROVIDER.ativarThinking(true);
+          showThinkingIndicator();
+        }
+
         const body = provider
           ? provider.montarBody(model, messagesToSend, tools, currentFiles)
           : { model, temperature: 0.7, max_tokens: 4000, messages: messagesToSend };
 
-        // ── Detectar se deve usar thinking ──────────────────────
-        const useThinking = provider?.current === 'anthropic' &&
-          provider?.deveUsarThinking?.(text);
-        if (useThinking && provider) {
-          provider.ativarThinking(true);
-          body = provider.montarBody(model, messagesToSend, systemPrompt, toolsNorm);
-          provider.ativarThinking(false);
-          // Mostrar indicador de raciocínio
-          showThinkingIndicator();
-        }
+        if (useThinking) AI_PROVIDER.ativarThinking(false);
 
         // ── Streaming ────────────────────────────────────────
+        window._streamToolCalls = null; // limpar antes de cada chamada
+        // Se o body contém tools, desativar stream para receber tool_use completo
+        const bodyParaEnvio = (body.tools?.length && provider?.current === 'anthropic')
+          ? { ...body, stream: false }
+          : body;
+
         let streamDone = false;
         let streamText = '';
         let streamThinking = '';
@@ -1305,7 +1330,7 @@ POSTURA PROFISSIONAL:
 
         await new Promise((resolve, reject) => {
           streamResposta(
-            endpoint, body,
+            endpoint, bodyParaEnvio,
             // onChunk — atualizar bolha em tempo real
             (text) => {
               streamText = text;
@@ -1326,6 +1351,7 @@ POSTURA PROFISSIONAL:
               streamText    = result.text;
               streamThinking= result.thinking;
               streamTokens  = { input: result.inputTokens, output: result.outputTokens };
+              if (result.toolCalls) window._streamToolCalls = result.toolCalls;
               streamDone    = true;
               resolve();
             },
@@ -1399,7 +1425,7 @@ POSTURA PROFISSIONAL:
     // Se veio por streaming, data._streaming está setado
     const normalized = data._streaming ? {
       text:      data._text || '',
-      toolCalls: null,   // tools tratadas separadamente em streaming futuro
+      toolCalls: window._streamToolCalls || null,
       usage:     (data._tokens?.input || 0) + (data._tokens?.output || 0),
       model,
       _bubble:   data._bubble,
