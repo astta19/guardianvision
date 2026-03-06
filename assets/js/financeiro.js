@@ -305,7 +305,7 @@ async function finSalvar() {
 
   let error;
   if (lancEditandoId) {
-    ({ error } = await sb.from('lancamentos').update(payload).eq('id', lancEditandoId));
+    ({ error } = await sb.from('lancamentos').update(payload).eq('id', lancEditandoId).eq('user_id', currentUser.id));
   } else {
     ({ error } = await sb.from('lancamentos').insert(payload));
   }
@@ -326,7 +326,7 @@ async function finMarcarPago(id) {
     status: 'pago',
     data_pgto: new Date().toISOString().slice(0,10),
     atualizado_em: new Date().toISOString(),
-  }).eq('id', id);
+  }).eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao atualizar.','error'); return; }
   showToast('Marcado como pago.','success');
   await finCarregar();
@@ -335,7 +335,7 @@ async function finMarcarPago(id) {
 async function finExcluir(id) {
   const ok = await showConfirm('Excluir este lançamento?');
   if (!ok) return;
-  const { error } = await sb.from('lancamentos').delete().eq('id', id);
+  const { error } = await sb.from('lancamentos').delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao excluir.','error'); return; }
   showToast('Lançamento excluído.','success');
   await finCarregar();
