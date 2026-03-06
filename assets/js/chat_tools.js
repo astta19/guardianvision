@@ -97,6 +97,54 @@ const CHAT_TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'gerar_relatorio_pdf',
+      description: 'Gera e baixa o Relatório Fiscal Mensal em PDF com obrigações, status e dados do DARF. Use quando o usuário pedir relatório fiscal, relatório mensal, PDF da empresa ou resumo tributário em PDF.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gerar_parecer_docx',
+      description: 'Gera e baixa o Parecer Fiscal em DOCX (Word). A IA escreve o texto do parecer com base no contexto da conversa. Use quando o usuário pedir parecer, documento Word, relatório Word, parecer fiscal ou DOCX.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gerar_planilha_excel',
+      description: 'Gera e baixa a Planilha de Apuração Fiscal em Excel (XLSX). Use quando o usuário pedir planilha, Excel, apuração em planilha ou dados em Excel.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gerar_dctfweb_pdf',
+      description: 'Gera e baixa o documento de apuração DCTFWeb em PDF. Use quando o usuário pedir DCTFWeb, declaração de débitos, DCTF.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+  },
 ];
 
 // ── Executores — chamados quando a IA aciona uma tool ─────────
@@ -195,6 +243,50 @@ const TOOL_EXECUTORS = {
     await openFinanceiro();
     return { ok: true, msg: 'Módulo financeiro aberto.' };
   },
+
+  gerar_relatorio_pdf: async () => {
+    if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar o relatório.' };
+    if (typeof gerarRelatorioFiscal !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
+    try {
+      await gerarRelatorioFiscal();
+      return { ok: true, msg: 'Relatório Fiscal PDF gerado e download iniciado.' };
+    } catch(e) {
+      return { ok: false, msg: 'Erro ao gerar PDF: ' + e.message };
+    }
+  },
+
+  gerar_parecer_docx: async () => {
+    if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar o parecer.' };
+    if (typeof gerarParecer !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
+    try {
+      await gerarParecer();
+      return { ok: true, msg: 'Parecer Fiscal DOCX gerado e download iniciado.' };
+    } catch(e) {
+      return { ok: false, msg: 'Erro ao gerar DOCX: ' + e.message };
+    }
+  },
+
+  gerar_planilha_excel: async () => {
+    if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar a planilha.' };
+    if (typeof gerarPlanilha !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
+    try {
+      gerarPlanilha();
+      return { ok: true, msg: 'Planilha de Apuração Excel gerada e download iniciado.' };
+    } catch(e) {
+      return { ok: false, msg: 'Erro ao gerar Excel: ' + e.message };
+    }
+  },
+
+  gerar_dctfweb_pdf: async () => {
+    if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar o DCTFWeb.' };
+    if (typeof gerarDctfWeb !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
+    try {
+      await gerarDctfWeb();
+      return { ok: true, msg: 'DCTFWeb PDF gerado e download iniciado.' };
+    } catch(e) {
+      return { ok: false, msg: 'Erro ao gerar DCTFWeb: ' + e.message };
+    }
+  },
 };
 
 // ── Processar resposta com tool_calls ─────────────────────────
@@ -223,12 +315,16 @@ async function processarToolCalls(toolCalls) {
 function renderToolCard(resultados) {
   return resultados.map(r => {
     const icon = {
-      abrir_sped:       'file-code-2',
-      calcular_darf:    'receipt',
-      criar_lancamento: 'wallet',
-      abrir_folha:      'users',
-      abrir_agenda:     'calendar-clock',
-      abrir_financeiro: 'wallet',
+      abrir_sped:          'file-code-2',
+      calcular_darf:       'receipt',
+      criar_lancamento:    'wallet',
+      abrir_folha:         'users',
+      abrir_agenda:        'calendar-clock',
+      abrir_financeiro:    'wallet',
+      gerar_relatorio_pdf: 'file-text',
+      gerar_parecer_docx:  'file-type-2',
+      gerar_planilha_excel:'table-2',
+      gerar_dctfweb_pdf:   'landmark',
     }[r.tool] || 'zap';
     const cor = r.ok ? '#16a34a' : '#dc2626';
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--sidebar-hover);border:1px solid var(--border);border-left:3px solid ${cor};border-radius:8px;margin-bottom:6px;font-size:12px;">
