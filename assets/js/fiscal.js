@@ -708,14 +708,14 @@ async function darfMarcarPago(id) {
     status: 'pago',
     data_pgto: new Date().toISOString().slice(0,10),
     atualizado_em: new Date().toISOString(),
-  }).eq('id', id);
+  }).eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao atualizar.','error'); return; }
   showToast('DARF marcado como pago.','success');
   darfHistoricoCarregar();
 }
 
 async function darfRestaurar(id) {
-  const { data, error } = await sb.from('darf_historico').select('dados').eq('id', id).single();
+  const { data, error } = await sb.from('darf_historico').select('dados').eq('id', id).eq('user_id', currentUser.id).single();
   if (error || !data) return;
   const d = data.dados;
   // Restaurar campos no formulário
