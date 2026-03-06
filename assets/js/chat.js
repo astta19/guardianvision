@@ -1318,10 +1318,11 @@ POSTURA PROFISSIONAL:
 
     let data = null;
     let attempts = 0;
+    let model = modelList[currentModelIndex % modelList.length];
     const maxAttempts = modelList.length * 2;
 
     while (attempts < maxAttempts && !data) {
-      const model = modelList[currentModelIndex % modelList.length];
+      model = modelList[currentModelIndex % modelList.length];
 
       try {
         // Detectar se deve usar thinking antes de montar o body
