@@ -504,7 +504,8 @@ async function saveChat() {
       const { error } = await sb
         .from('chats')
         .update(chatData)
-        .eq('id', currentChat.id);
+        .eq('id', currentChat.id)
+        .eq('user_id', currentUser.id);
 
       if (error) {
         if (error.status === 401 || error.message?.includes('JWT')) { handleSessionExpired(); return; }
