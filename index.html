@@ -1643,6 +1643,41 @@
               </div>
             </div>
 
+            <!-- Foto de Perfil -->
+            <div class="dp-field-group" style="margin-top:8px">
+              <label class="dp-label">Foto de Perfil</label>
+              <div style="display:flex;align-items:center;gap:12px">
+                <img id="dpFuncFotoPreview" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:50%;border:2px solid var(--border)">
+                <div>
+                  <input type="file" id="dpFuncFotoInput" accept="image/*" style="display:none" onchange="dpFotoSelecionada(this)">
+                  <button onclick="document.getElementById('dpFuncFotoInput').click()" class="dp-btn-sec" style="font-size:12px;padding:6px 12px">
+                    <i data-lucide="camera" style="width:13px;height:13px"></i> Escolher foto
+                  </button>
+                  <button onclick="dpFotoRemover()" class="dp-link-btn" style="font-size:12px;margin-left:8px;color:var(--text-light)">Remover</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Campos extras -->
+            <div class="dp-row">
+              <div class="dp-field-group">
+                <label class="dp-label">RG</label>
+                <input type="text" id="dpFuncRG" class="c-inp" placeholder="00.000.000-0">
+              </div>
+              <div class="dp-field-group">
+                <label class="dp-label">Data de Nascimento</label>
+                <input type="date" id="dpFuncNasc" class="c-inp">
+              </div>
+            </div>
+            <div class="dp-field-group">
+              <label class="dp-label">Endereço Residencial</label>
+              <input type="text" id="dpFuncEndereco" class="c-inp" placeholder="Rua, número, bairro, cidade">
+            </div>
+            <div class="dp-field-group">
+              <label class="dp-label">Observações</label>
+              <textarea id="dpFuncObs" class="c-inp" rows="2" style="resize:vertical" placeholder="Observações internas sobre o funcionário"></textarea>
+            </div>
+
             <div class="dp-form-actions">
               <button onclick="dpNovoFunc()" class="dp-btn-sec">Cancelar</button>
               <button id="dpFuncSalvarBtn" onclick="dpSalvarFunc()" class="dp-btn-pri">
