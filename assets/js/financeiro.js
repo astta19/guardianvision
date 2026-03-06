@@ -315,6 +315,8 @@ async function finSalvar() {
 
   if (error) { showToast('Erro ao salvar: ' + error.message,'error'); return; }
   showToast(lancEditandoId ? 'Lançamento atualizado.' : 'Lançamento salvo.','success');
+  if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
+
   lancNovoForm();
   await finCarregar();
 }
