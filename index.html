@@ -144,6 +144,9 @@
       <button class="btn-add-client admin-only" onclick="toggleNewClientForm()" style="display:none">
         <i data-lucide="plus"></i> Cadastrar nova empresa
       </button>
+      <button id="btnEmpresaPerfil" onclick="openEmpresaPerfil()" style="display:none;width:100%;margin-top:6px;padding:8px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:12px;font-weight:500;gap:6px;align-items:center;justify-content:center">
+        <i data-lucide="settings-2" style="width:14px;height:14px"></i> Perfil da empresa
+      </button>
       <div id="newClientForm">
         <div class="form-sep"></div>
         <div class="form-field">
@@ -190,6 +193,242 @@
           <button class="btn-save" onclick="saveNewClient()">Salvar Empresa</button>
         </div>
         <div id="clientFormMsg" class="auth-msg"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL PERFIL DA EMPRESA -->
+  <div id="empresaPerfilModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9100;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeEmpresaPerfil()">
+    <div style="background:var(--card);border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div>
+          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px">
+            <i data-lucide="building-2" style="width:18px;height:18px"></i> Perfil da Empresa
+          </h3>
+          <span id="epUltimaAtualizacao" style="font-size:11px;color:var(--text-light)"></span>
+        </div>
+        <button onclick="closeEmpresaPerfil()" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px">
+          <i data-lucide="x" style="width:18px;height:18px"></i>
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;gap:4px">
+        <button class="ep-tab-btn active" data-tab="cadastro" onclick="switchPerfilTab('cadastro')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);border-bottom:2px solid transparent">Cadastral</button>
+        <button class="ep-tab-btn" data-tab="endereco" onclick="switchPerfilTab('endereco')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-light);border-bottom:2px solid transparent">Endereço</button>
+        <button class="ep-tab-btn" data-tab="financeiro" onclick="switchPerfilTab('financeiro')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-light);border-bottom:2px solid transparent">Financeiro</button>
+        <button class="ep-tab-btn" data-tab="socios" onclick="switchPerfilTab('socios')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-light);border-bottom:2px solid transparent">Sócios</button>
+      </div>
+
+      <!-- Conteúdo com scroll -->
+      <div style="overflow-y:auto;flex:1;padding:20px">
+
+        <!-- ABA: Cadastral -->
+        <div id="epTab_cadastro">
+          <!-- Busca CNPJ -->
+          <div style="display:flex;gap:8px;margin-bottom:16px;padding:12px;background:var(--sidebar-hover);border-radius:10px;align-items:flex-end">
+            <div style="flex:1">
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">CNPJ</label>
+              <input id="epCnpj" type="text" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <button id="epBtnBuscarCnpj" onclick="epBuscarCNPJ()" style="padding:8px 14px;background:var(--text);color:var(--bg);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap">Buscar na Receita Federal</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="grid-column:1/-1">
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Razão Social *</label>
+              <input id="epRazao" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Nome Fantasia</label>
+              <input id="epFantasia" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Situação Cadastral</label>
+              <input id="epSituacao" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Regime Tributário</label>
+              <select id="epRegime" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="">Selecione...</option>
+                <option value="MEI">MEI</option>
+                <option value="Simples Nacional">Simples Nacional</option>
+                <option value="Lucro Presumido">Lucro Presumido</option>
+                <option value="Lucro Real">Lucro Real</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Regime de Apuração</label>
+              <select id="epRegimeApuracao" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="">Selecione...</option>
+                <option value="mensal">Mensal</option>
+                <option value="trimestral">Trimestral</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">CNAE Principal</label>
+              <input id="epCnae" type="text" placeholder="0000-0/00" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Descrição CNAE</label>
+              <input id="epCnaeDesc" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Natureza Jurídica</label>
+              <input id="epNatureza" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Porte</label>
+              <select id="epPorte" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="">Selecione...</option>
+                <option value="MEI">MEI</option>
+                <option value="ME">Micro Empresa (ME)</option>
+                <option value="EPP">Empresa de Pequeno Porte (EPP)</option>
+                <option value="MEDIO">Médio Porte</option>
+                <option value="GRANDE">Grande Porte</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Data de Abertura</label>
+              <input id="epDataAbertura" type="date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Capital Social (R$)</label>
+              <input id="epCapital" type="number" step="0.01" min="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Inscrição Estadual</label>
+              <input id="epIE" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Inscrição Municipal</label>
+              <input id="epIM" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Telefone</label>
+              <input id="epTelefone" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">E-mail da Empresa</label>
+              <input id="epEmail" type="email" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Possui Empregados</label>
+              <select id="epTemEmpregado" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="false">Não</option>
+                <option value="true">Sim</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Optante Simples</label>
+              <select id="epOptanteSimples" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="false">Não</option>
+                <option value="true">Sim</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Optante MEI</label>
+              <select id="epOptanteMei" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="false">Não</option>
+                <option value="true">Sim</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" id="epDadosReceita">
+        </div>
+
+        <!-- ABA: Endereço -->
+        <div id="epTab_endereco" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;gap:8px;grid-column:1/-1;align-items:flex-end">
+              <div style="flex:1">
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">CEP</label>
+                <input id="epCep" type="text" placeholder="00000-000" maxlength="9"
+                  oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^(\d{5})(\d)/,'$1-$2')"
+                  onblur="epBuscarCEP()"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+              <button onclick="epBuscarCEP()" style="padding:8px 14px;background:var(--text);color:var(--bg);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Buscar CEP</button>
+            </div>
+            <div style="grid-column:1/-1">
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Logradouro</label>
+              <input id="epLogradouro" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Número</label>
+              <input id="epNumero" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Complemento</label>
+              <input id="epComplemento" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Bairro</label>
+              <input id="epBairro" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Município</label>
+              <input id="epMunicipio" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">UF</label>
+              <select id="epUf" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="">UF</option>
+                <option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option>
+                <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
+                <option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option>
+                <option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+                <option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option>
+                <option>SP</option><option>TO</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ABA: Financeiro -->
+        <div id="epTab_financeiro" style="display:none">
+          <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Esses valores são usados pela IA para gerar documentos e calcular tributos com precisão.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Faturamento Mensal Médio (R$)</label>
+              <input id="epFatMensal" type="number" step="0.01" min="0" onblur="epCalcFatAnual()"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Faturamento Anual (R$)</label>
+              <input id="epFatAnual" type="number" step="0.01" min="0"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Total Pró-labore (R$)</label>
+              <input id="epProlabore" type="number" step="0.01" min="0"
+                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-top:16px;padding:12px;background:var(--sidebar-hover);border-radius:10px;font-size:12px;color:var(--text-light)">
+            <i data-lucide="info" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>
+            O faturamento anual é calculado automaticamente a partir do mensal se deixado em branco. Os valores de pró-labore dos sócios (aba Sócios) somam automaticamente ao pró-labore total.
+          </div>
+        </div>
+
+        <!-- ABA: Sócios -->
+        <div id="epTab_socios" style="display:none">
+          <div id="epSociosList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+          <button onclick="epAdicionarSocio()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:none;border:1px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text-light);font-size:13px;width:100%;justify-content:center">
+            <i data-lucide="plus" style="width:14px;height:14px"></i> Adicionar sócio
+          </button>
+          <p style="margin-top:12px;font-size:12px;color:var(--text-light)">O pró-labore de cada sócio é somado ao total financeiro da empresa e usado nos cálculos de INSS e IRPF.</p>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="closeEmpresaPerfil()" style="padding:8px 16px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:13px">Cancelar</button>
+        <button id="epBtnSalvar" onclick="salvarPerfilEmpresa()" style="padding:8px 18px;background:var(--text);color:var(--bg);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Salvar</button>
       </div>
     </div>
   </div>
@@ -490,6 +729,10 @@
               <button class="tool-card" data-perm="financeiro" onclick="openFinanceiro(); closeDropdowns()" style="display:none">
                 <i data-lucide="wallet"></i>
                 <span>Financeiro</span>
+              </button>
+              <button class="tool-card" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
+                <i data-lucide="building-2" style="width:20px;height:20px"></i>
+                <span>Perfil Empresa</span>
               </button>
               <button class="tool-card" data-perm="calculadora" onclick="openCalculator(); closeDropdowns()" style="display:none">
                 <i data-lucide="calculator"></i>
@@ -1042,6 +1285,7 @@
 
   <!-- Scripts — ordem importa: core → ui → clients → chat → fiscal → profile → documents → sped -->
   <script src="assets/js/empresa_context.js?v=1"></script>
+  <script src="assets/js/empresa_perfil.js?v=1"></script>
   <script src="assets/js/ai_provider.js?v=1"></script>
   <script src="assets/js/chat_tools.js?v=1"></script>
   <script src="assets/js/core.js?v=8"></script>
