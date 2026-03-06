@@ -96,7 +96,7 @@ Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máxi
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
-      body: JSON.stringify({ ...body, max_tokens: 600, temperature: 0.3 }),
+      body: JSON.stringify({ ...body, max_tokens: 1200, temperature: 0.3 }),
     });
     if (!res.ok) throw new Error('LLM indisponível');
     const data = await res.json();
@@ -208,21 +208,32 @@ async function gerarRelatorioFiscal() {
   document.getElementById('docGenMenu').style.display = 'none';
   if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório.', 'warn');  return; }
 
-  // Se darfData não está na sessão, buscar último cálculo salvo no banco
-  if (!darfData && currentCliente?.id) {
-    try {
-      const { data: saved } = await sb
-        .from('documentos_fiscais')
-        .select('dados')
-        .eq('user_id', currentUser.id)
-        .eq('cliente_id', currentCliente.id)
-        .eq('tipo', 'darf')
-        .order('criado_em', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (saved?.dados) darfData = saved.dados;
-    } catch(e) {} // silencioso — PDF gerado sem dados de DARF se não houver
-  }
+  // Buscar dados reais do banco em paralelo
+  let relDarfs = [], relLancamentos = [], relFuncionarios = [];
+  try {
+    const [rDarfs, rLanc, rFunc, rDarfCalc] = await Promise.allSettled([
+      sb.from('darf_historico')
+        .select('competencia,regime,total,status,data_pgto')
+        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .order('competencia', { ascending: false }).limit(6),
+      sb.from('lancamentos')
+        .select('tipo,categoria,descricao,valor,data_venc,status')
+        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .gte('data_venc', `${new Date().getFullYear()}-01-01`)
+        .order('data_venc', { ascending: false }).limit(30),
+      sb.from('dp_funcionarios')
+        .select('nome,cargo,tipo_contrato,salario_base')
+        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .eq('status','ativo').limit(20),
+      sb.from('documentos_fiscais')
+        .select('dados').eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .eq('tipo','darf').order('criado_em', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    relDarfs        = rDarfs.status      === 'fulfilled' ? rDarfs.value.data      || [] : [];
+    relLancamentos  = rLanc.status       === 'fulfilled' ? rLanc.value.data       || [] : [];
+    relFuncionarios = rFunc.status       === 'fulfilled' ? rFunc.value.data       || [] : [];
+    if (!darfData && rDarfCalc.status === 'fulfilled') darfData = rDarfCalc.value?.data?.dados || null;
+  } catch(e) {}
 
   try {
 
@@ -296,6 +307,93 @@ async function gerarRelatorioFiscal() {
     }
   });
   y = doc.lastAutoTable.finalY + 10;
+
+  // ── SEÇÃO: Dados financeiros reais do banco ─────────────
+  if (relLancamentos?.length > 0) {
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text('Lançamentos Financeiros — Ano Corrente', margin, y); y += 4;
+    const rec   = relLancamentos.filter(l => l.tipo==='receita').reduce((a,l)=>a+ +l.valor,0);
+    const desp  = relLancamentos.filter(l => l.tipo==='despesa').reduce((a,l)=>a+ +l.valor,0);
+    const fmt   = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    // KPIs financeiros
+    const kpis = [['Receitas',fmt(rec),'#16a34a'],['Despesas',fmt(desp),'#dc2626'],['Saldo',fmt(rec-desp),rec>=desp?'#16a34a':'#dc2626']];
+    let kx = margin;
+    kpis.forEach(([lbl,val,cor]) => {
+      doc.setFillColor(248,250,252); doc.roundedRect(kx, y, 55, 14, 2, 2, 'F');
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,116,139);
+      doc.text(lbl, kx+4, y+5);
+      doc.setFontSize(10); doc.setFont('helvetica','bold');
+      const rgb = parseInt(cor.slice(1),16); doc.setTextColor((rgb>>16)&255,(rgb>>8)&255,rgb&255);
+      doc.text(val, kx+4, y+11);
+      kx += 60;
+    });
+    doc.setTextColor(0,0,0); y += 20;
+    // Top lançamentos
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin },
+      head: [['Descrição','Categoria','Tipo','Valor','Venc.','Status']],
+      body: relLancamentos.slice(0,10).map(l => [
+        (l.descricao||'').substring(0,30), l.categoria||'—',
+        l.tipo==='receita'?'Receita':'Despesa',
+        fmt(l.valor), new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR'), l.status||'—'
+      ]),
+      headStyles: { fillColor:[0,0,0], textColor:255, fontSize:8, fontStyle:'bold' },
+      bodyStyles: { fontSize:8 }, alternateRowStyles: { fillColor:[248,250,252] },
+      didParseCell: (data) => {
+        if (data.section==='body' && data.column.index===3) {
+          const row = relLancamentos[data.row.index];
+          if (row) data.cell.styles.textColor = row.tipo==='receita' ? [22,163,74] : [220,38,38];
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ── SEÇÃO: Histórico de DARFs ────────────────────────────
+  if (relDarfs?.length > 0) {
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text('Histórico de DARFs — Últimas Competências', margin, y); y += 4;
+    const fmt = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin },
+      head: [['Competência','Regime','Total','Status','Pago em']],
+      body: relDarfs.map(d => [
+        d.competencia||'—', d.regime||'—', fmt(d.total),
+        d.status||'—',
+        d.data_pgto ? new Date(d.data_pgto+'T00:00').toLocaleDateString('pt-BR') : '—'
+      ]),
+      headStyles: { fillColor:[0,0,0], textColor:255, fontSize:9, fontStyle:'bold' },
+      bodyStyles: { fontSize:9 }, alternateRowStyles: { fillColor:[248,250,252] },
+      didParseCell: (data) => {
+        if (data.section==='body' && data.column.index===3) {
+          const v = data.cell.raw;
+          data.cell.styles.textColor = v==='pago' ? [22,163,74] : v==='pendente' ? [220,38,38] : [0,0,0];
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  // ── SEÇÃO: Quadro de pessoal ─────────────────────────────
+  if (relFuncionarios?.length > 0) {
+    if (y > 220) { doc.addPage(); y = 20; }
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text(`Quadro de Pessoal — ${relFuncionarios.length} funcionário(s) ativo(s)`, margin, y); y += 4;
+    const fmt = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    const folha = relFuncionarios.reduce((a,f)=>a+ +f.salario_base,0);
+    doc.setFontSize(9); doc.setFont('helvetica','normal');
+    doc.text(`Folha bruta total: ${fmt(folha)}`, margin, y); y += 6;
+    doc.autoTable({
+      startY: y, margin: { left: margin, right: margin },
+      head: [['Funcionário','Cargo','Contrato','Salário Base']],
+      body: relFuncionarios.map(f => [f.nome||'—', f.cargo||'—', (f.tipo_contrato||'').toUpperCase(), fmt(f.salario_base)]),
+      headStyles: { fillColor:[0,0,0], textColor:255, fontSize:9, fontStyle:'bold' },
+      bodyStyles: { fontSize:9 }, alternateRowStyles: { fillColor:[248,250,252] }
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
 
   // NFs analisadas
   if (nfeData?.length > 0) {
@@ -491,10 +589,28 @@ async function gerarParecer() {
 // ----------------------------------------------------------
 // Excel — Planilha de Apuração
 // ----------------------------------------------------------
-function gerarPlanilha() {
+async function gerarPlanilha() {
   document.getElementById('docGenMenu').style.display = 'none';
   if (!currentCliente) { showToast('Selecione uma empresa antes de gerar a planilha.', 'warn'); return; }
   try {
+
+  // Buscar dados reais do banco
+  let plLanc = [], plDarfs = [], plFunc = [];
+  try {
+    const [rL, rD, rF] = await Promise.allSettled([
+      sb.from('lancamentos').select('tipo,categoria,descricao,valor,data_venc,status')
+        .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id)
+        .gte('data_venc',`${new Date().getFullYear()}-01-01`).order('data_venc',{ascending:false}).limit(100),
+      sb.from('darf_historico').select('competencia,regime,total,status,data_pgto')
+        .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id)
+        .order('competencia',{ascending:false}).limit(12),
+      sb.from('dp_funcionarios').select('nome,cargo,tipo_contrato,salario_base')
+        .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id).eq('status','ativo').limit(30),
+    ]);
+    plLanc  = rL.status==='fulfilled' ? rL.value.data||[] : [];
+    plDarfs = rD.status==='fulfilled' ? rD.value.data||[] : [];
+    plFunc  = rF.status==='fulfilled' ? rF.value.data||[] : [];
+  } catch(e) {}
 
   const empresa = currentCliente;
   const mesAno = getMesAno();
@@ -549,7 +665,62 @@ function gerarPlanilha() {
 
   XLSX.utils.book_append_sheet(wb, ws, 'Resumo Financeiro');
 
-  // ABA 2: Chat (log completo)
+  // ABA 2: Lançamentos financeiros reais
+  if (plLanc.length > 0) {
+    const fmt = v => Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    const rec  = plLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+ +l.valor,0);
+    const desp = plLanc.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+ +l.valor,0);
+    const lancData = [
+      ['LANÇAMENTOS FINANCEIROS — ANO CORRENTE'],
+      [],
+      ['Receitas Totais:', fmt(rec), '', 'Despesas Totais:', fmt(desp), '', 'Saldo:', fmt(rec-desp)],
+      [],
+      ['Tipo','Categoria','Descrição','Valor (R$)','Vencimento','Status'],
+      ...plLanc.map(l=>[
+        l.tipo==='receita'?'Receita':'Despesa', l.categoria||'—', l.descricao||'—',
+        +l.valor, new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR'), l.status||'—'
+      ])
+    ];
+    const wsLanc = XLSX.utils.aoa_to_sheet(lancData);
+    wsLanc['!cols'] = [{wch:12},{wch:25},{wch:35},{wch:15},{wch:14},{wch:12}];
+    wsLanc['!merges'] = [{s:{r:0,c:0},e:{r:0,c:5}}];
+    XLSX.utils.book_append_sheet(wb, wsLanc, 'Financeiro');
+  }
+
+  // ABA 3: Histórico DARFs reais
+  if (plDarfs.length > 0) {
+    const fmt = v => Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    const darfsData = [
+      ['HISTÓRICO DE DARFS'],
+      [],
+      ['Competência','Regime','Total (R$)','Status','Pago em'],
+      ...plDarfs.map(d=>[d.competencia,d.regime,+d.total,d.status,d.data_pgto||'—'])
+    ];
+    const wsDarfs = XLSX.utils.aoa_to_sheet(darfsData);
+    wsDarfs['!cols'] = [{wch:14},{wch:20},{wch:15},{wch:12},{wch:14}];
+    wsDarfs['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}}];
+    XLSX.utils.book_append_sheet(wb, wsDarfs, 'DARFs');
+  }
+
+  // ABA 4: Quadro de pessoal real
+  if (plFunc.length > 0) {
+    const fmt = v => Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
+    const folha = plFunc.reduce((a,f)=>a+ +f.salario_base,0);
+    const funcData = [
+      ['QUADRO DE PESSOAL — FUNCIONÁRIOS ATIVOS'],
+      [],
+      ['Total de funcionários:', plFunc.length, '', 'Folha bruta:', fmt(folha)],
+      [],
+      ['Funcionário','Cargo','Tipo Contrato','Salário Base (R$)'],
+      ...plFunc.map(f=>[f.nome,f.cargo||'—',(f.tipo_contrato||'').toUpperCase(), +f.salario_base])
+    ];
+    const wsFunc = XLSX.utils.aoa_to_sheet(funcData);
+    wsFunc['!cols'] = [{wch:30},{wch:20},{wch:15},{wch:18}];
+    wsFunc['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
+    XLSX.utils.book_append_sheet(wb, wsFunc, 'Pessoal');
+  }
+
+  // ABA 5: Chat (log completo)
   if (currentChat.messages?.length > 0) {
     const chatData = [
       ['HISTÓRICO DA CONSULTA FISCAL'],
