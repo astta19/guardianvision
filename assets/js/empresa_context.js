@@ -91,8 +91,32 @@ const EmpresaContext = (() => {
     lines.push(`Nome Fantasia: ${cliente.nome_fantasia || '—'}`);
     lines.push(`CNPJ         : ${cliente.cnpj || '—'}`);
     lines.push(`Regime       : ${cliente.regime_tributario || 'Não informado'}`);
+    lines.push(`Regime Apur. : ${cliente.regime_apuracao || '—'}`);
+    lines.push(`CNAE         : ${cliente.cnae_principal || '—'} — ${cliente.cnae_descricao || '—'}`);
+    lines.push(`Natureza Jur.: ${cliente.natureza_juridica || '—'}`);
+    lines.push(`Porte        : ${cliente.porte || '—'}`);
+    lines.push(`Abertura     : ${cliente.data_abertura || '—'}`);
+    lines.push(`Capital Soc. : ${cliente.capital_social ? 'R$ ' + Number(cliente.capital_social).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}`);
+    lines.push(`Situação     : ${cliente.situacao_cadastral || '—'}`);
     lines.push(`Ins. Estadual: ${cliente.inscricao_estadual || '—'}`);
+    lines.push(`Ins. Municipal: ${cliente.inscricao_municipal || '—'}`);
+    lines.push(`Endereço     : ${[cliente.logradouro,cliente.numero,cliente.bairro,cliente.municipio,cliente.uf].filter(Boolean).join(', ') || '—'}`);
+    lines.push(`Telefone     : ${cliente.telefone || '—'}`);
+    lines.push(`E-mail       : ${cliente.email_empresa || '—'}`);
     lines.push(`Tem empregado: ${cliente.tem_empregado ? 'Sim' : 'Não'}`);
+    lines.push(`Optante Simpl: ${cliente.optante_simples ? 'Sim' : 'Não'}`);
+    // Sócios
+    if (cliente.socios?.length) {
+      lines.push(`Sócios (${cliente.socios.length}):`);
+      cliente.socios.forEach(s => {
+        const pl = s.prolabore ? ` — Pró-labore: R$ ${Number(s.prolabore).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '';
+        lines.push(`  • ${s.nome} (${s.qualificacao || '—'})${pl}`);
+      });
+    }
+    // Financeiro cadastral
+    if (cliente.faturamento_mensal) lines.push(`Fat. Mensal  : R$ ${fmt(cliente.faturamento_mensal)}`);
+    if (cliente.faturamento_anual)  lines.push(`Fat. Anual   : R$ ${fmt(cliente.faturamento_anual)}`);
+    if (cliente.prolabore_total)    lines.push(`Pró-labore   : R$ ${fmt(cliente.prolabore_total)}`);
 
     // Histórico de DARFs
     lines.push('\n── DARFS ────────────────────────────────');
