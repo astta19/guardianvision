@@ -822,10 +822,12 @@ ${formatado}`;
       }
     }
 
-    // Sistema prompt personalizado por cliente
-    const clienteCtx = currentCliente
-      ? `\n\nEMPRESA ATIVA:\n- Razão Social: ${currentCliente.razao_social}\n- CNPJ: ${currentCliente.cnpj}\n- Regime Tributário: ${currentCliente.regime_tributario || 'Não informado'}\n- Nome Fantasia: ${currentCliente.nome_fantasia || '-'}\nResponda sempre no contexto desta empresa.`
-      : '';
+    // Contexto rico da empresa — dados reais do banco (DARFs, financeiro, pessoal, agenda)
+    const clienteCtx = (typeof EmpresaContext !== 'undefined' && currentCliente)
+      ? '\n\n' + await EmpresaContext.obterContexto(currentCliente, currentUser.id)
+      : currentCliente
+        ? `\n\nEMPRESA ATIVA: ${currentCliente.razao_social} (CNPJ: ${currentCliente.cnpj}) — Regime: ${currentCliente.regime_tributario}`
+        : '';
 
     // Montar contexto RAG
     let ragCtx = '';
