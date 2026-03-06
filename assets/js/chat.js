@@ -450,7 +450,7 @@ let ultimaInteracaoId = null;
 
 function mostrarFeedbackOptions(interacaoId) {
   if (!interacaoId || interacaoId === 'null' || interacaoId === 'undefined' || interacaoId.trim() === '') {
-    alert('Feedback indisponível para esta resposta. Apenas respostas novas possuem feedback.');
+    showToast('Feedback disponível apenas para respostas novas.', 'info');
     return;
   }
   
@@ -1068,103 +1068,108 @@ POSTURA PROFISSIONAL:
       ...recentChatMessages
     ];
 
-    // Tentar com modelo atual, se falhar tentar próximo
+    // ── Envio via AI_PROVIDER (Groq ou Anthropic) ───────────
+    const provider   = (typeof AI_PROVIDER !== 'undefined') ? AI_PROVIDER : null;
+    const modelList  = provider ? provider.getModels() : MODELS;
+    const endpoint   = provider ? provider.getEndpoint() : '/api/chat';
+    const tools      = (typeof CHAT_TOOLS !== 'undefined') ? CHAT_TOOLS : undefined;
+
     let data = null;
     let attempts = 0;
-    const maxAttempts = MODELS.length * 2;
+    const maxAttempts = modelList.length * 2;
 
     while (attempts < maxAttempts && !data) {
-      const modelIndex = currentModelIndex % MODELS.length;
-      const model = MODELS[modelIndex];
-      
+      const model = modelList[currentModelIndex % modelList.length];
+
       try {
-        
-        const res = await fetch('/api/chat', {
+        const body = provider
+          ? provider.montarBody(model, messagesToSend, tools)
+          : { model, temperature: 0.7, max_tokens: 4000, messages: messagesToSend };
+
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: model,
-            temperature: 0.7,
-            max_tokens: 4000,
-            messages: messagesToSend
-          })
+          body: JSON.stringify(body),
         });
 
         if (res.status === 429) {
-          // Rate limit - mudar para próximo modelo
           currentModelIndex++;
           attempts++;
-          
           if (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(r => setTimeout(r, 1000));
             continue;
-          } else {
-            // Todos os modelos falharam
-            rateLimitUntil = Date.now() + 60000; // Bloquear por 60 segundos
-            throw new Error('Todos os modelos estão em rate limit. Aguarde 60 segundos.');
           }
+          rateLimitUntil = Date.now() + 60000;
+          throw new Error('Todos os modelos estão em rate limit. Aguarde 60 segundos.');
         }
 
         if (!res.ok) {
           const errorText = await res.text();
           throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 100)}`);
         }
-        
+
         data = await res.json();
-        
-        // Resetar erros consecutivos em caso de sucesso
         consecutiveErrors = 0;
-        
+
       } catch (error) {
         consecutiveErrors++;
-        
-        // Se muitos erros consecutivos, mudar de modelo
-        if (consecutiveErrors >= 2) {
-          currentModelIndex++;
-          consecutiveErrors = 0;
-        }
-        
+        if (consecutiveErrors >= 2) { currentModelIndex++; consecutiveErrors = 0; }
         attempts++;
-        
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          throw error;
-        }
+        if (attempts < maxAttempts) await new Promise(r => setTimeout(r, 2000));
+        else throw error;
       }
     }
 
-    if (!data?.choices?.[0]?.message) {
-      throw new Error('Não foi possível obter resposta após múltiplas tentativas');
-    }
+    if (!data) throw new Error('Não foi possível obter resposta após múltiplas tentativas');
 
     hideTypingIndicator();
 
-    const reply = data.choices[0].message.content;
-    const confidence = calculateConfidence(reply);
+    // ── Normalizar resposta (Groq ou Anthropic) ──────────
+    const normalized = provider ? provider.normalizarResposta(data) : {
+      text: data.choices?.[0]?.message?.content || '',
+      toolCalls: data.choices?.[0]?.message?.tool_calls || null,
+      usage: data.usage?.total_tokens || 0,
+      model,
+    };
+    const { text: replyText, toolCalls } = normalized;
 
-    // Registrar interação (opcional)
+    // ── Tool use: executar ações e montar resposta composta ──
+    let toolCardsHtml = '';
+    let toolMsgsTexto = '';
+    if (toolCalls?.length && typeof processarToolCalls === 'function') {
+      const resultados = await processarToolCalls(toolCalls);
+      toolCardsHtml = renderToolCard(resultados);
+      toolMsgsTexto = resultados.map(r => r.msg).join(' ');
+      if (window.lucide) setTimeout(() => lucide.createIcons(), 100);
+    }
+
+    const reply = replyText + (toolMsgsTexto && !replyText ? toolMsgsTexto : '');
+    const replyFinal = toolCardsHtml
+      ? `<div class="tool-cards-wrap">${toolCardsHtml}</div>${reply ? '<div class="tool-text-reply">' + reply + '</div>' : ''}`
+      : reply;
+    const confidence = calculateConfidence(reply || toolMsgsTexto);
+
+    // Registrar interação
     let interacaoId = null;
     try {
       interacaoId = await getLearningService().registrarInteracao(
         currentChat.id,
         text || 'Arquivos enviados',
-        reply,
-        data.usage?.total_tokens || 0,
-        MODELS[currentModelIndex % MODELS.length]
+        reply || toolMsgsTexto,
+        normalized.usage || 0,
+        normalized.model || modelList[currentModelIndex % modelList.length]
       );
-    } catch (e) {
-    }
+    } catch (e) {}
 
     const assistantMessage = {
       role: 'assistant',
-      content: reply,
+      content: reply || toolMsgsTexto,
       confidence,
       interactionId: interacaoId
     };
 
     currentChat.messages.push(assistantMessage);
-    addMessage(reply, false, confidence, null, interacaoId);
+    addMessage(replyFinal, false, confidence, null, interacaoId);
 
     if (interacaoId) {
       setTimeout(() => {
@@ -1206,7 +1211,7 @@ async function handleMultipleFiles(event) {
 
   for (const file of files) {
     if (file.size > MAX_SIZE) {
-      alert(`Arquivo ${file.name} muito grande. Máx: 10MB`);
+      showToast(`${file.name}: arquivo muito grande. Máx: 10MB`, 'warn');
       continue;
     }
 
