@@ -1318,6 +1318,7 @@ POSTURA PROFISSIONAL:
 
     let data = null;
     let attempts = 0;
+    let consecutiveErrors = 0;
     let model = modelList[currentModelIndex % modelList.length];
     const maxAttempts = modelList.length * 2;
 
@@ -1372,10 +1373,13 @@ POSTURA PROFISSIONAL:
             // onDone
             (result) => {
               streamText    = result.text;
-              streamThinking= result.thinking;
-              streamTokens  = { input: result.inputTokens, output: result.outputTokens };
+              streamThinking= result.thinking || '';
+              streamTokens  = { input: result.inputTokens || 0, output: result.outputTokens || 0 };
               if (result.toolCalls) window._streamToolCalls = result.toolCalls;
-              streamDone    = true;
+              // Se não houve chunks (resposta JSON), esconder indicadores agora
+              hideTypingIndicator();
+              hideThinkingIndicator();
+              streamDone = true;
               resolve();
             },
             // onError
@@ -1501,7 +1505,8 @@ POSTURA PROFISSIONAL:
 
     currentChat.messages.push(assistantMessage);
 
-    // Se veio por streaming, finalizar a bolha existente em vez de criar nova
+    // Se veio por streaming com bolha já criada, finalizar ela
+    // Se não há bolha (resposta JSON sem chunks), usar addMessage normal
     if (data._streaming && data._bubble) {
       const hasValidInteraction = interacaoId && String(interacaoId).trim() !== '' && !String(interacaoId).includes('error');
       const footer = `
@@ -1525,7 +1530,18 @@ POSTURA PROFISSIONAL:
         : replyText, footer);
       if (data._tokens) updateTokenCounter(data._tokens.input, data._tokens.output);
     } else {
-      addMessage(replyFinal, false, confidence, null, interacaoId, null, normalized.model);
+      // Sem bolha de streaming — addMessage com texto puro + toolCards em seguida
+      addMessage(replyText || toolMsgsTexto || '...', false, confidence, null, interacaoId, null, normalized.model);
+      if (toolCardsHtml) {
+        const msgs = document.getElementById('msgs');
+        const lastBubble = msgs.querySelector('.msg:last-child .bubble');
+        if (lastBubble) {
+          const toolDiv = document.createElement('div');
+          toolDiv.className = 'tool-cards-wrap';
+          toolDiv.innerHTML = toolCardsHtml;
+          lastBubble.insertBefore(toolDiv, lastBubble.firstChild);
+        }
+      }
     }
 
     if (interacaoId) {
