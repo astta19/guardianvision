@@ -938,7 +938,7 @@ async function dpCarregarRelatorio() {
     if (atFuncs.length) {
       // Buscar foto dos funcionários
       const funcComFoto = await Promise.allSettled(atFuncs.map(f =>
-        sb.from('dp_funcionarios').select('foto_base64,foto_url,rg,data_nascimento,cpf').eq('id',f.id).maybeSingle()
+        sb.from('dp_funcionarios').select('foto_base64,foto_url,rg,data_nascimento,cpf').eq('id',f.id).eq('user_id',currentUser.id).maybeSingle()
       ));
       const fotoMap = {};
       funcComFoto.forEach((r,i) => {
