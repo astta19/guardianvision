@@ -2779,3 +2779,11 @@
       .fin-item-valor { font-size: 12px; }
       .darf-hist-resumo { flex-direction: column; }
     }
+
+    /* ── Tool cards no chat ──────────────────────────── */
+    .tool-cards-wrap {
+      margin-bottom: 8px;
+    }
+    .tool-text-reply {
+      margin-top: 6px;
+    }
