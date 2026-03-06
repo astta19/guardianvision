@@ -83,8 +83,12 @@ const AI_PROVIDER = {
       }
     }
 
-    // Garantir que começa com user e termina com user
-    if (merged.length && merged[0].role === 'assistant') merged.shift();
+    // Garantir que começa com user (Anthropic exige)
+    // Se começa com assistant, inserir placeholder em vez de descartar
+    if (merged.length && merged[0].role === 'assistant') {
+      merged.unshift({ role: 'user', content: '[continuação da conversa anterior]' });
+    }
+    // Garantir que termina com user
     if (merged.length && merged[merged.length - 1].role !== 'user') {
       merged.push({ role: 'user', content: '...' });
     }
