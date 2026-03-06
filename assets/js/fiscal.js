@@ -272,7 +272,14 @@ function enviarNFeParaChat() {
 
 function maskCompetencia(input) {
   let v = input.value.replace(/\D/g,'');
-  if (v.length >= 2) v = v.substring(0,2) + '/' + v.substring(2,6);
+  // Garantir mês válido (01-12)
+  if (v.length >= 2) {
+    let mes = parseInt(v.substring(0, 2));
+    if (mes < 1)  mes = 1;
+    if (mes > 12) mes = 12;
+    const mesStr = String(mes).padStart(2, '0');
+    v = mesStr + '/' + v.substring(2, 6);
+  }
   input.value = v;
   calcularDarf();
 }
