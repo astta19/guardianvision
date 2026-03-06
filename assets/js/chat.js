@@ -843,11 +843,10 @@ function updateTokenCounter(inputT, outputT) {
 // ── Streaming de resposta da API Anthropic ────────────────
 async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onError) {
   try {
-    const isStream = body.stream !== false;
     const res = await fetch(endpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
-      body:    JSON.stringify({ ...body, stream: isStream }),
+      body:    JSON.stringify(body),
     });
 
     if (!res.ok) {
@@ -858,9 +857,13 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
       return;
     }
 
-    // Resposta não-streaming (JSON normal) — para tool_use
-    if (!isStream) {
+    // Detectar pelo Content-Type se é JSON ou SSE
+    const ct = res.headers.get('content-type') || '';
+    const isJson = ct.includes('application/json');
+
+    if (isJson) {
       const data = await res.json();
+      if (data.error) { onError(data, 0); return; }
       const content = data.content || [];
       const text = content.filter(b => b.type === 'text').map(b => b.text).join('');
       const toolUses = content.filter(b => b.type === 'tool_use');
@@ -1538,15 +1541,17 @@ POSTURA PROFISSIONAL:
     
     let errorMessage = '';
     
-    if (e.message.includes('429') || e.message.includes('rate limit')) {
-      errorMessage = 'Limite de requisições excedido. Aguarde 30 segundos e tente novamente.';
+    console.error('[send() error]', e.message, e);
+    if (e.message.includes('429') || e.message.includes('rate limit') || e.message.includes('limite_diario')) {
+      errorMessage = 'Limite de requisições excedido. Aguarde 60 segundos e tente novamente.';
       rateLimitUntil = Date.now() + 60000;
-    } else if (e.message.includes('500') || e.message.includes('503')) {
-      errorMessage = 'Serviço temporariamente indisponível. Tente novamente em alguns instantes.';
-    } else if (e.message.includes('401')) {
-      errorMessage = 'Erro de autenticação. Recarregue a página.';
+    } else if (e.message.includes('401') || e.message.includes('authentication')) {
+      errorMessage = 'Erro de autenticação com a API. Verifique a chave da Anthropic.';
+    } else if (e.message.includes('invalid_request') || e.message.includes('400')) {
+      errorMessage = 'Erro na requisição: ' + e.message;
     } else {
-      errorMessage = 'Erro ao processar. Tente novamente.';
+      // Mostrar erro real para diagnóstico
+      errorMessage = 'Erro: ' + (e.message || 'desconhecido');
     }
     
     addMessage(errorMessage, false, 'low');
