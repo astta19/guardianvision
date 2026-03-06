@@ -634,6 +634,8 @@ async function darfSalvarHistorico() {
   if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar no Histórico'; }
   if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
   showToast('DARF salvo no histórico.','success');
+  if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
+
   darfHistoricoCarregar();
 }
 
