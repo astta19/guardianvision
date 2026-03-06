@@ -576,7 +576,7 @@ async function handleBatchUpload(event) {
 // ============================================
 // FUNÇÃO ADD MESSAGE - SUPORTA MÚLTIPLOS ARQUIVOS
 // ============================================
-function addMessage(text, isUser, confidence = 'medium', fileData = null, interactionId = null, allFiles = null) {
+function addMessage(text, isUser, confidence = 'medium', fileData = null, interactionId = null, allFiles = null, modelUsed = null) {
   const container = document.getElementById('msgs');
   container.querySelector('.empty')?.remove();
 
@@ -654,6 +654,7 @@ function addMessage(text, isUser, confidence = 'medium', fileData = null, intera
       <span class="badge-conf badge ${confidence}">
         ${confidence === 'high' ? 'Alta' : confidence === 'low' ? 'Baixa' : 'Média'} confiança
       </span>
+      ${modelUsed ? `<span class="badge-model" title="Modelo utilizado">${modelUsed.includes('claude') ? '✦ Claude' : modelUsed.includes('llama-3.3') ? 'Llama 3.3' : modelUsed.includes('llama-3.1') ? 'Llama 3.1' : 'Llama'}</span>` : ''}
     </div>` : '';
 
   div.innerHTML = `
@@ -1122,6 +1123,33 @@ POSTURA PROFISSIONAL:
       }
     }
 
+    // Fallback para Groq se Anthropic falhar completamente
+    if (!data && provider?.current === 'anthropic') {
+      console.warn('Anthropic falhou — tentando Groq como fallback');
+      const groqRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          temperature: 0.7, max_tokens: 4000,
+          messages: messagesToSend,
+        }),
+      });
+      if (groqRes.ok) {
+        data = await groqRes.json();
+        // Normalizar manualmente como Groq
+        const msg = data?.choices?.[0]?.message || {};
+        const normalized = { text: msg.content || '', toolCalls: msg.tool_calls || null, usage: data.usage?.total_tokens || 0, model: 'llama-3.3-70b-versatile (fallback)' };
+        hideTypingIndicator();
+        const reply = normalized.text;
+        const confidence = calculateConfidence(reply);
+        currentChat.messages.push({ role: 'assistant', content: reply, confidence });
+        addMessage(reply, false, confidence, null, null, null, normalized.model);
+        showToast('Anthropic indisponível — resposta via Groq', 'warn');
+        return;
+      }
+    }
+
     if (!data) throw new Error('Não foi possível obter resposta após múltiplas tentativas');
 
     hideTypingIndicator();
@@ -1171,7 +1199,7 @@ POSTURA PROFISSIONAL:
     };
 
     currentChat.messages.push(assistantMessage);
-    addMessage(replyFinal, false, confidence, null, interacaoId);
+    addMessage(replyFinal, false, confidence, null, interacaoId, null, normalized.model);
 
     if (interacaoId) {
       setTimeout(() => {
