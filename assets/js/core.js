@@ -19,6 +19,7 @@ let darfData = null;
 let rateLimitUntil = 0;
 
 const CHATS_PER_PAGE = 50;
+// MODELS mantido para compatibilidade — use AI_PROVIDER.getModels() no código novo
 const MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
