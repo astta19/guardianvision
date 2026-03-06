@@ -937,9 +937,22 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
           inputTokens = evt.message.usage.input_tokens || 0;
         }
 
-        // Tool use — aguardar bloco completo
+        // Tool use via streaming — acumular input JSON delta por delta
         if (evt.type === 'content_block_start' && evt.content_block?.type === 'tool_use') {
-          // Ferramentas chegam como bloco completo no message_stop
+          if (!window._streamToolBuffer) window._streamToolBuffer = [];
+          window._streamToolBuffer.push({ name: evt.content_block.name, inputRaw: '' });
+        }
+        if (evt.type === 'content_block_delta' && evt.delta?.type === 'input_json_delta') {
+          const buf = window._streamToolBuffer;
+          if (buf?.length) buf[buf.length - 1].inputRaw += evt.delta.partial_json || '';
+        }
+        if (evt.type === 'message_stop' && window._streamToolBuffer?.length) {
+          window._streamToolCalls = window._streamToolBuffer.map(t => {
+            let input = {};
+            try { input = JSON.parse(t.inputRaw || '{}'); } catch {}
+            return { function: { name: t.name, arguments: JSON.stringify(input) } };
+          });
+          window._streamToolBuffer = [];
         }
       }
     }
@@ -1324,11 +1337,9 @@ POSTURA PROFISSIONAL:
         if (useThinking) AI_PROVIDER.ativarThinking(false);
 
         // ── Streaming ────────────────────────────────────────
-        window._streamToolCalls = null; // limpar antes de cada chamada
-        // Se o body contém tools, desativar stream para receber tool_use completo
-        const bodyParaEnvio = (body.tools?.length && provider?.current === 'anthropic')
-          ? { ...body, stream: false }
-          : body;
+        window._streamToolCalls = null;  // limpar antes de cada chamada
+        window._streamToolBuffer = [];        // limpar buffer de tools
+        const bodyParaEnvio = body;
 
         let streamDone = false;
         let streamText = '';
