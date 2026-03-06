@@ -29,6 +29,7 @@ async function carregarPerfilEmpresa() {
     .from('clientes')
     .select('*')
     .eq('id', currentCliente.id)
+    .eq('user_id', currentUser.id)
     .maybeSingle();
 
   if (error || !data) return;
@@ -338,7 +339,7 @@ async function salvarPerfilEmpresa() {
   const btn = document.getElementById('epBtnSalvar');
   btn.disabled = true; btn.textContent = 'Salvando...';
 
-  const { error } = await sb.from('clientes').update(payload).eq('id', currentCliente.id);
+  const { error } = await sb.from('clientes').update(payload).eq('id', currentCliente.id).eq('user_id', currentUser.id);
 
   btn.disabled = false; btn.textContent = 'Salvar';
 
