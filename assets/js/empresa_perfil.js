@@ -104,8 +104,15 @@ function formatarCEP(v) {
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchPerfilTab(tab) {
-  document.querySelectorAll('.ep-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelectorAll('.ep-tab-pane').forEach(p => p.style.display = p.id === `epTab_${tab}` ? '' : 'none');
+  document.querySelectorAll('.ep-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.style.color = b.dataset.tab === tab ? 'var(--text)' : 'var(--text-light)';
+    b.style.borderBottomColor = b.dataset.tab === tab ? 'var(--text)' : 'transparent';
+  });
+  ['cadastro','endereco','financeiro','socios'].forEach(t => {
+    const el = document.getElementById(`epTab_${t}`);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
 }
 
 // ── Auto-preencher via BrasilAPI (CNPJ) ──────────────────
@@ -117,46 +124,83 @@ async function epBuscarCNPJ() {
   btn.disabled = true; btn.textContent = 'Buscando...';
 
   try {
-    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-    if (!res.ok) throw new Error('CNPJ não encontrado');
-    const d = await res.json();
+    // Tentar BrasilAPI primeiro, fallback para ReceitaWS
+    let d = null;
+    const apis = [
+      `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`,
+      `https://receitaws.com.br/v1/cnpj/${cnpj}`,
+    ];
+    for (const url of apis) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) { d = await res.json(); if (d && !d.message) break; }
+      } catch { continue; }
+    }
+    if (!d || d.message) throw new Error('CNPJ não encontrado nas APIs públicas');
 
     // Preencher automaticamente todos os campos
     const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
 
-    set('epRazao',      d.razao_social);
-    set('epFantasia',   d.nome_fantasia);
-    set('epCnae',       d.cnae_fiscal ? String(d.cnae_fiscal) : '');
-    set('epCnaeDesc',   d.cnae_fiscal_descricao);
-    set('epNatureza',   d.natureza_juridica);
-    set('epPorte',      d.porte);
-    set('epDataAbertura', d.data_inicio_atividade);
-    set('epCapital',    d.capital_social ? Number(d.capital_social).toFixed(2) : '');
-    set('epSituacao',   d.descricao_situacao_cadastral);
-    set('epTelefone',   d.ddd_telefone_1 ? `(${d.ddd_telefone_1}) ${d.telefone_1}` : '');
-    set('epEmail',      d.email);
+    // Normalizar campos (BrasilAPI e ReceitaWS têm nomes ligeiramente diferentes)
+    const norm = {
+      razao:      d.razao_social || d.nome,
+      fantasia:   d.nome_fantasia || d.fantasia,
+      cnae:       d.cnae_fiscal ? String(d.cnae_fiscal) : (d.atividade_principal?.[0]?.code || ''),
+      cnaeDesc:   d.cnae_fiscal_descricao || d.atividade_principal?.[0]?.text || '',
+      natureza:   d.natureza_juridica || (typeof d.natureza_juridica === 'object' ? d.natureza_juridica?.descricao : ''),
+      porte:      d.porte,
+      abertura:   d.data_inicio_atividade || d.abertura,
+      capital:    d.capital_social ? Number(d.capital_social).toFixed(2) : '',
+      situacao:   d.descricao_situacao_cadastral || d.situacao,
+      telefone:   d.ddd_telefone_1 ? `(${d.ddd_telefone_1}) ${d.telefone_1}` : (d.telefone || ''),
+      email:      d.email,
+      simples:    d.opcao_pelo_simples || (d.simples?.optante === 'Sim'),
+      mei:        d.opcao_pelo_mei || (d.mei?.optante === 'Sim'),
+      cep:        d.cep,
+      logradouro: d.logradouro,
+      numero:     d.numero,
+      complemento:d.complemento,
+      bairro:     d.bairro,
+      municipio:  d.municipio,
+      uf:         d.uf,
+      socios:     (d.qsa || d.quadro_societario || []).map(s => ({
+        nome: s.nome_socio || s.nome,
+        qualificacao: s.qualificacao_socio || s.qual || 'Sócio',
+      })),
+    };
+
+    set('epRazao',       norm.razao);
+    set('epFantasia',    norm.fantasia);
+    set('epCnae',        norm.cnae);
+    set('epCnaeDesc',    norm.cnaeDesc);
+    set('epNatureza',    typeof norm.natureza === 'string' ? norm.natureza : '');
+    set('epPorte',       norm.porte);
+    set('epDataAbertura',norm.abertura);
+    set('epCapital',     norm.capital);
+    set('epSituacao',    norm.situacao);
+    set('epTelefone',    norm.telefone);
+    set('epEmail',       norm.email);
 
     // Regime automático
     const regEl = document.getElementById('epRegime');
     if (regEl && !regEl.value) {
-      if (d.opcao_pelo_mei) regEl.value = 'MEI';
-      else if (d.opcao_pelo_simples) regEl.value = 'Simples Nacional';
+      if (norm.mei) regEl.value = 'MEI';
+      else if (norm.simples) regEl.value = 'Simples Nacional';
     }
-    document.getElementById('epOptanteSimples').value = d.opcao_pelo_simples ? 'true' : 'false';
-    document.getElementById('epOptanteMei').value = d.opcao_pelo_mei ? 'true' : 'false';
+    document.getElementById('epOptanteSimples').value = norm.simples ? 'true' : 'false';
+    document.getElementById('epOptanteMei').value = norm.mei ? 'true' : 'false';
 
     // Endereço
-    set('epCep',        d.cep ? formatarCEP(d.cep) : '');
-    set('epLogradouro', d.logradouro);
-    set('epNumero',     d.numero);
-    set('epComplemento',d.complemento);
-    set('epBairro',     d.bairro);
-    set('epMunicipio',  d.municipio);
-    set('epUf',         d.uf);
+    set('epCep',         norm.cep ? formatarCEP(norm.cep) : '');
+    set('epLogradouro',  norm.logradouro);
+    set('epNumero',      norm.numero);
+    set('epComplemento', norm.complemento);
+    set('epBairro',      norm.bairro);
+    set('epMunicipio',   norm.municipio);
+    set('epUf',          norm.uf);
 
     // Sócios
-    const socios = (d.qsa || []).map(s => ({ nome: s.nome_socio, qualificacao: s.qualificacao_socio }));
-    renderSocios(socios);
+    renderSocios(norm.socios);
 
     // Guardar payload bruto para salvar
     document.getElementById('epDadosReceita').value = JSON.stringify(d);
