@@ -851,7 +851,9 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const text = await res.text().catch(() => '');
+      let err = {};
+      try { err = JSON.parse(text); } catch { err = { error: text.substring(0, 200) || 'Erro desconhecido' }; }
       onError(err, res.status);
       return;
     }
@@ -907,6 +909,12 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
         }
         if (evt.type === 'content_block_stop') {
           inThinking = false;
+        }
+
+        // Erro vindo do backend via SSE
+        if (evt.type === 'error') {
+          onError(evt.error || { error: 'Erro da API' }, evt.error?.status || 0);
+          return;
         }
 
         // Deltas
@@ -1357,13 +1365,16 @@ POSTURA PROFISSIONAL:
             },
             // onError
             (err, status) => {
+              console.error('[Chat API Error]', status, err);
               if (status === 429) {
-                const e = new Error(err.error === 'limite_diario'
+                reject(new Error(err.error === 'limite_diario'
                   ? 'Limite diário de mensagens atingido.'
-                  : 'Rate limit. Aguarde.');
-                reject(e);
+                  : 'Rate limit. Aguarde 60 segundos.'));
+              } else if (status === 400) {
+                // Erro de request — não tentar de novo
+                reject(new Error('Erro na requisição: ' + (err.error?.message || JSON.stringify(err).substring(0, 100))));
               } else {
-                reject(new Error(err.error || 'Erro na API'));
+                reject(new Error((err.error?.message || err.error || 'Erro na API') + (status ? ' (HTTP ' + status + ')' : '')));
               }
             }
           );
