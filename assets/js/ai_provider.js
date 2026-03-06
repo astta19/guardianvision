@@ -141,13 +141,18 @@ const AI_PROVIDER = {
         }
       }
 
+      // Prompt caching — reduz custo do system prompt em ~90% nas requisições subsequentes
+      const systemPayload = system ? [
+        { type: 'text', text: system, cache_control: { type: 'ephemeral' } }
+      ] : undefined;
+
       return {
         model,
         max_tokens: 4096,
-        system:       system || undefined,
-        messages:     msgs,
-        tools:        toolsNorm,
-        tool_choice:  toolsNorm ? { type: 'auto' } : undefined,
+        system:      systemPayload,
+        messages:    msgs,
+        tools:       toolsNorm,
+        tool_choice: toolsNorm ? { type: 'auto' } : undefined,
       };
     }
 
