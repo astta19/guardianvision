@@ -1468,7 +1468,7 @@ POSTURA PROFISSIONAL:
 
     const assistantMessage = {
       role: 'assistant',
-      content: reply || toolMsgsTexto,
+      content: replyText || '',   // só texto puro — toolMsgsTexto não deve ir para o contexto da API
       confidence,
       interactionId: interacaoId
     };
