@@ -1083,7 +1083,7 @@ POSTURA PROFISSIONAL:
 
       try {
         const body = provider
-          ? provider.montarBody(model, messagesToSend, tools)
+          ? provider.montarBody(model, messagesToSend, tools, currentFiles)
           : { model, temperature: 0.7, max_tokens: 4000, messages: messagesToSend };
 
         const res = await fetch(endpoint, {
