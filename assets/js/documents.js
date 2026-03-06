@@ -84,18 +84,28 @@ ${resumoChat.substring(0, 3000)}
 Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máximo 4 parágrafos.`;
 
   try {
-    const res = await fetch('/api/chat', {
+    const provider  = (typeof AI_PROVIDER !== 'undefined') ? AI_PROVIDER : null;
+    const endpoint  = provider ? provider.getEndpoint() : '/api/chat';
+    const modelList = provider ? provider.getModels() : (typeof MODELS !== 'undefined' ? MODELS : ['llama-3.3-70b-versatile']);
+
+    // Montar body compatível com provedor ativo
+    const body = provider
+      ? provider.montarBody(modelList[0], [{ role: 'user', content: prompt }], undefined)
+      : { model: modelList[0], messages: [{ role: 'user', content: prompt }], max_tokens: 600, temperature: 0.3 };
+
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODELS[0],
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 600,
-        temperature: 0.3
-      })
+      headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
+      body: JSON.stringify({ ...body, max_tokens: 600, temperature: 0.3 }),
     });
     if (!res.ok) throw new Error('LLM indisponível');
     const data = await res.json();
+
+    // Normalizar resposta (Anthropic ou Groq)
+    if (provider) {
+      const norm = provider.normalizarResposta(data);
+      return norm.text?.trim() || null;
+    }
     return data.choices?.[0]?.message?.content?.trim() || null;
   } catch(e) {
     return null;
@@ -364,12 +374,21 @@ async function gerarParecer() {
   const obrigacoes = getObrigacoesMes();
   const resumoChat = getResumoChatTexto();
 
+  // Enriquecer com dados reais do banco se disponível
+  let ctxEmpresa = '';
+  if (typeof EmpresaContext !== 'undefined' && currentUser?.id) {
+    ctxEmpresa = await EmpresaContext.obterContexto(empresa, currentUser.id).catch(() => '');
+  }
+
   // Gerar conclusão via LLM
   const btnGen = document.getElementById('docGenBtn');
   const originalTitle = btnGen.title;
   btnGen.title = 'Gerando parecer...';
 
-  const conclusaoLLM = await gerarConclusaoLLM(empresa, obrigacoes, resumoChat);
+  const resumoCompleto = ctxEmpresa
+    ? `DADOS FINANCEIROS DA EMPRESA:\n${ctxEmpresa}\n\nCONSULTA:\n${resumoChat}`
+    : resumoChat;
+  const conclusaoLLM = await gerarConclusaoLLM(empresa, obrigacoes, resumoCompleto);
   const textoConclusao = conclusaoLLM ||
     `Com base na análise realizada em ${dataHoje}, foram identificadas ${obrigacoes.filter(o=>o.status==='Vencida').length} obrigação(ões) vencida(s) e ${obrigacoes.filter(o=>o.status==='Próxima').length} com vencimento próximo para a empresa ${empresa.razao_social}. Recomenda-se regularização imediata das pendências e acompanhamento contínuo dos prazos fiscais conforme legislação vigente.`;
 
