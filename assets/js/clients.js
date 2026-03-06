@@ -169,6 +169,9 @@ async function setCurrentCliente(cliente) {
   // Templates dinâmicos por regime
   atualizarTemplates(cliente.regime_tributario);
 
+  // Invalidar cache de contexto da empresa
+  if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
+
   // Recarregar chats filtrados
   loadChats();
 }
