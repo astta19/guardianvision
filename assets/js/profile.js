@@ -462,7 +462,8 @@ async function renderHistoryList(list, hasMore = false) {
   // Click no item abre o chat (substitui onclick inline)
   el.querySelectorAll('.h-item[data-open-id]').forEach(item => {
     item.addEventListener('click', e => {
-      if (e.target.closest('.h-title')?.querySelector('input')) return; // editando
+      if (_renamingChat) return; // bloqueado durante rename
+      if (e.target.closest('.h-title')?.querySelector('input')) return;
       if (e.target.closest('.btn-del')) return;
       openChat(item.dataset.openId);
     });
@@ -488,9 +489,13 @@ async function renderHistoryList(list, hasMore = false) {
   });
 }
 
+let _renamingChat = false; // flag global: bloqueia openChat e loadChats durante rename
+
 async function renameChat(id, el) {
-  if (el.querySelector('input')) return;
+  if (_renamingChat || el.querySelector('input')) return;
   const atual = el.textContent.trim();
+
+  _renamingChat = true;
 
   const input = document.createElement('input');
   input.value = atual;
@@ -501,24 +506,19 @@ async function renameChat(id, el) {
   input.focus();
   input.select();
 
-  let saved = false;
-  const salvar = async () => {
-    if (saved) return;
-    saved = true;
-
-    const novo = input.value.trim() || atual;
-
-    // 1. Atualizar UI imediatamente
+  const concluir = async (cancelar = false) => {
+    const novo = cancelar ? atual : (input.value.trim() || atual);
     el.textContent = novo;
+    _renamingChat = false;
 
-    if (novo === atual) return;
+    if (cancelar || novo === atual) return;
 
-    // 2. Atualizar memória local imediatamente (evita piscar título antigo)
+    // Atualizar memória local
     if (currentChat.id === id) currentChat.title = novo;
     const chatLocal = allChats.find(ch => ch.id === id);
     if (chatLocal) chatLocal.title = novo;
 
-    // 3. Persistir no banco
+    // Persistir no banco
     const { error } = await sb
       .from('chats')
       .update({ title: novo, updated_at: new Date().toISOString() })
@@ -526,24 +526,20 @@ async function renameChat(id, el) {
       .eq('user_id', currentUser.id);
 
     if (error) {
-      // Reverter UI se falhou
       el.textContent = atual;
       if (currentChat.id === id) currentChat.title = atual;
       if (chatLocal) chatLocal.title = atual;
-      showToast('Erro ao salvar nome. Tente novamente.', 'error');
-      return;
+      showToast('Erro ao salvar: ' + error.message, 'error');
     }
-
-    showToast('Conversa renomeada.', 'success');
   };
 
-  input.addEventListener('blur', salvar);
-  input.addEventListener('keydown', e => {
+  input.addEventListener('blur',     () => concluir(false));
+  input.addEventListener('keydown',  e => {
     if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { saved = true; el.textContent = atual; }
+    if (e.key === 'Escape') { concluir(true); }
   });
-  input.addEventListener('click',     e => e.stopPropagation());
-  input.addEventListener('mousedown', e => e.stopPropagation());
+  input.addEventListener('click',    e => e.stopPropagation());
+  input.addEventListener('mousedown',e => e.stopPropagation());
 }
 
 async function filterChats() {
