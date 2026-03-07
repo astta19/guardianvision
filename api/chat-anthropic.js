@@ -1,11 +1,10 @@
-// api/chat-anthropic.js — versão robusta sem streaming
+// api/chat-anthropic.js — com streaming SSE
 const MAX_PER_DAY = 50;
 const counts = new Map();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Rate limit
   const uid   = req.headers['x-user-id'] || req.headers['x-forwarded-for']?.split(',')[0] || 'anon';
   const today = new Date().toISOString().slice(0, 10);
   const rk    = `${uid}:${today}`;
@@ -17,10 +16,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = { ...req.body, stream: false }; // forçar sem streaming no backend
+    const body = { ...req.body };
+
+    // Se o cliente pediu stream, fazer proxy SSE
+    // Senão (ex: tools), retornar JSON normal
+    const wantStream = body.stream === true;
 
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method:  'POST',
+      method: 'POST',
       headers: {
         'x-api-key':         process.env.ANTHROPIC_KEY,
         'anthropic-version': '2023-06-01',
@@ -30,10 +33,43 @@ export default async function handler(req, res) {
       body: JSON.stringify(body),
     });
 
-    const data = await upstream.json();
-    return res.status(upstream.status).json(data);
+    // ── JSON (sem streaming) ──────────────────────────────
+    if (!wantStream) {
+      const data = await upstream.json();
+      res.setHeader('X-Requests-Today', n);
+      return res.status(upstream.status).json(data);
+    }
+
+    // ── SSE proxy ─────────────────────────────────────────
+    res.setHeader('Content-Type',      'text/event-stream');
+    res.setHeader('Cache-Control',     'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('X-Requests-Today',  n);
+
+    if (!upstream.ok) {
+      const err = await upstream.json().catch(() => ({}));
+      res.write(`data: ${JSON.stringify({ type: 'error', error: err })}\n\n`);
+      res.end();
+      return;
+    }
+
+    const reader  = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(decoder.decode(value, { stream: true }));
+      }
+    } finally {
+      res.end();
+    }
 
   } catch (e) {
-    return res.status(500).json({ error: 'upstream_error', message: e.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'upstream_error', message: e.message });
+    } else {
+      res.end();
+    }
   }
 }
