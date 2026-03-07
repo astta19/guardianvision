@@ -507,8 +507,15 @@ async function renameChat(id, el) {
 
     if (cancelar || novo === atual) return;
 
+    const chatId = String(id).trim();
+    if (!chatId || chatId === 'undefined' || chatId === 'null') {
+      showToast('ID da conversa inválido.', 'error');
+      el.textContent = atual;
+      return;
+    }
+
     const { error } = await sb.rpc('rename_chat', {
-      p_chat_id: id,
+      p_chat_id: chatId,
       p_title:   novo
     });
 
