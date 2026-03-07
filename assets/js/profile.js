@@ -90,7 +90,7 @@ async function atualizarNomeHeader() {
 
   const avatarUrl = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
   if (avatarUrl) {
-    wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" style="width:28px;height:28px;border-radius:50%;object-fit:cover" alt="avatar" onerror="this.parentElement.innerHTML='<i data-lucide=\"user\" style=\"width:14px;height:14px\"></i>';lucide.createIcons()">`;
+    wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" alt="avatar" onerror="this.parentElement.innerHTML='<i data-lucide=\"user\" style=\"width:14px;height:14px\"></i>';lucide.createIcons()">`;
   } else {
     const inicial = display[0]?.toUpperCase() || '?';
     wrap.innerHTML = `<span style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${inicial}</span>`;
