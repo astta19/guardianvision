@@ -49,19 +49,12 @@ function formatarDadosCNPJ(d) {
 
 // ====== FUNÇÕES DE CLIENTES ======
 async function loadClientes() {
-  // Guard: aguardar currentUser estar disponível
-  if (!currentUser) {
-    const { data: { user } } = await sb.auth.getUser().catch(() => ({ data: {} }));
-    if (user) currentUser = user;
-    else return; // não autenticado
-  }
   // Admin busca todos; outros buscam via vínculo clientes_usuarios
   let data, error;
   if (isAdmin()) {
     ({ data, error } = await sb
       .from('clientes')
-      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado, cnae_principal, cnae_descricao, natureza_juridica, data_abertura, capital_social, situacao_cadastral, inscricao_estadual, inscricao_municipal, logradouro, numero, bairro, municipio, uf, cep, telefone, email_empresa, socios, prolabore_total, faturamento_mensal, faturamento_anual, regime_apuracao, porte, optante_simples, optante_mei')
-      .eq('user_id', currentUser.id)
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
@@ -95,66 +88,6 @@ async function loadClientes() {
   loadChats();
 }
 
-// ── Templates dinâmicos por regime ────────────────────────────────────────
-function atualizarTemplates(regime) {
-  const tplRow = document.querySelector('.tpl-row');
-  if (!tplRow) return;
-
-  const r = (regime || '').toLowerCase();
-  const isMEI     = r.includes('mei');
-  const isSimples = r.includes('simples') || isMEI;
-  const isLP      = r.includes('presumido');
-  const isLR      = r.includes('real');
-
-  const templates = isMEI ? [
-    { icon: 'file-badge',   label: 'DASN-SIMEI', q: 'Como declarar o DASN-SIMEI para MEI?' },
-    { icon: 'receipt',      label: 'DAS-MEI',    q: 'Qual o valor do DAS-MEI em 2026?' },
-    { icon: 'alert-circle', label: 'Limites',    q: 'Quais são os limites de faturamento do MEI?' },
-    { icon: 'file-text',    label: 'NF-e MEI',   q: 'Quando o MEI é obrigado a emitir nota fiscal?' },
-    { icon: 'clock',        label: 'Prazos',     q: 'Quais são os prazos obrigatórios do MEI em 2026?' },
-  ] : isSimples ? [
-    { icon: 'calculator',   label: 'DAS',        q: 'Como calcular o DAS do Simples Nacional?' },
-    { icon: 'shield',       label: 'Fator R',    q: 'Como funciona o Fator R no Simples Nacional?' },
-    { icon: 'bar-chart-2',  label: 'Anexos',     q: 'Qual a diferença entre os anexos do Simples Nacional?' },
-    { icon: 'file-text',    label: 'CFOPs',      q: 'Quando usar CFOP 5102?' },
-    { icon: 'clock',        label: 'Prazos',     q: 'Prazo do DAS Simples Nacional 2026' },
-  ] : isLP ? [
-    { icon: 'calculator',   label: 'IRPJ/CSLL',  q: 'Como calcular IRPJ e CSLL no Lucro Presumido?' },
-    { icon: 'receipt',      label: 'PIS/COFINS', q: 'Como calcular PIS e COFINS no Lucro Presumido?' },
-    { icon: 'file-code-2',  label: 'ECF',        q: 'O que é ECF e qual o prazo de entrega?' },
-    { icon: 'file-text',    label: 'CFOPs',      q: 'Quando usar CFOP 5102?' },
-    { icon: 'clock',        label: 'Prazos',     q: 'Calendário fiscal Lucro Presumido 2026' },
-  ] : isLR ? [
-    { icon: 'calculator',   label: 'IRPJ Real',  q: 'Como apurar o IRPJ no Lucro Real?' },
-    { icon: 'receipt',      label: 'PIS/COFINS', q: 'Como calcular créditos de PIS/COFINS no Lucro Real?' },
-    { icon: 'book-open',    label: 'ECD/ECF',    q: 'O que é ECD e ECF no Lucro Real?' },
-    { icon: 'shield',       label: 'CSLL',       q: 'Como calcular CSLL no Lucro Real?' },
-    { icon: 'clock',        label: 'Prazos',     q: 'Calendário fiscal Lucro Real 2026' },
-  ] : [
-    { icon: 'calculator',   label: 'ICMS',       q: 'Como calcular ICMS de R$ 10.000 com alíquota 18%?' },
-    { icon: 'shield',       label: 'ICMS-ST',    q: 'Como funciona o ICMS-ST?' },
-    { icon: 'bar-chart-2',  label: 'Regimes',    q: 'Diferença entre Lucro Real e Presumido' },
-    { icon: 'file-text',    label: 'CFOPs',      q: 'Quando usar CFOP 5102?' },
-    { icon: 'clock',        label: 'Prazos',     q: 'Prazo SPED Fiscal 2026' },
-  ];
-
-  tplRow.innerHTML = templates.map((t, i) =>
-    `<button class="chip" data-tpl-idx="${i}" onclick="useTplByIdx(this)">
-      <i data-lucide="${t.icon}"></i> ${t.label}
-    </button>`
-  ).join('');
-  // Guardar perguntas sem risco de quebrar HTML com aspas
-  tplRow._tplQuestions = templates.map(t => t.q);
-  if (window.lucide) lucide.createIcons();
-}
-
-function useTplByIdx(btn) {
-  const row = btn.closest('.tpl-row');
-  const idx = parseInt(btn.dataset.tplIdx);
-  const q   = row?._tplQuestions?.[idx];
-  if (q && typeof useTemplate === 'function') useTemplate(q);
-}
-
 async function setCurrentCliente(cliente) {
   currentCliente = cliente;
   localStorage.setItem('lastClienteId', cliente.id);
@@ -167,25 +100,6 @@ async function setCurrentCliente(cliente) {
   document.getElementById('headerClientName').textContent = displayName;
   badge.style.display = 'flex';
 
-  // Templates dinâmicos por regime
-  atualizarTemplates(cliente.regime_tributario);
-
-  // Invalidar cache de contexto da empresa
-  if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
-
-  // Re-aplicar permissões — garante que botões data-perm aparecem após empresa carregar
-  if (typeof applyAdminUI === 'function') applyAdminUI();
-
-  // Mostrar botão de perfil da empresa (visível para qualquer usuário com empresa)
-  const btnPerfil = document.getElementById('btnEmpresaPerfil');
-  if (btnPerfil) btnPerfil.style.display = 'flex';
-  const btnPerfilCard = document.getElementById('btnPerfilEmpresaCard');
-  if (btnPerfilCard) btnPerfilCard.style.display = '';
-
-  // Mostrar DASN-SIMEI só para MEI
-  const btnDasn = document.getElementById('btnDasnSimei');
-  if (btnDasn) btnDasn.style.display = /mei/i.test(cliente.regime_tributario || '') ? 'flex' : 'none';
-
   // Recarregar chats filtrados
   loadChats();
 }
@@ -194,7 +108,6 @@ async function openClientModal() {
   closeSidebar(); // fecha sidebar antes de abrir modal no mobile
   document.getElementById('clientModal').classList.remove('hidden');
   renderClientList();
-  setTimeout(() => document.getElementById('clientSearchInput')?.focus(), 80);
 }
 
 async function closeClientModal() {
@@ -211,8 +124,7 @@ async function renderClientList() {
   if (isAdmin()) {
     ({ data, error } = await sb
       .from('clientes')
-      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
-      .eq('user_id', currentUser.id)
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
@@ -235,28 +147,17 @@ async function renderClientList() {
     return;
   }
 
-  el.innerHTML = data.map(cl => {
-    const nome = escapeHtml(cl.razao_social);
-    const fantasia = cl.nome_fantasia ? escapeHtml(cl.nome_fantasia) : '';
-    const nomeExibido = fantasia || nome;
-    const regime = cl.regime_tributario ? escapeHtml(cl.regime_tributario) : '';
-    // Regime abreviado para caber no badge sem romper layout
-    const regimeAbrev = regime
-      .replace('Simples Nacional', 'Simples')
-      .replace('Lucro Presumido', 'L. Presumido')
-      .replace('Lucro Real', 'L. Real')
-      .replace('Microempreendedor Individual', 'MEI');
-    return `<div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}">
-      <div class="client-item-info" onclick="selectCliente('${cl.id}')" style="cursor:pointer">
-        <div class="client-item-name" title="${nome}">${nomeExibido}</div>
+  el.innerHTML = data.map(cl => `
+    <div class="client-item ${currentCliente?.id === cl.id ? 'active' : ''}" style="position:relative">
+      <div style="flex:1;cursor:pointer" onclick="selectCliente('${cl.id}')">
+        <div class="client-item-name">${escapeHtml(cl.razao_social)}</div>
         <div class="client-item-cnpj">CNPJ: ${escapeHtml(cl.cnpj)}</div>
       </div>
-      ${regimeAbrev ? `<span class="client-item-regime" title="${regime}">${regimeAbrev}</span>` : ''}
-      ${isAdmin() ? `<button onclick="gerenciarAcessos('${cl.id}','${nome.replace(/'/g,'')}')" title="Gerenciar acessos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center;flex-shrink:0">
+      ${cl.regime_tributario ? `<span class="client-item-regime">${escapeHtml(cl.regime_tributario)}</span>` : ''}
+      ${isAdmin() ? `<button onclick="gerenciarAcessos('${cl.id}','${escapeHtml(cl.razao_social).replace(/'/g,'')}')" title="Gerenciar acessos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center">
         <i data-lucide="users" style="width:15px;height:15px"></i>
       </button>` : ''}
-    </div>`;
-  }).join('');
+    </div>`).join('');
 
   // Guardar lista para selectCliente usar
   window._clientesList = data;
@@ -439,7 +340,6 @@ async function saveNewClient() {
     nome_fantasia: fantasia || null,
     regime_tributario: regime || null,
     inscricao_estadual: ie || null,
-    tem_empregado: document.getElementById('fTemEmpregado')?.value === 'true',
     user_id: currentUser.id
   });
 
@@ -458,7 +358,7 @@ async function saveNewClient() {
   // Buscar o registro recém-inserido para ter o ID
   const { data: novo, error: selectError } = await sb
     .from('clientes')
-    .select('id, razao_social, cnpj, regime_tributario, nome_fantasia, tem_empregado')
+    .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
     .eq('cnpj', cnpjLimpo)
     .eq('user_id', currentUser.id)
     .maybeSingle();
@@ -493,7 +393,6 @@ async function saveNewClient() {
   setCurrentCliente(novo);
   closeClientModal();
   newChat();
-  showToast('Empresa cadastrada com sucesso!', 'success');
 }
 
 async function gerenciarAcessos(clienteId, clienteNome) {
@@ -587,247 +486,71 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'agenda',        label: 'Agenda de Prazos',     icon: 'calendar-clock' },
-  { id: 'documentos',    label: 'Documentos Fiscais',   icon: 'file-text' },
-  { id: 'sped',          label: 'SPED EFD',             icon: 'layers' },
-  { id: 'folha',         label: 'Folha de Pagamento',   icon: 'users' },
-  { id: 'financeiro',    label: 'Financeiro',           icon: 'wallet' },
-  { id: 'calculadora',   label: 'Calculadora',          icon: 'calculator' },
-  { id: 'portal',        label: 'Portal do Cliente',    icon: 'external-link' },
-  { id: 'arquivos',      label: 'Anexar Arquivos',      icon: 'paperclip' },
-  { id: 'gerar_doc',     label: 'Gerar Documentos',     icon: 'file-down' },
-  { id: 'exportar',      label: 'Exportar Conversa',    icon: 'download' },
-  { id: 'compartilhar',  label: 'Compartilhar Chat',    icon: 'share-2' },
+  { id: 'documentos',  label: 'Documentos Fiscais', icon: 'file-text' },
+  { id: 'sped',        label: 'SPED EFD',           icon: 'layers' },
+  { id: 'exportar',    label: 'Exportar Conversa',  icon: 'download' },
+  { id: 'calculadora', label: 'Calculadora',         icon: 'calculator' },
 ];
-
-// ── PAINEL DE USUÁRIOS: abas Usuários + Convites ─────────────
 
 async function abrirGerenciarPermissoes() {
   if (!isAdmin()) return;
   const modal = document.getElementById('permissoesModal');
   if (!modal) return;
   modal.style.display = 'flex';
-  await _renderPainelUsuarios('usuarios');
-}
 
-async function _renderPainelUsuarios(aba) {
   const content = document.getElementById('permissoesContent');
-
-  const tabs = `
-    <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px">
-      <button onclick="_renderPainelUsuarios('usuarios')"
-        style="padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;
-               background:${aba==='usuarios'?'var(--accent)':'var(--card)'};
-               color:${aba==='usuarios'?'#fff':'var(--text-light)'}">
-        Usuários
-      </button>
-      <button onclick="_renderPainelUsuarios('convites')"
-        style="padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;
-               background:${aba==='convites'?'var(--accent)':'var(--card)'};
-               color:${aba==='convites'?'#fff':'var(--text-light)'}">
-        Convites
-      </button>
-    </div>`;
-
-  content.innerHTML = tabs + '<p style="color:var(--text-light);text-align:center;padding:24px;font-size:13px">Carregando...</p>';
+  content.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:24px;font-size:13px">Carregando usuários...</p>';
   lucide.createIcons();
 
-  if (aba === 'usuarios') await _renderAbaUsuarios(content, tabs);
-  else                    await _renderAbaConvites(content, tabs);
-}
-
-async function _renderAbaUsuarios(content, tabs) {
   let usuarios;
   try {
     const res = await supabaseProxy('listar_usuarios', {});
     if (!res?.usuarios) throw new Error(res?.error || 'Sem dados');
     usuarios = res.usuarios;
+    // Guardar escritorio_id para uso em convites
+    if (res.escritorio_id) window._escritorioId = res.escritorio_id;
   } catch(e) {
-    content.innerHTML = tabs + `<p style="color:var(--error);font-size:13px;padding:12px">Erro: ${e.message}</p>`;
+    content.innerHTML = `<p style="color:var(--error);font-size:13px;padding:12px">Erro ao carregar: ${e.message}</p>`;
     return;
   }
 
+  // Guardar estado das permissões indexado por userId para uso no save
   window._permUsuarios = {};
   usuarios.forEach(u => { window._permUsuarios[u.id] = [...(u.permissions || [])]; });
 
-  const lista = usuarios.length === 0
+  content.innerHTML = usuarios.length === 0
     ? '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:20px">Nenhum usuário encontrado.</p>'
-    : usuarios.map(u => _renderCardUsuario(u)).join('');
+    : usuarios.map(u => renderPermUsuario(u)).join('');
 
-  content.innerHTML = tabs + lista;
   lucide.createIcons();
 }
 
-function _renderCardUsuario(u) {
-  const bloqueado = u.status === 'bloqueado';
-  const isAdminUser = u.role === 'admin';
-  const euMesmo = u.id === currentUser?.id;
-  const badgeRole = isAdminUser
-    ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">Admin</span>`
-    : `<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:99px;font-size:11px">Contador</span>`;
-  const badgeStatus = bloqueado
-    ? `<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:11px">Bloqueado</span>`
-    : `<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:99px;font-size:11px">Ativo</span>`;
-
+function renderPermUsuario(u) {
+  const permsAtivas = u.permissions || [];
   const checkboxes = PERMS_LIST.map(p => `
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:8px;user-select:none;">
-      <input type="checkbox" id="perm_${u.id}_${p.id}"
-        ${(u.permissions||[]).includes(p.id) ? 'checked' : ''}
+      <input type="checkbox" id="perm_${u.id}_${p.id}" data-uid="${u.id}" data-perm="${p.id}"
+        ${permsAtivas.includes(p.id) ? 'checked' : ''}
         onchange="togglePermLocal('${u.id}','${p.id}',this.checked)"
-        style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer"
-        ${isAdminUser ? 'disabled title="Admin tem acesso total"' : ''}>
+        style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer">
       <i data-lucide="${p.icon}" style="width:12px;height:12px;color:var(--text-light)"></i>
       ${p.label}
     </label>`).join('');
 
   return `
-    <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;opacity:${bloqueado?'0.7':'1'}">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text)">
-          <i data-lucide="user" style="width:14px;height:14px;color:var(--text-light)"></i>
-          ${escapeHtml(u.email)}
-          ${euMesmo ? '<span style="font-size:11px;color:var(--text-light)">(você)</span>' : ''}
-        </div>
-        <div style="display:flex;gap:6px;align-items:center">${badgeRole}${badgeStatus}</div>
+    <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <i data-lucide="user" style="width:14px;height:14px;color:var(--text-light)"></i>
+        ${escapeHtml(u.email)}
       </div>
-
-      ${!isAdminUser ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${checkboxes}</div>` : ''}
-
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-        ${!isAdminUser ? `
-          <button id="savebtn_${u.id}" onclick="salvarPermissoesUsuario('${u.id}')"
-            style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">
-            Salvar permissões
-          </button>` : ''}
-        ${!euMesmo ? `
-          <button onclick="_toggleRole('${u.id}','${u.role}')"
-            style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text)">
-            ${isAdminUser ? '↓ Tornar Contador' : '↑ Tornar Admin'}
-          </button>
-          <button onclick="_toggleStatus('${u.id}','${u.status}')"
-            style="background:${bloqueado?'#dcfce7':'#fee2e2'};border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:${bloqueado?'#16a34a':'#dc2626'}">
-            ${bloqueado ? '✓ Reativar' : '⊘ Bloquear'}
-          </button>` : ''}
-        <span id="permsg_${u.id}" style="font-size:12px;color:var(--text-light)"></span>
-      </div>
-    </div>`;
-}
-
-async function _renderAbaConvites(content, tabs) {
-  let convites = [];
-  try {
-    const res = await supabaseProxy('listar_convites', {});
-    convites = res?.convites || [];
-  } catch(e) {}
-
-  const BASE_URL = window.location.origin + window.location.pathname;
-
-  const lista = convites.length === 0
-    ? '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px 0">Nenhum convite gerado ainda.</p>'
-    : convites.map(cv => {
-        const expirado = new Date(cv.expires_at) < new Date();
-        const usado    = !!cv.usado_por;
-        const link     = `${BASE_URL}?convite=${cv.token}`;
-        const badge    = usado ? '<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:99px;font-size:11px">Usado</span>'
-                       : expirado ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:11px">Expirado</span>'
-                       : '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:99px;font-size:11px">Ativo</span>';
-        const roleLabel = cv.role === 'admin' ? 'Admin' : 'Contador';
-        return `
-          <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;opacity:${expirado||usado?'0.6':'1'}">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap">
-              <span style="font-size:12px;font-weight:600;color:var(--text)">${roleLabel} ${cv.email ? '→ '+escapeHtml(cv.email) : ''}</span>
-              <div style="display:flex;gap:6px;align-items:center">${badge}</div>
-            </div>
-            <div style="font-size:11px;color:var(--text-light);margin-bottom:8px">
-              Expira: ${new Date(cv.expires_at).toLocaleDateString('pt-BR')}
-            </div>
-            <div style="display:flex;gap:6px">
-              ${!usado && !expirado ? `
-                <button onclick="navigator.clipboard.writeText('${link}').then(()=>showToast('Link copiado!','success'))"
-                  style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">
-                  Copiar link
-                </button>` : ''}
-              <button onclick="_revogarConvite('${cv.id}')"
-                style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text)">
-                Remover
-              </button>
-            </div>
-          </div>`;
-      }).join('');
-
-  content.innerHTML = tabs + `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
-      <p style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Gerar novo convite</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <select id="_conviteRole" style="flex:1;min-width:120px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg)">
-          <option value="contador">Contador</option>
-          <option value="admin">Admin</option>
-        </select>
-        <input id="_conviteEmail" placeholder="E-mail (opcional)" type="email"
-          style="flex:2;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg)">
-        <select id="_conviteDias" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg)">
-          <option value="1">1 dia</option>
-          <option value="3">3 dias</option>
-          <option value="7" selected>7 dias</option>
-          <option value="30">30 dias</option>
-        </select>
-      </div>
-      <button onclick="_gerarConvite()"
-        style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer">
-        Gerar link de convite
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${checkboxes}</div>
+      <button id="savebtn_${u.id}"
+        onclick="salvarPermissoesUsuario('${u.id}', '${escapeHtml(u.email)}')"
+        style="background:var(--accent);color:var(--user-text);border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;">
+        Salvar
       </button>
-      <div id="_conviteGeradoBox" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
-        <p style="font-size:12px;font-weight:600;color:#16a34a;margin-bottom:4px">✅ Link gerado:</p>
-        <input id="_conviteGeradoUrl" readonly style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #bbf7d0;border-radius:6px;font-size:11px;font-family:monospace;background:#fff">
-        <button onclick="navigator.clipboard.writeText(document.getElementById('_conviteGeradoUrl').value).then(()=>showToast('Copiado!','success'))"
-          style="margin-top:6px;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">
-          Copiar
-        </button>
-      </div>
-    </div>
-    <p style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:8px">Convites gerados</p>
-    ${lista}`;
-  lucide.createIcons();
-}
-
-async function _gerarConvite() {
-  const role  = document.getElementById('_conviteRole')?.value  || 'contador';
-  const email = document.getElementById('_conviteEmail')?.value.trim() || null;
-  const dias  = parseInt(document.getElementById('_conviteDias')?.value) || 7;
-
-  const res = await supabaseProxy('criar_convite', { role, email, dias });
-  if (!res?.ok) { showToast(res?.erro || 'Erro ao gerar convite', 'error'); return; }
-
-  const link = `${window.location.origin}${window.location.pathname}?convite=${res.token}`;
-  const box  = document.getElementById('_conviteGeradoBox');
-  const inp  = document.getElementById('_conviteGeradoUrl');
-  if (box) { box.style.display = 'block'; inp.value = link; }
-  navigator.clipboard.writeText(link).catch(() => {});
-  showToast('Convite gerado!', 'success');
-}
-
-async function _revogarConvite(conviteId) {
-  const ok = await supabaseProxy('revogar_convite', { conviteId });
-  if (ok?.ok) { showToast('Convite removido', 'success'); _renderPainelUsuarios('convites'); }
-  else          showToast('Erro ao remover', 'error');
-}
-
-async function _toggleRole(userId, roleAtual) {
-  const novoRole = roleAtual === 'admin' ? 'contador' : 'admin';
-  const label    = novoRole === 'admin' ? 'tornar admin' : 'rebaixar para contador';
-  if (!confirm(`Confirma ${label} este usuário?`)) return;
-  const res = await supabaseProxy('definir_role', { userId, role: novoRole });
-  if (res?.ok) { showToast('Role atualizado', 'success'); _renderPainelUsuarios('usuarios'); }
-  else          showToast(res?.erro || 'Erro', 'error');
-}
-
-async function _toggleStatus(userId, statusAtual) {
-  const novoStatus = statusAtual === 'bloqueado' ? 'ativo' : 'bloqueado';
-  const label      = novoStatus === 'bloqueado' ? 'bloquear' : 'reativar';
-  if (!confirm(`Confirma ${label} este usuário?`)) return;
-  const res = await supabaseProxy('definir_status_usuario', { userId, status: novoStatus });
-  if (res?.ok) { showToast('Status atualizado', 'success'); _renderPainelUsuarios('usuarios'); }
-  else          showToast(res?.erro || 'Erro', 'error');
+      <span id="permsg_${u.id}" style="font-size:12px;margin-left:8px;color:var(--text-light)"></span>
+    </div>`;
 }
 
 function togglePermLocal(userId, permId, checked) {
@@ -840,18 +563,24 @@ function togglePermLocal(userId, permId, checked) {
   }
 }
 
-async function salvarPermissoesUsuario(userId) {
+async function salvarPermissoesUsuario(userId, email) {
   const btn = document.getElementById('savebtn_' + userId);
   const msg = document.getElementById('permsg_' + userId);
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+  if (msg) { msg.textContent = ''; }
+
   const permissions = window._permUsuarios?.[userId] || [];
-  const res = await definirPermissoes(userId, permissions).catch(() => null);
-  const ok  = res === true || res?.ok === true;
-  if (btn) { btn.disabled = false; btn.textContent = 'Salvar permissões'; }
+  let ok = false;
+  try {
+    const res = await definirPermissoes(userId, permissions);
+    ok = res === true || res?.ok === true;
+  } catch(e) { ok = false; }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
   if (msg) {
-    msg.textContent = ok ? '✅ Salvo' : '❌ Erro';
-    msg.style.color = ok ? '#16a34a' : '#ef4444';
-    setTimeout(() => { if(msg) msg.textContent = ''; }, 3000);
+    msg.textContent = ok ? '✅ Salvo' : '❌ Erro ao salvar';
+    msg.style.color = ok ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)';
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
   }
 }
 
@@ -859,4 +588,157 @@ function fecharPermissoesModal() {
   const m = document.getElementById('permissoesModal');
   if (m) m.style.display = 'none';
   window._permUsuarios = {};
+}
+
+
+// ── ESCRITÓRIO E CONVITES ──────────────────────────────────────
+
+// Garantir que o admin tem escritório criado
+async function garantirEscritorio() {
+  if (!isAdmin()) return null;
+  if (window._escritorioId) return window._escritorioId;
+
+  const nomeEscritorio = currentUser?.user_metadata?.full_name
+    || currentUser?.email?.split('@')[0]
+    || 'Meu Escritório';
+
+  const res = await supabaseProxy('criar_escritorio', { nome: nomeEscritorio });
+  if (res?.escritorio_id) {
+    window._escritorioId = res.escritorio_id;
+    return res.escritorio_id;
+  }
+  return null;
+}
+
+// Abrir modal de convites
+async function abrirConvites() {
+  if (!isAdmin()) return;
+
+  const escritorioId = await garantirEscritorio();
+  if (!escritorioId) { showToast('Erro ao obter escritório.', 'error'); return; }
+
+  const modal = document.getElementById('convitesModal');
+  if (!modal) { showToast('Modal de convites não encontrado.', 'error'); return; }
+
+  modal.style.display = 'flex';
+  await renderConvites(escritorioId);
+}
+
+function fecharConvites() {
+  const modal = document.getElementById('convitesModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function renderConvites(escritorioId) {
+  const lista = document.getElementById('convitesLista');
+  if (!lista) return;
+  lista.innerHTML = '<p style="color:var(--text-light);font-size:13px">Carregando...</p>';
+
+  const res = await supabaseProxy('listar_convites', { escritorio_id: escritorioId });
+  const convites = res?.convites || [];
+
+  if (!convites.length) {
+    lista.innerHTML = '<p style="color:var(--text-light);font-size:13px">Nenhum convite pendente.</p>';
+    return;
+  }
+
+  lista.innerHTML = convites.map(cv => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
+      background:var(--bg);border:1px solid var(--border);border-radius:8px;gap:8px">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${escapeHtml(cv.email)}</div>
+        <div style="font-size:11px;color:var(--text-light)">
+          Expira: ${new Date(cv.expira_em).toLocaleDateString('pt-BR')}
+        </div>
+      </div>
+      <button onclick="copiarLinkConvite('${cv.token}')"
+        style="padding:5px 10px;font-size:11px;border:1px solid var(--border);border-radius:6px;
+        background:var(--bg);cursor:pointer;color:var(--text)">
+        Copiar link
+      </button>
+    </div>`).join('');
+}
+
+async function enviarConvite() {
+  const emailEl = document.getElementById('conviteEmail');
+  const email = emailEl?.value?.trim();
+  if (!email) { showToast('Informe o e-mail.', 'warn'); return; }
+
+  const escritorioId = await garantirEscritorio();
+  if (!escritorioId) return;
+
+  const btn = document.getElementById('conviteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  const res = await supabaseProxy('convidar_usuario', { email, escritorio_id: escritorioId });
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Convidar'; }
+
+  if (res?.token) {
+    const link = `${location.origin}${location.pathname}?convite=${res.token}`;
+    await navigator.clipboard.writeText(link).catch(() => {});
+    showToast('Convite criado! Link copiado.', 'success');
+    if (emailEl) emailEl.value = '';
+    await renderConvites(escritorioId);
+  } else {
+    showToast(res?.error || 'Erro ao criar convite.', 'error');
+  }
+}
+
+function copiarLinkConvite(token) {
+  const link = `${location.origin}${location.pathname}?convite=${token}`;
+  navigator.clipboard.writeText(link).then(() => showToast('Link copiado!', 'success'));
+}
+
+// Vincular manualmente um usuário ao escritório (por e-mail)
+async function vincularUsuarioManual() {
+  const emailEl = document.getElementById('vincularEmail');
+  const email = emailEl?.value?.trim();
+  if (!email) { showToast('Informe o e-mail.', 'warn'); return; }
+
+  const escritorioId = await garantirEscritorio();
+  if (!escritorioId) return;
+
+  // Buscar user_id pelo email via listar_usuarios (todos do Supabase — só no proxy)
+  const resUsers = await supabaseProxy('buscar_usuario_por_email', { email });
+  if (!resUsers?.user_id) {
+    showToast('Usuário não encontrado. Envie um convite primeiro.', 'warn');
+    return;
+  }
+
+  const res = await supabaseProxy('vincular_usuario_escritorio', {
+    user_id: resUsers.user_id,
+    escritorio_id: escritorioId,
+  });
+
+  if (res?.ok) {
+    showToast('Usuário vinculado ao escritório.', 'success');
+    if (emailEl) emailEl.value = '';
+  } else {
+    showToast(res?.error || 'Erro ao vincular.', 'error');
+  }
+}
+
+// Verificar convite na URL ao carregar (chamado pelo core.js no onAuthStateChange)
+async function verificarConviteURL() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('convite');
+  if (!token || !currentUser) return;
+
+  const { data, error } = await sb.rpc('usar_convite', {
+    p_token: token,
+    p_user_id: currentUser.id,
+  });
+
+  // Limpar o token da URL
+  const url = new URL(location.href);
+  url.searchParams.delete('convite');
+  history.replaceState({}, '', url.toString());
+
+  if (error || !data?.ok) {
+    showToast(data?.error || 'Convite inválido ou expirado.', 'error');
+    return;
+  }
+
+  showToast('Você foi adicionado ao escritório!', 'success');
 }
