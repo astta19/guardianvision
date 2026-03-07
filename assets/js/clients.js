@@ -600,63 +600,234 @@ const PERMS_LIST = [
   { id: 'compartilhar',  label: 'Compartilhar Chat',    icon: 'share-2' },
 ];
 
+// ── PAINEL DE USUÁRIOS: abas Usuários + Convites ─────────────
+
 async function abrirGerenciarPermissoes() {
   if (!isAdmin()) return;
   const modal = document.getElementById('permissoesModal');
   if (!modal) return;
   modal.style.display = 'flex';
+  await _renderPainelUsuarios('usuarios');
+}
 
+async function _renderPainelUsuarios(aba) {
   const content = document.getElementById('permissoesContent');
-  content.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:24px;font-size:13px">Carregando usuários...</p>';
+
+  const tabs = `
+    <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px">
+      <button onclick="_renderPainelUsuarios('usuarios')"
+        style="padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;
+               background:${aba==='usuarios'?'var(--accent)':'var(--card)'};
+               color:${aba==='usuarios'?'#fff':'var(--text-light)'}">
+        Usuários
+      </button>
+      <button onclick="_renderPainelUsuarios('convites')"
+        style="padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;
+               background:${aba==='convites'?'var(--accent)':'var(--card)'};
+               color:${aba==='convites'?'#fff':'var(--text-light)'}">
+        Convites
+      </button>
+    </div>`;
+
+  content.innerHTML = tabs + '<p style="color:var(--text-light);text-align:center;padding:24px;font-size:13px">Carregando...</p>';
   lucide.createIcons();
 
+  if (aba === 'usuarios') await _renderAbaUsuarios(content, tabs);
+  else                    await _renderAbaConvites(content, tabs);
+}
+
+async function _renderAbaUsuarios(content, tabs) {
   let usuarios;
   try {
     const res = await supabaseProxy('listar_usuarios', {});
     if (!res?.usuarios) throw new Error(res?.error || 'Sem dados');
     usuarios = res.usuarios;
   } catch(e) {
-    content.innerHTML = `<p style="color:var(--error);font-size:13px;padding:12px">Erro ao carregar: ${e.message}</p>`;
+    content.innerHTML = tabs + `<p style="color:var(--error);font-size:13px;padding:12px">Erro: ${e.message}</p>`;
     return;
   }
 
-  // Guardar estado das permissões indexado por userId para uso no save
   window._permUsuarios = {};
   usuarios.forEach(u => { window._permUsuarios[u.id] = [...(u.permissions || [])]; });
 
-  content.innerHTML = usuarios.length === 0
+  const lista = usuarios.length === 0
     ? '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:20px">Nenhum usuário encontrado.</p>'
-    : usuarios.map(u => renderPermUsuario(u)).join('');
+    : usuarios.map(u => _renderCardUsuario(u)).join('');
 
+  content.innerHTML = tabs + lista;
   lucide.createIcons();
 }
 
-function renderPermUsuario(u) {
-  const permsAtivas = u.permissions || [];
+function _renderCardUsuario(u) {
+  const bloqueado = u.status === 'bloqueado';
+  const isAdminUser = u.role === 'admin';
+  const euMesmo = u.id === currentUser?.id;
+  const badgeRole = isAdminUser
+    ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">Admin</span>`
+    : `<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:99px;font-size:11px">Contador</span>`;
+  const badgeStatus = bloqueado
+    ? `<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:11px">Bloqueado</span>`
+    : `<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:99px;font-size:11px">Ativo</span>`;
+
   const checkboxes = PERMS_LIST.map(p => `
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:8px;user-select:none;">
-      <input type="checkbox" id="perm_${u.id}_${p.id}" data-uid="${u.id}" data-perm="${p.id}"
-        ${permsAtivas.includes(p.id) ? 'checked' : ''}
+      <input type="checkbox" id="perm_${u.id}_${p.id}"
+        ${(u.permissions||[]).includes(p.id) ? 'checked' : ''}
         onchange="togglePermLocal('${u.id}','${p.id}',this.checked)"
-        style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer">
+        style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer"
+        ${isAdminUser ? 'disabled title="Admin tem acesso total"' : ''}>
       <i data-lucide="${p.icon}" style="width:12px;height:12px;color:var(--text-light)"></i>
       ${p.label}
     </label>`).join('');
 
   return `
-    <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-        <i data-lucide="user" style="width:14px;height:14px;color:var(--text-light)"></i>
-        ${escapeHtml(u.email)}
+    <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;opacity:${bloqueado?'0.7':'1'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text)">
+          <i data-lucide="user" style="width:14px;height:14px;color:var(--text-light)"></i>
+          ${escapeHtml(u.email)}
+          ${euMesmo ? '<span style="font-size:11px;color:var(--text-light)">(você)</span>' : ''}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">${badgeRole}${badgeStatus}</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${checkboxes}</div>
-      <button id="savebtn_${u.id}"
-        onclick="salvarPermissoesUsuario('${u.id}', '${escapeHtml(u.email)}')"
-        style="background:var(--accent);color:var(--user-text);border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;">
-        Salvar
-      </button>
-      <span id="permsg_${u.id}" style="font-size:12px;margin-left:8px;color:var(--text-light)"></span>
+
+      ${!isAdminUser ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${checkboxes}</div>` : ''}
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        ${!isAdminUser ? `
+          <button id="savebtn_${u.id}" onclick="salvarPermissoesUsuario('${u.id}')"
+            style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">
+            Salvar permissões
+          </button>` : ''}
+        ${!euMesmo ? `
+          <button onclick="_toggleRole('${u.id}','${u.role}')"
+            style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text)">
+            ${isAdminUser ? '↓ Tornar Contador' : '↑ Tornar Admin'}
+          </button>
+          <button onclick="_toggleStatus('${u.id}','${u.status}')"
+            style="background:${bloqueado?'#dcfce7':'#fee2e2'};border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:${bloqueado?'#16a34a':'#dc2626'}">
+            ${bloqueado ? '✓ Reativar' : '⊘ Bloquear'}
+          </button>` : ''}
+        <span id="permsg_${u.id}" style="font-size:12px;color:var(--text-light)"></span>
+      </div>
     </div>`;
+}
+
+async function _renderAbaConvites(content, tabs) {
+  let convites = [];
+  try {
+    const res = await supabaseProxy('listar_convites', {});
+    convites = res?.convites || [];
+  } catch(e) {}
+
+  const BASE_URL = window.location.origin + window.location.pathname;
+
+  const lista = convites.length === 0
+    ? '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px 0">Nenhum convite gerado ainda.</p>'
+    : convites.map(cv => {
+        const expirado = new Date(cv.expires_at) < new Date();
+        const usado    = !!cv.usado_por;
+        const link     = `${BASE_URL}?convite=${cv.token}`;
+        const badge    = usado ? '<span style="background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:99px;font-size:11px">Usado</span>'
+                       : expirado ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:11px">Expirado</span>'
+                       : '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:99px;font-size:11px">Ativo</span>';
+        const roleLabel = cv.role === 'admin' ? 'Admin' : 'Contador';
+        return `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;opacity:${expirado||usado?'0.6':'1'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:600;color:var(--text)">${roleLabel} ${cv.email ? '→ '+escapeHtml(cv.email) : ''}</span>
+              <div style="display:flex;gap:6px;align-items:center">${badge}</div>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-bottom:8px">
+              Expira: ${new Date(cv.expires_at).toLocaleDateString('pt-BR')}
+            </div>
+            <div style="display:flex;gap:6px">
+              ${!usado && !expirado ? `
+                <button onclick="navigator.clipboard.writeText('${link}').then(()=>showToast('Link copiado!','success'))"
+                  style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">
+                  Copiar link
+                </button>` : ''}
+              <button onclick="_revogarConvite('${cv.id}')"
+                style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:var(--text)">
+                Remover
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+
+  content.innerHTML = tabs + `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">
+      <p style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Gerar novo convite</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="_conviteRole" style="flex:1;min-width:120px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg)">
+          <option value="contador">Contador</option>
+          <option value="admin">Admin</option>
+        </select>
+        <input id="_conviteEmail" placeholder="E-mail (opcional)" type="email"
+          style="flex:2;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg)">
+        <select id="_conviteDias" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg)">
+          <option value="1">1 dia</option>
+          <option value="3">3 dias</option>
+          <option value="7" selected>7 dias</option>
+          <option value="30">30 dias</option>
+        </select>
+      </div>
+      <button onclick="_gerarConvite()"
+        style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;cursor:pointer">
+        Gerar link de convite
+      </button>
+      <div id="_conviteGeradoBox" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+        <p style="font-size:12px;font-weight:600;color:#16a34a;margin-bottom:4px">✅ Link gerado:</p>
+        <input id="_conviteGeradoUrl" readonly style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #bbf7d0;border-radius:6px;font-size:11px;font-family:monospace;background:#fff">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('_conviteGeradoUrl').value).then(()=>showToast('Copiado!','success'))"
+          style="margin-top:6px;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">
+          Copiar
+        </button>
+      </div>
+    </div>
+    <p style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:8px">Convites gerados</p>
+    ${lista}`;
+  lucide.createIcons();
+}
+
+async function _gerarConvite() {
+  const role  = document.getElementById('_conviteRole')?.value  || 'contador';
+  const email = document.getElementById('_conviteEmail')?.value.trim() || null;
+  const dias  = parseInt(document.getElementById('_conviteDias')?.value) || 7;
+
+  const res = await supabaseProxy('criar_convite', { role, email, dias });
+  if (!res?.ok) { showToast(res?.erro || 'Erro ao gerar convite', 'error'); return; }
+
+  const link = `${window.location.origin}${window.location.pathname}?convite=${res.token}`;
+  const box  = document.getElementById('_conviteGeradoBox');
+  const inp  = document.getElementById('_conviteGeradoUrl');
+  if (box) { box.style.display = 'block'; inp.value = link; }
+  navigator.clipboard.writeText(link).catch(() => {});
+  showToast('Convite gerado!', 'success');
+}
+
+async function _revogarConvite(conviteId) {
+  const ok = await supabaseProxy('revogar_convite', { conviteId });
+  if (ok?.ok) { showToast('Convite removido', 'success'); _renderPainelUsuarios('convites'); }
+  else          showToast('Erro ao remover', 'error');
+}
+
+async function _toggleRole(userId, roleAtual) {
+  const novoRole = roleAtual === 'admin' ? 'contador' : 'admin';
+  const label    = novoRole === 'admin' ? 'tornar admin' : 'rebaixar para contador';
+  if (!confirm(`Confirma ${label} este usuário?`)) return;
+  const res = await supabaseProxy('definir_role', { userId, role: novoRole });
+  if (res?.ok) { showToast('Role atualizado', 'success'); _renderPainelUsuarios('usuarios'); }
+  else          showToast(res?.erro || 'Erro', 'error');
+}
+
+async function _toggleStatus(userId, statusAtual) {
+  const novoStatus = statusAtual === 'bloqueado' ? 'ativo' : 'bloqueado';
+  const label      = novoStatus === 'bloqueado' ? 'bloquear' : 'reativar';
+  if (!confirm(`Confirma ${label} este usuário?`)) return;
+  const res = await supabaseProxy('definir_status_usuario', { userId, status: novoStatus });
+  if (res?.ok) { showToast('Status atualizado', 'success'); _renderPainelUsuarios('usuarios'); }
+  else          showToast(res?.erro || 'Erro', 'error');
 }
 
 function togglePermLocal(userId, permId, checked) {
@@ -669,24 +840,18 @@ function togglePermLocal(userId, permId, checked) {
   }
 }
 
-async function salvarPermissoesUsuario(userId, email) {
+async function salvarPermissoesUsuario(userId) {
   const btn = document.getElementById('savebtn_' + userId);
   const msg = document.getElementById('permsg_' + userId);
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
-  if (msg) { msg.textContent = ''; }
-
   const permissions = window._permUsuarios?.[userId] || [];
-  let ok = false;
-  try {
-    const res = await definirPermissoes(userId, permissions);
-    ok = res === true || res?.ok === true;
-  } catch(e) { ok = false; }
-
-  if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+  const res = await definirPermissoes(userId, permissions).catch(() => null);
+  const ok  = res === true || res?.ok === true;
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar permissões'; }
   if (msg) {
-    msg.textContent = ok ? '✅ Salvo' : '❌ Erro ao salvar';
-    msg.style.color = ok ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)';
-    setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
+    msg.textContent = ok ? '✅ Salvo' : '❌ Erro';
+    msg.style.color = ok ? '#16a34a' : '#ef4444';
+    setTimeout(() => { if(msg) msg.textContent = ''; }, 3000);
   }
 }
 
