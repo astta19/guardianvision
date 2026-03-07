@@ -34,34 +34,35 @@ async function carregarPerfil() {
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
-    // Fallback para metadados do Google OAuth
+    // Metadados do Google OAuth — normalizar campos variantes
     const meta = currentUser.user_metadata || {};
-    const googleName = meta.full_name || meta.name || '';
+    const googleName   = meta.full_name || meta.name || meta.user_name || '';
     const googleAvatar = meta.avatar_url || meta.picture || '';
+    const googleEmail  = currentUser.email || meta.email || '';
 
     perfilCache = {
-      nome: data?.nome || googleName || '',
-      avatar_url: data?.avatar_url || googleAvatar || '',
-      crc: data?.crc || '',
-      cpf: data?.cpf || '',
-      cod_mun: data?.cod_mun || '',
-      cnpj_escritorio: data?.cnpj_escritorio || ''
+      nome:            data?.nome        || googleName  || googleEmail.split('@')[0] || '',
+      avatar_url:      data?.avatar_url  || googleAvatar || '',
+      crc:             data?.crc         || '',
+      cpf:             data?.cpf         || '',
+      cod_mun:         data?.cod_mun     || '',
+      cnpj_escritorio: data?.cnpj_escritorio || '',
     };
 
-    // Primeira vez com Google: salvar no banco automaticamente
-    if (!data && googleName) {
+    // Primeira vez com Google (sem registro na tabela): salvar automaticamente
+    if (!data && (googleName || googleAvatar)) {
       sb.from('perfis_usuarios').upsert({
-        user_id: currentUser.id,
-        nome: googleName,
-        avatar_url: googleAvatar,
-        atualizado_em: new Date().toISOString()
+        user_id:       currentUser.id,
+        nome:          googleName || googleEmail.split('@')[0],
+        avatar_url:    googleAvatar,
+        atualizado_em: new Date().toISOString(),
       }, { onConflict: 'user_id' }).catch(() => {});
     }
 
     return perfilCache;
   } catch(e) {
-    perfilCache = {};
-    return {};
+    perfilCache = { nome: currentUser?.email?.split('@')[0] || '' };
+    return perfilCache;
   }
 }
 
@@ -75,18 +76,24 @@ async function salvarPerfilBanco(campos) {
 }
 
 async function atualizarNomeHeader() {
-  const nome = perfilCache?.nome || currentUser?.user_metadata?.nome;
-  const email = currentUser?.email || '';
+  const meta    = currentUser?.user_metadata || {};
+  const nome    = perfilCache?.nome || meta.full_name || meta.name || '';
+  const email   = currentUser?.email || '';
   const display = nome || email.split('@')[0] || 'usuário';
-  document.getElementById('userEmail').textContent = display;
 
-  // Atualizar avatar no header
+  const elNome = document.getElementById('userEmail');
+  if (elNome) elNome.textContent = display;
+
+  // Avatar: foto do Google ou inicial do nome
   const wrap = document.getElementById('headerAvatarWrap');
-  if (wrap && perfilCache?.avatar_url) {
-    wrap.innerHTML = `<img src="${perfilCache.avatar_url}" class="header-avatar" alt="avatar">`;
-  } else if (wrap) {
-    wrap.innerHTML = '<i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i>';
-    lucide.createIcons();
+  if (!wrap) return;
+
+  const avatarUrl = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
+  if (avatarUrl) {
+    wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" style="width:28px;height:28px;border-radius:50%;object-fit:cover" alt="avatar" onerror="this.parentElement.innerHTML='<i data-lucide=\"user\" style=\"width:14px;height:14px\"></i>';lucide.createIcons()">`;
+  } else {
+    const inicial = display[0]?.toUpperCase() || '?';
+    wrap.innerHTML = `<span style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${inicial}</span>`;
   }
 }
 
