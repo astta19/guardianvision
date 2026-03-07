@@ -240,16 +240,8 @@
     @media (max-width: 600px) {
       .c-head { padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); gap: 6px; }
       .c-title { font-size: 14px; }
-      .c-right { gap: 2px; flex-shrink: 0; }
-      .icon-btn { width: 34px; height: 34px; }
-      .header-avatar { width: 22px; height: 22px; }
-      #headerAvatarWrap { width: 24px; height: 24px; }
-      .user-info { padding: 3px 6px; max-width: 110px; }
-    }
-    @media (max-width: 400px) {
-      .icon-btn { width: 30px; height: 30px; }
-      .c-right { gap: 1px; }
-      .user-info { max-width: 80px; }
+      .c-right { gap: 2px; }
+      .icon-btn { width: 36px; height: 36px; }
     }
 
     .c-left {
@@ -320,7 +312,6 @@
       border-radius: 12px;
       padding: 8px;
       min-width: 210px;
-      max-width: calc(100vw - 24px);
       z-index: 600;
       box-shadow: 0 8px 24px rgba(0,0,0,0.13);
       display: none;
@@ -1161,21 +1152,25 @@
       cursor:pointer; font-size:12px;
     }
     .avatar-upload-btn:hover { opacity:0.85; }
-    .header-avatar {
-      width:26px; height:26px; border-radius:50%;
-      object-fit:cover; flex-shrink:0;
-      border:2px solid var(--border);
-      display:block;
-    }
     #headerAvatarWrap {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      flex-shrink:0;
-      width:28px;
-      height:28px;
-      border-radius:50%;
-      overflow:hidden;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+      background: var(--bg);
+    }
+    .header-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
     }
     .profile-avatar {
       width:64px; height:64px; border-radius:50%;
