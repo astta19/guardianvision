@@ -822,21 +822,40 @@ function hideThinkingIndicator() {
 }
 
 // ── Token/custo counter ───────────────────────────────────
-let _sessionTokens = { input: 0, output: 0, requests: 0 };
+let _sessionTokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, requests: 0 };
 
-function updateTokenCounter(inputT, outputT) {
-  _sessionTokens.input    += inputT  || 0;
-  _sessionTokens.output   += outputT || 0;
-  _sessionTokens.requests += 1;
+function updateTokenCounter(inputT, outputT, cacheReadT = 0, cacheWriteT = 0) {
+  _sessionTokens.input      += inputT      || 0;
+  _sessionTokens.output     += outputT     || 0;
+  _sessionTokens.cacheRead  += cacheReadT  || 0;
+  _sessionTokens.cacheWrite += cacheWriteT || 0;
+  _sessionTokens.requests   += 1;
 
-  // Custo estimado Sonnet 4.6: $3/MTok input, $15/MTok output
-  const custoUSD = (_sessionTokens.input * 3 + _sessionTokens.output * 15) / 1_000_000;
+  // Preços Sonnet 4.6: input $3/MTok, output $15/MTok
+  // Cache write $3.75/MTok, cache read $0.30/MTok (90% desconto)
+  const custoUSD = (
+    _sessionTokens.input      * 3.00 +
+    _sessionTokens.output     * 15.00 +
+    _sessionTokens.cacheWrite * 3.75 +
+    _sessionTokens.cacheRead  * 0.30
+  ) / 1_000_000;
   const custoBRL = custoUSD * 5.8;
+
+  const totalTok = _sessionTokens.input + _sessionTokens.output;
+  const cacheHit = _sessionTokens.cacheRead > 0
+    ? ` · cache ${Math.round(_sessionTokens.cacheRead / (totalTok || 1) * 100)}%`
+    : '';
 
   const el = document.getElementById('tokenCounter');
   if (el) {
-    el.title = `Tokens: ${_sessionTokens.input.toLocaleString()} entrada + ${_sessionTokens.output.toLocaleString()} saída`;
-    el.textContent = `~R$ ${custoBRL.toFixed(3)} · ${_sessionTokens.requests} msg`;
+    el.title = [
+      `Entrada: ${_sessionTokens.input.toLocaleString()} tok`,
+      `Saída: ${_sessionTokens.output.toLocaleString()} tok`,
+      `Cache lido: ${_sessionTokens.cacheRead.toLocaleString()} tok`,
+      `Cache escrito: ${_sessionTokens.cacheWrite.toLocaleString()} tok`,
+      `Custo estimado: R$ ${custoBRL.toFixed(4)}`,
+    ].join(' | ');
+    el.textContent = `~R$ ${custoBRL.toFixed(3)} · ${_sessionTokens.requests} msg${cacheHit}`;
   }
 }
 
@@ -885,6 +904,7 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
     let   thinkingText = '';
     let   responseText = '';
     let   inputTokens  = 0, outputTokens = 0;
+    let   cacheReadTokens = 0, cacheWriteTokens = 0;
     let   inThinking   = false;
 
     while (true) {
@@ -932,12 +952,15 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
           }
         }
 
-        // Uso de tokens
+        // Uso de tokens (incluindo cache)
         if (evt.type === 'message_delta' && evt.usage) {
           outputTokens = evt.usage.output_tokens || 0;
         }
         if (evt.type === 'message_start' && evt.message?.usage) {
-          inputTokens = evt.message.usage.input_tokens || 0;
+          const u = evt.message.usage;
+          inputTokens      = u.input_tokens                   || 0;
+          cacheReadTokens  = u.cache_read_input_tokens        || 0;
+          cacheWriteTokens = u.cache_creation_input_tokens    || 0;
         }
 
         // Tool use via streaming — acumular input JSON delta por delta
@@ -960,7 +983,7 @@ async function streamResposta(endpoint, body, onChunk, onThinking, onDone, onErr
       }
     }
 
-    onDone({ text: responseText, thinking: thinkingText, inputTokens, outputTokens });
+    onDone({ text: responseText, thinking: thinkingText, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens });
 
   } catch(e) {
     onError({ error: e.message }, 0);
@@ -1289,8 +1312,23 @@ POSTURA PROFISSIONAL:
 
 `.trim();
 
-    // Preparar mensagens (últimas 8 para manter contexto)
-    const recentChatMessages = currentChat.messages.slice(-10).map(m => ({
+    // Resumo automático: se conversa longa, comprimir mensagens antigas em um bloco
+    let historicoBase = currentChat.messages;
+    if (historicoBase.length > 20 && !historicoBase[0]?._resumo) {
+      const antigas = historicoBase.slice(0, -10);
+      const resumoTexto = antigas.map(m =>
+        `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${(m.content || '').substring(0, 200)}`
+      ).join('\n');
+      const blocoResumo = {
+        role: 'user',
+        content: `[Resumo do histórico anterior desta conversa:]\n${resumoTexto}`,
+        _resumo: true,
+      };
+      historicoBase = [blocoResumo, ...historicoBase.slice(-10)];
+    }
+
+    // Preparar mensagens (últimas 10 + possível resumo)
+    const recentChatMessages = historicoBase.slice(-12).map(m => ({
       role: m.role,
       content: m.role === 'user' && m.files ?
         `${m.content}\n\n[Arquivos anexados nesta mensagem: ${m.files.map(f => f.name).join(', ')}]` :
@@ -1374,9 +1412,13 @@ POSTURA PROFISSIONAL:
             (result) => {
               streamText    = result.text;
               streamThinking= result.thinking || '';
-              streamTokens  = { input: result.inputTokens || 0, output: result.outputTokens || 0 };
+              streamTokens  = {
+                input:       result.inputTokens       || 0,
+                output:      result.outputTokens      || 0,
+                cacheRead:   result.cacheReadTokens   || 0,
+                cacheWrite:  result.cacheWriteTokens  || 0,
+              };
               if (result.toolCalls) window._streamToolCalls = result.toolCalls;
-              // Se não houve chunks (resposta JSON), esconder indicadores agora
               hideTypingIndicator();
               hideThinkingIndicator();
               streamDone = true;
@@ -1528,7 +1570,7 @@ POSTURA PROFISSIONAL:
       finalizeStreamBubble(data._bubble, toolCardsHtml
         ? `<div class="tool-cards-wrap">${toolCardsHtml}</div>${replyText ? '<div class="tool-text-reply">' + replyText + '</div>' : ''}`
         : replyText, footer);
-      if (data._tokens) updateTokenCounter(data._tokens.input, data._tokens.output);
+      if (data._tokens) updateTokenCounter(data._tokens.input, data._tokens.output, data._tokens.cacheRead, data._tokens.cacheWrite);
     } else {
       // Sem bolha de streaming — addMessage com texto puro + toolCards em seguida
       addMessage(replyText || toolMsgsTexto || '...', false, confidence, null, interacaoId, null, normalized.model);
