@@ -761,6 +761,10 @@
                   <i data-lucide="shield"></i>
                   <span>Permissões</span>
                 </button>
+          <button class="tool-card admin-menu-item" onclick="abrirConvites(); closeDropdowns()">
+            <i data-lucide="users"></i>
+            <span>Escritório</span>
+          </button>
               </div>
             </div>
 
@@ -2031,5 +2035,62 @@
   </div>
 
   <script src="assets/js/portal-admin.js"></script>
+
+  <!-- MODAL CONVITES / GESTÃO DE ESCRITÓRIO -->
+  <div id="convitesModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+    z-index:6000;align-items:flex-end;justify-content:center;overflow:hidden"
+    onclick="if(event.target===this)fecharConvites()">
+    <div class="dp-modal" style="max-width:520px">
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i data-lucide="users" style="width:16px;height:16px;color:var(--accent)"></i>
+          <span>Gestão do Escritório</span>
+        </div>
+        <button class="dp-close-btn" onclick="fecharConvites()">
+          <i data-lucide="x" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+
+      <div class="dp-body" style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Convidar por e-mail -->
+        <div>
+          <div class="dp-section-lbl">Convidar usuário por e-mail</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="conviteEmail" type="email" placeholder="email@contador.com"
+              style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+              background:var(--bg);color:var(--text);font-size:13px">
+            <button id="conviteBtn" onclick="enviarConvite()" class="dp-btn-pri">
+              <i data-lucide="send" style="width:13px;height:13px"></i> Convidar
+            </button>
+          </div>
+          <p class="dp-note">O link de convite expira em 7 dias.</p>
+        </div>
+
+        <!-- Vincular manualmente (usuário já cadastrado) -->
+        <div>
+          <div class="dp-section-lbl">Vincular usuário já cadastrado</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="vincularEmail" type="email" placeholder="email@contador.com"
+              style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;
+              background:var(--bg);color:var(--text);font-size:13px">
+            <button onclick="vincularUsuarioManual()" class="dp-btn-sec">
+              <i data-lucide="link" style="width:13px;height:13px"></i> Vincular
+            </button>
+          </div>
+          <p class="dp-note">Para usuários que já têm conta mas ainda não estão no escritório.</p>
+        </div>
+
+        <!-- Convites pendentes -->
+        <div>
+          <div class="dp-section-lbl">Convites pendentes</div>
+          <div id="convitesLista" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- /convitesModal -->
+
 </body>
 </html>
