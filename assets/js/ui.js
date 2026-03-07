@@ -193,6 +193,36 @@ async function toggleDocGenMenu() {
 }
 
 
+function exportChatTxt() {
+  if (!currentChat.messages?.length) { showToast('Nenhuma mensagem para exportar.', 'warn'); return; }
+
+  const titulo  = currentChat.title || 'Conversa';
+  const empresa = currentCliente ? currentCliente.razao_social : '';
+  const data    = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+
+  let txt = `FISCAL365 — EXPORTAÇÃO DE CONVERSA\n`;
+  txt += `${'='.repeat(50)}\n`;
+  txt += `Título: ${titulo}\n`;
+  if (empresa) txt += `Empresa: ${empresa}\n`;
+  txt += `Data: ${data}\n`;
+  txt += `${'='.repeat(50)}\n\n`;
+
+  for (const msg of currentChat.messages) {
+    if (msg._resumo) continue;
+    const label = msg.role === 'user' ? '[ VOCÊ ]' : '[ FISCAL365 ]';
+    txt += `${label}\n`;
+    txt += (msg.content || '').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+    txt += `\n\n${'─'.repeat(40)}\n\n`;
+  }
+
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `fiscal365-chat-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 async function exportChat() {
   if (!currentChat.messages || currentChat.messages.length === 0) {
     showToast('Nenhuma mensagem para exportar.', 'warn');
