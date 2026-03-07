@@ -332,24 +332,33 @@ async function shareChat() {
     return;
   }
 
-  // Gerar token único
-  const token = crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'') 
-                                   : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const token = crypto.randomUUID
+    ? crypto.randomUUID().replace(/-/g, '')
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  const expires = new Date(Date.now() + 7 * 86400000).toISOString();
+
+  // Limpar mensagens internas antes de compartilhar
+  const mensagensPublicas = currentChat.messages
+    .filter(m => !m._resumo)
+    .map(m => ({ role: m.role, content: m.content || '' }));
 
   const { error } = await sb.from('shared_chats').insert({
     token,
     title:      currentChat.title || 'Conversa',
-    messages:   currentChat.messages,
+    messages:   mensagensPublicas,
     created_by: currentUser?.id || null,
+    expires_at: expires,
   });
 
   if (error) {
-    showToast('Erro ao gerar link. Tente novamente.', 'error');
+    showToast('Erro ao gerar link: ' + error.message, 'error');
     return;
   }
 
   const shareLink = `${window.location.origin}?shared=${token}`;
-  document.getElementById('shareLink').value = shareLink;
+  const el = document.getElementById('shareLink');
+  if (el) el.value = shareLink;
   openShareModal();
 }
 
