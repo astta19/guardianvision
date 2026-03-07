@@ -442,7 +442,7 @@ async function renderHistoryList(list, hasMore = false) {
     html += grupos[g].map(c => `
     <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
-        <div class="h-title" ondblclick="event.stopPropagation();renameChat('${c.id}', this)" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
+        <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.updated_at || c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
@@ -458,37 +458,53 @@ async function renderHistoryList(list, hasMore = false) {
   }
 
   lucide.createIcons();
+
+  // Event delegation para duplo clique nos títulos
+  el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
+    titleEl.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      renameChat(titleEl.dataset.chatId, titleEl);
+    });
+  });
 }
 
 async function renameChat(id, el) {
+  if (el.querySelector('input')) return; // já está editando
   const atual = el.textContent.trim();
+
   const input = document.createElement('input');
   input.value = atual;
-  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none';
-  el.replaceWith(input);
+  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box';
+
+  // Substituir conteúdo do h-title pelo input
+  el.textContent = '';
+  el.appendChild(input);
   input.focus();
   input.select();
 
+  let saved = false;
   const salvar = async () => {
+    if (saved) return;
+    saved = true;
     const novo = input.value.trim() || atual;
-    const span = document.createElement('div');
-    span.className = 'h-title';
-    span.setAttribute('ondblclick', `event.stopPropagation();renameChat('${id}', this)`);
-    span.setAttribute('title', 'Duplo clique para renomear');
-    span.textContent = novo;
-    input.replaceWith(span);
-    if (novo === atual) return;
-    await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
-    if (currentChat.id === id) currentChat.title = novo;
-    const chat = allChats.find(c => c.id === id);
-    if (chat) chat.title = novo;
+    el.textContent = novo;
+    if (novo !== atual) {
+      await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
+      if (currentChat.id === id) currentChat.title = novo;
+      const chat = allChats.find(c => c.id === id);
+      if (chat) chat.title = novo;
+    }
   };
 
   input.addEventListener('blur', salvar);
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.value = atual; input.blur(); }
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; el.textContent = atual; }
   });
+  // impedir que o blur do input propague clique para o item pai
+  input.addEventListener('click',    e => e.stopPropagation());
+  input.addEventListener('mousedown', e => e.stopPropagation());
 }
 
 async function filterChats() {
