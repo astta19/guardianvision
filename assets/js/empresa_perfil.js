@@ -127,17 +127,10 @@ async function epBuscarCNPJ() {
   try {
     // Tentar BrasilAPI primeiro, fallback para ReceitaWS
     let d = null;
-    const apis = [
-      `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`,
-      `https://receitaws.com.br/v1/cnpj/${cnpj}`,
-    ];
-    for (const url of apis) {
-      try {
-        const res = await fetch(url);
-        if (res.ok) { d = await res.json(); if (d && !d.message) break; }
-      } catch { continue; }
-    }
-    if (!d || d.message) throw new Error('CNPJ não encontrado nas APIs públicas');
+    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+    if (!res.ok) throw new Error(`CNPJ não encontrado (${res.status})`);
+    d = await res.json();
+    if (!d || d.message) throw new Error(d?.message || 'CNPJ não encontrado');
 
     // Preencher automaticamente todos os campos
     const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
