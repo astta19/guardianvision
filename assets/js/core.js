@@ -125,6 +125,9 @@ function applyAdminUI() {
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = admin ? '' : 'none';
   });
+  // toolsAdminSection: container da seção admin no dropdown
+  const adminSection = document.getElementById('toolsAdminSection');
+  if (adminSection) adminSection.style.display = admin ? '' : 'none';
 
   // admin-menu-item: admin vê tudo; contador vê se tiver permissão
   document.querySelectorAll('.admin-menu-item').forEach(el => {
