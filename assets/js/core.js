@@ -387,6 +387,26 @@ async function showApp() {
     } catch(e) {}
   }
 
+  // ── Verificar acesso (convite/status) ──────────────────────
+  let statusAcesso = 'ativo';
+  try {
+    const acesso = await supabaseProxy('verificar_acesso', {});
+    statusAcesso = acesso?.status || 'ativo';
+    // Sincronizar role vindo do banco no user_metadata local
+    if (acesso?.role && currentUser?.user_metadata) {
+      currentUser.user_metadata.role = acesso.role;
+    }
+  } catch(e) {}
+
+  if (statusAcesso === 'aguardando') {
+    mostrarTelaAguardando();
+    return;
+  }
+  if (statusAcesso === 'bloqueado') {
+    mostrarTelaBloqueado();
+    return;
+  }
+
   applyAdminUI();
   checkConnection();
 
@@ -407,6 +427,113 @@ async function showApp() {
   // Carregar chat compartilhado via link (?shared=TOKEN)
   const _sharedToken = new URLSearchParams(window.location.search).get('shared');
   if (_sharedToken) carregarChatCompartilhado(_sharedToken);
+}
+
+// ── Telas de acesso bloqueado ─────────────────────────────────
+function mostrarTelaAguardando() {
+  hideLoading();
+  document.getElementById('authScreen')?.classList.add('hidden');
+  ['sidebar','chat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+  });
+  document.querySelector('header')?.classList.add('hidden');
+
+  let tela = document.getElementById('_telaAcesso');
+  if (!tela) {
+    tela = document.createElement('div');
+    tela.id = '_telaAcesso';
+    tela.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg,#f8fafc);z-index:9999;padding:32px;text-align:center';
+    document.body.appendChild(tela);
+  }
+
+  const email = currentUser?.email || '';
+  tela.innerHTML = `
+    <div style="max-width:420px">
+      <div style="font-size:48px;margin-bottom:16px">⏳</div>
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--text,#1f2937)">Aguardando aprovação</h2>
+      <p style="font-size:14px;color:var(--text-light,#6b7280);margin-bottom:24px;line-height:1.6">
+        Sua conta <strong>${escapeHtml(email)}</strong> foi criada com sucesso.<br>
+        Para acessar o sistema, solicite ao administrador que envie um <strong>link de convite</strong> para o seu e-mail.
+      </p>
+      <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:16px;margin-bottom:20px;font-size:13px;color:var(--text-light,#6b7280)">
+        Já recebeu um convite?
+        <button onclick="mostrarFormConvite()" style="background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-left:8px">
+          Inserir código
+        </button>
+      </div>
+      <div id="_conviteForm" style="display:none;margin-bottom:16px">
+        <input id="_conviteInput" placeholder="Cole o link ou código do convite" style="width:100%;box-sizing:border-box;padding:10px 14px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;margin-bottom:8px">
+        <button onclick="aplicarConvite()" style="width:100%;background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">
+          Ativar convite
+        </button>
+        <div id="_conviteMsg" style="font-size:12px;margin-top:6px;color:var(--text-light,#6b7280)"></div>
+      </div>
+      <button onclick="sb.auth.signOut().then(()=>window.location.reload())"
+        style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px 18px;font-size:13px;cursor:pointer;color:var(--text-light,#6b7280)">
+        Sair
+      </button>
+    </div>`;
+}
+
+function mostrarTelaBloqueado() {
+  hideLoading();
+  document.getElementById('authScreen')?.classList.add('hidden');
+  ['sidebar','chat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+  });
+  document.querySelector('header')?.classList.add('hidden');
+
+  let tela = document.getElementById('_telaAcesso');
+  if (!tela) { tela = document.createElement('div'); tela.id = '_telaAcesso'; document.body.appendChild(tela); }
+  tela.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg,#f8fafc);z-index:9999;padding:32px;text-align:center';
+  tela.innerHTML = `
+    <div style="max-width:400px">
+      <div style="font-size:48px;margin-bottom:16px">🚫</div>
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--text,#1f2937)">Acesso bloqueado</h2>
+      <p style="font-size:14px;color:var(--text-light,#6b7280);margin-bottom:24px">
+        Sua conta foi suspensa pelo administrador do sistema.<br>Entre em contato para mais informações.
+      </p>
+      <button onclick="sb.auth.signOut().then(()=>window.location.reload())"
+        style="background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer">
+        Sair
+      </button>
+    </div>`;
+}
+
+function mostrarFormConvite() {
+  const f = document.getElementById('_conviteForm');
+  if (f) { f.style.display = f.style.display === 'none' ? 'block' : 'none'; }
+}
+
+async function aplicarConvite() {
+  const input = document.getElementById('_conviteInput');
+  const msg   = document.getElementById('_conviteMsg');
+  let valor   = input?.value.trim() || '';
+
+  // Aceitar URL completo ou apenas o token
+  const match = valor.match(/[?&]convite=([a-f0-9]{48})/i) || valor.match(/^([a-f0-9]{48})$/i);
+  const conviteToken = match?.[1] || valor;
+
+  if (!conviteToken || conviteToken.length < 10) {
+    if (msg) { msg.textContent = 'Informe o código ou link do convite.'; msg.style.color = '#ef4444'; }
+    return;
+  }
+
+  if (msg) { msg.textContent = 'Validando...'; msg.style.color = 'var(--text-light,#6b7280)'; }
+
+  try {
+    const res = await supabaseProxy('usar_convite', { token: conviteToken });
+    if (res?.ok) {
+      if (msg) { msg.textContent = '✅ Convite ativado! Carregando...'; msg.style.color = '#16a34a'; }
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      if (msg) { msg.textContent = res?.erro || 'Convite inválido ou expirado.'; msg.style.color = '#ef4444'; }
+    }
+  } catch(e) {
+    if (msg) { msg.textContent = 'Erro ao validar. Tente novamente.'; msg.style.color = '#ef4444'; }
+  }
 }
 
 // --- Audit log ---
@@ -478,8 +605,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Sessão existente (carregamento inicial)
-  sb.auth.getSession().then(({ data: { session } }) => {
-    if (session) { currentUser = session.user; showApp(); }
+  sb.auth.getSession().then(async ({ data: { session } }) => {
+    if (session) {
+      currentUser = session.user;
+      // Novo usuário vindo de link de convite: aplicar token antes de showApp
+      const _conviteParam = new URLSearchParams(window.location.search).get('convite');
+      if (_conviteParam) {
+        try {
+          await supabaseProxy('usar_convite', { token: _conviteParam });
+          const url = new URL(window.location.href);
+          url.searchParams.delete('convite');
+          window.history.replaceState({}, '', url);
+          const { data: { user: u2 } } = await sb.auth.getUser();
+          if (u2) currentUser = u2;
+        } catch(e) {}
+      }
+      showApp();
+    }
     else { hideLoading(); showAuthScreen(); }
   }).catch(() => { hideLoading(); showAuthScreen(); });
 
