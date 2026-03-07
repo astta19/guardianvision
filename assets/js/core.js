@@ -369,33 +369,40 @@ async function showApp() {
     if (el) { el.classList.remove('hidden'); el.style.removeProperty('display'); }
   });
   document.querySelector('header')?.classList.remove('hidden');
+
+  // Garantir currentUser atualizado (inclui user_metadata do Google)
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
-  // localStorage tem prioridade — é atualizado imediatamente ao trocar o tema
+
   setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
-  // Buscar permissões atualizadas da tabela (sem depender só do JWT)
+
+  // Permissões via proxy (não-admin)
   if (currentUser && !isAdmin()) {
     try {
       const r = await supabaseProxy('buscar_permissoes', { userId: currentUser.id });
       if (r?.permissions && Array.isArray(r.permissions)) {
-        // Mesclar no objeto currentUser para applyAdminUI usar
         if (!currentUser.user_metadata) currentUser.user_metadata = {};
         currentUser.user_metadata.permissions = r.permissions;
       }
-    } catch(e) {} // silencioso — fallback para user_metadata do JWT
+    } catch(e) {}
   }
+
   applyAdminUI();
   checkConnection();
-  // loadClientes APÓS garantir que currentUser está setado (getUser já foi awaited acima)
+
+  // Carregar perfil PRIMEIRO — garante que nome/avatar do Google aparecem imediatamente
+  if (typeof carregarPerfil === 'function') {
+    await carregarPerfil();
+    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
+  }
+
+  // Carregar clientes após perfil estar pronto
   if (typeof loadClientes === 'function') {
-    // Pequeno delay para garantir que o DOM e permissões estejam prontos
     setTimeout(() => loadClientes(), 50);
   }
+
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
-  if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
-    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
-  });
   if (window.lucide) lucide.createIcons();
   // Carregar chat compartilhado via link (?shared=TOKEN)
   const _sharedToken = new URLSearchParams(window.location.search).get('shared');
