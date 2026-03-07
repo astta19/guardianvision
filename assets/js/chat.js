@@ -651,9 +651,7 @@ function addMessage(text, isUser, confidence = 'medium', fileData = null, intera
         title="${hasValidInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
         <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
       </button>
-      <span class="badge-conf badge ${confidence}">
-        ${confidence === 'high' ? 'Alta' : confidence === 'low' ? 'Baixa' : 'Média'} confiança
-      </span>
+
       ${modelUsed ? `<span class="badge-model" title="Modelo utilizado">${modelUsed.includes('claude') ? '✦ Claude' : modelUsed.includes('llama-3.3') ? 'Llama 3.3' : modelUsed.includes('llama-3.1') ? 'Llama 3.1' : 'Llama'}</span>` : ''}
     </div>` : '';
 
@@ -1561,9 +1559,7 @@ POSTURA PROFISSIONAL:
             title="${hasValidInteraction ? 'Avaliar resposta' : 'Feedback disponível apenas para respostas novas'}">
             <i data-lucide="thumbs-up" style="width:12px;height:12px"></i> Feedback
           </button>
-          <span class="badge-conf badge ${confidence}">
-            ${confidence === 'high' ? 'Alta' : confidence === 'low' ? 'Baixa' : 'Média'} confiança
-          </span>
+
           <span class="badge-model" title="Modelo utilizado">✦ Claude</span>
           ${data._tokens ? `<span class="badge-tokens" title="Tokens usados">${(data._tokens.input||0)+(data._tokens.output||0)} tok</span>` : ''}
         </div>`;
