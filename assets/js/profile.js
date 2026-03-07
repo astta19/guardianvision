@@ -16,7 +16,7 @@ const OBRIGACOES_FISCAIS = [
   { id: 'defis',      label: 'DEFIS (Simples)',        desc: 'Até 31/03 anual',           dia: 31, mes: 3        },
   { id: 'ecd',        label: 'ECD',                   desc: 'Até 30/06 anual',           dia: 30, mes: 6        },
   { id: 'ecf',        label: 'ECF',                   desc: 'Até 31/07 anual',           dia: 31, mes: 7        },
-  { id: 'dirpf',      label: 'DIRPF (PF)',            desc: 'Até 30/05 anual',           dia: 30, mes: 5        },
+  { id: 'dirpf',      label: 'DIRPF (PF)',            desc: 'Até 29/05 anual',           dia: 29, mes: 5        },
 ];
 
 
@@ -34,14 +34,14 @@ async function carregarPerfil() {
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
-    // Metadados do Google OAuth — normalizar campos variantes
+    // Metadados Google OAuth — normalizar variantes de campo
     const meta = currentUser.user_metadata || {};
     const googleName   = meta.full_name || meta.name || meta.user_name || '';
     const googleAvatar = meta.avatar_url || meta.picture || '';
-    const googleEmail  = currentUser.email || meta.email || '';
+    const emailPrefix  = (currentUser.email || '').split('@')[0];
 
     perfilCache = {
-      nome:            data?.nome        || googleName  || googleEmail.split('@')[0] || '',
+      nome:            data?.nome        || googleName  || emailPrefix || '',
       avatar_url:      data?.avatar_url  || googleAvatar || '',
       crc:             data?.crc         || '',
       cpf:             data?.cpf         || '',
@@ -49,11 +49,11 @@ async function carregarPerfil() {
       cnpj_escritorio: data?.cnpj_escritorio || '',
     };
 
-    // Primeira vez com Google (sem registro na tabela): salvar automaticamente
+    // Primeira vez com Google: persistir no banco
     if (!data && (googleName || googleAvatar)) {
       sb.from('perfis_usuarios').upsert({
         user_id:       currentUser.id,
-        nome:          googleName || googleEmail.split('@')[0],
+        nome:          googleName || emailPrefix,
         avatar_url:    googleAvatar,
         atualizado_em: new Date().toISOString(),
       }, { onConflict: 'user_id' }).catch(() => {});
@@ -61,8 +61,8 @@ async function carregarPerfil() {
 
     return perfilCache;
   } catch(e) {
-    perfilCache = { nome: currentUser?.email?.split('@')[0] || '' };
-    return perfilCache;
+    perfilCache = {};
+    return {};
   }
 }
 
@@ -76,24 +76,28 @@ async function salvarPerfilBanco(campos) {
 }
 
 async function atualizarNomeHeader() {
-  const meta    = currentUser?.user_metadata || {};
-  const nome    = perfilCache?.nome || meta.full_name || meta.name || '';
-  const email   = currentUser?.email || '';
-  const display = nome || email.split('@')[0] || 'usuário';
+  const meta       = currentUser?.user_metadata || {};
+  const nome       = perfilCache?.nome || meta.full_name || meta.name || '';
+  const email      = currentUser?.email || '';
+  const display    = nome || email.split('@')[0] || 'usuário';
+  const avatarUrl  = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
 
   const elNome = document.getElementById('userEmail');
   if (elNome) elNome.textContent = display;
 
-  // Avatar: foto do Google ou inicial do nome
   const wrap = document.getElementById('headerAvatarWrap');
   if (!wrap) return;
 
-  const avatarUrl = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
   if (avatarUrl) {
-    wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" alt="avatar" onerror="this.parentElement.innerHTML='<i data-lucide=\"user\" style=\"width:14px;height:14px\"></i>';lucide.createIcons()">`;
+    wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" alt="avatar"
+      onerror="this.parentElement.innerHTML='<i data-lucide=\"user\" style=\"width:14px;height:14px\"></i>';if(window.lucide)lucide.createIcons()">`;
   } else {
     const inicial = display[0]?.toUpperCase() || '?';
-    wrap.innerHTML = `<span style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${inicial}</span>`;
+    wrap.style.background = 'var(--accent)';
+    wrap.style.color = '#fff';
+    wrap.style.fontSize = '11px';
+    wrap.style.fontWeight = '700';
+    wrap.textContent = inicial;
   }
 }
 
@@ -104,7 +108,6 @@ async function openProfile() {
 
   // Resetar para aba Conta
   switchProfileTab('conta', modal.querySelector('.doc-tab'));
-  setTimeout(() => document.getElementById('profileNome')?.focus(), 80);
 
   // Carregar perfil
   const perfil = await carregarPerfil();
@@ -237,11 +240,11 @@ async function uploadAvatar(input) {
 
   // Validar tipo e tamanho (máx 2MB)
   if (!file.type.startsWith('image/')) {
-    showToast('Selecione uma imagem válida (JPG, PNG ou WebP).', 'warn');
+    alert('Selecione uma imagem válida (JPG, PNG, WebP).');
     return;
   }
   if (file.size > 2 * 1024 * 1024) {
-    showToast('A imagem deve ter no máximo 2MB.', 'warn');
+    alert('A imagem deve ter no máximo 2MB.');
     return;
   }
 
@@ -273,7 +276,7 @@ async function uploadAvatar(input) {
 
   } catch(e) {
     avatarEl.textContent = (perfilCache?.nome || currentUser?.email || '?')[0]?.toUpperCase();
-    showToast('Erro ao enviar imagem. Verifique o bucket avatars no Supabase.', 'error');
+    alert('Erro ao enviar imagem. Verifique se o bucket "avatars" existe no Supabase Storage.');
   }
 
   input.value = ''; // resetar input
@@ -294,21 +297,9 @@ async function carregarConfigNotif() {
   if (config.email_notif) document.getElementById('profileNotifEmail').value = config.email_notif;
   if (config.antecedencia_dias) document.getElementById('profileAntecedencia').value = config.antecedencia_dias;
 
-  const regime  = currentCliente?.regime_tributario || '';
-  const isMEI    = /mei/i.test(regime);
-  const isSimp   = /simples/i.test(regime) || isMEI;
-  const isLP     = /presumido/i.test(regime);
-  const isLR     = /real/i.test(regime);
-
-  // Pré-seleção por regime quando não há config salva
-  let ativas = config.obrigacoes_ativas || null;
-  if (!ativas) {
-    if (isMEI)         ativas = ['das', 'dasn_simei', 'dirpf'];
-    else if (isSimp)   ativas = ['das', 'defis', 'dirpf'];
-    else if (isLP)     ativas = ['dctfweb', 'efd_contrib', 'ecd', 'ecf', 'dirpf'];
-    else if (isLR)     ativas = ['dctfweb', 'efd_contrib', 'ecd', 'ecf', 'dirpf'];
-    else               ativas = [];
-  }
+  const ativas = config.obrigacoes_ativas || [];
+  const regime = currentCliente?.regime_tributario || '';
+  const isMEI = /mei/i.test(regime);
 
   listEl.innerHTML = OBRIGACOES_FISCAIS.map(ob => {
     const bloqueada = ob.somenteMei && !isMEI;
@@ -389,10 +380,8 @@ async function loadChats(reset = true) {
     if (reset) { chatsPage = 0; allChats = []; }
 
     const from = chatsPage * CHATS_PER_PAGE;
-    // SEMPRE filtrar por user_id — chats são estritamente privados por usuário
     let query = sb.from('chats')
       .select('id, title, created_at, updated_at, cliente_id')
-      .eq('user_id', currentUser.id)
       .order('updated_at', { ascending: false })
       .range(from, from + CHATS_PER_PAGE - 1);
 
@@ -419,152 +408,28 @@ async function renderHistoryList(list, hasMore = false) {
     return;
   }
 
-  // Agrupar por data relativa
-  const hoje     = new Date(); hoje.setHours(0,0,0,0);
-  const ontem    = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
-  const semana   = new Date(hoje); semana.setDate(semana.getDate() - 7);
-  const mes      = new Date(hoje); mes.setDate(mes.getDate() - 30);
-
-  function label(dateStr) {
-    const d = new Date(dateStr); d.setHours(0,0,0,0);
-    if (d >= hoje)   return 'Hoje';
-    if (d >= ontem)  return 'Ontem';
-    if (d >= semana) return 'Últimos 7 dias';
-    if (d >= mes)    return 'Últimos 30 dias';
-    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  }
-
-  // Agrupar
-  const grupos = {};
-  const ordem  = [];
-  for (const c of list) {
-    const g = label(c.updated_at || c.created_at);
-    if (!grupos[g]) { grupos[g] = []; ordem.push(g); }
-    grupos[g].push(c);
-  }
-
-  let html = '';
-  for (const g of ordem) {
-    html += `<div style="padding:6px 12px 2px;font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">${g}</div>`;
-    html += grupos[g].map(c => `
-    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" data-open-id="${c.id}">
+  el.innerHTML = list.map(c => `
+    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
-        <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
-        <div class="h-date">${new Date(c.updated_at || c.created_at).toLocaleDateString('pt-BR')}</div>
+        <div class="h-title">${escapeHtml(c.title || 'Nova Conversa')}</div>
+        <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
         <i data-lucide="trash-2" style="width:14px;height:14px"></i>
       </button>
     </div>`).join('');
-  }
-
-  el.innerHTML = html;
 
   if (hasMore) {
     el.innerHTML += `<button onclick="chatsPage++;loadChats(false)" style="width:100%;padding:10px;border:none;background:none;color:var(--accent);font-size:13px;cursor:pointer;border-top:1px solid var(--border)">Carregar mais conversas</button>`;
   }
 
   lucide.createIcons();
-
-  // Click no item abre o chat (substitui onclick inline)
-  el.querySelectorAll('.h-item[data-open-id]').forEach(item => {
-    item.addEventListener('click', e => {
-      if (e.target.closest('.h-title')?.querySelector('input')) return;
-      if (e.target.closest('.btn-del')) return;
-      openChat(item.dataset.openId);
-    });
-  });
-
-  // Duplo clique no título ativa renomeação
-  el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
-    let clicks = 0;
-    titleEl.addEventListener('click', e => {
-      e.stopPropagation();
-      clicks++;
-      if (clicks === 1) {
-        setTimeout(() => {
-          if (clicks >= 2) {
-            renameChat(titleEl.dataset.chatId, titleEl);
-          } else {
-            openChat(titleEl.dataset.chatId);
-          }
-          clicks = 0;
-        }, 250);
-      }
-    });
-  });
-}
-
-async function renameChat(id, el) {
-  if (el.querySelector('input')) return;
-  const atual = el.textContent.trim();
-
-  const input = document.createElement('input');
-  input.value = atual;
-  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box';
-
-  el.textContent = '';
-  el.appendChild(input);
-  input.focus();
-  input.select();
-
-  const concluir = async (cancelar = false) => {
-    const novo = cancelar ? atual : (input.value.trim() || atual);
-    el.textContent = novo;
-
-    if (cancelar || novo === atual) return;
-
-    const chatId = String(id).trim();
-    if (!chatId || chatId === 'undefined' || chatId === 'null') {
-      showToast('ID da conversa inválido.', 'error');
-      el.textContent = atual;
-      return;
-    }
-
-    const { error } = await sb.rpc('rename_chat', {
-      p_chat_id: chatId,
-      p_title:   novo
-    });
-
-    if (error) {
-      el.textContent = atual;
-      showToast('Erro ao salvar: ' + error.message, 'error');
-      return;
-    }
-
-    // Atualizar memória local após confirmação do banco
-    if (currentChat.id === id) currentChat.title = novo;
-    const chatLocal = allChats.find(ch => ch.id === id);
-    if (chatLocal) chatLocal.title = novo;
-  };
-
-  input.addEventListener('blur',     () => concluir(false));
-  input.addEventListener('keydown',  e => {
-    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { concluir(true); }
-  });
-  input.addEventListener('click',    e => e.stopPropagation());
-  input.addEventListener('mousedown',e => e.stopPropagation());
 }
 
 async function filterChats() {
-  const q = document.getElementById('searchInput').value.trim();
-  if (!q) { renderHistoryList(allChats); return; }
-
-  // Busca local imediata por título
-  const localMatch = allChats.filter(c => (c.title || '').toLowerCase().includes(q.toLowerCase()));
-  renderHistoryList(localMatch);
-
-  // Busca no banco por conteúdo das mensagens (debounce implícito — já filtramos local)
-  try {
-    const { data } = await sb.from('chats')
-      .select('id, title, created_at, updated_at, cliente_id')
-      .eq('user_id', currentUser.id)
-      .ilike('title', `%${q}%`)
-      .order('updated_at', { ascending: false })
-      .limit(30);
-    if (data?.length) renderHistoryList(data);
-  } catch {}
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = q ? allChats.filter(c => (c.title || '').toLowerCase().includes(q)) : allChats;
+  renderHistoryList(filtered);
 }
 
 async function openChat(id) {
@@ -573,7 +438,6 @@ async function openChat(id) {
       .from('chats')
       .select('*')
       .eq('id', id)
-      .eq('user_id', currentUser.id)
       .maybeSingle();
 
     if (error) throw error;
@@ -605,8 +469,7 @@ async function saveChat() {
       const { error } = await sb
         .from('chats')
         .update(chatData)
-        .eq('id', currentChat.id)
-        .eq('user_id', currentUser.id);
+        .eq('id', currentChat.id);
 
       if (error) {
         if (error.status === 401 || error.message?.includes('JWT')) { handleSessionExpired(); return; }
@@ -641,7 +504,7 @@ async function saveChat() {
 async function deleteChat(id) {
   showConfirm('Tem certeza que deseja excluir esta conversa?', async () => {
     try {
-      const { error } = await sb.from('chats').delete().eq('id', id).eq('user_id', currentUser.id);
+      const { error } = await sb.from('chats').delete().eq('id', id);
       if (error) throw error;
       if (currentChat.id === id) newChat();
       else await loadChats();
@@ -651,74 +514,16 @@ async function deleteChat(id) {
 
 function newChat() {
   currentChat = { id: null, title: 'Nova Conversa', messages: [] };
-  renderBoasVindas();
+  document.getElementById('msgs').innerHTML = `
+    <div class="empty">
+      <i data-lucide="message-circle"></i>
+      <h3>Nova conversa</h3>
+      <p>Faça sua primeira pergunta!</p>
+    </div>`;
   lucide.createIcons();
   renderHistoryList(allChats);
   closeSidebar();
   removeAllFiles();
-}
-
-function renderBoasVindas() {
-  const hora = new Date().getHours();
-  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
-  const nome = currentUser?.user_metadata?.name?.split(' ')[0] || '';
-
-  // Calcular prazos próximos (7 dias)
-  const hoje = new Date();
-  const alertas = [];
-  if (typeof fiscalDeadlines !== 'undefined' && currentCliente) {
-    const regime = currentCliente.regime_tributario || '';
-    const isMEI     = /mei/i.test(regime);
-    const isSimples = /simples/i.test(regime);
-    const isLucro   = /lucro/i.test(regime);
-    const temEmp    = currentCliente.tem_empregado === true;
-
-    for (const [, dl] of Object.entries(fiscalDeadlines)) {
-      if (dl.meiOnly      && !isMEI)              continue;
-      if (dl.simplesOuMei && !isMEI && !isSimples) continue;
-      if (dl.naoSimples   && (isMEI || isSimples)) continue;
-      if (dl.comEmpregado && !temEmp)              continue;
-
-      let prazo;
-      if (dl.month === 'monthly') {
-        prazo = new Date(hoje.getFullYear(), hoje.getMonth(), dl.day);
-        if (prazo < hoje) prazo.setMonth(prazo.getMonth() + 1);
-      } else {
-        prazo = new Date(hoje.getFullYear(), dl.month - 1, dl.day);
-        if (prazo < hoje) prazo.setFullYear(prazo.getFullYear() + 1);
-      }
-      const dias = Math.ceil((prazo - hoje) / 86400000);
-      if (dias >= 0 && dias <= 7) {
-        const urgente = dias <= 2;
-        alertas.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:500;background:${urgente ? 'rgba(220,38,38,.12)' : 'rgba(22,163,74,.1)'};color:${urgente ? '#dc2626' : '#16a34a'}">
-          <i data-lucide="${urgente ? 'alert-circle' : 'calendar-check'}" style="width:11px;height:11px"></i>
-          ${dl.description} ${dias === 0 ? '(hoje!)' : `em ${dias}d`}
-        </span>`);
-      }
-    }
-  }
-
-  const prazosHtml = alertas.length
-    ? `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px">${alertas.join('')}</div>`
-    : '';
-
-  const empresa = currentCliente
-    ? `<p style="font-size:12px;color:var(--text-light);margin:4px 0 0">${currentCliente.razao_social}</p>`
-    : '';
-
-  document.getElementById('msgs').innerHTML = `
-    <div class="empty">
-      <i data-lucide="message-circle"></i>
-      <h3>${saudacao}${nome ? ', ' + nome : ''}!</h3>
-      <p>Como posso ajudar hoje?</p>
-      ${empresa}
-      ${prazosHtml}
-      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px">
-        <button class="btn-sugestao" onclick="useTemplate('Quais obrigações fiscais vencem essa semana?')">📅 Prazos da semana</button>
-        <button class="btn-sugestao" onclick="useTemplate('Calcule o DARF de IRPJ para este mês')">🧮 Calcular DARF</button>
-        <button class="btn-sugestao" onclick="useTemplate('Analise o regime tributário mais vantajoso')">⚖️ Regime tributário</button>
-      </div>
-    </div>`;
 }
 
 function renderMessages() {
