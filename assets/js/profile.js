@@ -490,6 +490,40 @@ async function saveChat() {
   }
 }
 
+
+async function renameChat(id, el) {
+  const atual = el.textContent.trim();
+  const input = document.createElement('input');
+  input.value = atual;
+  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none';
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const salvar = async () => {
+    const novo = input.value.trim() || atual;
+    const span = document.createElement('div');
+    span.className = 'h-title';
+    span.setAttribute('ondblclick', `event.stopPropagation();renameChat('${id}', this)`);
+    span.setAttribute('title', 'Duplo clique para renomear');
+    span.textContent = novo;
+    input.replaceWith(span);
+    if (novo === atual) return;
+    const { error } = await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
+    if (!error && typeof currentChat !== 'undefined' && currentChat?.id === id) currentChat.title = novo;
+    if (!error && typeof allChats !== 'undefined') {
+      const chat = allChats.find(c => c.id === id);
+      if (chat) chat.title = novo;
+    }
+  };
+
+  input.addEventListener('blur', salvar);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = atual; input.blur(); }
+  });
+}
+
 async function deleteChat(id) {
   showConfirm('Tem certeza que deseja excluir esta conversa?', async () => {
     try {
