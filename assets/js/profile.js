@@ -36,11 +36,11 @@ async function carregarPerfil() {
 
     // Fallback para metadados do Google OAuth
     const meta = currentUser.user_metadata || {};
-    const googleName   = meta.full_name || meta.name || meta.user_name || '';
+    const googleName = meta.full_name || meta.name || '';
     const googleAvatar = meta.avatar_url || meta.picture || '';
 
     perfilCache = {
-      nome: data?.nome || googleName || (currentUser.email||'').split('@')[0] || '',
+      nome: data?.nome || googleName || '',
       avatar_url: data?.avatar_url || googleAvatar || '',
       crc: data?.crc || '',
       cpf: data?.cpf || '',
@@ -75,29 +75,18 @@ async function salvarPerfilBanco(campos) {
 }
 
 async function atualizarNomeHeader() {
-  const meta      = currentUser?.user_metadata || {};
-  const nome      = perfilCache?.nome || meta.full_name || meta.name || '';
-  const email     = currentUser?.email || '';
-  const display   = nome || email.split('@')[0] || 'usuário';
-  const avatarUrl = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
+  const nome = perfilCache?.nome || currentUser?.user_metadata?.nome;
+  const email = currentUser?.email || '';
+  const display = nome || email.split('@')[0] || 'usuário';
+  document.getElementById('userEmail').textContent = display;
 
-  const elNome = document.getElementById('userEmail');
-  if (elNome) elNome.textContent = display;
-
+  // Atualizar avatar no header
   const wrap = document.getElementById('headerAvatarWrap');
-  if (!wrap) return;
-
-  if (avatarUrl) {
-    wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" alt="avatar"
-      onerror="this.parentElement.innerHTML='';this.parentElement.style.background='var(--accent)';this.parentElement.style.color='#fff';this.parentElement.style.fontSize='11px';this.parentElement.style.fontWeight='700';this.parentElement.textContent='${display[0]?.toUpperCase()||'?'}'">`;
-  } else {
-    const inicial = display[0]?.toUpperCase() || '?';
-    wrap.innerHTML = '';
-    wrap.style.background = 'var(--accent)';
-    wrap.style.color = '#fff';
-    wrap.style.fontSize = '11px';
-    wrap.style.fontWeight = '700';
-    wrap.textContent = inicial;
+  if (wrap && perfilCache?.avatar_url) {
+    wrap.innerHTML = `<img src="${perfilCache.avatar_url}" class="header-avatar" alt="avatar">`;
+  } else if (wrap) {
+    wrap.innerHTML = '<i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i>';
+    lucide.createIcons();
   }
 }
 
@@ -411,7 +400,7 @@ async function renderHistoryList(list, hasMore = false) {
   el.innerHTML = list.map(c => `
     <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
-        <div class="h-title">${escapeHtml(c.title || 'Nova Conversa')}</div>
+        <div class="h-title" ondblclick="event.stopPropagation();renameChat('${c.id}', this)" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
