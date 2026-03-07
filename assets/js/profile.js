@@ -440,7 +440,7 @@ async function renderHistoryList(list, hasMore = false) {
   for (const g of ordem) {
     html += `<div style="padding:6px 12px 2px;font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px">${g}</div>`;
     html += grupos[g].map(c => `
-    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
+    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" data-open-id="${c.id}">
       <div class="h-info">
         <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.updated_at || c.created_at).toLocaleDateString('pt-BR')}</div>
@@ -459,12 +459,31 @@ async function renderHistoryList(list, hasMore = false) {
 
   lucide.createIcons();
 
-  // Event delegation para duplo clique nos títulos
+  // Click no item abre o chat (substitui onclick inline)
+  el.querySelectorAll('.h-item[data-open-id]').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.closest('.h-title')?.querySelector('input')) return; // editando
+      if (e.target.closest('.btn-del')) return;
+      openChat(item.dataset.openId);
+    });
+  });
+
+  // Duplo clique no título ativa renomeação
   el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
-    titleEl.addEventListener('dblclick', e => {
+    let clicks = 0;
+    titleEl.addEventListener('click', e => {
       e.stopPropagation();
-      e.preventDefault();
-      renameChat(titleEl.dataset.chatId, titleEl);
+      clicks++;
+      if (clicks === 1) {
+        setTimeout(() => {
+          if (clicks >= 2) {
+            renameChat(titleEl.dataset.chatId, titleEl);
+          } else {
+            openChat(titleEl.dataset.chatId);
+          }
+          clicks = 0;
+        }, 250);
+      }
     });
   });
 }
