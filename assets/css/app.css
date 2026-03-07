@@ -1193,6 +1193,32 @@
       .tools-grid { grid-template-columns: repeat(4, 1fr); }
     }
 
+    /* Chip do perfil no header */
+    .user-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px 4px 4px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 99px; cursor: pointer;
+      font-size: 12px; color: var(--text-light);
+      transition: background .15s;
+    }
+    .user-chip:hover { background: var(--sidebar-hover); }
+    .user-chip-avatar {
+      display: flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 50%;
+      overflow: hidden; flex-shrink: 0;
+      background: var(--accent); color: #fff;
+      font-size: 11px; font-weight: 700;
+    }
+    .user-chip-name {
+      max-width: 100px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    @media (max-width: 480px) {
+      .user-chip-name { display: none; }
+      .user-chip { padding: 4px; }
+    }
+
     .profile-avatar {
       width:72px; height:72px; border-radius:50%;
       background:var(--accent); color:#fff;
