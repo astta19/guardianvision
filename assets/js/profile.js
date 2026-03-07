@@ -462,7 +462,6 @@ async function renderHistoryList(list, hasMore = false) {
   // Click no item abre o chat (substitui onclick inline)
   el.querySelectorAll('.h-item[data-open-id]').forEach(item => {
     item.addEventListener('click', e => {
-      if (_renamingChat) return; // bloqueado durante rename
       if (e.target.closest('.h-title')?.querySelector('input')) return;
       if (e.target.closest('.btn-del')) return;
       openChat(item.dataset.openId);
@@ -489,13 +488,9 @@ async function renderHistoryList(list, hasMore = false) {
   });
 }
 
-let _renamingChat = false; // flag global: bloqueia openChat e loadChats durante rename
-
 async function renameChat(id, el) {
-  if (_renamingChat || el.querySelector('input')) return;
+  if (el.querySelector('input')) return;
   const atual = el.textContent.trim();
-
-  _renamingChat = true;
 
   const input = document.createElement('input');
   input.value = atual;
@@ -509,28 +504,24 @@ async function renameChat(id, el) {
   const concluir = async (cancelar = false) => {
     const novo = cancelar ? atual : (input.value.trim() || atual);
     el.textContent = novo;
-    _renamingChat = false;
 
     if (cancelar || novo === atual) return;
 
-    // Atualizar memória local
-    if (currentChat.id === id) currentChat.title = novo;
-    const chatLocal = allChats.find(ch => ch.id === id);
-    if (chatLocal) chatLocal.title = novo;
-
-    // Persistir no banco
-    const { error } = await sb
-      .from('chats')
-      .update({ title: novo, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('user_id', currentUser.id);
+    const { error } = await sb.rpc('rename_chat', {
+      p_chat_id: id,
+      p_title:   novo
+    });
 
     if (error) {
       el.textContent = atual;
-      if (currentChat.id === id) currentChat.title = atual;
-      if (chatLocal) chatLocal.title = atual;
       showToast('Erro ao salvar: ' + error.message, 'error');
+      return;
     }
+
+    // Atualizar memória local após confirmação do banco
+    if (currentChat.id === id) currentChat.title = novo;
+    const chatLocal = allChats.find(ch => ch.id === id);
+    if (chatLocal) chatLocal.title = novo;
   };
 
   input.addEventListener('blur',     () => concluir(false));
