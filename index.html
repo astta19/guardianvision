@@ -20,7 +20,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
@@ -145,9 +144,6 @@
       <button class="btn-add-client admin-only" onclick="toggleNewClientForm()" style="display:none">
         <i data-lucide="plus"></i> Cadastrar nova empresa
       </button>
-      <button id="btnEmpresaPerfil" onclick="openEmpresaPerfil()" style="display:none;width:100%;margin-top:6px;padding:8px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:12px;font-weight:500;gap:6px;align-items:center;justify-content:center">
-        <i data-lucide="settings-2" style="width:14px;height:14px"></i> Perfil da empresa
-      </button>
       <div id="newClientForm">
         <div class="form-sep"></div>
         <div class="form-field">
@@ -176,13 +172,6 @@
           <label>Inscrição Estadual</label>
           <input type="text" id="fIE" placeholder="Opcional">
         </div>
-        <div class="form-field">
-          <label>Possui empregados registrados?</label>
-          <select id="fTemEmpregado">
-            <option value="false">Não (sem folha de pagamento)</option>
-            <option value="true">Sim (possui CLT / pró-labore com INSS)</option>
-          </select>
-        </div>
         <div class="form-field admin-only" id="fContadoresField" style="display:none">
           <label>Atribuir contadores</label>
           <div id="fContadoresList" style="display:flex;flex-direction:column;gap:6px;max-height:120px;overflow-y:auto;padding:4px 0">
@@ -194,242 +183,6 @@
           <button class="btn-save" onclick="saveNewClient()">Salvar Empresa</button>
         </div>
         <div id="clientFormMsg" class="auth-msg"></div>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- MODAL PERFIL DA EMPRESA -->
-  <div id="empresaPerfilModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9100;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeEmpresaPerfil()">
-    <div style="background:var(--card);border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-
-      <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <div>
-          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px">
-            <i data-lucide="building-2" style="width:18px;height:18px"></i> Perfil da Empresa
-          </h3>
-          <span id="epUltimaAtualizacao" style="font-size:11px;color:var(--text-light)"></span>
-        </div>
-        <button onclick="closeEmpresaPerfil()" style="background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px">
-          <i data-lucide="x" style="width:18px;height:18px"></i>
-        </button>
-      </div>
-
-      <!-- Tabs -->
-      <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;gap:4px">
-        <button class="ep-tab-btn active" data-tab="cadastro" onclick="switchPerfilTab('cadastro')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);border-bottom:2px solid transparent">Cadastral</button>
-        <button class="ep-tab-btn" data-tab="endereco" onclick="switchPerfilTab('endereco')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-light);border-bottom:2px solid transparent">Endereço</button>
-        <button class="ep-tab-btn" data-tab="financeiro" onclick="switchPerfilTab('financeiro')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-light);border-bottom:2px solid transparent">Financeiro</button>
-        <button class="ep-tab-btn" data-tab="socios" onclick="switchPerfilTab('socios')" style="padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-light);border-bottom:2px solid transparent">Sócios</button>
-      </div>
-
-      <!-- Conteúdo com scroll -->
-      <div style="overflow-y:auto;flex:1;padding:20px">
-
-        <!-- ABA: Cadastral -->
-        <div id="epTab_cadastro">
-          <!-- Busca CNPJ -->
-          <div style="display:flex;gap:8px;margin-bottom:16px;padding:12px;background:var(--sidebar-hover);border-radius:10px;align-items:flex-end">
-            <div style="flex:1">
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">CNPJ</label>
-              <input id="epCnpj" type="text" placeholder="00.000.000/0000-00" oninput="maskCnpj(this)" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <button id="epBtnBuscarCnpj" onclick="epBuscarCNPJ()" style="padding:8px 14px;background:var(--text);color:var(--bg);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap">Buscar na Receita Federal</button>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div style="grid-column:1/-1">
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Razão Social *</label>
-              <input id="epRazao" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Nome Fantasia</label>
-              <input id="epFantasia" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Situação Cadastral</label>
-              <input id="epSituacao" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Regime Tributário</label>
-              <select id="epRegime" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="">Selecione...</option>
-                <option value="MEI">MEI</option>
-                <option value="Simples Nacional">Simples Nacional</option>
-                <option value="Lucro Presumido">Lucro Presumido</option>
-                <option value="Lucro Real">Lucro Real</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Regime de Apuração</label>
-              <select id="epRegimeApuracao" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="">Selecione...</option>
-                <option value="mensal">Mensal</option>
-                <option value="trimestral">Trimestral</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">CNAE Principal</label>
-              <input id="epCnae" type="text" placeholder="0000-0/00" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Descrição CNAE</label>
-              <input id="epCnaeDesc" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Natureza Jurídica</label>
-              <input id="epNatureza" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Porte</label>
-              <select id="epPorte" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="">Selecione...</option>
-                <option value="MEI">MEI</option>
-                <option value="ME">Micro Empresa (ME)</option>
-                <option value="EPP">Empresa de Pequeno Porte (EPP)</option>
-                <option value="MEDIO">Médio Porte</option>
-                <option value="GRANDE">Grande Porte</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Data de Abertura</label>
-              <input id="epDataAbertura" type="date" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Capital Social (R$)</label>
-              <input id="epCapital" type="number" step="0.01" min="0" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Inscrição Estadual</label>
-              <input id="epIE" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Inscrição Municipal</label>
-              <input id="epIM" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Telefone</label>
-              <input id="epTelefone" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">E-mail da Empresa</label>
-              <input id="epEmail" type="email" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Possui Empregados</label>
-              <select id="epTemEmpregado" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="false">Não</option>
-                <option value="true">Sim</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Optante Simples</label>
-              <select id="epOptanteSimples" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="false">Não</option>
-                <option value="true">Sim</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Optante MEI</label>
-              <select id="epOptanteMei" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="false">Não</option>
-                <option value="true">Sim</option>
-              </select>
-            </div>
-          </div>
-          <input type="hidden" id="epDadosReceita">
-        </div>
-
-        <!-- ABA: Endereço -->
-        <div id="epTab_endereco" style="display:none">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div style="display:flex;gap:8px;grid-column:1/-1;align-items:flex-end">
-              <div style="flex:1">
-                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">CEP</label>
-                <input id="epCep" type="text" placeholder="00000-000" maxlength="9"
-                  oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/^(\d{5})(\d)/,'$1-$2')"
-                  onblur="epBuscarCEP()"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-              </div>
-              <button onclick="epBuscarCEP()" style="padding:8px 14px;background:var(--text);color:var(--bg);border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Buscar CEP</button>
-            </div>
-            <div style="grid-column:1/-1">
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Logradouro</label>
-              <input id="epLogradouro" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Número</label>
-              <input id="epNumero" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Complemento</label>
-              <input id="epComplemento" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Bairro</label>
-              <input id="epBairro" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Município</label>
-              <input id="epMunicipio" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">UF</label>
-              <select id="epUf" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="">UF</option>
-                <option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option>
-                <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
-                <option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option>
-                <option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
-                <option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option>
-                <option>SP</option><option>TO</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- ABA: Financeiro -->
-        <div id="epTab_financeiro" style="display:none">
-          <p style="font-size:13px;color:var(--text-light);margin-bottom:16px">Esses valores são usados pela IA para gerar documentos e calcular tributos com precisão.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Faturamento Mensal Médio (R$)</label>
-              <input id="epFatMensal" type="number" step="0.01" min="0" onblur="epCalcFatAnual()"
-                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Faturamento Anual (R$)</label>
-              <input id="epFatAnual" type="number" step="0.01" min="0"
-                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Total Pró-labore (R$)</label>
-              <input id="epProlabore" type="number" step="0.01" min="0"
-                style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-            </div>
-          </div>
-          <div style="margin-top:16px;padding:12px;background:var(--sidebar-hover);border-radius:10px;font-size:12px;color:var(--text-light)">
-            <i data-lucide="info" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>
-            O faturamento anual é calculado automaticamente a partir do mensal se deixado em branco. Os valores de pró-labore dos sócios (aba Sócios) somam automaticamente ao pró-labore total.
-          </div>
-        </div>
-
-        <!-- ABA: Sócios -->
-        <div id="epTab_socios" style="display:none">
-          <div id="epSociosList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
-          <button onclick="epAdicionarSocio()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:none;border:1px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text-light);font-size:13px;width:100%;justify-content:center">
-            <i data-lucide="plus" style="width:14px;height:14px"></i> Adicionar sócio
-          </button>
-          <p style="margin-top:12px;font-size:12px;color:var(--text-light)">O pró-labore de cada sócio é somado ao total financeiro da empresa e usado nos cálculos de INSS e IRPF.</p>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-        <button onclick="closeEmpresaPerfil()" style="padding:8px 16px;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:13px">Cancelar</button>
-        <button id="epBtnSalvar" onclick="salvarPerfilEmpresa()" style="padding:8px 18px;background:var(--text);color:var(--bg);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">Salvar</button>
       </div>
     </div>
   </div>
@@ -647,156 +400,116 @@
       </div>
     </div>
     <div id="hList"></div>
-
-    <!-- Mini KPI bar — sempre visível no rodapé da sidebar -->
-    <div id="sidebarKpi" style="display:none;border-top:1px solid var(--border);padding:10px 12px;background:var(--card);flex-shrink:0">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="sb-kpi-card" onclick="openAgenda()" title="Prazos esta semana">
-          <span id="skpiTarefas" class="sb-kpi-val">—</span>
-          <span class="sb-kpi-lbl">Esta semana</span>
-        </div>
-        <div class="sb-kpi-card sb-kpi-danger" onclick="openAgenda()" title="Prazos vencidos">
-          <span id="skpiVencidos" class="sb-kpi-val">—</span>
-          <span class="sb-kpi-lbl">Vencidos</span>
-        </div>
-        <div class="sb-kpi-card" onclick="openClientModal()" title="Empresas ativas">
-          <span id="skpiClientes" class="sb-kpi-val">—</span>
-          <span class="sb-kpi-lbl">Empresas</span>
-        </div>
-        <div class="sb-kpi-card" title="DARFs gerados este mês">
-          <span id="skpiDarfs" class="sb-kpi-val">—</span>
-          <span class="sb-kpi-lbl">DARFs/mês</span>
-        </div>
-      </div>
-    </div>
   </aside>
 
   <main id="chat">
     <div class="c-head">
       <div class="c-left">
-        <button class="icon-btn sidebar-toggle" onclick="toggleSidebar()" title="Conversas" aria-label="Abrir menu de conversas">
+        <button class="icon-btn" onclick="toggleSidebar()" title="Conversas">
           <i data-lucide="menu"></i>
         </button>
-
-        <!-- Logo + título -->
-        <div class="c-brand">
-          <i data-lucide="shield-check" class="c-brand-icon"></i>
-          <span class="c-title">Fiscal365</span>
-        </div>
-
-        <!-- Empresa ativa — badge clicável -->
-        <button class="client-badge desktop-only" id="headerClientBadge" onclick="openClientModal()" title="Trocar empresa" style="display:none" aria-label="Empresa ativa">
-          <i data-lucide="building-2" style="width:12px;height:12px;flex-shrink:0"></i>
-          <span id="headerClientName">—</span>
-          <i data-lucide="chevrons-up-down" style="width:11px;height:11px;opacity:.5;flex-shrink:0"></i>
-        </button>
-
-        <div class="conn" id="conn" aria-live="polite">
+        <span class="c-title">Chat Fiscal Pro</span>
+        <div class="conn" id="conn">
           <i data-lucide="loader" style="width:12px;height:12px;animation:spin 1s linear infinite"></i>
           <span>Conectando...</span>
         </div>
+        <!-- Cliente ativo no header -->
+        <div class="client-badge desktop-only" id="headerClientBadge" onclick="openClientModal()" title="Trocar empresa" style="display:none;cursor:pointer">
+          <i data-lucide="building-2" style="width:12px;height:12px;flex-shrink:0"></i>
+          <span id="headerClientName">—</span>
+        </div>
+
       </div>
 
       <div class="c-right">
-
-        <!-- Botão ⊞ Ferramentas — dropdown unificado desktop+mobile -->
-        <div class="dropdown-wrap" id="toolsDropWrap">
-          <button class="tb-btn tb-tools-btn" id="toolsDropBtn" onclick="toggleDropdown('toolsMenu')" aria-label="Ferramentas">
-            <i data-lucide="grid-2x2" style="width:17px;height:17px"></i>
-            <span class="tb-tools-label">Ferramentas</span>
-            <i data-lucide="chevron-down" style="width:11px;height:11px;opacity:.5"></i>
-            <span id="agendaBadgeCount" class="tb-badge" style="display:none"></span>
-          </button>
-          <div class="hdr-dropdown tools-dropdown" id="toolsMenu">
-
-            <!-- Ferramentas do contador -->
-            <div class="tools-grid" id="toolsGridFerramentas">
-              <button class="tool-card" data-perm="agenda" id="agendaHeaderBtn" onclick="openAgenda(); closeDropdowns()" style="display:none">
-                <i data-lucide="calendar-clock"></i>
-                <span>Agenda</span>
-              </button>
-              <button class="tool-card" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()" style="display:none">
-                <i data-lucide="file-text"></i>
-                <span>Documentos</span>
-              </button>
-              <button class="tool-card" data-perm="sped" id="spedHeaderBtn" onclick="openSped(); closeDropdowns()" style="display:none">
-                <i data-lucide="file-code-2"></i>
-                <span>SPED</span>
-              </button>
-              <button class="tool-card" data-perm="folha" onclick="openFolha(); closeDropdowns()" style="display:none">
-                <i data-lucide="users"></i>
-                <span>Folha</span>
-              </button>
-              <button class="tool-card" data-perm="financeiro" onclick="openFinanceiro(); closeDropdowns()" style="display:none">
-                <i data-lucide="wallet"></i>
-                <span>Financeiro</span>
-              </button>
-              <button class="tool-card" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
-                <i data-lucide="building-2" style="width:20px;height:20px"></i>
-                <span>Perfil Empresa</span>
-              </button>
-              <button class="tool-card" data-perm="calculadora" onclick="openCalculator(); closeDropdowns()" style="display:none">
-                <i data-lucide="calculator"></i>
-                <span>Calculadora</span>
-              </button>
-              <button class="tool-card" data-perm="portal" id="portalHeaderBtn" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
-                <i data-lucide="external-link"></i>
-                <span>Portal</span>
-              </button>
-            </div>
-
-            <!-- Admin -->
-            <div id="toolsAdminSection" style="display:none">
-              <div class="menu-sep"></div>
-              <div class="hdr-dropdown-title">Administração</div>
-              <div class="tools-grid">
-                <button class="tool-card admin-only" onclick="showStats(); closeDropdowns()" style="display:none">
-                  <i data-lucide="bar-chart-2"></i>
-                  <span>Stats</span>
-                </button>
-                <button class="tool-card admin-only" onclick="showLearningStats(); closeDropdowns()" style="display:none">
-                  <i data-lucide="brain"></i>
-                  <span>Aprendizado</span>
-                </button>
-                <button class="tool-card admin-only" onclick="abrirGerenciarPermissoes(); closeDropdowns()" style="display:none">
-                  <i data-lucide="shield"></i>
-                  <span>Permissões</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Ações de chat -->
-            <div class="menu-sep"></div>
-            <div class="hdr-dropdown-title">Conversa</div>
-            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()" style="display:none">
-              <i data-lucide="download" style="width:14px;height:14px"></i> Exportar
-            </button>
-            <button class="menu-item" data-perm="compartilhar" onclick="shareChat(); closeDropdowns()" style="display:none">
-              <i data-lucide="share-2" style="width:14px;height:14px"></i> Compartilhar
-            </button>
-            <button class="menu-item" onclick="toggleFullscreen(); closeDropdowns()">
-              <i data-lucide="maximize-2" style="width:14px;height:14px"></i> Tela cheia
-            </button>
-
-          </div>
-        </div>
-
-        <div class="toolbar-sep"></div>
-
-        <!-- Tema -->
-        <button class="tb-btn" onclick="toggleTheme()" title="Alternar tema" aria-label="Tema">
+        <!-- Botões sempre visíveis -->
+        <button class="icon-btn" onclick="abrirPortalCliente()" title="Portal do Cliente" id="portalHeaderBtn">
+          <i data-lucide="external-link"></i>
+        </button>
+        <button class="icon-btn" onclick="openAgenda()" title="Agenda de Prazos" id="agendaHeaderBtn">
+          <i data-lucide="calendar-clock"></i>
+          <span id="agendaBadgeCount" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;border-radius:99px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px"></span>
+        </button>
+        <button class="icon-btn" onclick="openSped()" title="SPED EFD-ICMS/IPI" id="spedHeaderBtn" data-perm="sped">
+          <i data-lucide="file-code-2"></i>
+        </button>
+        <button class="icon-btn" onclick="openCalculator()" title="Calculadora">
+          <i data-lucide="calculator"></i>
+        </button>
+        <button class="icon-btn" onclick="toggleTheme()" title="Tema">
           <i data-lucide="moon" id="themeIcon"></i>
         </button>
 
-        <div class="toolbar-sep"></div>
+        <!-- Menu "..." — só mobile, agrupa funções secundárias -->
+        <div class="dropdown-wrap mobile-only">
+          <button class="icon-btn" onclick="toggleDropdown('moreMenu')" title="Mais opções">
+            <i data-lucide="more-vertical"></i>
+          </button>
+          <div class="hdr-dropdown" id="moreMenu">
+            <div class="hdr-dropdown-title">Opções</div>
+            <button class="menu-item" data-perm="documentos" onclick="openDocumentos(); closeDropdowns()">
+              <i data-lucide="file-text"></i> Documentos Fiscais
+            </button>
+            <button class="menu-item" onclick="openAgenda(); closeDropdowns()">
+              <i data-lucide="calendar-clock"></i> Agenda de Prazos
+            </button>
+            <button class="menu-item" onclick="abrirPortalCliente(); closeDropdowns()">
+              <i data-lucide="external-link"></i> Portal do Cliente
+            </button>
+            <button class="menu-item" data-perm="sped" onclick="openSped(); closeDropdowns()">
+              <i data-lucide="file-code-2"></i> SPED EFD-ICMS/IPI
+            </button>
+            <button class="menu-item admin-menu-item" onclick="showStats(); closeDropdowns()">
+              <i data-lucide="bar-chart-2"></i> Estatísticas
+            </button>
+            <button class="menu-item admin-menu-item" onclick="showLearningStats(); closeDropdowns()">
+              <i data-lucide="brain"></i> Aprendizado
+            </button>
+            <button class="menu-item admin-menu-item" onclick="abrirGerenciarPermissoes(); closeDropdowns()">
+              <i data-lucide="shield"></i> Permissões de usuários
+            </button>
+            <button class="menu-item" data-perm="exportar" onclick="exportChat(); closeDropdowns()">
+              <i data-lucide="download"></i> Exportar conversa
+            </button>
+            <button class="menu-item" onclick="shareChat(); closeDropdowns()">
+              <i data-lucide="share-2"></i> Compartilhar
+            </button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" onclick="toggleFullscreen(); closeDropdowns()">
+              <i data-lucide="maximize-2"></i> Tela cheia
+            </button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" onclick="doLogout()" style="color:var(--error)">
+              <i data-lucide="log-out"></i> Sair
+            </button>
+          </div>
+        </div>
 
-        <!-- Perfil -->
-        <button class="user-chip" onclick="openProfile()" title="Perfil e configurações" aria-label="Perfil">
-          <span id="headerAvatarWrap" class="user-chip-avatar"><i data-lucide="user" style="width:14px;height:14px"></i></span>
-          <span id="userEmail" class="user-chip-name desktop-only">—</span>
-          <i data-lucide="chevron-down" style="width:11px;height:11px;opacity:.5;flex-shrink:0"></i>
+        <!-- Botões desktop visíveis individualmente -->
+        <button class="icon-btn desktop-only" onclick="openDocumentos()" title="Documentos Fiscais">
+          <i data-lucide="file-text"></i>
+        </button>
+        <button class="icon-btn desktop-only" onclick="exportChat()" title="Exportar">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="icon-btn desktop-only admin-only" onclick="showStats()" title="Estatísticas">
+          <i data-lucide="bar-chart-2"></i>
+        </button>
+        <button class="icon-btn desktop-only admin-only" onclick="showLearningStats()" title="Aprendizado">
+          <i data-lucide="brain"></i>
+        </button>
+        <button class="icon-btn desktop-only admin-only" onclick="abrirGerenciarPermissoes()" title="Permissões de usuários">
+          <i data-lucide="shield"></i>
+        </button>
+        <button class="icon-btn desktop-only" onclick="toggleFullscreen()" title="Tela cheia">
+          <i data-lucide="maximize-2"></i>
         </button>
 
+        <!-- Usuário logado + logout -->
+        <div class="user-info" onclick="openProfile()" title="Perfil e configurações" style="cursor:pointer">
+          <div id="headerAvatarWrap"><i data-lucide="user" style="width:14px;height:14px;flex-shrink:0"></i></div>
+          <span id="userEmail">—</span>
+        </div>
       </div>
     </div>
 
@@ -816,7 +529,7 @@
         <button class="chip" onclick="useTemplate('Quando usar CFOP 5102?')">
           <i data-lucide="file-text"></i> CFOPs
         </button>
-        <button class="chip" onclick="useTemplate('Prazo SPED Fiscal 2026')">
+        <button class="chip" onclick="useTemplate('Prazo SPED Fiscal 2024')">
           <i data-lucide="clock"></i> Prazos
         </button>
       </div>
@@ -856,12 +569,12 @@
         <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..." maxlength="8000"
           onkeypress="if(event.key==='Enter' && !event.shiftKey) send()"
           oninput="updateCharCount()" autocomplete="off">
-        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos" data-perm="arquivos" style="display:none">
+        <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos">
           <i data-lucide="paperclip"></i>
         </button>
         <span id="charCount" style="font-size:11px;color:var(--text-light);align-self:center;white-space:nowrap;display:none">0/8000</span>
         <div class="dropdown-wrap" style="position:relative">
-          <button class="icon-btn" id="docGenBtn" onclick="toggleDocGenMenu()" title="Gerar documento" data-perm="gerar_doc" style="display:none">
+          <button class="icon-btn" id="docGenBtn" onclick="toggleDocGenMenu()" title="Gerar documento">
             <i data-lucide="file-down"></i>
           </button>
           <div id="docGenMenu" style="display:none;position:absolute;bottom:44px;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);min-width:220px;z-index:200;overflow:hidden">
@@ -886,17 +599,6 @@
         <button class="btn-send" id="sendBtn" onclick="send()">
           <i data-lucide="send"></i>
         </button>
-      </div>
-      <!-- Barra de status: thinking toggle + token counter -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 12px 2px;border-top:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:10px">
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--text-light)" title="Ativa raciocínio profundo para perguntas complexas (usa mais tokens)">
-            <input type="checkbox" id="thinkingToggle" onchange="toggleThinking(this.checked)" style="width:12px;height:12px;cursor:pointer">
-            <i data-lucide="brain" style="width:12px;height:12px"></i> Raciocínio profundo
-          </label>
-          <span id="modelLabel" style="font-size:11px;color:var(--text-light)">claude-sonnet-4-6</span>
-        </div>
-        <span id="tokenCounter" style="font-size:11px;color:var(--text-light);cursor:default" title="Custo estimado da sessão"></span>
       </div>
       <div class="file-info" id="fileContainer" style="display: none; padding: 10px 0;">
         <div class="multiple-files" id="multipleFiles"></div>
@@ -931,9 +633,6 @@
         </button>
         <button class="doc-tab" onclick="switchDocTab('darf', this)">
           <i data-lucide="receipt" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>DARF / DAS
-        </button>
-        <button class="doc-tab" onclick="switchDocTab('historico', this);darfHistoricoCarregar()">
-          <i data-lucide="history" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Histórico
         </button>
       </div>
 
@@ -1000,19 +699,6 @@
               <input type="number" id="darfFolha" placeholder="0,00" min="0" step="0.01" oninput="calcularDarf()">
             </div>
           </div>
-          <!-- Campo atividade Lucro Presumido — mostrado via atualizarCamposDarf() -->
-          <div class="darf-row" id="darfFieldAtividade" style="display:none">
-            <div class="darf-field" style="width:100%">
-              <label>Tipo de Atividade — Lucro Presumido</label>
-              <select id="darfAtividade" onchange="calcularDarf()">
-                <option value="comercio">Comércio / Indústria — IRPJ 8%, CSLL 12%</option>
-                <option value="servicos">Serviços em geral — IRPJ 32%, CSLL 32%</option>
-                <option value="servicos_medicos">Serviços médicos / hospitalares — IRPJ 8%, CSLL 12%</option>
-                <option value="transporte_cargas">Transporte de cargas — IRPJ 8%, CSLL 12%</option>
-                <option value="transporte_passag">Transporte de passageiros — IRPJ 16%, CSLL 12%</option>
-              </select>
-            </div>
-          </div>
           <!-- Campos Simples Nacional — mostrados via atualizarCamposDarf() -->
           <div id="darfSimplesFields" style="display:none">
             <div class="darf-row">
@@ -1046,9 +732,6 @@
         <div id="darfResult" class="darf-result"></div>
 
         <div class="doc-actions" id="darfActions" style="display:none">
-          <button id="darfSalvarHistBtn" class="doc-btn doc-btn-secondary" onclick="darfSalvarHistorico()">
-            <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
-          </button>
           <button class="doc-btn doc-btn-secondary" onclick="exportarDarfPDF()">
             <i data-lucide="file" style="width:13px;height:13px"></i> PDF
           </button>
@@ -1056,21 +739,10 @@
             <i data-lucide="table" style="width:13px;height:13px"></i> Excel
           </button>
           <button class="doc-btn doc-btn-primary" onclick="enviarDarfParaChat()">
-            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Chat
+            <i data-lucide="message-circle" style="width:13px;height:13px"></i> Analisar no Chat
           </button>
         </div>
       </div>
-
-      <!-- PAINEL: HISTÓRICO DE DARFS -->
-      <div id="docPanelHistorico" class="doc-panel">
-        <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">
-          Competências calculadas e salvas. Marque como pago após o recolhimento.
-        </p>
-        <div id="darfHistoricoLista">
-          <p class="dp-empty">Selecione uma empresa para ver o histórico.</p>
-        </div>
-      </div>
-
       </div><!-- fim scroll docModal -->
     </div><!-- fim caixa docModal -->
   </div><!-- fim overlay docModal -->
@@ -1296,19 +968,14 @@
   <div id="ariaAnnouncer" class="sr-only" aria-live="polite"></div>
 
   <!-- Scripts — ordem importa: core → ui → clients → chat → fiscal → profile → documents → sped -->
-  <script src="assets/js/empresa_context.js?v=1"></script>
-  <script src="assets/js/empresa_perfil.js?v=1"></script>
-  <script src="assets/js/ai_provider.js?v=1"></script>
-  <script src="assets/js/chat_tools.js?v=1"></script>
-  <script src="assets/js/core.js?v=8"></script>
+  <script src="assets/js/core.js?v=6"></script>
   <script src="assets/js/ui.js?v=6"></script>
-  <script src="assets/js/clients.js?v=8"></script>
+  <script src="assets/js/clients.js?v=6"></script>
   <script src="assets/js/chat.js?v=6"></script>
-  <script src="assets/js/fiscal.js?v=8"></script>
+  <script src="assets/js/fiscal.js?v=6"></script>
   <script src="assets/js/profile.js?v=6"></script>
   <script src="assets/js/documents.js?v=6"></script>
   <script src="assets/js/sped.js?v=6"></script>
-  <script src="assets/js/folha.js?v=7"></script>
 
   <!-- MODAL PERMISSÕES DE USUÁRIOS (admin only) -->
   <div id="permissoesModal" style="display:none;position:fixed;inset:0;z-index:8600;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;" onclick="if(event.target===this)fecharPermissoesModal()">
@@ -1402,588 +1069,7 @@
     </div>
   </div>
 
-
-  <!-- MODAL FOLHA DE PAGAMENTO / DP -->
-
-  <!-- ══════════════════════════════════════════════════════════
-       MODAL FINANCEIRO — Lançamentos + Fluxo de Caixa
-  ══════════════════════════════════════════════════════════ -->
-  <div id="finModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFinanceiro()">
-    <div class="dp-modal" style="max-width:720px">
-
-      <div class="dp-modal-hd">
-        <div style="display:flex;align-items:center;gap:8px">
-          <i data-lucide="wallet" style="width:16px;height:16px"></i>
-          <span style="font-weight:700;font-size:14px">Financeiro</span>
-          <span id="finEmpresaBadge" class="dp-empresa-badge"></span>
-        </div>
-        <button onclick="closeFinanceiro()" class="dp-close-btn"><i data-lucide="x" style="width:16px;height:16px"></i></button>
-      </div>
-
-      <div class="dp-body">
-
-        <!-- KPIs -->
-        <div id="finKPIs" class="fin-kpis"></div>
-
-        <!-- Gráfico fluxo anual -->
-        <div id="finFluxo" style="margin:8px 0"></div>
-
-        <!-- Navegação de mês -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px">
-          <button onclick="finNavMes(-1)" class="dp-btn-sec" style="padding:4px 10px">‹</button>
-          <strong id="finMesLabel" style="font-size:13px">—</strong>
-          <button onclick="finNavMes(1)" class="dp-btn-sec" style="padding:4px 10px">›</button>
-        </div>
-
-        <!-- Filtro tipo -->
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <button onclick="lancFiltroTipo='todos';finRenderLista()" class="fin-filtro-btn active" id="fFiltTodos">Todos</button>
-          <button onclick="lancFiltroTipo='receita';finRenderLista()" class="fin-filtro-btn" id="fFiltRec">Receitas</button>
-          <button onclick="lancFiltroTipo='despesa';finRenderLista()" class="fin-filtro-btn" id="fFiltDesp">Despesas</button>
-        </div>
-
-        <!-- Lista de lançamentos -->
-        <div id="finLista"></div>
-
-        <!-- Formulário novo/edição -->
-        <div id="lancForm" class="dp-form-section" style="margin-top:12px">
-          <div class="dp-form-title">
-            <span id="lancFormTitulo">Novo Lançamento</span>
-            <button onclick="lancNovoForm()" class="dp-link-btn">Limpar</button>
-          </div>
-          <input type="hidden" id="lancId">
-          <div class="dp-grid2">
-            <div class="dp-field">
-              <label class="dp-lbl">Tipo *</label>
-              <select id="lancTipo" class="c-inp" onchange="lancAtualizarCategorias()">
-                <option value="despesa">Despesa</option>
-                <option value="receita">Receita</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Categoria *</label>
-              <select id="lancCategoria" class="c-inp"></select>
-            </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl">Descrição *</label>
-              <input type="text" id="lancDescricao" class="c-inp" placeholder="Ex: DARF IRPJ jan/2026">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Valor (R$) *</label>
-              <input type="number" id="lancValor" class="c-inp" placeholder="0,00" step="0.01" min="0.01">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Status</label>
-              <select id="lancStatus" class="c-inp">
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Vencimento *</label>
-              <input type="date" id="lancVenc" class="c-inp">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Data de Pagamento</label>
-              <input type="date" id="lancPgto" class="c-inp">
-            </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl">Observação</label>
-              <input type="text" id="lancObs" class="c-inp" placeholder="Opcional">
-            </div>
-          </div>
-          <div class="dp-form-actions">
-            <button onclick="lancNovoForm()" class="dp-btn-sec">Cancelar</button>
-            <button id="finSalvarBtn" onclick="finSalvar()" class="dp-btn-pri">
-              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
-            </button>
-          </div>
-        </div>
-
-      </div><!-- /dp-body -->
-    </div>
-  </div><!-- /finModal -->
-
-  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFolha()">
-    <div class="dp-modal">
-
-      <!-- ── Cabeçalho ── -->
-      <div class="dp-modal-hd">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <i data-lucide="users" style="width:16px;height:16px;flex-shrink:0"></i>
-          <span style="font-weight:700;font-size:14px">Departamento Pessoal</span>
-          <span id="dpEmpresaBadge" class="dp-empresa-badge"></span>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button onclick="switchDpTab('relatorios')" class="dp-hd-rel-btn" title="Relatórios">
-            <i data-lucide="bar-chart-2" style="width:14px;height:14px"></i>
-          </button>
-          <button onclick="closeFolha()" class="dp-close-btn" aria-label="Fechar">
-            <i data-lucide="x" style="width:16px;height:16px"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- ── Abas ── -->
-      <div class="dp-tabs" role="tablist">
-        <button class="dp-tab-btn" data-tab="funcionarios" onclick="switchDpTab('funcionarios')" role="tab" title="Funcionários">
-          <i data-lucide="users"></i><span>Funcionários</span>
-        </button>
-        <button class="dp-tab-btn" data-tab="folha" onclick="switchDpTab('folha')" role="tab" title="Holerite">
-          <i data-lucide="file-text"></i><span>Holerite</span>
-        </button>
-        <button class="dp-tab-btn" data-tab="ferias" onclick="switchDpTab('ferias')" role="tab" title="Férias">
-          <i data-lucide="sun"></i><span>Férias</span>
-        </button>
-        <button class="dp-tab-btn" data-tab="decimo" onclick="switchDpTab('decimo')" role="tab" title="13º Salário">
-          <i data-lucide="gift"></i><span>13º</span>
-        </button>
-        <button class="dp-tab-btn" data-tab="rescisao" onclick="switchDpTab('rescisao')" role="tab" title="Rescisão">
-          <i data-lucide="user-x"></i><span>Rescisão</span>
-        </button>
-        <button class="dp-tab-btn" data-tab="relatorios" onclick="switchDpTab('relatorios')" role="tab" title="Relatórios">
-          <i data-lucide="bar-chart-2"></i><span>Relatórios</span>
-        </button>
-      </div>
-
-      <!-- ── Corpo ── -->
-      <div class="dp-body">
-
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: FUNCIONÁRIOS
-        ══════════════════════════════════════════════════════ -->
-        <div id="dpPanel_funcionarios" class="dp-panel" style="display:none">
-
-          <!-- Lista de funcionários cadastrados -->
-          <div id="dpFuncList" class="dp-func-list"></div>
-
-          <!-- Formulário cadastro/edição -->
-          <div class="dp-form-section">
-            <div class="dp-form-title">
-              <span style="display:flex;align-items:center;gap:6px">
-                <i data-lucide="user-plus"></i>
-                <span id="dpFuncFormTitulo">Cadastrar Funcionário</span>
-              </span>
-              <button onclick="dpNovoFunc()" class="dp-link-btn">+ Novo</button>
-            </div>
-
-            <input type="hidden" id="dpFuncFormId">
-
-            <!-- Seção: Identificação -->
-            <div class="dp-section-lbl">Identificação</div>
-            <div class="dp-grid2">
-              <div class="dp-field span2">
-                <label class="dp-lbl">Nome Completo *</label>
-                <input type="text" id="dpFuncNome" class="c-inp" placeholder="Ex: Maria da Silva" autocomplete="name">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Cargo / Função</label>
-                <input type="text" id="dpFuncCargo" class="c-inp" placeholder="Ex: Auxiliar Administrativo">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Tipo de Contrato</label>
-                <select id="dpFuncTipo" class="c-inp">
-                  <option value="clt">CLT</option>
-                  <option value="pj">PJ / Autônomo</option>
-                  <option value="estagio">Estágio</option>
-                </select>
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">CPF</label>
-                <input type="text" id="dpFuncCPF" class="c-inp" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">PIS / PASEP</label>
-                <input type="text" id="dpFuncPIS" class="c-inp" placeholder="000.00000.00-0" inputmode="numeric">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">CTPS (nº · série)</label>
-                <input type="text" id="dpFuncCTPS" class="c-inp" placeholder="123456 · 001-SP">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">E-mail</label>
-                <input type="email" id="dpFuncEmail" class="c-inp" placeholder="email@exemplo.com" autocomplete="email">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Telefone</label>
-                <input type="tel" id="dpFuncTelefone" class="c-inp" placeholder="(16) 99999-9999" inputmode="tel">
-              </div>
-            </div>
-
-            <!-- Seção: Contrato & Remuneração -->
-            <div class="dp-section-lbl">Contrato &amp; Remuneração</div>
-            <div class="dp-grid2">
-              <div class="dp-field">
-                <label class="dp-lbl">Data de Admissão *</label>
-                <input type="date" id="dpFuncAdmissao" class="c-inp">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Salário Base (R$) *</label>
-                <input type="number" id="dpFuncSalario" class="c-inp" placeholder="0,00" step="0.01" min="0">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Dependentes (IRRF)</label>
-                <input type="number" id="dpFuncDep" class="c-inp" value="0" min="0" max="20">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Jornada (h/semana)</label>
-                <select id="dpFuncJornada" class="c-inp">
-                  <option value="44">44h — padrão CLT</option>
-                  <option value="40">40h</option>
-                  <option value="36">36h</option>
-                  <option value="30">30h</option>
-                  <option value="20">20h — Estágio</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Seção: Dados Bancários -->
-            <div class="dp-section-lbl">Dados Bancários <span style="font-weight:400;color:var(--text-light)">(para pagamento)</span></div>
-            <div class="dp-grid2">
-              <div class="dp-field">
-                <label class="dp-lbl">Banco</label>
-                <input type="text" id="dpFuncBanco" class="c-inp" placeholder="Ex: 001 — Banco do Brasil">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Agência</label>
-                <input type="text" id="dpFuncAgencia" class="c-inp" placeholder="0000-0" inputmode="numeric">
-              </div>
-              <div class="dp-field span2">
-                <label class="dp-lbl">Conta Corrente</label>
-                <input type="text" id="dpFuncConta" class="c-inp" placeholder="00000-0" inputmode="numeric">
-              </div>
-            </div>
-
-            <!-- Foto de Perfil -->
-            <div class="dp-field-group" style="margin-top:8px">
-              <label class="dp-label">Foto de Perfil</label>
-              <div style="display:flex;align-items:center;gap:12px">
-                <img id="dpFuncFotoPreview" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:50%;border:2px solid var(--border)">
-                <div>
-                  <input type="file" id="dpFuncFotoInput" accept="image/*" style="display:none" onchange="dpFotoSelecionada(this)">
-                  <button onclick="document.getElementById('dpFuncFotoInput').click()" class="dp-btn-sec" style="font-size:12px;padding:6px 12px">
-                    <i data-lucide="camera" style="width:13px;height:13px"></i> Escolher foto
-                  </button>
-                  <button onclick="dpFotoRemover()" class="dp-link-btn" style="font-size:12px;margin-left:8px;color:var(--text-light)">Remover</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Campos extras -->
-            <div class="dp-row">
-              <div class="dp-field-group">
-                <label class="dp-label">RG</label>
-                <input type="text" id="dpFuncRG" class="c-inp" placeholder="00.000.000-0">
-              </div>
-              <div class="dp-field-group">
-                <label class="dp-label">Data de Nascimento</label>
-                <input type="date" id="dpFuncNasc" class="c-inp">
-              </div>
-            </div>
-            <div class="dp-field-group">
-              <label class="dp-label">Endereço Residencial</label>
-              <input type="text" id="dpFuncEndereco" class="c-inp" placeholder="Rua, número, bairro, cidade">
-            </div>
-            <div class="dp-field-group">
-              <label class="dp-label">Observações</label>
-              <textarea id="dpFuncObs" class="c-inp" rows="2" style="resize:vertical" placeholder="Observações internas sobre o funcionário"></textarea>
-            </div>
-
-            <div class="dp-form-actions">
-              <button onclick="dpNovoFunc()" class="dp-btn-sec">Cancelar</button>
-              <button id="dpFuncSalvarBtn" onclick="dpSalvarFunc()" class="dp-btn-pri">
-                <i data-lucide="save" style="width:13px;height:13px"></i> Salvar Funcionário
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: HOLERITE MENSAL
-        ══════════════════════════════════════════════════════ -->
-        <div id="dpPanel_folha" class="dp-panel" style="display:none">
-
-          <div class="dp-section-lbl">Dados da Competência</div>
-          <div class="dp-grid2">
-            <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário</label>
-              <select id="folhaFuncSelect" class="c-inp" onchange="dpFuncChanged('folhaFuncSelect')">
-                <option value="">— Selecione o funcionário —</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Competência *</label>
-              <input type="text" id="folhaCompetencia" class="c-inp" placeholder="MM/AAAA" maxlength="7" oninput="formatarCompetencia(this)">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Tipo de Contrato</label>
-              <select id="folhaTipoContrato" class="c-inp" onchange="calcularFolha()">
-                <option value="clt">CLT</option>
-                <option value="pj">PJ / Autônomo</option>
-                <option value="estagio">Estágio</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Dias Trabalhados</label>
-              <input type="number" id="folhaDias" class="c-inp" value="30" min="1" max="31" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Dependentes (IRRF)</label>
-              <input type="number" id="folhaDependentes" class="c-inp" value="0" min="0" max="20" oninput="calcularFolha()">
-            </div>
-          </div>
-
-          <div class="dp-section-lbl">Proventos</div>
-          <div class="dp-grid2">
-            <div class="dp-field">
-              <label class="dp-lbl">Salário Bruto (R$) *</label>
-              <input type="number" id="folhaSalario" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">HE 50% — horas</label>
-              <input type="number" id="folhaHE50" class="c-inp" placeholder="0" step="0.5" min="0" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">HE 100% — horas</label>
-              <input type="number" id="folhaHE100" class="c-inp" placeholder="0" step="0.5" min="0" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Adic. Noturno — horas</label>
-              <input type="number" id="folhaAdicNoturno" class="c-inp" placeholder="0" step="0.5" min="0" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl">Outros Acréscimos (R$) <small style="color:var(--text-light)">comissões, ajudas de custo…</small></label>
-              <input type="number" id="folhaOutrosAcr" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
-            </div>
-          </div>
-
-          <div class="dp-section-lbl">Descontos Adicionais</div>
-          <div class="dp-grid2">
-            <div class="dp-field">
-              <label class="dp-lbl">Pensão Alimentícia (R$)</label>
-              <input type="number" id="folhaPensao" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Outros Descontos (R$) <small style="color:var(--text-light)">VT, VR, plano…</small></label>
-              <input type="number" id="folhaOutrosDesc" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
-            </div>
-          </div>
-
-          <!-- Resultado do cálculo -->
-          <div id="folhaResult" style="display:none;margin-top:8px"></div>
-
-          <!-- Ações -->
-          <div id="folhaActions" class="dp-actions" style="display:none;margin-top:8px">
-            <button onclick="limparFolha()" class="dp-btn-sec">
-              <i data-lucide="rotate-ccw" style="width:13px;height:13px"></i> Limpar
-            </button>
-            <button id="dpSalvarHoleriteBtn" onclick="dpSalvarHolerite()" class="dp-btn-sec">
-              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
-            </button>
-            <button onclick="exportarFolhaPDF()" class="dp-btn-pri">
-              <i data-lucide="file-down" style="width:13px;height:13px"></i> PDF
-            </button>
-            <button onclick="exportarFolhaExcel()" class="dp-btn-pri" style="background:#16a34a">
-              <i data-lucide="table-2" style="width:13px;height:13px"></i> Excel
-            </button>
-            <button onclick="enviarFolhaParaChat()" class="dp-btn-pri" style="background:#2563eb">
-              <i data-lucide="message-circle" style="width:13px;height:13px"></i> Chat
-            </button>
-          </div>
-          <p class="dp-note" style="margin-top:10px">⚠️ Tabelas Portaria MF 1.191/2025 (INSS) · 1.206/2025 (IRRF). Documento auxiliar.</p>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: FÉRIAS
-        ══════════════════════════════════════════════════════ -->
-        <div id="dpPanel_ferias" class="dp-panel" style="display:none">
-
-          <div class="dp-section-lbl">Dados das Férias</div>
-          <div class="dp-grid2">
-            <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário *</label>
-              <select id="dpFeriasFuncSelect" class="c-inp" onchange="calcularFerias()">
-                <option value="">— Selecione o funcionário —</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Competência</label>
-              <input type="text" id="dpFeriasComp" class="c-inp" placeholder="MM/AAAA" maxlength="7" oninput="formatarCompetencia(this)">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Período de Gozo</label>
-              <input type="text" id="dpFeriasInicio" class="c-inp" placeholder="Início (DD/MM/AAAA)">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Dias de Férias</label>
-              <select id="dpFeriasDias" class="c-inp" onchange="calcularFerias()">
-                <option value="30">30 dias — integral</option>
-                <option value="20">20 dias</option>
-                <option value="15">15 dias — fracionado</option>
-                <option value="10">10 dias — fracionado</option>
-              </select>
-            </div>
-            <div class="dp-field span2" style="padding-top:6px">
-              <label class="dp-lbl" style="display:flex;align-items:center;gap:10px;cursor:pointer">
-                <input type="checkbox" id="dpFeriasAbono" onchange="calcularFerias()" style="width:16px;height:16px;cursor:pointer">
-                <span>Incluir Abono Pecuniário — 10 dias (CLT art. 143)</span>
-              </label>
-            </div>
-          </div>
-
-          <div id="dpFeriasResult" style="display:none;margin-top:12px"></div>
-
-          <div id="dpFeriasActions" class="dp-actions" style="display:none;margin-top:8px">
-            <button onclick="dpSalvarFerias()" class="dp-btn-sec">
-              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar no Banco
-            </button>
-            <button onclick="dpExportarEventoPDF('ferias')" class="dp-btn-pri">
-              <i data-lucide="file-down" style="width:13px;height:13px"></i> Gerar PDF
-            </button>
-          </div>
-          <p class="dp-note" style="margin-top:10px">ℹ️ Férias pagas 2 dias antes do início. Comunicar com 30 dias de antecedência (CLT art. 135 e 145).</p>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: 13º SALÁRIO
-        ══════════════════════════════════════════════════════ -->
-        <div id="dpPanel_decimo" class="dp-panel" style="display:none">
-
-          <div class="dp-section-lbl">Dados do 13º</div>
-          <div class="dp-grid2">
-            <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário *</label>
-              <select id="dp13FuncSelect" class="c-inp" onchange="calcularDecimo()">
-                <option value="">— Selecione o funcionário —</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Parcela</label>
-              <select id="dp13Parcela" class="c-inp" onchange="calcularDecimo()">
-                <option value="1">1ª Parcela — até 30/11</option>
-                <option value="2">2ª Parcela — até 20/12</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Meses Trabalhados no Ano</label>
-              <select id="dp13Meses" class="c-inp" onchange="calcularDecimo()">
-                <option value="12">12 — ano completo</option>
-                <option value="11">11</option><option value="10">10</option>
-                <option value="9">9</option><option value="8">8</option>
-                <option value="7">7</option><option value="6">6</option>
-                <option value="5">5</option><option value="4">4</option>
-                <option value="3">3</option><option value="2">2</option>
-                <option value="1">1</option>
-              </select>
-            </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl">Competência</label>
-              <input type="text" id="dp13Comp" class="c-inp" placeholder="12/2026" maxlength="7" oninput="formatarCompetencia(this);calcularDecimo()">
-            </div>
-          </div>
-
-          <div id="dp13Result" style="display:none;margin-top:12px"></div>
-
-          <div id="dp13Actions" class="dp-actions" style="display:none;margin-top:8px">
-            <button onclick="dpSalvarDecimo()" class="dp-btn-sec">
-              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar no Banco
-            </button>
-            <button onclick="dpExportarEventoPDF('decimo')" class="dp-btn-pri">
-              <i data-lucide="file-down" style="width:13px;height:13px"></i> Gerar PDF
-            </button>
-          </div>
-          <p class="dp-note" style="margin-top:10px">ℹ️ Art. 7º CF/88 e Lei 4.090/62. 1ª parcela: sem INSS/IRRF. 2ª: INSS e IRRF sobre valor integral.</p>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: RESCISÃO
-        ══════════════════════════════════════════════════════ -->
-        <div id="dpPanel_rescisao" class="dp-panel" style="display:none">
-
-          <div class="dp-section-lbl">Dados do Desligamento</div>
-          <div class="dp-grid2">
-            <div class="dp-field span2">
-              <label class="dp-lbl">Funcionário *</label>
-              <select id="dpRescFuncSelect" class="c-inp" onchange="dpRescAutoPreench()">
-                <option value="">— Selecione o funcionário —</option>
-              </select>
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Data de Desligamento *</label>
-              <input type="date" id="dpRescData" class="c-inp" oninput="dpRescAutoPreench()">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Motivo do Desligamento</label>
-              <select id="dpRescMotivo" class="c-inp" onchange="dpRescMotivoChanged()">
-                <option value="sem_justa_causa">Demissão Sem Justa Causa</option>
-                <option value="pedido_demissao">Pedido de Demissão</option>
-                <option value="acordo_mutuo">Acordo Mútuo (art. 484-A CLT)</option>
-                <option value="justa_causa">Demissão por Justa Causa</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Card de info automática da rescisão -->
-          <div id="dpRescInfoCard" style="display:none;background:var(--sidebar-hover);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin:8px 0;font-size:12px;color:var(--text-light)">
-            <span id="dpRescInfoTxt"></span>
-          </div>
-
-          <div class="dp-section-lbl">Verbas Rescisórias</div>
-          <div class="dp-grid2">
-            <div class="dp-field">
-              <label class="dp-lbl">Saldo de Dias no Mês</label>
-              <input type="number" id="dpRescSaldoDias" class="c-inp" placeholder="0" min="0" max="31">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Férias Proporcionais (meses)</label>
-              <input type="number" id="dpRescFerProp" class="c-inp" placeholder="0" min="0" max="12">
-            </div>
-            <div class="dp-field">
-              <label class="dp-lbl">13º Proporcional (meses)</label>
-              <input type="number" id="dpRescDecProp" class="c-inp" placeholder="0" min="0" max="12">
-            </div>
-            <div class="dp-field" style="padding-top:6px">
-              <label class="dp-lbl" style="display:flex;align-items:center;gap:10px;cursor:pointer">
-                <input type="checkbox" id="dpRescAviso" checked style="width:16px;height:16px;cursor:pointer">
-                <span>Aviso Prévio Indenizado</span>
-              </label>
-            </div>
-          </div>
-
-          <button onclick="calcularRescisao()" class="dp-btn-pri" style="margin-top:4px;width:100%">
-            <i data-lucide="calculator" style="width:13px;height:13px"></i> Calcular Rescisão
-          </button>
-
-          <div id="dpRescResult" style="display:none;margin-top:12px"></div>
-
-          <div id="dpRescActions" class="dp-actions" style="display:none;margin-top:8px">
-            <button onclick="dpSalvarRescisao()" class="dp-btn-sec" style="color:#dc2626;border-color:#dc2626">
-              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar + Marcar Rescindido
-            </button>
-            <button onclick="dpExportarEventoPDF('rescisao')" class="dp-btn-pri">
-              <i data-lucide="file-down" style="width:13px;height:13px"></i> Gerar PDF
-            </button>
-          </div>
-          <p class="dp-note" style="margin-top:10px">ℹ️ Cálculo auxiliar. Verifique extrato FGTS na CAIXA. Homologação no sindicato para vínculos &gt; 1 ano.</p>
-        </div>
-
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: RELATÓRIOS
-        ══════════════════════════════════════════════════════ -->
-        <div id="dpPanel_relatorios" class="dp-panel" style="display:none">
-          <div id="dpRelContent">
-            <p class="dp-empty">Carregando relatórios...</p>
-          </div>
-        </div>
-
-      </div><!-- /dp-body -->
-    </div><!-- /dp-modal -->
-  </div><!-- /folhaModal -->
-
-  <script src="assets/js/agenda.js?v=7"></script>
-  <script src="assets/js/financeiro.js?v=1"></script>
-
+  <script src="assets/js/agenda.js"></script>
 
   <!-- MODAL PORTAL ADMIN -->
   <div id="portalAdminModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:5000;align-items:center;justify-content:center;padding:20px">
