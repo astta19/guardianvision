@@ -19,7 +19,6 @@ let darfData = null;
 let rateLimitUntil = 0;
 
 const CHATS_PER_PAGE = 50;
-// MODELS mantido para compatibilidade — use AI_PROVIDER.getModels() no código novo
 const MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',
@@ -28,19 +27,19 @@ const MODELS = [
 
 const fiscalDeadlines = {
       // Mensais
-      'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true  },
-      'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb',               comEmpregado: true  },
-      'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf',             comEmpregado: true  },
-      'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)',        comEmpregado: true  },
+      'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true },
+      'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb'                                   },
+      'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf'                                 },
+      'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)'                            },
       'efd_contrib': { day: 10, month: 'monthly', description: 'EFD-Contribuições',     naoSimples: true    },
-      'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal',           naoSimples: true    },
-      'dctf':        { day: 15, month: 'monthly', description: 'DCTF',                  naoSimples: true    },
+      'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal'                                },
+      'dctf':        { day: 15, month: 'monthly', description: 'DCTF'                                       },
       // Anuais
       'dasn_simei':  { day: 31, month: 5,         description: 'DASN-SIMEI (MEI)',      meiOnly: true       },
-      'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true  },
-      'ecd':         { day: 30, month: 6,         description: 'ECD',                   naoSimples: true    },
-      'ecf':         { day: 31, month: 7,         description: 'ECF',                   naoSimples: true    },
-      'dirpf':       { day: 30, month: 5,         description: 'DIRPF (PF)'                                 },
+      'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
+      'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
+      'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
+      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
     };
 let currentFiles = [];
 let isProcessingFile = false;
@@ -132,34 +131,11 @@ function applyAdminUI() {
     el.style.display = admin ? '' : 'none';
   });
 
-  // Seção admin no dropdown de ferramentas
-  const adminSection = document.getElementById('toolsAdminSection');
-  if (adminSection) adminSection.style.display = admin ? '' : 'none';
-
   // data-perm: itens com permissão específica
   document.querySelectorAll('[data-perm]').forEach(el => {
     const perm = el.getAttribute('data-perm');
     el.style.display = (admin || perms.includes(perm)) ? '' : 'none';
   });
-
-  // Aviso orientativo para usuário sem nenhuma permissão
-  if (!admin && perms.length === 0) {
-    const msgs = document.getElementById('msgs');
-    if (msgs && !msgs.querySelector('.sem-permissao-aviso')) {
-      const aviso = document.createElement('div');
-      aviso.className = 'msg assistant sem-permissao-aviso';
-      aviso.innerHTML = `
-        <div class="ava"><i data-lucide="info"></i></div>
-        <div class="bubble" style="background:var(--sidebar-hover);border:1px solid var(--border)">
-          <strong>Aguardando liberação de acesso</strong><br>
-          <span style="font-size:13px;color:var(--text-light)">Seu acesso ainda está sendo configurado pelo administrador. Assim que as permissões forem liberadas, os recursos aparecerão automaticamente. O chat já está disponível.</span>
-        </div>`;
-      msgs.querySelector('.empty')?.remove();
-      msgs.appendChild(aviso);
-      if (window.lucide) lucide.createIcons();
-    }
-  }
-
 }
 
 // Chamada pelo admin para definir permissões de um contador
@@ -286,36 +262,6 @@ function doLogout() {
 
 // --- Confirm dialog ---
 // HTML usa: confirmModal, confirmModalText, confirmModalCancel, confirmModalOk
-// ── Toast global (substitui alert() em operações não-críticas) ───────────────
-let _toastTimer = null;
-function showToast(msg, type = 'info', duration = 3500) {
-  let t = document.getElementById('_toast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = '_toast';
-    t.style.cssText = [
-      'position:fixed','bottom:24px','left:50%','transform:translateX(-50%) translateY(20px)',
-      'padding:10px 18px','border-radius:10px','font-size:13px','font-weight:500',
-      'box-shadow:0 4px 20px rgba(0,0,0,0.18)','z-index:99999','pointer-events:none',
-      'transition:opacity .25s,transform .25s','opacity:0','max-width:90vw','text-align:center',
-    ].join(';');
-    document.body.appendChild(t);
-  }
-  const palette = { info:'#1a1a1a', success:'#16a34a', warn:'#d97706', error:'#dc2626' };
-  t.style.background = palette[type] || palette.info;
-  t.style.color = '#fff';
-  t.textContent = msg;
-  clearTimeout(_toastTimer);
-  requestAnimationFrame(() => {
-    t.style.opacity = '1';
-    t.style.transform = 'translateX(-50%) translateY(0)';
-  });
-  _toastTimer = setTimeout(() => {
-    t.style.opacity = '0';
-    t.style.transform = 'translateX(-50%) translateY(20px)';
-  }, duration);
-}
-
 function showConfirm(msg, onConfirm, hideCancel) {
   const modal = document.getElementById('confirmModal');
   if (!modal) return;
@@ -369,171 +315,33 @@ async function showApp() {
     if (el) { el.classList.remove('hidden'); el.style.removeProperty('display'); }
   });
   document.querySelector('header')?.classList.remove('hidden');
-
-  // Garantir currentUser atualizado (inclui user_metadata do Google)
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
-
+  // localStorage tem prioridade — é atualizado imediatamente ao trocar o tema
   setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
-
-  // Permissões via proxy (não-admin)
+  // Buscar permissões atualizadas da tabela (sem depender só do JWT)
   if (currentUser && !isAdmin()) {
     try {
       const r = await supabaseProxy('buscar_permissoes', { userId: currentUser.id });
       if (r?.permissions && Array.isArray(r.permissions)) {
+        // Mesclar no objeto currentUser para applyAdminUI usar
         if (!currentUser.user_metadata) currentUser.user_metadata = {};
         currentUser.user_metadata.permissions = r.permissions;
       }
-    } catch(e) {}
+    } catch(e) {} // silencioso — fallback para user_metadata do JWT
   }
-
-  // ── Verificar acesso (convite/status) ──────────────────────
-  let statusAcesso = 'ativo';
-  try {
-    const acesso = await supabaseProxy('verificar_acesso', {});
-    statusAcesso = acesso?.status || 'ativo';
-    // Sincronizar role vindo do banco no user_metadata local
-    if (acesso?.role && currentUser?.user_metadata) {
-      currentUser.user_metadata.role = acesso.role;
-    }
-  } catch(e) {}
-
-  if (statusAcesso === 'aguardando') {
-    mostrarTelaAguardando();
-    return;
-  }
-  if (statusAcesso === 'bloqueado') {
-    mostrarTelaBloqueado();
-    return;
-  }
-
   applyAdminUI();
   checkConnection();
-
-  // Carregar perfil PRIMEIRO — garante que nome/avatar do Google aparecem imediatamente
-  if (typeof carregarPerfil === 'function') {
-    await carregarPerfil();
-    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
-  }
-
-  // Carregar clientes após perfil estar pronto
-  if (typeof loadClientes === 'function') {
-    setTimeout(() => loadClientes(), 50);
-  }
-
+  if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
+  if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
+    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
+  });
   if (window.lucide) lucide.createIcons();
   // Carregar chat compartilhado via link (?shared=TOKEN)
   const _sharedToken = new URLSearchParams(window.location.search).get('shared');
   if (_sharedToken) carregarChatCompartilhado(_sharedToken);
-}
-
-// ── Telas de acesso bloqueado ─────────────────────────────────
-function mostrarTelaAguardando() {
-  hideLoading();
-  document.getElementById('authScreen')?.classList.add('hidden');
-  ['sidebar','chat'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
-  });
-  document.querySelector('header')?.classList.add('hidden');
-
-  let tela = document.getElementById('_telaAcesso');
-  if (!tela) {
-    tela = document.createElement('div');
-    tela.id = '_telaAcesso';
-    tela.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg,#f8fafc);z-index:9999;padding:32px;text-align:center';
-    document.body.appendChild(tela);
-  }
-
-  const email = currentUser?.email || '';
-  tela.innerHTML = `
-    <div style="max-width:420px">
-      <div style="font-size:48px;margin-bottom:16px">⏳</div>
-      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--text,#1f2937)">Aguardando aprovação</h2>
-      <p style="font-size:14px;color:var(--text-light,#6b7280);margin-bottom:24px;line-height:1.6">
-        Sua conta <strong>${escapeHtml(email)}</strong> foi criada com sucesso.<br>
-        Para acessar o sistema, solicite ao administrador que envie um <strong>link de convite</strong> para o seu e-mail.
-      </p>
-      <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:16px;margin-bottom:20px;font-size:13px;color:var(--text-light,#6b7280)">
-        Já recebeu um convite?
-        <button onclick="mostrarFormConvite()" style="background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-left:8px">
-          Inserir código
-        </button>
-      </div>
-      <div id="_conviteForm" style="display:none;margin-bottom:16px">
-        <input id="_conviteInput" placeholder="Cole o link ou código do convite" style="width:100%;box-sizing:border-box;padding:10px 14px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-size:13px;margin-bottom:8px">
-        <button onclick="aplicarConvite()" style="width:100%;background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer">
-          Ativar convite
-        </button>
-        <div id="_conviteMsg" style="font-size:12px;margin-top:6px;color:var(--text-light,#6b7280)"></div>
-      </div>
-      <button onclick="sb.auth.signOut().then(()=>window.location.reload())"
-        style="background:none;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:8px 18px;font-size:13px;cursor:pointer;color:var(--text-light,#6b7280)">
-        Sair
-      </button>
-    </div>`;
-}
-
-function mostrarTelaBloqueado() {
-  hideLoading();
-  document.getElementById('authScreen')?.classList.add('hidden');
-  ['sidebar','chat'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
-  });
-  document.querySelector('header')?.classList.add('hidden');
-
-  let tela = document.getElementById('_telaAcesso');
-  if (!tela) { tela = document.createElement('div'); tela.id = '_telaAcesso'; document.body.appendChild(tela); }
-  tela.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg,#f8fafc);z-index:9999;padding:32px;text-align:center';
-  tela.innerHTML = `
-    <div style="max-width:400px">
-      <div style="font-size:48px;margin-bottom:16px">🚫</div>
-      <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--text,#1f2937)">Acesso bloqueado</h2>
-      <p style="font-size:14px;color:var(--text-light,#6b7280);margin-bottom:24px">
-        Sua conta foi suspensa pelo administrador do sistema.<br>Entre em contato para mais informações.
-      </p>
-      <button onclick="sb.auth.signOut().then(()=>window.location.reload())"
-        style="background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer">
-        Sair
-      </button>
-    </div>`;
-}
-
-function mostrarFormConvite() {
-  const f = document.getElementById('_conviteForm');
-  if (f) { f.style.display = f.style.display === 'none' ? 'block' : 'none'; }
-}
-
-async function aplicarConvite() {
-  const input = document.getElementById('_conviteInput');
-  const msg   = document.getElementById('_conviteMsg');
-  let valor   = input?.value.trim() || '';
-
-  // Aceitar URL completo ou apenas o token
-  const match = valor.match(/[?&]convite=([a-f0-9]{48})/i) || valor.match(/^([a-f0-9]{48})$/i);
-  const conviteToken = match?.[1] || valor;
-
-  if (!conviteToken || conviteToken.length < 10) {
-    if (msg) { msg.textContent = 'Informe o código ou link do convite.'; msg.style.color = '#ef4444'; }
-    return;
-  }
-
-  if (msg) { msg.textContent = 'Validando...'; msg.style.color = 'var(--text-light,#6b7280)'; }
-
-  try {
-    const res = await supabaseProxy('usar_convite', { token: conviteToken });
-    if (res?.ok) {
-      if (msg) { msg.textContent = '✅ Convite ativado! Carregando...'; msg.style.color = '#16a34a'; }
-      setTimeout(() => window.location.reload(), 1200);
-    } else {
-      if (msg) { msg.textContent = res?.erro || 'Convite inválido ou expirado.'; msg.style.color = '#ef4444'; }
-    }
-  } catch(e) {
-    if (msg) { msg.textContent = 'Erro ao validar. Tente novamente.'; msg.style.color = '#ef4444'; }
-  }
 }
 
 // --- Audit log ---
@@ -596,6 +404,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
       showApp();
+      // Processar convite na URL se existir
+      if (typeof verificarConviteURL === 'function') verificarConviteURL();
     } else if (event === 'TOKEN_REFRESHED') {
       if (session) currentUser = session.user;
     } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
@@ -605,23 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Sessão existente (carregamento inicial)
-  sb.auth.getSession().then(async ({ data: { session } }) => {
-    if (session) {
-      currentUser = session.user;
-      // Novo usuário vindo de link de convite: aplicar token antes de showApp
-      const _conviteParam = new URLSearchParams(window.location.search).get('convite');
-      if (_conviteParam) {
-        try {
-          await supabaseProxy('usar_convite', { token: _conviteParam });
-          const url = new URL(window.location.href);
-          url.searchParams.delete('convite');
-          window.history.replaceState({}, '', url);
-          const { data: { user: u2 } } = await sb.auth.getUser();
-          if (u2) currentUser = u2;
-        } catch(e) {}
-      }
-      showApp();
-    }
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session) { currentUser = session.user; showApp(); }
     else { hideLoading(); showAuthScreen(); }
   }).catch(() => { hideLoading(); showAuthScreen(); });
 
@@ -671,23 +466,12 @@ async function carregarKPIs() {
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
       ]);
 
-    // Tela vazia
     document.getElementById('kpiTarefas').textContent  = cTarefas  ?? '—';
     document.getElementById('kpiVencidos').textContent = cVencidos  ?? '—';
     document.getElementById('kpiClientes').textContent = cClientes  ?? '—';
     document.getElementById('kpiDarfs').textContent    = cDarfs     ?? '—';
+
     dashboard.style.display = 'block';
-
-    // Sidebar KPI bar — sempre visível
-    const skpi = document.getElementById('sidebarKpi');
-    if (skpi) {
-      document.getElementById('skpiTarefas').textContent  = cTarefas  ?? '—';
-      document.getElementById('skpiVencidos').textContent = cVencidos  ?? '—';
-      document.getElementById('skpiClientes').textContent = cClientes  ?? '—';
-      document.getElementById('skpiDarfs').textContent    = cDarfs     ?? '—';
-      skpi.style.display = 'block';
-    }
-
     if (window.lucide) lucide.createIcons();
   } catch(e) {
     console.error('KPI error:', e);
