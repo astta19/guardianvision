@@ -442,7 +442,7 @@ async function renderHistoryList(list, hasMore = false) {
     html += grupos[g].map(c => `
     <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
-        <div class="h-title">${escapeHtml(c.title || 'Nova Conversa')}</div>
+        <div class="h-title" ondblclick="event.stopPropagation();renameChat('${c.id}', this)" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.updated_at || c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
@@ -460,10 +460,55 @@ async function renderHistoryList(list, hasMore = false) {
   lucide.createIcons();
 }
 
+async function renameChat(id, el) {
+  const atual = el.textContent.trim();
+  const input = document.createElement('input');
+  input.value = atual;
+  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none';
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const salvar = async () => {
+    const novo = input.value.trim() || atual;
+    const span = document.createElement('div');
+    span.className = 'h-title';
+    span.setAttribute('ondblclick', `event.stopPropagation();renameChat('${id}', this)`);
+    span.setAttribute('title', 'Duplo clique para renomear');
+    span.textContent = novo;
+    input.replaceWith(span);
+    if (novo === atual) return;
+    await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
+    if (currentChat.id === id) currentChat.title = novo;
+    const chat = allChats.find(c => c.id === id);
+    if (chat) chat.title = novo;
+  };
+
+  input.addEventListener('blur', salvar);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = atual; input.blur(); }
+  });
+}
+
 async function filterChats() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const filtered = q ? allChats.filter(c => (c.title || '').toLowerCase().includes(q)) : allChats;
-  renderHistoryList(filtered);
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) { renderHistoryList(allChats); return; }
+
+  // Busca local imediata por título
+  const localMatch = allChats.filter(c => (c.title || '').toLowerCase().includes(q.toLowerCase()));
+  renderHistoryList(localMatch);
+
+  // Busca no banco por conteúdo das mensagens (debounce implícito — já filtramos local)
+  try {
+    const { data } = await sb.from('chats')
+      .select('id, title, created_at, updated_at, cliente_id')
+      .eq('user_id', currentUser.id)
+      .ilike('title', `%${q}%`)
+      .order('updated_at', { ascending: false })
+      .limit(30);
+    if (data?.length) renderHistoryList(data);
+  } catch {}
 }
 
 async function openChat(id) {
@@ -550,16 +595,74 @@ async function deleteChat(id) {
 
 function newChat() {
   currentChat = { id: null, title: 'Nova Conversa', messages: [] };
-  document.getElementById('msgs').innerHTML = `
-    <div class="empty">
-      <i data-lucide="message-circle"></i>
-      <h3>Nova conversa</h3>
-      <p>Faça sua primeira pergunta!</p>
-    </div>`;
+  renderBoasVindas();
   lucide.createIcons();
   renderHistoryList(allChats);
   closeSidebar();
   removeAllFiles();
+}
+
+function renderBoasVindas() {
+  const hora = new Date().getHours();
+  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  const nome = currentUser?.user_metadata?.name?.split(' ')[0] || '';
+
+  // Calcular prazos próximos (7 dias)
+  const hoje = new Date();
+  const alertas = [];
+  if (typeof fiscalDeadlines !== 'undefined' && currentCliente) {
+    const regime = currentCliente.regime_tributario || '';
+    const isMEI     = /mei/i.test(regime);
+    const isSimples = /simples/i.test(regime);
+    const isLucro   = /lucro/i.test(regime);
+    const temEmp    = currentCliente.tem_empregado === true;
+
+    for (const [, dl] of Object.entries(fiscalDeadlines)) {
+      if (dl.meiOnly      && !isMEI)              continue;
+      if (dl.simplesOuMei && !isMEI && !isSimples) continue;
+      if (dl.naoSimples   && (isMEI || isSimples)) continue;
+      if (dl.comEmpregado && !temEmp)              continue;
+
+      let prazo;
+      if (dl.month === 'monthly') {
+        prazo = new Date(hoje.getFullYear(), hoje.getMonth(), dl.day);
+        if (prazo < hoje) prazo.setMonth(prazo.getMonth() + 1);
+      } else {
+        prazo = new Date(hoje.getFullYear(), dl.month - 1, dl.day);
+        if (prazo < hoje) prazo.setFullYear(prazo.getFullYear() + 1);
+      }
+      const dias = Math.ceil((prazo - hoje) / 86400000);
+      if (dias >= 0 && dias <= 7) {
+        const urgente = dias <= 2;
+        alertas.push(`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:500;background:${urgente ? 'rgba(220,38,38,.12)' : 'rgba(22,163,74,.1)'};color:${urgente ? '#dc2626' : '#16a34a'}">
+          <i data-lucide="${urgente ? 'alert-circle' : 'calendar-check'}" style="width:11px;height:11px"></i>
+          ${dl.description} ${dias === 0 ? '(hoje!)' : `em ${dias}d`}
+        </span>`);
+      }
+    }
+  }
+
+  const prazosHtml = alertas.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px">${alertas.join('')}</div>`
+    : '';
+
+  const empresa = currentCliente
+    ? `<p style="font-size:12px;color:var(--text-light);margin:4px 0 0">${currentCliente.razao_social}</p>`
+    : '';
+
+  document.getElementById('msgs').innerHTML = `
+    <div class="empty">
+      <i data-lucide="message-circle"></i>
+      <h3>${saudacao}${nome ? ', ' + nome : ''}!</h3>
+      <p>Como posso ajudar hoje?</p>
+      ${empresa}
+      ${prazosHtml}
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px">
+        <button class="btn-sugestao" onclick="useTemplate('Quais obrigações fiscais vencem essa semana?')">📅 Prazos da semana</button>
+        <button class="btn-sugestao" onclick="useTemplate('Calcule o DARF de IRPJ para este mês')">🧮 Calcular DARF</button>
+        <button class="btn-sugestao" onclick="useTemplate('Analise o regime tributário mais vantajoso')">⚖️ Regime tributário</button>
+      </div>
+    </div>`;
 }
 
 function renderMessages() {
