@@ -489,14 +489,13 @@ async function renderHistoryList(list, hasMore = false) {
 }
 
 async function renameChat(id, el) {
-  if (el.querySelector('input')) return; // já está editando
+  if (el.querySelector('input')) return;
   const atual = el.textContent.trim();
 
   const input = document.createElement('input');
   input.value = atual;
   input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box';
 
-  // Substituir conteúdo do h-title pelo input
   el.textContent = '';
   el.appendChild(input);
   input.focus();
@@ -506,14 +505,36 @@ async function renameChat(id, el) {
   const salvar = async () => {
     if (saved) return;
     saved = true;
+
     const novo = input.value.trim() || atual;
+
+    // 1. Atualizar UI imediatamente
     el.textContent = novo;
-    if (novo !== atual) {
-      await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
-      if (currentChat.id === id) currentChat.title = novo;
-      const chat = allChats.find(c => c.id === id);
-      if (chat) chat.title = novo;
+
+    if (novo === atual) return;
+
+    // 2. Atualizar memória local imediatamente (evita piscar título antigo)
+    if (currentChat.id === id) currentChat.title = novo;
+    const chatLocal = allChats.find(ch => ch.id === id);
+    if (chatLocal) chatLocal.title = novo;
+
+    // 3. Persistir no banco
+    const { error } = await sb
+      .from('chats')
+      .update({ title: novo, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+
+    if (error) {
+      // Reverter UI se falhou
+      el.textContent = atual;
+      if (currentChat.id === id) currentChat.title = atual;
+      if (chatLocal) chatLocal.title = atual;
+      showToast('Erro ao salvar nome. Tente novamente.', 'error');
+      return;
     }
+
+    showToast('Conversa renomeada.', 'success');
   };
 
   input.addEventListener('blur', salvar);
@@ -521,8 +542,7 @@ async function renameChat(id, el) {
     if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
     if (e.key === 'Escape') { saved = true; el.textContent = atual; }
   });
-  // impedir que o blur do input propague clique para o item pai
-  input.addEventListener('click',    e => e.stopPropagation());
+  input.addEventListener('click',     e => e.stopPropagation());
   input.addEventListener('mousedown', e => e.stopPropagation());
 }
 
