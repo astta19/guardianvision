@@ -175,10 +175,57 @@ const CHAT_TOOLS = [
     function: {
       name: 'gerar_dctfweb_pdf',
       description: 'Gera e baixa o documento de apuração DCTFWeb em PDF. Use quando o usuário pedir DCTFWeb, declaração de débitos, DCTF.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_cliente',
+      description: 'Busca dados reais de um cliente no banco (regime tributário, CNPJ, faturamento, sócios, endereço). Use quando o usuário perguntar sobre um cliente específico pelo nome ou CNPJ.',
       parameters: {
         type: 'object',
-        properties: {},
-        required: [],
+        properties: {
+          busca: { type: 'string', description: 'Nome, razão social ou CNPJ do cliente a buscar' },
+        },
+        required: ['busca'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'calcular_rescisao',
+      description: 'Calcula a rescisão trabalhista de um funcionário direto pelo chat. Use quando o usuário informar o nome do funcionário e a data de desligamento.',
+      parameters: {
+        type: 'object',
+        properties: {
+          nome_funcionario: { type: 'string',  description: 'Nome do funcionário (busca parcial)' },
+          dt_desligamento:  { type: 'string',  description: 'Data de desligamento YYYY-MM-DD' },
+          motivo:           { type: 'string',  description: 'sem_justa_causa | justa_causa | pedido_demissao | acordo_mutuo' },
+          saldo_dias:       { type: 'integer', description: 'Dias trabalhados no mês da rescisão' },
+          meses_ferias:     { type: 'integer', description: 'Meses de férias proporcionais não gozadas (0-11)' },
+          meses_decimo:     { type: 'integer', description: 'Meses de 13º proporcional (0-11)' },
+          aviso_previo:     { type: 'boolean', description: 'Aviso prévio indenizado' },
+        },
+        required: ['nome_funcionario', 'dt_desligamento'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'calcular_ferias',
+      description: 'Calcula férias de um funcionário direto pelo chat com valores líquidos. Use quando o usuário perguntar sobre férias de um funcionário.',
+      parameters: {
+        type: 'object',
+        properties: {
+          nome_funcionario: { type: 'string',  description: 'Nome do funcionário (busca parcial)' },
+          dias:             { type: 'integer', description: 'Dias de férias (padrão 30)' },
+          abono:            { type: 'boolean', description: 'Vender 10 dias de abono pecuniário' },
+          competencia:      { type: 'string',  description: 'Competência MM/AAAA' },
+        },
+        required: ['nome_funcionario'],
       },
     },
   },
@@ -209,56 +256,88 @@ const TOOL_EXECUTORS = {
 
   calcular_darf: async (args) => {
     if (!currentCliente?.id) return { ok: false, msg: 'Nenhuma empresa selecionada.' };
-    await openDocumentos();
-    // Mudar para aba DARF
-    await new Promise(r => setTimeout(r, 200));
-    const tabDarf = document.querySelector('.doc-tab[onclick*="darf"]');
-    if (tabDarf) switchDocTab('darf', tabDarf);
-    await new Promise(r => setTimeout(r, 100));
-    // Preencher campos
-    const regime = args.regime || currentCliente.regime_tributario?.toLowerCase()
+
+    const fat  = args.faturamento || 0;
+    const regime = (args.regime || currentCliente.regime_tributario || 'simples')
+      .toLowerCase()
       .replace('simples nacional','simples')
       .replace('lucro presumido','presumido')
-      .replace('lucro real','real')
-      .replace('mei','mei') || 'simples';
-    const elRegime = document.getElementById('darfRegime');
-    const elComp   = document.getElementById('darfCompetencia');
-    const elFat    = document.getElementById('darfFaturamento');
-    const elPro    = document.getElementById('darfProlabore');
-    const elFolha  = document.getElementById('darfFolha');
-    if (elRegime) elRegime.value = regime;
-    if (elComp   && args.competencia) elComp.value = args.competencia;
-    if (elFat    && args.faturamento) elFat.value  = args.faturamento;
-    if (elPro    && args.prolabore)   elPro.value  = args.prolabore;
-    if (elFolha  && args.folha)       elFolha.value = args.folha;
-    if (typeof atualizarCamposDarf === 'function') atualizarCamposDarf();
-    if (typeof calcularDarf === 'function') calcularDarf();
-    const total = window.darfData?.totalFinal;
+      .replace('lucro real','real');
+
+    // Calcular inline sem abrir módulo
+    let resumo = '';
+    let totalFinal = 0;
+
+    if (regime === 'mei') {
+      const das = 86.90;
+      totalFinal = das;
+      resumo = `DAS MEI fixo: R$ ${das.toFixed(2)}`;
+    } else if (regime === 'simples') {
+      // Alíquota simplificada Anexo III (serviços) — IA detalha no texto
+      const aliq = fat <= 180000 ? 0.06 : fat <= 360000 ? 0.112 : fat <= 720000 ? 0.135 : fat <= 1800000 ? 0.16 : fat <= 3600000 ? 0.21 : 0.33;
+      const das = fat * aliq;
+      totalFinal = das;
+      resumo = `DAS Simples: R$ ${das.toLocaleString('pt-BR',{minimumFractionDigits:2})} (alíq. efetiva ~${(aliq*100).toFixed(1)}% sobre R$ ${fat.toLocaleString('pt-BR',{minimumFractionDigits:2})})`;
+    } else if (regime === 'presumido') {
+      const irpj = fat * 0.08 * 0.15;
+      const csll = fat * 0.12 * 0.09;
+      const pis  = fat * 0.0065;
+      const cof  = fat * 0.03;
+      totalFinal = irpj + csll + pis + cof;
+      resumo = `IRPJ: R$ ${irpj.toLocaleString('pt-BR',{minimumFractionDigits:2})} | CSLL: R$ ${csll.toLocaleString('pt-BR',{minimumFractionDigits:2})} | PIS: R$ ${pis.toLocaleString('pt-BR',{minimumFractionDigits:2})} | COFINS: R$ ${cof.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+    } else if (regime === 'real') {
+      const pis  = fat * 0.0165;
+      const cof  = fat * 0.076;
+      totalFinal = pis + cof;
+      resumo = `PIS: R$ ${pis.toLocaleString('pt-BR',{minimumFractionDigits:2})} | COFINS: R$ ${cof.toLocaleString('pt-BR',{minimumFractionDigits:2})} (IRPJ/CSLL dependem do lucro apurado)`;
+    }
+
+    // Também preencher o módulo visual se estiver disponível
+    try {
+      await openDocumentos();
+      await new Promise(r => setTimeout(r, 200));
+      const tabDarf = document.querySelector('.doc-tab[onclick*="darf"]');
+      if (tabDarf) switchDocTab('darf', tabDarf);
+      await new Promise(r => setTimeout(r, 100));
+      const elRegime = document.getElementById('darfRegime');
+      const elComp   = document.getElementById('darfCompetencia');
+      const elFat    = document.getElementById('darfFaturamento');
+      if (elRegime && regime) elRegime.value = regime;
+      if (elComp   && args.competencia) elComp.value = args.competencia;
+      if (elFat    && fat) elFat.value = fat;
+      if (typeof atualizarCamposDarf === 'function') atualizarCamposDarf();
+      if (typeof calcularDarf === 'function') calcularDarf();
+    } catch {}
+
     return {
       ok: true,
-      msg: `DARF calculado para ${args.competencia}${total ? ` — Total: R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}` : ''}. Clique em "Salvar" para registrar no histórico.`,
+      msg: `📊 DARF ${args.competencia || ''} (${regime.toUpperCase()})\n${resumo}\n💰 Total estimado: R$ ${totalFinal.toLocaleString('pt-BR',{minimumFractionDigits:2})}`,
     };
   },
 
   criar_lancamento: async (args) => {
     if (!currentCliente?.id) return { ok: false, msg: 'Nenhuma empresa selecionada.' };
-    // Salvar direto no banco sem abrir o modal
-    const cat = args.categoria || (args.tipo === 'receita' ? 'Outros recebimentos' : 'Outros despesas');
-    const { error } = await sb.from('lancamentos').insert({
-      user_id:    currentUser.id,
-      cliente_id: currentCliente.id,
-      tipo:       args.tipo,
-      categoria:  cat,
-      descricao:  args.descricao,
-      valor:      args.valor,
-      data_venc:  args.data_venc,
-      status:     args.status || 'pendente',
+    // Suporta objeto único ou array de lançamentos
+    const lista = Array.isArray(args.lancamentos) ? args.lancamentos : [args];
+    const rows = lista.map(l => ({
+      user_id:       currentUser.id,
+      cliente_id:    currentCliente.id,
+      tipo:          l.tipo,
+      categoria:     l.categoria || (l.tipo === 'receita' ? 'Outros recebimentos' : 'Outros despesas'),
+      descricao:     l.descricao,
+      valor:         l.valor,
+      data_venc:     l.data_venc,
+      status:        l.status || 'pendente',
       atualizado_em: new Date().toISOString(),
-    });
+    }));
+    const { error } = await sb.from('lancamentos').insert(rows);
     if (error) return { ok: false, msg: 'Erro ao salvar: ' + error.message };
+    const total = rows.reduce((s, r) => s + (r.valor || 0), 0);
     return {
       ok: true,
-      msg: `Lançamento criado: ${args.tipo === 'receita' ? '+' : '-'} R$ ${args.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})} — ${args.descricao} (venc. ${new Date(args.data_venc+'T00:00').toLocaleDateString('pt-BR')}).`,
+      msg: rows.length === 1
+        ? `Lançamento criado: ${rows[0].tipo === 'receita' ? '+' : '-'} R$ ${rows[0].valor.toLocaleString('pt-BR',{minimumFractionDigits:2})} — ${rows[0].descricao} (venc. ${new Date(rows[0].data_venc+'T00:00').toLocaleDateString('pt-BR')}).`
+        : `${rows.length} lançamentos criados. Total: R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}.`,
     };
   },
 
@@ -319,8 +398,30 @@ const TOOL_EXECUTORS = {
     } catch(e) { return { ok: false, msg: 'Erro ao gerar DOCX: ' + e.message }; }
   },
 
-  gerar_planilha_excel: async () => {
+  gerar_planilha_excel: async (args) => {
     if (!currentCliente) return { ok: false, msg: 'Selecione uma empresa antes de gerar a planilha.' };
+
+    // Se IA enviou dados dinâmicos, gerar planilha customizada via SheetJS
+    if (args?.abas?.length || args?.dados?.length) {
+      try {
+        const wb = XLSX.utils.book_new();
+
+        // Suporte a múltiplas abas ou aba única com dados
+        const abas = args.abas || [{ nome: args.titulo || 'Dados', linhas: args.dados }];
+        for (const aba of abas) {
+          const ws = XLSX.utils.aoa_to_sheet(aba.linhas || []);
+          XLSX.utils.book_append_sheet(wb, ws, (aba.nome || 'Dados').substring(0, 31));
+        }
+
+        const nome = `${(args.titulo || 'planilha-fiscal')}-${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, nome);
+        return { ok: true, msg: `Planilha "${args.titulo || 'Planilha'}" gerada com ${abas.length} aba(s) e download iniciado.` };
+      } catch(e) {
+        return { ok: false, msg: 'Erro ao gerar Excel: ' + e.message };
+      }
+    }
+
+    // Fallback: planilha padrão do sistema
     if (typeof gerarPlanilha !== 'function') return { ok: false, msg: 'Função de geração não disponível.' };
     try {
       gerarPlanilha();
@@ -340,6 +441,153 @@ const TOOL_EXECUTORS = {
       return { ok: false, msg: 'Erro ao gerar DCTFWeb: ' + e.message };
     }
   },
+
+  buscar_cliente: async (args) => {
+    try {
+      const q = (args.busca || '').trim();
+      if (!q) return { ok: false, msg: 'Informe o nome ou CNPJ do cliente.' };
+
+      const { data, error } = await sb.from('clientes')
+        .select('razao_social, nome_fantasia, cnpj, regime_tributario, email, telefone, cidade, uf, atividade_principal, tem_empregado')
+        .or(`razao_social.ilike.%${q}%,nome_fantasia.ilike.%${q}%,cnpj.ilike.%${q}%`)
+        .eq('user_id', currentUser.id)
+        .limit(3);
+
+      if (error) return { ok: false, msg: 'Erro ao buscar: ' + error.message };
+      if (!data?.length) return { ok: false, msg: `Nenhum cliente encontrado para "${q}".` };
+
+      const linhas = data.map(cl =>
+        `• ${cl.razao_social}${cl.nome_fantasia ? ` (${cl.nome_fantasia})` : ''} | CNPJ: ${cl.cnpj} | Regime: ${cl.regime_tributario} | ${cl.cidade}/${cl.uf}`
+      ).join('\n');
+
+      return { ok: true, msg: `Clientes encontrados:\n${linhas}` };
+    } catch(e) {
+      return { ok: false, msg: e.message };
+    }
+  },
+
+  calcular_rescisao: async (args) => {
+    if (!currentCliente?.id) return { ok: false, msg: 'Nenhuma empresa selecionada.' };
+
+    // Buscar funcionário por nome parcial
+    const { data: funcs } = await sb.from('dp_funcionarios')
+      .select('id, nome, salario_base, cargo, admissao')
+      .eq('cliente_id', currentCliente.id)
+      .eq('user_id', currentUser.id)
+      .ilike('nome', `%${args.nome_funcionario}%`)
+      .limit(1);
+
+    const func = funcs?.[0];
+    if (!func) return { ok: false, msg: `Funcionário "${args.nome_funcionario}" não encontrado.` };
+
+    const sal      = func.salario_base || 0;
+    const vDia     = sal / 30;
+    const saldoDias= args.saldo_dias  || 15;
+    const mesesFer = args.meses_ferias || 0;
+    const meses13  = args.meses_decimo || 0;
+    const aviso    = args.aviso_previo !== false && args.motivo !== 'justa_causa' ? sal : 0;
+    const saldo    = Math.round(saldoDias * vDia * 100) / 100;
+    const ferProp  = Math.round(sal * mesesFer / 12 * 100) / 100;
+    const umTerco  = Math.round(ferProp / 3 * 100) / 100;
+    const dec13    = Math.round(sal * meses13 / 12 * 100) / 100;
+    const bruto    = saldo + aviso + ferProp + umTerco + dec13;
+
+    // INSS progressivo simplificado
+    let inss = 0, ant = 0;
+    const base = Math.min(saldo + aviso, 8157.41);
+    for (const f of [{ate:1518,aliq:.075},{ate:2793.88,aliq:.09},{ate:4190.83,aliq:.12},{ate:8157.41,aliq:.14}]) {
+      if (base <= ant) break;
+      inss += (Math.min(base, f.ate) - ant) * f.aliq;
+      ant = f.ate;
+    }
+    inss = Math.round(inss * 100) / 100;
+
+    const baseIRRF = Math.max(0, bruto - inss);
+    let irrf = 0;
+    for (const f of [{ate:2259.20,aliq:0,ded:0},{ate:2826.65,aliq:.075,ded:169.44},{ate:3751.05,aliq:.15,ded:381.44},{ate:4664.68,aliq:.225,ded:662.77},{ate:Infinity,aliq:.275,ded:896.00}]) {
+      if (baseIRRF <= f.ate) { irrf = Math.max(0, Math.round((baseIRRF * f.aliq - f.ded) * 100) / 100); break; }
+    }
+
+    const fgts   = Math.round((saldo + aviso) * 0.08 * 100) / 100;
+    const multa  = args.motivo !== 'justa_causa' && args.motivo !== 'pedido_demissao' ? Math.round(fgts * 5 * 100) / 100 : 0;
+    const liq    = Math.round((bruto - inss - irrf) * 100) / 100;
+    const fmt    = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    return {
+      ok: true,
+      msg: [
+        `📋 Rescisão — ${func.nome} (${func.cargo || 'sem cargo'})`,
+        `Motivo: ${args.motivo || 'sem_justa_causa'} | Desligamento: ${new Date(args.dt_desligamento+'T00:00').toLocaleDateString('pt-BR')}`,
+        ``,
+        `Saldo de salário (${saldoDias}d): R$ ${fmt(saldo)}`,
+        aviso > 0 ? `Aviso prévio indenizado: R$ ${fmt(aviso)}` : '',
+        ferProp > 0 ? `Férias proporcionais (${mesesFer}/12) + 1/3: R$ ${fmt(ferProp + umTerco)}` : '',
+        dec13  > 0 ? `13º proporcional (${meses13}/12): R$ ${fmt(dec13)}` : '',
+        `Bruto: R$ ${fmt(bruto)} | INSS: -R$ ${fmt(inss)} | IRRF: -R$ ${fmt(irrf)}`,
+        `💰 Rescisão líquida: R$ ${fmt(liq)}`,
+        multa > 0 ? `🏦 Encargos empresa — FGTS: R$ ${fmt(fgts)} + Multa 40%: R$ ${fmt(multa)}` : '',
+      ].filter(Boolean).join('\n'),
+    };
+  },
+
+  calcular_ferias: async (args) => {
+    if (!currentCliente?.id) return { ok: false, msg: 'Nenhuma empresa selecionada.' };
+
+    const { data: funcs } = await sb.from('dp_funcionarios')
+      .select('id, nome, salario_base, cargo, admissao, dependentes')
+      .eq('cliente_id', currentCliente.id)
+      .eq('user_id', currentUser.id)
+      .ilike('nome', `%${args.nome_funcionario}%`)
+      .limit(1);
+
+    const func = funcs?.[0];
+    if (!func) return { ok: false, msg: `Funcionário "${args.nome_funcionario}" não encontrado.` };
+
+    const sal     = func.salario_base || 0;
+    const dias    = args.dias || 30;
+    const abono   = args.abono || false;
+    const base    = Math.round(sal * (dias / 30) * 100) / 100;
+    const umTerco = Math.round(base / 3 * 100) / 100;
+    const abonoV  = abono ? Math.round(sal * (10 / 30) * 100) / 100 : 0;
+    const bruto   = base + umTerco + abonoV;
+
+    let inss = 0, ant = 0;
+    const baseInss = Math.min(bruto, 8157.41);
+    for (const f of [{ate:1518,aliq:.075},{ate:2793.88,aliq:.09},{ate:4190.83,aliq:.12},{ate:8157.41,aliq:.14}]) {
+      if (baseInss <= ant) break;
+      inss += (Math.min(baseInss, f.ate) - ant) * f.aliq;
+      ant = f.ate;
+    }
+    inss = Math.round(inss * 100) / 100;
+
+    const DEP_IRRF = 189.59;
+    const baseIRRF = Math.max(0, bruto - inss - (func.dependentes || 0) * DEP_IRRF);
+    let irrf = 0;
+    for (const f of [{ate:2259.20,aliq:0,ded:0},{ate:2826.65,aliq:.075,ded:169.44},{ate:3751.05,aliq:.15,ded:381.44},{ate:4664.68,aliq:.225,ded:662.77},{ate:Infinity,aliq:.275,ded:896.00}]) {
+      if (baseIRRF <= f.ate) { irrf = Math.max(0, Math.round((baseIRRF * f.aliq - f.ded) * 100) / 100); break; }
+    }
+
+    const liq = Math.round((bruto - inss - irrf) * 100) / 100;
+    const fmt = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    const admissao = func.admissao ? new Date(func.admissao + 'T00:00') : null;
+    const meses = admissao ? Math.floor((new Date() - admissao) / (30.44 * 86400000)) : null;
+
+    return {
+      ok: true,
+      msg: [
+        `🏖️ Férias — ${func.nome} (${dias} dias${abono ? ' + 10 abono' : ''})`,
+        meses !== null ? `Tempo de serviço: ${meses} meses` : '',
+        ``,
+        `Salário base: R$ ${fmt(sal)}`,
+        `Férias (${dias}d): R$ ${fmt(base)} | 1/3: R$ ${fmt(umTerco)}`,
+        abono ? `Abono pecuniário (10d): R$ ${fmt(abonoV)}` : '',
+        `Bruto: R$ ${fmt(bruto)} | INSS: -R$ ${fmt(inss)} | IRRF: -R$ ${fmt(irrf)}`,
+        `💰 Férias líquidas: R$ ${fmt(liq)}`,
+      ].filter(Boolean).join('\n'),
+    };
+  },
+
 };
 
 // ── Processar resposta com tool_calls ─────────────────────────
@@ -380,6 +628,9 @@ function renderToolCard(resultados) {
       gerar_documento_docx: 'file-type',
       gerar_planilha_excel: 'table-2',
       gerar_dctfweb_pdf:    'landmark',
+      buscar_cliente:       'search',
+      calcular_rescisao:    'user-x',
+      calcular_ferias:      'umbrella',
     }[r.tool] || 'zap';
     const cor = r.ok ? '#16a34a' : '#dc2626';
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--sidebar-hover);border:1px solid var(--border);border-left:3px solid ${cor};border-radius:8px;margin-bottom:6px;font-size:12px;">
