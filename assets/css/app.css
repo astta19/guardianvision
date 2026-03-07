@@ -402,12 +402,14 @@
       .tools-dropdown { width: calc(100vw - 32px); right: 0; left: auto; }
       .tools-grid { grid-template-columns: repeat(4, 1fr); }
       .hdr-dropdown {
-        position: fixed;
-        top: 52px;
-        right: 8px;
-        left: 8px;
-        width: auto;
-        max-width: 100%;
+        position: fixed !important;
+        top: 56px !important;
+        left: 8px !important;
+        right: 8px !important;
+        width: auto !important;
+        max-width: none !important;
+        max-height: 80vh;
+        overflow-y: auto;
       }
     }
 
