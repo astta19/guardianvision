@@ -242,10 +242,8 @@
       .c-title { font-size: 14px; }
       .c-right { gap: 2px; flex-shrink: 0; }
       .icon-btn { width: 34px; height: 34px; }
-      /* avatar menor no mobile */
       .header-avatar { width: 22px; height: 22px; }
       #headerAvatarWrap { width: 24px; height: 24px; }
-      /* user-info mais compacto */
       .user-info { padding: 3px 6px; max-width: 110px; }
     }
     @media (max-width: 400px) {
