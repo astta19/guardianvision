@@ -160,6 +160,23 @@ const AI_PROVIDER = {
         budget_tokens: this.thinking.budget_tokens,
       } : undefined;
 
+      // Prompt caching nas mensagens: marcar a penúltima mensagem user
+      // (a última não pode ser cacheada pois muda a cada turno)
+      if (msgs.length >= 2) {
+        const userMsgs = msgs.filter(m => m.role === 'user');
+        const alvo = userMsgs.length >= 2 ? userMsgs[userMsgs.length - 2] : null;
+        if (alvo) {
+          if (typeof alvo.content === 'string') {
+            alvo.content = [{ type: 'text', text: alvo.content, cache_control: { type: 'ephemeral' } }];
+          } else if (Array.isArray(alvo.content) && alvo.content.length) {
+            alvo.content[alvo.content.length - 1] = {
+              ...alvo.content[alvo.content.length - 1],
+              cache_control: { type: 'ephemeral' }
+            };
+          }
+        }
+      }
+
       const body = {
         model,
         max_tokens:  useThinking ? 16000 : 4096,
@@ -167,6 +184,8 @@ const AI_PROVIDER = {
         messages:    msgs,
         tools:       toolsNorm,
         tool_choice: toolsNorm ? { type: 'auto' } : undefined,
+        // Streaming para respostas normais; tools precisam de JSON completo
+        stream:      !toolsNorm,
       };
       if (thinkingPayload) body.thinking = thinkingPayload;
       return body;
@@ -212,7 +231,11 @@ const AI_PROVIDER = {
         toolCalls: toolUses.length ? toolUses.map(tu => ({
           function: { name: tu.name, arguments: JSON.stringify(tu.input || {}) },
         })) : null,
-        usage: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+        usage:           (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+        inputTokens:     data.usage?.input_tokens       || 0,
+        outputTokens:    data.usage?.output_tokens      || 0,
+        cacheReadTokens: data.usage?.cache_read_input_tokens  || 0,
+        cacheWriteTokens:data.usage?.cache_creation_input_tokens || 0,
         model: data.model || '',
         citations: citacoes,
       };
