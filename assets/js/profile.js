@@ -34,28 +34,27 @@ async function carregarPerfil() {
       .eq('user_id', currentUser.id)
       .maybeSingle();
 
-    // Metadados Google OAuth — normalizar variantes de campo
+    // Fallback para metadados do Google OAuth
     const meta = currentUser.user_metadata || {};
     const googleName   = meta.full_name || meta.name || meta.user_name || '';
     const googleAvatar = meta.avatar_url || meta.picture || '';
-    const emailPrefix  = (currentUser.email || '').split('@')[0];
 
     perfilCache = {
-      nome:            data?.nome        || googleName  || emailPrefix || '',
-      avatar_url:      data?.avatar_url  || googleAvatar || '',
-      crc:             data?.crc         || '',
-      cpf:             data?.cpf         || '',
-      cod_mun:         data?.cod_mun     || '',
-      cnpj_escritorio: data?.cnpj_escritorio || '',
+      nome: data?.nome || googleName || (currentUser.email||'').split('@')[0] || '',
+      avatar_url: data?.avatar_url || googleAvatar || '',
+      crc: data?.crc || '',
+      cpf: data?.cpf || '',
+      cod_mun: data?.cod_mun || '',
+      cnpj_escritorio: data?.cnpj_escritorio || ''
     };
 
-    // Primeira vez com Google: persistir no banco
-    if (!data && (googleName || googleAvatar)) {
+    // Primeira vez com Google: salvar no banco automaticamente
+    if (!data && googleName) {
       sb.from('perfis_usuarios').upsert({
-        user_id:       currentUser.id,
-        nome:          googleName || emailPrefix,
-        avatar_url:    googleAvatar,
-        atualizado_em: new Date().toISOString(),
+        user_id: currentUser.id,
+        nome: googleName,
+        avatar_url: googleAvatar,
+        atualizado_em: new Date().toISOString()
       }, { onConflict: 'user_id' }).catch(() => {});
     }
 
@@ -76,11 +75,11 @@ async function salvarPerfilBanco(campos) {
 }
 
 async function atualizarNomeHeader() {
-  const meta       = currentUser?.user_metadata || {};
-  const nome       = perfilCache?.nome || meta.full_name || meta.name || '';
-  const email      = currentUser?.email || '';
-  const display    = nome || email.split('@')[0] || 'usuário';
-  const avatarUrl  = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
+  const meta      = currentUser?.user_metadata || {};
+  const nome      = perfilCache?.nome || meta.full_name || meta.name || '';
+  const email     = currentUser?.email || '';
+  const display   = nome || email.split('@')[0] || 'usuário';
+  const avatarUrl = perfilCache?.avatar_url || meta.avatar_url || meta.picture || '';
 
   const elNome = document.getElementById('userEmail');
   if (elNome) elNome.textContent = display;
@@ -90,9 +89,10 @@ async function atualizarNomeHeader() {
 
   if (avatarUrl) {
     wrap.innerHTML = `<img src="${avatarUrl}" class="header-avatar" alt="avatar"
-      onerror="this.parentElement.innerHTML='<i data-lucide=\"user\" style=\"width:14px;height:14px\"></i>';if(window.lucide)lucide.createIcons()">`;
+      onerror="this.parentElement.innerHTML='';this.parentElement.style.background='var(--accent)';this.parentElement.style.color='#fff';this.parentElement.style.fontSize='11px';this.parentElement.style.fontWeight='700';this.parentElement.textContent='${display[0]?.toUpperCase()||'?'}'">`;
   } else {
     const inicial = display[0]?.toUpperCase() || '?';
+    wrap.innerHTML = '';
     wrap.style.background = 'var(--accent)';
     wrap.style.color = '#fff';
     wrap.style.fontSize = '11px';
