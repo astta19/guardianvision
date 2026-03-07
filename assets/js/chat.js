@@ -752,6 +752,21 @@ function toggleThinking(ativo) {
   }
 }
 
+// ── Modo Fiscal Focado (sem tools, só texto) ──────────────
+let _modoFocado = false;
+
+function toggleModoFocado() {
+  _modoFocado = !_modoFocado;
+  const btn = document.getElementById('btnModoFocado');
+  if (btn) {
+    btn.style.background   = _modoFocado ? 'var(--accent)'     : '';
+    btn.style.color        = _modoFocado ? '#fff'               : '';
+    btn.style.borderColor  = _modoFocado ? 'var(--accent)'     : '';
+    btn.title = _modoFocado ? 'Modo Focado ativo — sem ações automáticas' : 'Ativar Modo Focado (só texto)';
+  }
+  showToast(_modoFocado ? '🎯 Modo Focado ativado — respostas só em texto' : 'Modo Focado desativado', 'info');
+}
+
 // ── Streaming helpers ─────────────────────────────────────
 function addMessageStreaming(isUser) {
   const container = document.getElementById('msgs');
@@ -1057,7 +1072,14 @@ async function send() {
       provider?.ativarCitations?.(true);
     }
 
+    // Indicador visual de busca de dados
+    function setDbIndicator(msg) {
+      const el = document.getElementById('dbIndicator');
+      if (el) { el.textContent = msg; el.style.display = msg ? 'flex' : 'none'; }
+    }
+
     showTypingIndicator();
+    setDbIndicator('🔍 Consultando base de conhecimento...');
 
     // Buscar contexto RAG — aguardar antes de montar o prompt
     const [ragInteracoes, ragDocumentos] = await Promise.all([
@@ -1065,10 +1087,13 @@ async function send() {
       getLearningService().buscarDocumentosRAG(text || '', currentChat.id).catch(() => null)
     ]);
 
+    setDbIndicator('');
+
     // Consultar CNPJ se detectado na mensagem
     let cnpjCtx = '';
     const cnpjDetectado = text ? extrairCNPJ(text) : null;
     if (cnpjDetectado) {
+      setDbIndicator('🏢 Consultando CNPJ na Receita Federal...');
       addMessage('Consultando CNPJ na Receita Federal...', false, 'low');
       const dadosCNPJ = await consultarCNPJ(cnpjDetectado);
       const formatado = formatarDadosCNPJ(dadosCNPJ);
@@ -1076,11 +1101,11 @@ async function send() {
         cnpjCtx = `
 
 ${formatado}`;
-        // Remover mensagem de loading
         const msgs = document.getElementById('msgs');
         const ultimo = msgs.querySelector('.msg-row:last-child');
         if (ultimo) ultimo.remove();
       }
+      setDbIndicator('');
     }
 
     // Contexto rico da empresa — dados reais do banco (DARFs, financeiro, pessoal, agenda)
@@ -1350,7 +1375,7 @@ POSTURA PROFISSIONAL:
     const provider   = (typeof AI_PROVIDER !== 'undefined') ? AI_PROVIDER : null;
     const modelList  = provider ? provider.getModels() : MODELS;
     const endpoint   = provider ? provider.getEndpoint() : '/api/chat';
-    const tools      = (typeof CHAT_TOOLS !== 'undefined') ? CHAT_TOOLS : undefined;
+    const tools      = (_modoFocado || typeof CHAT_TOOLS === 'undefined') ? undefined : CHAT_TOOLS;
 
     let data = null;
     let attempts = 0;
@@ -1588,6 +1613,9 @@ POSTURA PROFISSIONAL:
       }, 1500);
     }
 
+    // Respostas sugeridas contextuais
+    setTimeout(() => mostrarSugestoes(replyText), 800);
+
     saveChat();
     inp.value = '';
 
@@ -1616,6 +1644,66 @@ POSTURA PROFISSIONAL:
     inp.disabled = false;
     inp.focus();
   }
+}
+
+// ── Sugestões contextuais após resposta ──────────────────────
+function mostrarSugestoes(textoResposta) {
+  // Remover sugestões anteriores
+  document.getElementById('sugestoes-wrap')?.remove();
+
+  if (!textoResposta) return;
+  const t = textoResposta.toLowerCase();
+
+  // Banco de sugestões por tema detectado na resposta
+  const mapa = [
+    { termos: ['simples nacional', 'das ', 'pgdas', 'anexo'],
+      perguntas: ['Qual a alíquota efetiva do Simples este mês?', 'Como calcular o Fator R?', 'Quando vence o DAS?'] },
+    { termos: ['icms', 'st ', 'substituição tributária', 'difal'],
+      perguntas: ['Como apurar o ICMS-ST?', 'Quais CFOPs usar para operações interestaduais?', 'O que é DIFAL e quando se aplica?'] },
+    { termos: ['irpj', 'csll', 'lucro presumido', 'lucro real'],
+      perguntas: ['Qual a diferença entre Lucro Real e Presumido?', 'Como calcular o adicional de IRPJ?', 'Quando é obrigatório o Lucro Real?'] },
+    { termos: ['darf', 'vencimento', 'multa', 'juros'],
+      perguntas: ['Como emitir o DARF no portal?', 'Como calcular juros e multa por atraso?', 'Posso parcelar este débito?'] },
+    { termos: ['sped', 'efd', 'ecd', 'ecf', 'spede'],
+      perguntas: ['Quais registros do SPED devo validar?', 'Como corrigir um SPED após entrega?', 'Qual o prazo para retificação?'] },
+    { termos: ['nf-e', 'nota fiscal', 'cfop', 'cst'],
+      perguntas: ['Qual CFOP usar para devolução?', 'Como cancelar uma NF-e emitida?', 'O que é CST e CSOSN?'] },
+    { termos: ['folha', 'rescisão', 'inss', 'fgts', 'pro-labore'],
+      perguntas: ['Como calcular a rescisão sem justa causa?', 'Qual a alíquota de INSS sobre pró-labore?', 'Como calcular férias proporcionais?'] },
+    { termos: ['reforma tributária', 'cbs', 'ibs', 'ibs/cbs', '2026'],
+      perguntas: ['Quando começa a cobrança efetiva do IBS/CBS?', 'Preciso destacar CBS na NF-e agora?', 'Como a Reforma impacta o Simples Nacional?'] },
+  ];
+
+  let sugestoes = [];
+  for (const { termos, perguntas } of mapa) {
+    if (termos.some(term => t.includes(term))) {
+      sugestoes = perguntas;
+      break;
+    }
+  }
+
+  // Fallback genérico
+  if (!sugestoes.length) {
+    sugestoes = [
+      'Pode detalhar mais sobre este assunto?',
+      'Quais são as multas por descumprimento?',
+      'Como isso se aplica ao meu regime tributário?',
+    ];
+  }
+
+  const wrap = document.createElement('div');
+  wrap.id = 'sugestoes-wrap';
+  wrap.style.cssText = 'padding:8px 16px 4px;display:flex;flex-wrap:wrap;gap:6px;';
+  wrap.innerHTML = sugestoes.map(s => `
+    <button onclick="useTemplate('${s.replace(/'/g, "\'")}');document.getElementById('sugestoes-wrap')?.remove()"
+      style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:16px;background:var(--sidebar-hover);color:var(--text);cursor:pointer;transition:.15s"
+      onmouseover="this.style.background='var(--accent)';this.style.color='#fff';this.style.borderColor='var(--accent)'"
+      onmouseout="this.style.background='var(--sidebar-hover)';this.style.color='var(--text)';this.style.borderColor='var(--border)'">
+      ${s}
+    </button>`).join('');
+
+  document.getElementById('msgs').appendChild(wrap);
+  document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
 }
 
 async function handleMultipleFiles(event) {
@@ -1922,6 +2010,83 @@ function calculateTaxes() {
 
 
 
+
+// ── Atalhos de prompt via / ──────────────────────────────────
+const SLASH_COMMANDS = {
+  '/darf':   'Calcule o DARF de IRPJ/CSLL para este trimestre. Informe os percentuais e o valor a recolher.',
+  '/sped':   'Analise o SPED Fiscal e verifique os registros C100, E110 e totalização por CFOP.',
+  '/folha':  'Abra o módulo de folha de pagamento e exiba o resumo do mês atual.',
+  '/agenda': 'Quais obrigações fiscais vencem nos próximos 7 dias?',
+  '/simples': 'Calcule a alíquota efetiva do Simples Nacional e sugira o anexo mais adequado.',
+  '/icms':   'Explique as regras de ICMS-ST para operações interestaduais do meu estado.',
+  '/reforma': 'Resuma os impactos da Reforma Tributária (CBS/IBS) para minha empresa em 2026.',
+};
+
+(function iniciarSlashCommands() {
+  const input = document.getElementById('msgInput');
+  if (!input) return;
+
+  let popup = null;
+
+  function fecharPopup() {
+    popup?.remove();
+    popup = null;
+  }
+
+  input.addEventListener('input', () => {
+    const v = input.value;
+    if (!v.startsWith('/')) { fecharPopup(); return; }
+
+    const matches = Object.entries(SLASH_COMMANDS).filter(([cmd]) =>
+      cmd.startsWith(v.toLowerCase())
+    );
+
+    fecharPopup();
+    if (!matches.length) return;
+
+    popup = document.createElement('div');
+    popup.id = 'slashPopup';
+    popup.style.cssText = `
+      position:absolute;bottom:calc(100% + 8px);left:0;right:0;
+      background:var(--sidebar);border:1px solid var(--border);
+      border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);
+      overflow:hidden;z-index:100;max-height:220px;overflow-y:auto
+    `;
+    popup.innerHTML = matches.map(([cmd, texto]) => `
+      <div class="slash-item" onclick="aplicarSlash('${cmd}')"
+           style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--border)">
+        <code style="font-size:12px;color:var(--accent);min-width:70px">${cmd}</code>
+        <span style="font-size:12px;color:var(--text-light)">${texto.substring(0, 60)}…</span>
+      </div>`).join('');
+
+    // Posicionar relativo ao container do input
+    const wrap = input.closest('form, .input-wrap, .chat-input, div') || document.body;
+    wrap.style.position = 'relative';
+    wrap.appendChild(popup);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (!popup) return;
+    if (e.key === 'Escape') { fecharPopup(); return; }
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      const first = popup.querySelector('.slash-item');
+      if (first) { e.preventDefault(); first.click(); }
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#slashPopup') && !e.target.closest('#msgInput')) fecharPopup();
+  });
+})();
+
+function aplicarSlash(cmd) {
+  const texto = SLASH_COMMANDS[cmd];
+  if (!texto) return;
+  const input = document.getElementById('msgInput');
+  input.value = texto;
+  input.focus();
+  document.getElementById('slashPopup')?.remove();
+}
 
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
