@@ -730,7 +730,7 @@
                 <i data-lucide="wallet"></i>
                 <span>Financeiro</span>
               </button>
-              <button class="tool-card" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
+              <button class="tool-card" data-perm="perfil_empresa" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
                 <i data-lucide="building-2" style="width:20px;height:20px"></i>
                 <span>Perfil Empresa</span>
               </button>
@@ -761,7 +761,7 @@
                   <i data-lucide="shield"></i>
                   <span>Permissões</span>
                 </button>
-          <button class="tool-card admin-menu-item" onclick="abrirConvites(); closeDropdowns()">
+          <button class="tool-card admin-only" onclick="abrirConvites(); closeDropdowns()" style="display:none">
             <i data-lucide="users"></i>
             <span>Escritório</span>
           </button>
