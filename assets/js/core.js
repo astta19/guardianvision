@@ -117,6 +117,28 @@ function toggleTheme() {
   if (currentUser) sb.auth.updateUser({ data: { theme: next } }).catch(() => {});
 }
 
+
+// ── Toast notifications ───────────────────────────────────────────
+function showToast(msg, type = 'info', duration = 3500) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+    document.body.appendChild(container);
+  }
+  const colors = { success: '#22c55e', error: '#ef4444', warn: '#f59e0b', info: 'var(--accent)' };
+  const toast = document.createElement('div');
+  toast.style.cssText = `background:${colors[type]||colors.info};color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.18);opacity:0;transition:opacity .2s;white-space:nowrap;pointer-events:none;`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  requestAnimationFrame(() => { toast.style.opacity = '1'; });
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 200);
+  }, duration);
+}
+
 function applyAdminUI() {
   const admin = isAdmin();
   const perms = currentUser?.user_metadata?.permissions || [];
