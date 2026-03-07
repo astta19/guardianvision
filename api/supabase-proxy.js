@@ -112,37 +112,57 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
 
-      // Buscar escritório do admin (onde ele é owner)
+      // 1. Buscar escritório do admin
       const escRes = await fetch(
         `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
         { headers: sbHeaders }
       );
       const escData = await escRes.json();
       const escritorioId = escData?.[0]?.id;
-
       if (!escritorioId) {
-        // Admin ainda sem escritório — retorna só ele mesmo (nenhum outro)
         return res.status(200).json({ usuarios: [], escritorio_id: null });
       }
 
-      // Buscar membros do escritório via RPC segura
+      // 2. Buscar user_ids do escritório
       const membrosRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/rpc/listar_usuarios_escritorio`,
-        {
-          method: 'POST',
-          headers: sbHeaders,
-          body: JSON.stringify({ p_escritorio_id: escritorioId }),
-        }
+        `${SUPABASE_URL}/rest/v1/escritorio_usuarios?escritorio_id=eq.${escritorioId}&select=user_id`,
+        { headers: sbHeaders }
       );
-      const membros = await membrosRes.json();
-      const usuarios = (Array.isArray(membros) ? membros : [])
-        .filter(u => u.user_id !== authUser.id)
-        .map(u => ({
-          id: u.user_id,
-          email: u.email,
-          role: u.role || 'contador',
-          permissions: u.permissions || [],
-        }));
+      const membrosData = await membrosRes.json();
+      const memberIds = (Array.isArray(membrosData) ? membrosData : [])
+        .map(m => m.user_id)
+        .filter(id => id !== authUser.id);
+
+      if (!memberIds.length) {
+        return res.status(200).json({ usuarios: [], escritorio_id: escritorioId });
+      }
+
+      // 3. Buscar detalhes via admin API (email, metadata)
+      const allUsersRes = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
+        { headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'apikey': SUPABASE_SERVICE_KEY } }
+      );
+      const allUsersData = await allUsersRes.json();
+      const allUsers = allUsersData.users || [];
+
+      // 4. Buscar permissões da tabela user_permissions
+      const permsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_permissions?user_id=in.(${memberIds.join(',')})&select=user_id,permissions`,
+        { headers: sbHeaders }
+      );
+      const permsData = await permsRes.json();
+      const permsMap = {};
+      (Array.isArray(permsData) ? permsData : []).forEach(p => { permsMap[p.user_id] = p.permissions || []; });
+
+      const usuarios = memberIds.map(uid => {
+        const u = allUsers.find(x => x.id === uid) || {};
+        return {
+          id: uid,
+          email: u.email || '',
+          role: u.user_metadata?.role || 'contador',
+          permissions: permsMap[uid] || u.user_metadata?.permissions || [],
+        };
+      }).filter(u => u.email);
 
       return res.status(200).json({ usuarios, escritorio_id: escritorioId });
     }
@@ -237,7 +257,11 @@ export default async function handler(req, res) {
         headers: { ...sbHeaders, 'Prefer': 'return=representation' },
         body: JSON.stringify({ nome, owner_id: authUser.id }),
       });
-      const escritorio = (await criRes.json())?.[0];
+      const criData = await criRes.json();
+      if (!criRes.ok || !criData?.[0]?.id) {
+        return res.status(500).json({ error: 'Falha ao criar escritório', detail: criData });
+      }
+      const escritorio = criData[0];
 
       // Auto-vincular o próprio admin
       await fetch(`${SUPABASE_URL}/rest/v1/escritorio_usuarios`, {
@@ -273,8 +297,11 @@ export default async function handler(req, res) {
         headers: { ...sbHeaders, 'Prefer': 'return=representation' },
         body: JSON.stringify({ escritorio_id, convidado_por: authUser.id, email }),
       });
-      const convite = (await convRes.json())?.[0];
-
+      const convData = await convRes.json();
+      const convite = convData?.[0];
+      if (!convite?.token) {
+        return res.status(500).json({ error: 'Falha ao criar convite', detail: convData });
+      }
       return res.status(200).json({ token: convite.token, expira_em: convite.expira_em });
     }
 
@@ -341,6 +368,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('supabase-proxy erro:', error);
-    return res.status(502).json({ error: 'Erro interno ao processar a requisição' });
+    return res.status(500).json({ error: error?.message || 'Erro interno', stack: error?.stack });
   }
 }
