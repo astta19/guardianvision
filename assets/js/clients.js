@@ -660,6 +660,10 @@ async function verArquivosCliente(clienteId, clienteNome) {
             style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text);display:flex;align-items:center;gap:4px">
             <i data-lucide="download" style="width:11px;height:11px"></i> Baixar
           </button>
+          <button data-uid="${u.id}" onclick="excluirArquivoPortal(this.dataset.uid, this)"
+            style="font-size:11px;padding:3px 8px;border:1px solid #fca5a5;border-radius:6px;background:var(--bg);cursor:pointer;color:#dc2626;display:flex;align-items:center;gap:4px">
+            <i data-lucide="trash-2" style="width:11px;height:11px"></i> Excluir
+          </button>
         </div>
       </div>`;
     }).join('');
@@ -683,5 +687,40 @@ async function baixarArquivoPortal(uid) {
     await sb.from('portal_uploads').update({ lido: true }).eq('id', uid).eq('user_id', currentUser.id);
   } catch(e) {
     showToast('Erro ao baixar: ' + e.message, 'error');
+  }
+}
+
+async function excluirArquivoPortal(uid, btn) {
+  const u = (window._uploadsPortal || {})[uid];
+  if (!u) return;
+  if (!confirm('Excluir o arquivo "' + (u.nome_arquivo || 'arquivo') + '" permanentemente?')) return;
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    // 1. Remover do Storage
+    const { error: errStorage } = await sb.storage.from('portal-uploads').remove([u.storage_path]);
+    if (errStorage) throw errStorage;
+
+    // 2. Remover registro da tabela
+    const { error: errDb } = await sb.from('portal_uploads').delete().eq('id', uid).eq('user_id', currentUser.id);
+    if (errDb) throw errDb;
+
+    // 3. Remover do cache local e do DOM
+    delete window._uploadsPortal[uid];
+    btn.closest('div[style*="border-bottom"]').remove();
+
+    // 4. Se lista vazia, mostrar mensagem
+    const el = document.getElementById('arquivosClienteLista');
+    if (el && !Object.keys(window._uploadsPortal).length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
+    }
+
+    showToast('Arquivo excluído com sucesso.', 'success');
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Excluir';
+    showToast('Erro ao excluir: ' + e.message, 'error');
   }
 }
