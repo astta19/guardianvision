@@ -5,7 +5,7 @@
 // Modelos: /models/ na raiz do repositório
 // ============================================================
 
-const FACE_MODELS_URL = '/models';
+const FACE_MODELS_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
 const FACE_THRESHOLD  = 0.45; // distância máxima para match
 
 let _faceApiLoaded   = false;
@@ -16,25 +16,37 @@ let _faceDescriptors = []; // capturas acumuladas durante cadastro
 async function carregarFaceApi() {
   if (_faceApiLoaded) return true;
   return new Promise((resolve) => {
+    // Se face-api já está no window (carregado anteriormente), pular o script
+    if (window.faceapi) {
+      _carregarModelos(resolve);
+      return;
+    }
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
-    s.onload = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODELS_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODELS_URL),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_MODELS_URL),
-        ]);
-        _faceApiLoaded = true;
-        resolve(true);
-      } catch(e) {
-        console.error('[face] erro ao carregar modelos:', e);
-        resolve(false);
-      }
+    s.onload = () => _carregarModelos(resolve);
+    s.onerror = (e) => {
+      console.error('[face] falha ao carregar script face-api:', e);
+      resolve(false);
     };
-    s.onerror = () => resolve(false);
     document.head.appendChild(s);
   });
+}
+
+async function _carregarModelos(resolve) {
+  try {
+    console.log('[face] carregando modelos de:', FACE_MODELS_URL);
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODELS_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODELS_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_MODELS_URL),
+    ]);
+    console.log('[face] modelos carregados com sucesso');
+    _faceApiLoaded = true;
+    resolve(true);
+  } catch(e) {
+    console.error('[face] erro ao carregar modelos:', e.message, e);
+    resolve(false);
+  }
 }
 
 // ── Verificar status ao abrir o Perfil ──────────────────────
