@@ -154,6 +154,9 @@ async function renderClientList() {
         <div class="client-item-cnpj">CNPJ: ${escapeHtml(cl.cnpj)}</div>
       </div>
       ${cl.regime_tributario ? `<span class="client-item-regime">${escapeHtml(cl.regime_tributario)}</span>` : ''}
+      <button onclick="verArquivosCliente('${cl.id}','${escapeHtml(cl.razao_social).replace(/'/g,'')}')" title="Arquivos recebidos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center">
+        <i data-lucide="inbox" style="width:15px;height:15px"></i>
+      </button>
       ${isAdmin() ? `<button onclick="gerenciarAcessos('${cl.id}','${escapeHtml(cl.razao_social).replace(/'/g,'')}')" title="Gerenciar acessos" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light);display:flex;align-items:center">
         <i data-lucide="users" style="width:15px;height:15px"></i>
       </button>` : ''}
@@ -486,16 +489,10 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'agenda',         label: 'Agenda',            icon: 'calendar-clock' },
-  { id: 'documentos',     label: 'Documentos Fiscais', icon: 'file-text' },
-  { id: 'sped',           label: 'SPED EFD',           icon: 'layers' },
-  { id: 'folha',          label: 'Folha de Pagamento', icon: 'users' },
-  { id: 'financeiro',     label: 'Financeiro',         icon: 'wallet' },
-  { id: 'perfil_empresa', label: 'Perfil Empresa',     icon: 'building-2' },
-  { id: 'calculadora',    label: 'Calculadora',        icon: 'calculator' },
-  { id: 'portal',         label: 'Portal do Cliente',  icon: 'external-link' },
-  { id: 'exportar',       label: 'Exportar Conversa',  icon: 'download' },
-  { id: 'compartilhar',   label: 'Compartilhar Chat',  icon: 'share-2' },
+  { id: 'documentos',  label: 'Documentos Fiscais', icon: 'file-text' },
+  { id: 'sped',        label: 'SPED EFD',           icon: 'layers' },
+  { id: 'exportar',    label: 'Exportar Conversa',  icon: 'download' },
+  { id: 'calculadora', label: 'Calculadora',         icon: 'calculator' },
 ];
 
 async function abrirGerenciarPermissoes() {
@@ -513,8 +510,6 @@ async function abrirGerenciarPermissoes() {
     const res = await supabaseProxy('listar_usuarios', {});
     if (!res?.usuarios) throw new Error(res?.error || 'Sem dados');
     usuarios = res.usuarios;
-    // Guardar escritorio_id para uso em convites
-    if (res.escritorio_id) window._escritorioId = res.escritorio_id;
   } catch(e) {
     content.innerHTML = `<p style="color:var(--error);font-size:13px;padding:12px">Erro ao carregar: ${e.message}</p>`;
     return;
@@ -597,112 +592,96 @@ function fecharPermissoesModal() {
 }
 
 
-// ── ESCRITÓRIO E CONVITES ──────────────────────────────────────
+// ============================================================
+// ARQUIVOS RECEBIDOS DO PORTAL — painel dentro do clientModal
+// ============================================================
+async function verArquivosCliente(clienteId, clienteNome) {
+  if (!currentUser?.id) return;
 
-// Garantir que o admin tem escritório criado
-async function garantirEscritorio() {
-  if (!isAdmin()) return null;
-  if (window._escritorioId) return window._escritorioId;
-  const res = await supabaseProxy('criar_escritorio', {});
-  if (res?.escritorio_id) {
-    window._escritorioId = res.escritorio_id;
-    return res.escritorio_id;
-  }
-  return null;
-}
-
-async function abrirConvites() {
-  if (!isAdmin()) return;
-  const escritorioId = await garantirEscritorio();
-  if (!escritorioId) { showToast('Erro ao obter escritório.', 'error'); return; }
-  const modal = document.getElementById('convitesModal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  window._escritorioIdAtivo = escritorioId;
-  await renderMembros(escritorioId);
-  if (window.lucide) lucide.createIcons();
-}
-
-function fecharConvites() {
-  const modal = document.getElementById('convitesModal');
-  if (modal) modal.style.display = 'none';
-  const msg = document.getElementById('vincularMsg');
-  if (msg) msg.textContent = '';
-  const inp = document.getElementById('vincularEmail');
-  if (inp) inp.value = '';
-}
-
-async function renderMembros(escritorioId) {
-  const container = document.getElementById('escritorioMembros');
-  if (!container) return;
-  container.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Carregando...</p>';
+  const listEl = document.getElementById('clientList');
+  listEl.innerHTML = `
+    <div style="margin-bottom:12px">
+      <button onclick="renderClientList()" style="background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;display:flex;align-items:center;gap:4px">
+        <i data-lucide="arrow-left" style="width:14px;height:14px"></i> Voltar
+      </button>
+      <p style="font-weight:600;margin:8px 0 2px">${escapeHtml(clienteNome)}</p>
+      <p style="font-size:12px;color:var(--text-light);margin:0">Arquivos enviados pelo cliente via portal</p>
+    </div>
+    <div id="arquivosClienteLista"><p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p></div>
+  `;
+  lucide.createIcons();
 
   try {
-    const res = await supabaseProxy('listar_usuarios', {});
-    const usuarios = res?.usuarios || [];
+    const { data, error } = await sb
+      .from('portal_uploads')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('cliente_id', clienteId)
+      .order('criado_em', { ascending: false })
+      .limit(50);
 
-    if (!usuarios.length) {
-      container.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Nenhum membro ainda. Adicione por e-mail acima.</p>';
+    if (error) throw error;
+
+    const el = document.getElementById('arquivosClienteLista');
+    if (!el) return;
+
+    if (!data?.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
       return;
     }
 
-    container.innerHTML = usuarios.map(u => `
-      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(u.email)}</div>
-          <div style="font-size:11px;color:var(--text-light);margin-top:2px">${u.role || 'contador'}</div>
+    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', outro:'file' };
+    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', outro:'#64748b' };
+
+    // Guardar uploads no window para acesso pelo botão (evita escape de args no onclick)
+    window._uploadsPortal = {};
+    data.forEach(u => { window._uploadsPortal[u.id] = u; });
+
+    el.innerHTML = data.map(u => {
+      const fmt   = new Date(u.criado_em).toLocaleDateString('pt-BR');
+      const tipo  = u.tipo_arquivo || 'outro';
+      const icone = iconeMap[tipo] || 'file';
+      const cor   = corMap[tipo]   || '#64748b';
+      const nome  = escapeHtml(u.nome_arquivo || '');
+      return `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i>
         </div>
-        <button onclick="abrirPermissoesRapidas('${u.id}','${escapeHtml(u.email)}')"
-          style="font-size:11px;padding:5px 10px;border:1px solid var(--accent);color:var(--accent);
-          background:transparent;border-radius:7px;cursor:pointer;white-space:nowrap">
-          <i data-lucide="shield" style="width:11px;height:11px"></i> Permissões
-        </button>
-      </div>`).join('');
-    if (window.lucide) lucide.createIcons();
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:${u.lido?'400':'600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
+          <div style="font-size:11px;color:var(--text-light);margin-top:2px">
+            ${tipo.toUpperCase()} · ${u.tamanho_kb ? u.tamanho_kb+' KB · ' : ''}${fmt}${u.descricao ? ' · '+escapeHtml(u.descricao) : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
+          ${!u.lido ? '<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px;white-space:nowrap">Novo</span>' : ''}
+          <button data-uid="${u.id}" onclick="baixarArquivoPortal(this.dataset.uid)"
+            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text);display:flex;align-items:center;gap:4px">
+            <i data-lucide="download" style="width:11px;height:11px"></i> Baixar
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
+    lucide.createIcons();
   } catch(e) {
-    container.innerHTML = `<p style="color:var(--error);font-size:13px;padding:8px">Erro: ${e.message}</p>`;
+    const el = document.getElementById('arquivosClienteLista');
+    if (el) el.innerHTML = '<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro: '+escapeHtml(e.message)+'</p>';
   }
 }
 
-async function vincularUsuarioManual() {
-  const emailEl = document.getElementById('vincularEmail');
-  const msgEl   = document.getElementById('vincularMsg');
-  const email   = emailEl?.value?.trim();
-  if (!email) { showToast('Informe o e-mail.', 'warn'); return; }
-
-  const escritorioId = window._escritorioIdAtivo || await garantirEscritorio();
-  if (!escritorioId) return;
-
-  const btn = document.getElementById('vincularBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Adicionando...'; }
-  if (msgEl) msgEl.textContent = '';
-
+async function baixarArquivoPortal(uid) {
+  const u = (window._uploadsPortal || {})[uid];
+  if (!u) return;
   try {
-    // Buscar user_id pelo email
-    const resUser = await supabaseProxy('buscar_usuario_por_email', { email });
-    if (!resUser?.user_id) {
-      if (msgEl) msgEl.style.color = 'var(--error)', msgEl.textContent = 'Usuário não encontrado. O usuário precisa fazer login ao menos uma vez.';
-      return;
-    }
-
-    // Vincular ao escritório
-    await supabaseProxy('vincular_usuario_escritorio', { user_id: resUser.user_id, escritorio_id: escritorioId });
-
-    if (emailEl) emailEl.value = '';
-    if (msgEl) msgEl.style.color = 'var(--success, #22c55e)', msgEl.textContent = `${email} adicionado ao escritório.`;
-    showToast(`${email} adicionado!`, 'success');
-
-    // Recarregar lista
-    await renderMembros(escritorioId);
-    if (window.lucide) lucide.createIcons();
+    const { data, error } = await sb.storage.from('portal-uploads').createSignedUrl(u.storage_path, 60);
+    if (error) throw error;
+    const a = Object.assign(document.createElement('a'), { href: data.signedUrl, download: u.nome_arquivo || 'arquivo', target: '_blank' });
+    document.body.appendChild(a); a.click();
+    setTimeout(() => document.body.removeChild(a), 100);
+    await sb.from('portal_uploads').update({ lido: true }).eq('id', uid).eq('user_id', currentUser.id);
   } catch(e) {
-    if (msgEl) msgEl.style.color = 'var(--error)', msgEl.textContent = 'Erro: ' + e.message;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Adicionar'; }
+    showToast('Erro ao baixar: ' + e.message, 'error');
   }
-}
-
-function abrirPermissoesRapidas(userId, email) {
-  fecharConvites();
-  abrirGerenciarPermissoes(userId, email);
 }
