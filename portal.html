@@ -88,6 +88,26 @@
 
     .footer { text-align: center; padding-top: 24px; font-size: 11px; color: var(--text-light); }
 
+    /* Upload de documentos */
+    .upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; margin-bottom: 12px; }
+    .upload-area:hover, .upload-area.drag { border-color: var(--accent); background: #f8fafc; }
+    .upload-area p { font-size: 13px; color: var(--text-light); margin-top: 8px; }
+    .upload-area small { font-size: 11px; color: var(--text-light); opacity: .7; }
+    .upload-tipo { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .upload-tipo label { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; transition: background .15s; }
+    .upload-tipo input[type=radio] { accent-color: var(--accent); }
+    .upload-tipo label:has(input:checked) { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .upload-desc { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; resize: none; margin-bottom: 12px; }
+    .upload-desc:focus { outline: none; border-color: var(--accent); }
+    .upload-btn { width: 100%; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .upload-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .upload-file-preview { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .upload-file-preview span { color: var(--text-light); font-size: 11px; }
+    .upload-enviados { margin-top: 4px; }
+    .upload-enviado-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .upload-enviado-item:last-child { border-bottom: none; }
+    .upload-enviado-item .ok { color: var(--ok); font-size: 11px; font-weight: 600; }
+
     @media (max-width: 480px) {
       .header { border-radius: 0 0 var(--radius) var(--radius); margin: -16px -16px 20px; }
       .contador-layout { flex-direction: column; }
@@ -213,6 +233,39 @@ function renderPortal(d) {
       ${docs.length === 10 ? '<div class="paginacao-nota">Exibindo os 10 documentos mais recentes. Solicite ao seu contador para ver mais.</div>' : ''}
     </div>` : ''}
 
+    <div class="card" id="uploadCard">
+      <div class="card-title"><i data-lucide="upload" style="width:14px;height:14px"></i> Enviar Documentos ao Contador</div>
+
+      <div class="upload-tipo">
+        <label><input type="radio" name="uploadTipo" value="guia" checked> Guia de pagamento</label>
+        <label><input type="radio" name="uploadTipo" value="extrato"> Extrato bancário</label>
+        <label><input type="radio" name="uploadTipo" value="nfe"> NF-e / XML</label>
+        <label><input type="radio" name="uploadTipo" value="outro"> Outro</label>
+      </div>
+
+      <div id="uploadDropArea" class="upload-area">
+        <i data-lucide="file-up" style="width:28px;height:28px;opacity:.4;margin:0 auto"></i>
+        <p>Arraste um arquivo ou <strong>clique para selecionar</strong></p>
+        <small>PDF, imagem, XML ou planilha — máx. 10MB</small>
+        <input type="file" id="uploadInput" style="display:none"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.xls,.xlsx">
+      </div>
+
+      <div id="uploadFilePreview" style="display:none" class="upload-file-preview">
+        <div id="uploadFileName">—</div>
+        <span id="uploadFileSize">—</span>
+      </div>
+
+      <textarea id="uploadDescricao" class="upload-desc" rows="2"
+        placeholder="Descrição opcional (ex: Extrato fevereiro/2025)"></textarea>
+
+      <button id="uploadBtn" class="upload-btn" disabled>
+        <i data-lucide="send" style="width:15px;height:15px"></i> Enviar ao contador
+      </button>
+
+      <div id="uploadEnviados" class="upload-enviados" style="margin-top:12px"></div>
+    </div>
+
     <div class="footer">
       Portal gerado pelo Fiscal365. As informações são de responsabilidade do escritório contábil.<br>
       Dúvidas? Entre em contato com seu contador.
@@ -295,6 +348,107 @@ function esc(str) {
 }
 
 init();
+
+// ── Upload de documentos ────────────────────────────────────
+(function() {
+  let selectedFile = null;
+
+  function initUpload() {
+    const drop   = document.getElementById('uploadDropArea');
+    const input  = document.getElementById('uploadInput');
+    const btn    = document.getElementById('uploadBtn');
+    const prev   = document.getElementById('uploadFilePreview');
+    const fname  = document.getElementById('uploadFileName');
+    const fsize  = document.getElementById('uploadFileSize');
+    if (!drop) return;
+
+    drop.addEventListener('click', () => input.click());
+
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault();
+      drop.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f) setFile(f);
+    });
+
+    input.addEventListener('change', () => {
+      if (input.files[0]) setFile(input.files[0]);
+    });
+
+    btn.addEventListener('click', enviar);
+  }
+
+  function setFile(f) {
+    if (f.size > 10 * 1024 * 1024) {
+      alert('Arquivo muito grande. Limite: 10MB.');
+      return;
+    }
+    selectedFile = f;
+    document.getElementById('uploadFileName').textContent = f.name;
+    document.getElementById('uploadFileSize').textContent = (f.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('uploadFilePreview').style.display = 'flex';
+    document.getElementById('uploadBtn').disabled = false;
+  }
+
+  async function enviar() {
+    if (!selectedFile || !token) return;
+
+    const btn  = document.getElementById('uploadBtn');
+    const tipo = document.querySelector('input[name="uploadTipo"]:checked')?.value || 'outro';
+    const desc = document.getElementById('uploadDescricao').value.trim();
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Enviando...';
+
+    try {
+      const form = new FormData();
+      form.append('token',    token);
+      form.append('tipo',     tipo);
+      form.append('descricao', desc);
+      form.append('arquivo',  selectedFile, selectedFile.name);
+
+      const res  = await fetch('/api/portal-upload', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!res.ok || data.erro) throw new Error(data.erro || 'Erro no envio');
+
+      // Sucesso
+      const lista = document.getElementById('uploadEnviados');
+      lista.innerHTML = `<div class="upload-enviado-item">
+        <i data-lucide="check-circle" style="width:15px;height:15px;color:var(--ok);flex-shrink:0"></i>
+        <span>${esc(selectedFile.name)}</span>
+        <span class="ok">Enviado</span>
+      </div>` + lista.innerHTML;
+      if (window.lucide) lucide.createIcons();
+
+      // Reset
+      selectedFile = null;
+      document.getElementById('uploadInput').value = '';
+      document.getElementById('uploadFilePreview').style.display = 'none';
+      document.getElementById('uploadDescricao').value = '';
+
+    } catch(e) {
+      alert('Erro ao enviar: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="send" style="width:15px;height:15px"></i> Enviar ao contador';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  // Inicializar após renderPortal ter inserido o card no DOM
+  const _orig = window.renderPortal || null;
+  if (_orig) {
+    window.renderPortal = function(d) {
+      _orig(d);
+      initUpload();
+    };
+  } else {
+    document.addEventListener('DOMContentLoaded', initUpload);
+  }
+})();
 </script>
 </body>
 </html>
