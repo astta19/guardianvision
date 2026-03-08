@@ -1,4 +1,4 @@
-// api/face-auth.js — sem dependências externas (Node built-in apenas)
+// api/face-auth.js — sem dependências externas
 const LUXAND_TOKEN = process.env.LUXAND_TOKEN;
 const LUXAND_BASE  = 'https://api.luxand.cloud';
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -13,7 +13,6 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Método não permitido' });
   if (!LUXAND_TOKEN)           return res.status(500).json({ error: 'LUXAND_TOKEN não configurado' });
 
-  // Ler body completo como Buffer
   const bodyBuf = await new Promise((resolve, reject) => {
     const chunks = [];
     req.on('data', c => chunks.push(c));
@@ -39,15 +38,15 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── MULTIPART: parse manual ───────────────────────────────
+  // ── MULTIPART ─────────────────────────────────────────────
   const boundary = (ct.match(/boundary=([^\s;]+)/) || [])[1];
   if (!boundary) return res.status(400).json({ error: 'Content-Type multipart inválido' });
 
-  let fields, photoBlob, photoName;
+  let fields, photoBlob;
   try {
-    ({ fields, photoBlob, photoName } = parseMultipart(bodyBuf, boundary));
+    ({ fields, photoBlob } = parseMultipart(bodyBuf, boundary));
   } catch (e) {
-    return res.status(400).json({ error: 'Erro ao parsear multipart: ' + e.message });
+    return res.status(400).json({ error: 'Erro multipart: ' + e.message });
   }
 
   const action = fields.action || 'verify';
@@ -76,7 +75,7 @@ module.exports = async function handler(req, res) {
 
       return res.status(200).json({ person_uuid: json.uuid });
     } catch (e) {
-      return res.status(500).json({ error: 'Enroll falhou: ' + e.message });
+      return res.status(500).json({ error: 'Enroll: ' + e.message });
     }
   }
 
@@ -85,23 +84,27 @@ module.exports = async function handler(req, res) {
   if (!email) return res.status(400).json({ error: 'E-mail não informado' });
 
   try {
-    const uRes  = await fetch(
-      `${SUPABASE_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}&per_page=1`,
+    // Buscar face_descriptor + face_senha via admin API (join auth.users + perfis_usuarios)
+    const uRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
     const uData = await uRes.json();
-    const userId = uData?.users?.[0]?.id;
-    if (!userId) return res.status(404).json({ error: 'Usuário não encontrado' });
+    const user  = (uData?.users || []).find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado: ' + email });
 
-    const pRes  = await fetch(
-      `${SUPABASE_URL}/rest/v1/perfis_usuarios?user_id=eq.${userId}&select=face_descriptor,face_senha&limit=1`,
+    const pRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/perfis_usuarios?user_id=eq.${user.id}&select=face_descriptor,face_senha&limit=1`,
       { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
-    const pData = await pRes.json();
+    const pData     = await pRes.json();
     const personUuid = pData?.[0]?.face_descriptor;
     const faceSenha  = pData?.[0]?.face_senha;
-    if (!personUuid) return res.status(404).json({ error: 'Login facial não configurado para este usuário' });
 
+    if (!personUuid)
+      return res.status(404).json({ error: 'Login facial não configurado para este usuário' });
+
+    // Verificar no Luxand
     const fm2 = new FormData();
     fm2.append('photo', new Blob([photoBlob], { type: 'image/jpeg' }), 'face.jpg');
 
@@ -119,51 +122,41 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ face_senha: faceSenha });
   } catch (e) {
-    return res.status(500).json({ error: 'Verify falhou: ' + e.message });
+    return res.status(500).json({ error: 'Verify: ' + e.message });
   }
 };
 
-// ── Parser multipart puro (sem dependências) ──────────────
 function parseMultipart(buf, boundary) {
-  const sep   = Buffer.from('--' + boundary);
+  const sep    = Buffer.from('--' + boundary);
   const fields = {};
-  let photoBlob = null, photoName = 'face.jpg';
+  let photoBlob = null;
 
   let pos = 0;
   while (pos < buf.length) {
     const sepIdx = buf.indexOf(sep, pos);
     if (sepIdx === -1) break;
     pos = sepIdx + sep.length;
-    if (buf[pos] === 0x2d && buf[pos + 1] === 0x2d) break; // --boundary--
-
-    // Pular \r\n após boundary
+    if (buf[pos] === 0x2d && buf[pos + 1] === 0x2d) break;
     if (buf[pos] === 0x0d) pos += 2;
 
-    // Ler headers da part
     const headerEnd = buf.indexOf(Buffer.from('\r\n\r\n'), pos);
     if (headerEnd === -1) break;
     const headerStr = buf.slice(pos, headerEnd).toString();
     pos = headerEnd + 4;
 
-    // Encontrar fim da part (próximo boundary)
     const nextSep = buf.indexOf(sep, pos);
-    const partEnd = nextSep === -1 ? buf.length : nextSep - 2; // -2 para \r\n
+    const partEnd = nextSep === -1 ? buf.length : nextSep - 2;
     const partData = buf.slice(pos, partEnd);
     pos = nextSep;
 
-    // Extrair nome do campo
     const nameMatch = headerStr.match(/name="([^"]+)"/);
     if (!nameMatch) continue;
-    const name = nameMatch[1];
 
-    const fileMatch = headerStr.match(/filename="([^"]+)"/);
-    if (fileMatch) {
+    if (headerStr.includes('filename=')) {
       photoBlob = partData;
-      photoName = fileMatch[1];
     } else {
-      fields[name] = partData.toString();
+      fields[nameMatch[1]] = partData.toString();
     }
   }
-
-  return { fields, photoBlob, photoName };
+  return { fields, photoBlob };
 }
