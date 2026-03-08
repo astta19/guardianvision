@@ -26,6 +26,25 @@
 
   <!-- Estilos -->
   <link rel="stylesheet" href="assets/css/app.css?v=6">
+<style>
+  /* Alertas de prazo — banner compacto */
+  .deadline-alerts { border-bottom: 1px solid var(--border); }
+  .deadline-banner { display:flex;align-items:center;gap:10px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;user-select:none; }
+  .deadline-banner.high   { background:#fff1f1;color:#b91c1c;border-left:3px solid #dc2626; }
+  .deadline-banner.medium { background:#fffbeb;color:#92400e;border-left:3px solid #f59e0b; }
+  .deadline-banner-tags { display:flex;gap:5px;flex-wrap:wrap;flex:1; }
+  .deadline-tag { padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap; }
+  .deadline-tag.high   { background:#fee2e2;color:#b91c1c; }
+  .deadline-tag.medium { background:#fef3c7;color:#92400e; }
+  .deadline-expand { margin-left:auto;opacity:.5;transition:transform .2s;flex-shrink:0; }
+  .deadline-expand.open { transform:rotate(180deg); }
+  .deadline-detail { overflow:hidden;max-height:0;transition:max-height .25s ease; }
+  .deadline-detail.open { max-height:400px; }
+  .deadline-detail-inner { padding:4px 16px 10px;display:flex;flex-direction:column;gap:4px; }
+  .deadline-row { display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border); }
+  .deadline-row:last-child { border-bottom:none; }
+  .deadline-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+</style>
 </head>
 <body>
 <!-- TELA DE LOADING -->
