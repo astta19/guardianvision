@@ -48,6 +48,7 @@ export default async function handler(req, res) {
 
   const authUser = await authRes.json();
   const userRole = authUser?.user_metadata?.role || 'contador';
+  const isAdminOrMaster = userRole === 'admin' || userRole === 'master';
 
   const sbHeaders = {
     'apikey': SUPABASE_SERVICE_KEY,
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
 
     // ── buscar_estatisticas ─────────────────────────────────────────
     if (action === 'buscar_estatisticas') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const r = await fetch(
@@ -96,7 +97,7 @@ export default async function handler(req, res) {
 
     // ── buscar_treinamento_count ────────────────────────────────────
     if (action === 'buscar_treinamento_count') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const r = await fetch(`${SUPABASE_URL}/rest/v1/dados_treinamento?select=id`, {
@@ -108,17 +109,31 @@ export default async function handler(req, res) {
 
     // ── listar_usuarios ─────────────────────────────────────────────
     if (action === 'listar_usuarios') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
 
-      // 1. Buscar escritório do admin
-      const escRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
-        { headers: sbHeaders }
-      );
-      const escData = await escRes.json();
-      const escritorioId = escData?.[0]?.id;
+      // Master vê todos; admin vê só o seu escritório
+      let escritorioId;
+      if (userRole === 'master') {
+        // Master pode passar escritorio_id específico ou listar o próprio
+        escritorioId = payload?.escritorio_id || null;
+        if (!escritorioId) {
+          const escRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
+            { headers: sbHeaders }
+          );
+          const escData = await escRes.json();
+          escritorioId = escData?.[0]?.id;
+        }
+      } else {
+        const escRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
+          { headers: sbHeaders }
+        );
+        const escData = await escRes.json();
+        escritorioId = escData?.[0]?.id;
+      }
       if (!escritorioId) {
         return res.status(200).json({ usuarios: [], escritorio_id: null });
       }
@@ -169,7 +184,7 @@ export default async function handler(req, res) {
 
     // ── definir_permissoes ──────────────────────────────────────────
     if (action === 'definir_permissoes') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { userId, permissions } = payload || {};
@@ -235,7 +250,7 @@ export default async function handler(req, res) {
 
     // ── criar_escritorio ────────────────────────────────────────────
     if (action === 'criar_escritorio') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const nome = payload?.nome
@@ -283,7 +298,7 @@ export default async function handler(req, res) {
 
     // ── convidar_usuario ─────────────────────────────────────────────
     if (action === 'convidar_usuario') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { email, escritorio_id } = payload || {};
@@ -315,7 +330,7 @@ export default async function handler(req, res) {
 
     // ── listar_convites ──────────────────────────────────────────────
     if (action === 'listar_convites') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { escritorio_id } = payload || {};
@@ -331,7 +346,7 @@ export default async function handler(req, res) {
 
     // ── buscar_usuario_por_email ────────────────────────────────────
     if (action === 'buscar_usuario_por_email') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { email } = payload || {};
@@ -349,7 +364,7 @@ export default async function handler(req, res) {
 
     // ── vincular_usuario_escritorio ──────────────────────────────────
     if (action === 'vincular_usuario_escritorio') {
-      if (userRole !== 'admin') {
+      if (!isAdminOrMaster) {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { user_id, escritorio_id } = payload || {};
