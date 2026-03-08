@@ -597,12 +597,7 @@ function fecharPermissoesModal() {
 async function garantirEscritorio() {
   if (!isAdmin()) return null;
   if (window._escritorioId) return window._escritorioId;
-
-  const nomeEscritorio = currentUser?.user_metadata?.full_name
-    || currentUser?.email?.split('@')[0]
-    || 'Meu Escritório';
-
-  const res = await supabaseProxy('criar_escritorio', { nome: nomeEscritorio });
+  const res = await supabaseProxy('criar_escritorio', {});
   if (res?.escritorio_id) {
     window._escritorioId = res.escritorio_id;
     return res.escritorio_id;
@@ -610,135 +605,98 @@ async function garantirEscritorio() {
   return null;
 }
 
-// Abrir modal de convites
 async function abrirConvites() {
   if (!isAdmin()) return;
-
   const escritorioId = await garantirEscritorio();
   if (!escritorioId) { showToast('Erro ao obter escritório.', 'error'); return; }
-
   const modal = document.getElementById('convitesModal');
-  if (!modal) { showToast('Modal de convites não encontrado.', 'error'); return; }
-
+  if (!modal) return;
   modal.style.display = 'flex';
-  await renderConvites(escritorioId);
+  window._escritorioIdAtivo = escritorioId;
+  await renderMembros(escritorioId);
+  if (window.lucide) lucide.createIcons();
 }
 
 function fecharConvites() {
   const modal = document.getElementById('convitesModal');
   if (modal) modal.style.display = 'none';
+  const msg = document.getElementById('vincularMsg');
+  if (msg) msg.textContent = '';
+  const inp = document.getElementById('vincularEmail');
+  if (inp) inp.value = '';
 }
 
-async function renderConvites(escritorioId) {
-  const lista = document.getElementById('convitesLista');
-  if (!lista) return;
-  lista.innerHTML = '<p style="color:var(--text-light);font-size:13px">Carregando...</p>';
+async function renderMembros(escritorioId) {
+  const container = document.getElementById('escritorioMembros');
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Carregando...</p>';
 
-  const res = await supabaseProxy('listar_convites', { escritorio_id: escritorioId });
-  const convites = res?.convites || [];
+  try {
+    const res = await supabaseProxy('listar_usuarios', {});
+    const usuarios = res?.usuarios || [];
 
-  if (!convites.length) {
-    lista.innerHTML = '<p style="color:var(--text-light);font-size:13px">Nenhum convite pendente.</p>';
-    return;
-  }
+    if (!usuarios.length) {
+      container.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Nenhum membro ainda. Adicione por e-mail acima.</p>';
+      return;
+    }
 
-  lista.innerHTML = convites.map(cv => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;
-      background:var(--bg);border:1px solid var(--border);border-radius:8px;gap:8px">
-      <div>
-        <div style="font-size:13px;font-weight:500;color:var(--text)">${escapeHtml(cv.email)}</div>
-        <div style="font-size:11px;color:var(--text-light)">
-          Expira: ${new Date(cv.expira_em).toLocaleDateString('pt-BR')}
+    container.innerHTML = usuarios.map(u => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(u.email)}</div>
+          <div style="font-size:11px;color:var(--text-light);margin-top:2px">${u.role || 'contador'}</div>
         </div>
-      </div>
-      <button onclick="copiarLinkConvite('${cv.token}')"
-        style="padding:5px 10px;font-size:11px;border:1px solid var(--border);border-radius:6px;
-        background:var(--bg);cursor:pointer;color:var(--text)">
-        Copiar link
-      </button>
-    </div>`).join('');
-}
-
-async function enviarConvite() {
-  const emailEl = document.getElementById('conviteEmail');
-  const email = emailEl?.value?.trim();
-  if (!email) { showToast('Informe o e-mail.', 'warn'); return; }
-
-  const escritorioId = await garantirEscritorio();
-  if (!escritorioId) return;
-
-  const btn = document.getElementById('conviteBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
-
-  const res = await supabaseProxy('convidar_usuario', { email, escritorio_id: escritorioId });
-
-  if (btn) { btn.disabled = false; btn.textContent = 'Convidar'; }
-
-  if (res?.token) {
-    const link = `${location.origin}${location.pathname}?convite=${res.token}`;
-    await navigator.clipboard.writeText(link).catch(() => {});
-    showToast('Convite criado! Link copiado.', 'success');
-    if (emailEl) emailEl.value = '';
-    await renderConvites(escritorioId);
-  } else {
-    showToast(res?.error || 'Erro ao criar convite.', 'error');
+        <button onclick="abrirPermissoesRapidas('${u.id}','${escapeHtml(u.email)}')"
+          style="font-size:11px;padding:5px 10px;border:1px solid var(--accent);color:var(--accent);
+          background:transparent;border-radius:7px;cursor:pointer;white-space:nowrap">
+          <i data-lucide="shield" style="width:11px;height:11px"></i> Permissões
+        </button>
+      </div>`).join('');
+    if (window.lucide) lucide.createIcons();
+  } catch(e) {
+    container.innerHTML = `<p style="color:var(--error);font-size:13px;padding:8px">Erro: ${e.message}</p>`;
   }
 }
 
-function copiarLinkConvite(token) {
-  const link = `${location.origin}${location.pathname}?convite=${token}`;
-  navigator.clipboard.writeText(link).then(() => showToast('Link copiado!', 'success'));
-}
-
-// Vincular manualmente um usuário ao escritório (por e-mail)
 async function vincularUsuarioManual() {
   const emailEl = document.getElementById('vincularEmail');
-  const email = emailEl?.value?.trim();
+  const msgEl   = document.getElementById('vincularMsg');
+  const email   = emailEl?.value?.trim();
   if (!email) { showToast('Informe o e-mail.', 'warn'); return; }
 
-  const escritorioId = await garantirEscritorio();
+  const escritorioId = window._escritorioIdAtivo || await garantirEscritorio();
   if (!escritorioId) return;
 
-  // Buscar user_id pelo email via listar_usuarios (todos do Supabase — só no proxy)
-  const resUsers = await supabaseProxy('buscar_usuario_por_email', { email });
-  if (!resUsers?.user_id) {
-    showToast('Usuário não encontrado. Envie um convite primeiro.', 'warn');
-    return;
-  }
+  const btn = document.getElementById('vincularBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Adicionando...'; }
+  if (msgEl) msgEl.textContent = '';
 
-  const res = await supabaseProxy('vincular_usuario_escritorio', {
-    user_id: resUsers.user_id,
-    escritorio_id: escritorioId,
-  });
+  try {
+    // Buscar user_id pelo email
+    const resUser = await supabaseProxy('buscar_usuario_por_email', { email });
+    if (!resUser?.user_id) {
+      if (msgEl) msgEl.style.color = 'var(--error)', msgEl.textContent = 'Usuário não encontrado. O usuário precisa fazer login ao menos uma vez.';
+      return;
+    }
 
-  if (res?.ok) {
-    showToast('Usuário vinculado ao escritório.', 'success');
+    // Vincular ao escritório
+    await supabaseProxy('vincular_usuario_escritorio', { user_id: resUser.user_id, escritorio_id: escritorioId });
+
     if (emailEl) emailEl.value = '';
-  } else {
-    showToast(res?.error || 'Erro ao vincular.', 'error');
+    if (msgEl) msgEl.style.color = 'var(--success, #22c55e)', msgEl.textContent = `${email} adicionado ao escritório.`;
+    showToast(`${email} adicionado!`, 'success');
+
+    // Recarregar lista
+    await renderMembros(escritorioId);
+    if (window.lucide) lucide.createIcons();
+  } catch(e) {
+    if (msgEl) msgEl.style.color = 'var(--error)', msgEl.textContent = 'Erro: ' + e.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Adicionar'; }
   }
 }
 
-// Verificar convite na URL ao carregar (chamado pelo core.js no onAuthStateChange)
-async function verificarConviteURL() {
-  const params = new URLSearchParams(location.search);
-  const token = params.get('convite');
-  if (!token || !currentUser) return;
-
-  const { data, error } = await sb.rpc('usar_convite', {
-    p_token: token,
-    p_user_id: currentUser.id,
-  });
-
-  // Limpar o token da URL
-  const url = new URL(location.href);
-  url.searchParams.delete('convite');
-  history.replaceState({}, '', url.toString());
-
-  if (error || !data?.ok) {
-    showToast(data?.error || 'Convite inválido ou expirado.', 'error');
-    return;
-  }
-
-  showToast('Você foi adicionado ao escritório!', 'success');
+function abrirPermissoesRapidas(userId, email) {
+  fecharConvites();
+  abrirGerenciarPermissoes(userId, email);
 }
