@@ -84,8 +84,12 @@ async function _capturarEVerificar() {
 
     setTimeout(async () => {
       fecharModalFace();
+      // Esconder authScreen imediatamente para não piscar antes do onAuthStateChange
+      const auth = document.getElementById('authScreen');
+      if (auth) { auth.style.display = 'none'; auth.classList.add('hidden'); }
       const { error } = await sb.auth.signInWithPassword({ email, password: json.face_senha });
       if (error) {
+        if (auth) { auth.style.display = ''; auth.classList.remove('hidden'); }
         const el = document.getElementById('loginMsg');
         if (el) { el.textContent = 'Erro: ' + error.message; el.className = 'auth-msg error'; }
       }
