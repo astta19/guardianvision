@@ -944,7 +944,14 @@
           <i data-lucide="receipt" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>DARF / DAS
         </button>
         <button class="doc-tab" onclick="switchDocTab('historico', this);darfHistoricoCarregar()">
+          <button class="doc-tab" id="tabRecebidos" onclick="switchDocTab('recebidos', this);carregarUploadsRecebidos()">
+  <i data-lucide="inbox" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Recebidos
+</button>
           <i data-lucide="history" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Histórico
+        </button>
+        <button class="doc-tab" id="tabRecebidos" onclick="switchDocTab('recebidos', this);carregarUploadsRecebidos()">
+          <i data-lucide="inbox" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Recebidos
+          <span id="badgeRecebidos" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px"></span>
         </button>
       </div>
 
@@ -1192,6 +1199,35 @@
               <button onclick="salvarSenha()" class="btn-sa" style="align-self:flex-end;padding:8px 20px;font-size:13px;">Alterar senha</button>
             </div>
           </div>
+
+          <!-- Seção: Login Facial -->
+          <div style="margin-bottom:20px;">
+            <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Login Facial</h4>
+            <div id="faceLoginStatus" style="font-size:13px;color:var(--text-light);margin-bottom:12px;">Verificando...</div>
+            <div id="faceWebcamArea" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:12px;">
+              <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;width:100%;max-width:320px;">
+                <video id="faceVideo" autoplay muted playsinline style="width:100%;display:block;border-radius:12px;"></video>
+                <canvas id="faceCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
+              </div>
+              <div id="faceCaptureMsg" style="font-size:12px;color:var(--text-light);text-align:center;min-height:18px;"></div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="capturarFace()" id="faceCaptureBtn" class="btn-sa" style="padding:8px 18px;font-size:13px;">
+                  <i data-lucide="camera" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Capturar
+                </button>
+                <button onclick="cancelarCadastroFace()" style="padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;color:var(--text);">Cancelar</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button onclick="iniciarCadastroFace()" id="faceActivateBtn" class="btn-sa" style="padding:8px 16px;font-size:13px;display:none;">
+                <i data-lucide="scan-face" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Ativar login facial
+              </button>
+              <button onclick="removerFace()" id="faceRemoveBtn" style="padding:8px 16px;font-size:13px;border:1px solid #fca5a5;border-radius:8px;background:var(--bg);cursor:pointer;color:#dc2626;display:none;">
+                <i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Remover login facial
+              </button>
+            </div>
+            <div id="faceMsg" class="auth-msg" style="margin-top:8px;"></div>
+          </div>
+
         </div>
 
         <!-- ABA NOTIFICAÇÕES -->
@@ -1253,6 +1289,13 @@
       </div>
 
       <!-- Painel: Documentos Recebidos do Portal -->
+      <div id="docPanelRecebidos" class="doc-panel">
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">
+          Arquivos enviados pelo cliente via portal. Marque como lido após verificar.
+        </p>
+        <div id="uploadsRecebidosLista">
+          <p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Selecione uma empresa para ver os arquivos recebidos.</p>
+        </div>
       </div>
 
     </div>
@@ -1318,7 +1361,7 @@
   <script src="assets/js/chat_tools.js?v=1"></script>
   <script src="assets/js/core.js?v=12"></script>
   <script src="assets/js/ui.js?v=7"></script>
-  <script src="assets/js/clients.js?v=10"></script>
+  <script src="assets/js/clients.js?v=9"></script>
   <script src="assets/js/chat.js?v=8"></script>
   <script src="assets/js/fiscal.js?v=8"></script>
   <script src="assets/js/profile.js?v=10"></script>
@@ -2104,5 +2147,6 @@
   </div>
   <!-- /convitesModal -->
 
+  <script src="assets/js/face.js?v=1"></script>
 </body>
 </html>
