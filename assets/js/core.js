@@ -66,8 +66,14 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function isMaster() {
+  return currentUser?.user_metadata?.role === 'master';
+}
+
 function isAdmin() {
-  return currentUser?.user_metadata?.role === 'admin';
+  // master também é admin — tem todos os poderes
+  return currentUser?.user_metadata?.role === 'admin'
+      || currentUser?.user_metadata?.role === 'master';
 }
 
 function hideLoading() {
@@ -143,11 +149,16 @@ function applyAdminUI() {
   const admin = isAdmin();
   const perms = currentUser?.user_metadata?.permissions || [];
 
-  // admin-only: apenas para admins
+  // admin-only: para admins e master
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = admin ? '' : 'none';
   });
-  // toolsAdminSection: container da seção admin no dropdown
+  // master-only: apenas para o master da plataforma
+  const master = isMaster();
+  document.querySelectorAll('.master-only').forEach(el => {
+    el.style.display = master ? '' : 'none';
+  });
+  // toolsAdminSection: visível para admin e master
   const adminSection = document.getElementById('toolsAdminSection');
   if (adminSection) adminSection.style.display = admin ? '' : 'none';
 
