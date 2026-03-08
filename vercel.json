@@ -20,10 +20,6 @@
     "api/portal.js": {
       "memory": 256,
       "maxDuration": 15
-    },
-    "api/portal-upload.js": {
-      "memory": 256,
-      "maxDuration": 30
     }
   },
   "crons": [
