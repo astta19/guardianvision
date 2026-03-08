@@ -138,6 +138,9 @@ async function openProfile() {
     checkPasswordStrengthEl(this.value, 'pwdBar2', 'pwdHint2');
   };
 
+  // Verificar status do login facial
+  if (typeof verificarStatusFace === 'function') verificarStatusFace();
+
   lucide.createIcons();
 }
 
@@ -398,9 +401,9 @@ async function renderHistoryList(list, hasMore = false) {
   }
 
   el.innerHTML = list.map(c => `
-    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" data-open-id="${c.id}">
+    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
-        <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
+        <div class="h-title">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
@@ -413,34 +416,6 @@ async function renderHistoryList(list, hasMore = false) {
   }
 
   lucide.createIcons();
-
-  // Click no item abre o chat
-  el.querySelectorAll('.h-item[data-open-id]').forEach(item => {
-    item.addEventListener('click', e => {
-      if (e.target.closest('.h-title')?.querySelector('input')) return;
-      if (e.target.closest('.btn-del')) return;
-      openChat(item.dataset.openId);
-    });
-  });
-
-  // Detecção manual de duplo clique no título
-  el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
-    let clicks = 0;
-    titleEl.addEventListener('click', e => {
-      e.stopPropagation();
-      clicks++;
-      if (clicks === 1) {
-        setTimeout(() => {
-          if (clicks >= 2) {
-            renameChat(titleEl.dataset.chatId, titleEl);
-          } else {
-            openChat(titleEl.dataset.chatId);
-          }
-          clicks = 0;
-        }, 250);
-      }
-    });
-  });
 }
 
 async function filterChats() {
@@ -516,43 +491,6 @@ async function saveChat() {
 
   } catch (e) {
   }
-}
-
-
-async function renameChat(id, el) {
-  if (el.querySelector('input')) return;
-  const atual = el.textContent.trim();
-
-  const input = document.createElement('input');
-  input.value = atual;
-  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box';
-
-  el.textContent = '';
-  el.appendChild(input);
-  input.focus();
-  input.select();
-
-  let saved = false;
-  const salvar = async () => {
-    if (saved) return;
-    saved = true;
-    const novo = input.value.trim() || atual;
-    el.textContent = novo;
-    if (novo !== atual) {
-      await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
-      if (currentChat?.id === id) currentChat.title = novo;
-      const chat = allChats?.find(c => c.id === id);
-      if (chat) chat.title = novo;
-    }
-  };
-
-  input.addEventListener('blur', salvar);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { saved = true; el.textContent = atual; }
-  });
-  input.addEventListener('click',     e => e.stopPropagation());
-  input.addEventListener('mousedown', e => e.stopPropagation());
 }
 
 async function deleteChat(id) {
