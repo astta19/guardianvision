@@ -513,3 +513,27 @@ async function carregarKPIs() {
     console.error('KPI error:', e);
   }
 }
+
+// Fechar modais com ESC
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const closers = [
+    () => { const m = document.getElementById('confirmModal');      if (m?.style.display !== 'none') closeConfirm(false); },
+    () => { const m = document.getElementById('clientModal');       if (!m?.classList.contains('hidden') && typeof closeClientModal === 'function') closeClientModal(); },
+    () => { const m = document.getElementById('empresaPerfilModal');if (m?.style.display !== 'none' && typeof closeEmpresaPerfil === 'function') closeEmpresaPerfil(); },
+    () => { const m = document.getElementById('spedModal');         if (m?.style.display !== 'none' && typeof closeSped === 'function') closeSped(); },
+    () => { const m = document.getElementById('docModal');          if (m?.style.display !== 'none' && typeof closeDocumentos === 'function') closeDocumentos(); },
+    () => { const m = document.getElementById('profileModal');      if (m?.style.display !== 'none' && typeof closeProfile === 'function') closeProfile(); },
+    () => { const m = document.getElementById('permissoesModal');   if (m?.style.display !== 'none' && typeof fecharPermissoesModal === 'function') fecharPermissoesModal(); },
+    () => { const m = document.getElementById('convitesModal');     if (m?.style.display !== 'none' && typeof fecharConvites === 'function') fecharConvites(); },
+    () => { const m = document.getElementById('agendaModal');       if (m?.style.display !== 'none' && typeof closeAgenda === 'function') closeAgenda(); },
+    () => { const m = document.getElementById('finModal');          if (m?.style.display !== 'none' && typeof closeFinanceiro === 'function') closeFinanceiro(); },
+    () => { const m = document.getElementById('folhaModal');        if (m?.style.display !== 'none' && typeof closeFolha === 'function') closeFolha(); },
+    () => { const m = document.getElementById('portalAdminModal');  if (m?.style.display !== 'none' && typeof fecharPortalAdmin === 'function') fecharPortalAdmin(); },
+    () => { const m = document.getElementById('calcModal');         if (m?.style.display !== 'none') m.style.display = 'none'; },
+    () => { const m = document.getElementById('statsModal');        if (m?.style.display !== 'none') m.style.display = 'none'; },
+    () => { const m = document.getElementById('learningStatsModal');if (m?.style.display !== 'none') m.style.display = 'none'; },
+    () => { const m = document.getElementById('shareModal');        if (m?.style.display !== 'none') m.style.display = 'none'; },
+  ];
+  closers.forEach(fn => { try { fn(); } catch {} });
+});
