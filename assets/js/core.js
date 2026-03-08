@@ -370,6 +370,7 @@ async function showApp() {
   checkConnection();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
+  if (typeof atualizarBadgeRecebidos === 'function') atualizarBadgeRecebidos();
   carregarKPIs();
   if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
     if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
