@@ -1354,6 +1354,7 @@ async function carregarUploadsRecebidos() {
     console.log('[Recebidos] data:', data, 'error:', error);
 
     if (error) throw error;
+    console.log('[Recebidos] renderizando', data?.length, 'itens');
 
     if (!data?.length) {
       el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
@@ -1397,6 +1398,7 @@ async function carregarUploadsRecebidos() {
     atualizarBadgeRecebidos();
 
   } catch (e) {
+    console.error('[Recebidos] ERRO:', e);
     el.innerHTML = `<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro ao carregar: ${e.message}</p>`;
   }
 }
