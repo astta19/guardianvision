@@ -18,7 +18,7 @@
       "maxDuration": 60
     },
     "api/face-auth.js": {
-      "memory": 256,
+      "memory": 512,
       "maxDuration": 30
     }
   },
