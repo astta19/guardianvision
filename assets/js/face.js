@@ -128,7 +128,7 @@ let _cadProcessando = false;
 function iniciarCadastroFace() {
   // Abre o modal de cadastro em vez de inline no perfil
   const modal = document.getElementById('faceCadModal');
-  if (!modal) { _iniciarCadInline(); return; } // fallback se modal não existir
+  if (!modal) return;
   modal.style.display = 'flex';
   _cadAtivo = false; _cadProcessando = false;
   _cSetStatus('Clique em Abrir câmera para começar.');
