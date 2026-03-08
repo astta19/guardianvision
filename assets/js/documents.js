@@ -1339,6 +1339,9 @@ async function carregarUploadsRecebidos() {
 
   el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
 
+  console.log('[Recebidos] user_id:', currentUser?.id);
+  console.log('[Recebidos] cliente_id:', currentCliente?.id);
+
   try {
     const { data, error } = await sb
       .from('portal_uploads')
@@ -1347,6 +1350,8 @@ async function carregarUploadsRecebidos() {
       .eq('cliente_id', currentCliente.id)
       .order('criado_em', { ascending: false })
       .limit(50);
+
+    console.log('[Recebidos] data:', data, 'error:', error);
 
     if (error) throw error;
 
