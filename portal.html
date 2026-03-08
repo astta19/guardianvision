@@ -146,6 +146,18 @@ async function init() {
     }
 
     renderPortal(data);
+  // Buscar UUID do token para o upload
+  (async () => {
+    if (!window._initPortalUpload) return;
+    try {
+      const r = await fetch(
+        `https://myezzedahfyrelqcgsad.supabase.co/rest/v1/portal_tokens?token=eq.${encodeURIComponent(token)}&select=id&limit=1`,
+        { headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI', Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI' } }
+      );
+      const rows = await r.json();
+      if (rows?.[0]?.id) window._initPortalUpload(rows[0].id);
+    } catch {}
+  })();
   } catch (e) {
     renderErro('Erro de conexão', 'Não foi possível carregar os dados. Tente novamente em instantes.');
   } finally {
@@ -349,132 +361,124 @@ function esc(str) {
 
 init();
 
-// ── Upload de documentos ────────────────────────────────────
+// ── Upload de documentos (direto no Supabase Storage) ─────────
 (function() {
+  const SB_URL  = 'https://myezzedahfyrelqcgsad.supabase.co';
+  const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
+  const TIPOS_OK = ['application/pdf','image/jpeg','image/png','image/webp',
+                    'text/xml','application/xml','application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
   let selectedFile = null;
+  let portalTokenId = null;
 
-  function initUpload() {
-    const drop   = document.getElementById('uploadDropArea');
-    const input  = document.getElementById('uploadInput');
-    const btn    = document.getElementById('uploadBtn');
-    const prev   = document.getElementById('uploadFilePreview');
-    const fname  = document.getElementById('uploadFileName');
-    const fsize  = document.getElementById('uploadFileSize');
+  function initUpload(tokenId) {
+    portalTokenId = tokenId;
+    const drop  = document.getElementById('uploadDropArea');
+    const input = document.getElementById('uploadInput');
+    const btn   = document.getElementById('uploadBtn');
     if (!drop) return;
 
     drop.addEventListener('click', () => input.click());
-
-    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
     drop.addEventListener('drop', e => {
-      e.preventDefault();
-      drop.classList.remove('drag');
-      const f = e.dataTransfer.files[0];
-      if (f) setFile(f);
+      e.preventDefault(); drop.classList.remove('drag');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
     });
-
-    input.addEventListener('change', () => {
-      if (input.files[0]) setFile(input.files[0]);
-    });
-
+    input.addEventListener('change', () => { if (input.files[0]) setFile(input.files[0]); });
     btn.addEventListener('click', enviar);
   }
 
   function setFile(f) {
-    if (f.size > 10 * 1024 * 1024) {
-      alert('Arquivo muito grande. Limite: 10MB.');
-      return;
-    }
+    if (f.size > 10 * 1024 * 1024) { alert('Arquivo muito grande. Limite: 10MB.'); return; }
+    if (!TIPOS_OK.includes(f.type)) { alert('Tipo não permitido. Use PDF, imagem, XML ou planilha.'); return; }
     selectedFile = f;
     document.getElementById('uploadFileName').textContent = f.name;
-    document.getElementById('uploadFileSize').textContent = (f.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('uploadFileSize').textContent = (f.size/1024).toFixed(1) + ' KB';
     document.getElementById('uploadFilePreview').style.display = 'flex';
     document.getElementById('uploadBtn').disabled = false;
   }
 
   async function enviar() {
-    if (!selectedFile || !token) return;
-
+    if (!selectedFile || !portalTokenId) return;
     const btn  = document.getElementById('uploadBtn');
-    const desc = document.getElementById('uploadDescricao').value.trim();
+    const desc = (document.getElementById('uploadDescricao').value || '').trim();
 
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Enviando...';
 
     try {
-      // Etapa 1: obter URL assinada
-      const metaRes = await fetch('/api/portal-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action:       'gerar_url',
-          token,
-          nome_arquivo: selectedFile.name,
-          mime_type:    selectedFile.type,
-          tamanho_kb:   Math.ceil(selectedFile.size / 1024),
-        }),
-      });
-      const meta = await metaRes.json();
-      if (!metaRes.ok || meta.erro) throw new Error(meta.erro || 'Erro ao preparar envio');
+      const safe = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'_').substring(0,80);
+      const path = `${portalTokenId}/${Date.now()}_${safe}`;
 
-      // Etapa 2: upload direto no Supabase Storage
-      const uploadRes = await fetch(meta.upload_url, {
-        method: 'PUT',
-        headers: { 'Content-Type': selectedFile.type },
+      // Upload direto no Storage
+      const upRes = await fetch(`${SB_URL}/storage/v1/object/portal-uploads/${path}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_ANON,
+          'Authorization': 'Bearer ' + SB_ANON,
+          'Content-Type': selectedFile.type,
+          'x-upsert': 'false',
+        },
         body: selectedFile,
       });
-      if (!uploadRes.ok) throw new Error('Falha no upload do arquivo');
+      if (!upRes.ok) {
+        const e = await upRes.json().catch(() => ({}));
+        throw new Error(e.message || 'Falha no upload (storage ' + upRes.status + ')');
+      }
 
-      // Etapa 3: registrar no banco
-      const regRes = await fetch('/api/portal-upload', {
+      // Registrar via RPC
+      const tipo = selectedFile.type.includes('pdf') ? 'pdf'
+                 : selectedFile.type.includes('xml') ? 'nfe'
+                 : selectedFile.type.includes('image') ? 'imagem'
+                 : selectedFile.type.includes('sheet') || selectedFile.type.includes('excel') ? 'planilha'
+                 : 'outro';
+
+      const regRes = await fetch(`${SB_URL}/rest/v1/rpc/portal_registrar_upload`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'apikey': SB_ANON,
+          'Authorization': 'Bearer ' + SB_ANON,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          action:       'registrar',
-          token,
-          nome_arquivo: selectedFile.name,
-          mime_type:    selectedFile.type,
-          tamanho_kb:   Math.ceil(selectedFile.size / 1024),
-          storage_path: meta.path,
-          descricao:    desc,
+          p_token_id:   portalTokenId,
+          p_nome:       selectedFile.name,
+          p_tipo:       tipo,
+          p_tamanho_kb: Math.ceil(selectedFile.size / 1024),
+          p_path:       path,
+          p_descricao:  desc || null,
         }),
       });
-      const reg = await regRes.json();
-      if (!regRes.ok || reg.erro) throw new Error(reg.erro || 'Erro ao registrar');
+      if (!regRes.ok) {
+        const e = await regRes.json().catch(() => ({}));
+        throw new Error(e.message || 'Erro ao registrar');
+      }
 
-      // Sucesso
       const lista = document.getElementById('uploadEnviados');
-      lista.innerHTML = `<div class="upload-enviado-item">
-        <i data-lucide="check-circle" style="width:15px;height:15px;color:var(--ok);flex-shrink:0"></i>
-        <span>${esc(selectedFile.name)}</span>
-        <span class="ok">Enviado ✓</span>
-      </div>` + lista.innerHTML;
+      lista.innerHTML = '<div class="upload-enviado-item">'
+        + '<i data-lucide="check-circle" style="width:15px;height:15px;color:var(--ok);flex-shrink:0"></i>'
+        + '<span style="flex:1">' + esc(selectedFile.name) + '</span>'
+        + '<span class="ok">Enviado ✓</span></div>' + lista.innerHTML;
       if (window.lucide) lucide.createIcons();
 
       selectedFile = null;
       document.getElementById('uploadInput').value = '';
       document.getElementById('uploadFilePreview').style.display = 'none';
       document.getElementById('uploadDescricao').value = '';
+      document.getElementById('uploadBtn').disabled = true;
 
     } catch(e) {
       alert('Erro ao enviar: ' + e.message);
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="send" style="width:15px;height:15px"></i> Enviar ao contador';
-      if (window.lucide) lucide.createIcons();
+      if (!selectedFile) {
+        btn.innerHTML = '<i data-lucide="send" style="width:15px;height:15px"></i> Enviar ao contador';
+        if (window.lucide) lucide.createIcons();
+      }
     }
   }
 
-  // Inicializar após renderPortal ter inserido o card no DOM
-  const _orig = window.renderPortal || null;
-  if (_orig) {
-    window.renderPortal = function(d) {
-      _orig(d);
-      initUpload();
-    };
-  } else {
-    document.addEventListener('DOMContentLoaded', initUpload);
-  }
+  window._initPortalUpload = initUpload;
 })();
 </script>
 </body>
