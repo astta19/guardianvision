@@ -94,25 +94,22 @@
         <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
 
         <!-- LOGIN FACIAL -->
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="email" id="faceLoginEmail" placeholder="Seu e-mail (para login facial)"
-              style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-            <button id="btnFaceLogin" class="google-btn" onclick="iniciarLoginFacial()" type="button"
-              style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:9px 14px;font-size:13px;margin:0">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
-                <path d="M20 21a8 8 0 1 0-16 0"/>
-              </svg>
-              Entrar com rosto
-            </button>
-          </div>
-          <div id="faceLoginArea" style="display:none;flex-direction:column;align-items:center;gap:8px;padding:10px;background:var(--sidebar-hover);border-radius:10px">
-            <video id="faceLoginVideo" width="240" height="180" autoplay muted playsinline
-              style="border-radius:8px;background:#000;transform:scaleX(-1)"></video>
-            <span id="faceLoginMsg" style="font-size:12px;color:var(--text-light);text-align:center"></span>
-          </div>
+        <button id="btnFaceLogin" class="google-btn" onclick="iniciarLoginFacial()" type="button"
+          style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+            <path d="M20 21a8 8 0 1 0-16 0"/>
+          </svg>
+          Entrar com rosto
+        </button>
+        <div id="faceLoginArea" style="display:none;flex-direction:column;align-items:center;gap:10px;padding:14px;background:var(--sidebar-hover);border-radius:12px;margin-top:4px">
+          <input type="email" id="faceLoginEmail" placeholder="Seu e-mail"
+            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          <video id="faceLoginVideo" width="220" height="165" autoplay muted playsinline
+            style="border-radius:8px;background:#000;transform:scaleX(-1);width:100%;max-width:220px"></video>
+          <span id="faceLoginMsg" style="font-size:12px;color:var(--text-light);text-align:center;line-height:1.5"></span>
+          <button onclick="pararLoginFacial()" style="font-size:12px;color:var(--text-light);background:none;border:none;cursor:pointer;padding:0">Cancelar</button>
         </div>
 
         <div class="auth-msg" id="loginMsg"></div>
