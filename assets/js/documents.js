@@ -890,12 +890,12 @@ async function carregarUploadsRecebidos() {
     const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', outro:'file' };
     const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', outro:'#64748b' };
     el.innerHTML = data.map(u => {
-      const fmt  = new Date(u.criado_em).toLocaleDateString('pt-BR');
+      const fmt   = new Date(u.criado_em).toLocaleDateString('pt-BR');
       const icone = iconeMap[u.tipo_arquivo] || 'file';
       const cor   = corMap[u.tipo_arquivo]   || '#64748b';
       const nome  = (u.nome_arquivo||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const path  = (u.storage_path||'').replace(/'/g,"\'");
-      const nomeQ = nome.replace(/'/g,"\'");
+      const nomeQ = (u.nome_arquivo||'').replace(/'/g,"\'");
       return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
         <div style="width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i>
@@ -903,14 +903,13 @@ async function carregarUploadsRecebidos() {
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:${u.lido?'400':'600'}">${nome}</div>
           <div style="font-size:11px;color:var(--text-light);margin-top:2px">
-            ${(u.tipo_arquivo||'outro').toUpperCase()} · ${u.tamanho_kb?u.tamanho_kb+' KB · ':''}${fmt}
-            ${u.descricao?'· '+u.descricao:''}
+            ${(u.tipo_arquivo||'outro').toUpperCase()} · ${u.tamanho_kb?u.tamanho_kb+' KB · ':''}${fmt}${u.descricao?' · '+u.descricao:''}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
           ${!u.lido?'<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>':''}
           <button onclick="baixarUpload('${u.id}','${path}','${nomeQ}')"
-            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text)">
+            style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text)">
             ⬇ Baixar
           </button>
         </div>
