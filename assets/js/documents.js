@@ -1324,3 +1324,116 @@ async function gerarDctfWeb() {
     showToast('Erro ao gerar o documento. Recarregue a página.', 'error');
   }
 }
+
+
+// ============================================================
+// UPLOADS RECEBIDOS DO PORTAL
+// ============================================================
+async function carregarUploadsRecebidos() {
+  const el = document.getElementById('uploadsRecebidosLista');
+  if (!el) return;
+  if (!currentCliente?.id) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Selecione uma empresa primeiro.</p>';
+    return;
+  }
+
+  el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
+
+  try {
+    const { data, error } = await sb
+      .from('portal_uploads')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('cliente_id', currentCliente.id)
+      .order('criado_em', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    if (!data?.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
+      return;
+    }
+
+    const iconeMap = { pdf: 'file-text', nfe: 'scan-line', planilha: 'table', imagem: 'image', guia: 'receipt', extrato: 'landmark', outro: 'file' };
+    const corMap   = { pdf: '#dc2626', nfe: '#2563eb', planilha: '#16a34a', imagem: '#7c3aed', guia: '#d97706', extrato: '#0891b2', outro: '#64748b' };
+
+    el.innerHTML = data.map(u => {
+      const data_fmt = new Date(u.criado_em).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+      const icone = iconeMap[u.tipo_arquivo] || 'file';
+      const cor   = corMap[u.tipo_arquivo]   || '#64748b';
+      return `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);${!u.lido ? 'background:linear-gradient(90deg,rgba(59,130,246,.05) 0%,transparent 100%);border-radius:6px;padding:10px 6px;' : ''}">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:${u.lido ? '400' : '600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(u.nome_arquivo)}</div>
+          <div style="font-size:11px;color:var(--text-light);margin-top:2px">
+            ${u.tipo_arquivo.toUpperCase()} · ${u.tamanho_kb ? u.tamanho_kb + ' KB · ' : ''}${data_fmt}
+            ${u.descricao ? ` · <em>${escapeHtml(u.descricao)}</em>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
+          ${!u.lido ? `<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>` : ''}
+          <button onclick="baixarUpload('${u.id}','${escapeHtml(u.storage_path)}','${escapeHtml(u.nome_arquivo)}')"
+            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--text)">
+            <i data-lucide="download" style="width:11px;height:11px"></i> Baixar
+          </button>
+          ${!u.lido ? `<button onclick="marcarUploadLido('${u.id}', this)"
+            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text-light)">
+            Marcar lido
+          </button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+    atualizarBadgeRecebidos();
+
+  } catch (e) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro ao carregar: ${e.message}</p>`;
+  }
+}
+
+async function baixarUpload(id, path, nome) {
+  try {
+    const { data, error } = await sb.storage.from('portal-uploads').createSignedUrl(path, 60);
+    if (error) throw error;
+    const a = Object.assign(document.createElement('a'), { href: data.signedUrl, download: nome, target: '_blank' });
+    document.body.appendChild(a); a.click();
+    setTimeout(() => document.body.removeChild(a), 100);
+    // Marcar como lido automaticamente ao baixar
+    await sb.from('portal_uploads').update({ lido: true }).eq('id', id).eq('user_id', currentUser.id);
+    atualizarBadgeRecebidos();
+  } catch (e) {
+    showToast('Erro ao baixar arquivo: ' + e.message, 'error');
+  }
+}
+
+async function marcarUploadLido(id, btn) {
+  await sb.from('portal_uploads').update({ lido: true }).eq('id', id).eq('user_id', currentUser.id);
+  btn.closest('div[style]').querySelector('[style*="Novo"]')?.remove();
+  btn.remove();
+  atualizarBadgeRecebidos();
+}
+
+async function atualizarBadgeRecebidos() {
+  if (!currentUser) return;
+  try {
+    const { count } = await sb
+      .from('portal_uploads')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('lido', false);
+
+    const badge = document.getElementById('badgeRecebidos');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch {}
+}
