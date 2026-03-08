@@ -1,32 +1,33 @@
 // ============================================================
-// FACE LOGIN — MediaPipe FaceMesh
-// Cadastro (Perfil) + Login (tela de entrada)
-// Deps: sb, currentUser, salvarPerfilBanco, showToast, doLogin
+// FACE LOGIN — MediaPipe FaceMesh (sem foto, detecção contínua)
 // ============================================================
 
-const FACE_THRESHOLD = 0.55; // distância euclidiana máxima p/ match
+const FACE_THRESHOLD = 0.55;
 
 let _mpLoaded        = false;
 let _faceMesh        = null;
 let _faceStream      = null;
-let _faceDescriptors = []; // capturas durante cadastro
-let _lastLandmarks   = null; // último frame do FaceMesh
+let _faceDescriptors = [];
+let _lastLandmarks   = null;
+let _loginRunning    = false;
+let _loginStream     = null;
+let _loginRafId      = null;
 
-// ── 1. Carregar MediaPipe lazy ───────────────────────────────
+// ── Carregar MediaPipe lazy ──────────────────────────────────
 async function carregarMediaPipe() {
   if (_mpLoaded && _faceMesh) return true;
   return new Promise(resolve => {
-    if (window.FaceMesh) { _iniciarFaceMesh(resolve); return; }
+    if (window.FaceMesh) { _initMesh(resolve); return; }
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js';
     s.crossOrigin = 'anonymous';
-    s.onload  = () => _iniciarFaceMesh(resolve);
-    s.onerror = () => { console.error('[face] falha ao carregar MediaPipe'); resolve(false); };
+    s.onload  = () => _initMesh(resolve);
+    s.onerror = () => resolve(false);
     document.head.appendChild(s);
   });
 }
 
-function _iniciarFaceMesh(resolve) {
+function _initMesh(resolve) {
   try {
     _faceMesh = new FaceMesh({ locateFile: f =>
       `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${f}`
@@ -34,64 +35,187 @@ function _iniciarFaceMesh(resolve) {
     _faceMesh.setOptions({
       maxNumFaces: 1,
       refineLandmarks: false,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
     });
     _faceMesh.onResults(r => {
       _lastLandmarks = r.multiFaceLandmarks?.[0] || null;
     });
     _mpLoaded = true;
     resolve(true);
-  } catch(e) {
-    console.error('[face] erro ao iniciar FaceMesh:', e);
-    resolve(false);
-  }
+  } catch(e) { resolve(false); }
 }
 
-// ── 2. Extrair descritor de 128 floats a partir dos landmarks ─
-// Usa 128 pontos-chave normalizados do FaceMesh como vetor de embedding
-function _extrairDescritor(landmarks) {
-  // Normalizar pelo bounding box do rosto
-  let minX = 1, minY = 1, maxX = 0, maxY = 0;
-  landmarks.forEach(p => {
-    if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
-    if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+// ── Extrair vetor de 128 floats dos landmarks normalizados ───
+function _descritor(lm) {
+  let minX=1, minY=1, maxX=0, maxY=0;
+  lm.forEach(p => {
+    if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x;
+    if(p.y<minY) minY=p.y; if(p.y>maxY) maxY=p.y;
   });
-  const w = maxX - minX || 1, h = maxY - minY || 1;
-
-  // Selecionar 64 pontos representativos (contorno, olhos, nariz, boca)
-  const INDICES = [
+  const w=maxX-minX||1, h=maxY-minY||1;
+  const IDX=[
     10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,
     400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,
-    54,103,67,109, 33,7,163,144,145,153,154,155,133,173,157,158,
-    159,160,161,246, 362,382,381,380,374,373,390,249,263,466,388,387,
+    54,103,67,109,33,7,163,144,145,153,154,155,133,173,157,158,
+    159,160,161,246,362,382,381,380,374,373,390,249,263,466,388,387,
   ];
-
-  const vec = [];
-  INDICES.forEach(i => {
-    const p = landmarks[i] || { x: 0, y: 0 };
-    vec.push((p.x - minX) / w);
-    vec.push((p.y - minY) / h);
+  const v=[];
+  IDX.forEach(i => {
+    const p=lm[i]||{x:0,y:0};
+    v.push((p.x-minX)/w, (p.y-minY)/h);
   });
-  return vec; // 128 floats
+  return v; // 128 floats
 }
 
-// ── 3. Distância euclidiana entre dois descritores ───────────
-function _distancia(a, b) {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) sum += (a[i] - b[i]) ** 2;
-  return Math.sqrt(sum);
-}
-
-// ── 4. Capturar frame do vídeo e processar ───────────────────
-async function _processarFrame(video) {
-  _lastLandmarks = null;
-  await _faceMesh.send({ image: video });
-  return _lastLandmarks;
+function _dist(a, b) {
+  let s=0; for(let i=0;i<a.length;i++) s+=(a[i]-b[i])**2; return Math.sqrt(s);
 }
 
 // ════════════════════════════════════════════════════════════
-// CADASTRO — funções chamadas pelo Perfil
+// LOGIN — detecção contínua via rAF, sem capturar foto
+// ════════════════════════════════════════════════════════════
+
+async function iniciarLoginFacial() {
+  const area  = document.getElementById('faceLoginArea');
+  const msg   = document.getElementById('faceLoginMsg');
+  const btn   = document.getElementById('btnFaceLogin');
+
+  // Toggle: se já aberto, fechar
+  if (_loginRunning) { pararLoginFacial(); return; }
+
+  area.style.display = 'flex';
+  if (msg) msg.textContent = 'Carregando...';
+  if (btn) btn.disabled = true;
+
+  const ok = await carregarMediaPipe();
+  if (!ok) {
+    if (msg) msg.textContent = 'Erro ao carregar reconhecimento facial.';
+    if (btn) btn.disabled = false;
+    area.style.display = 'none';
+    return;
+  }
+
+  try {
+    _loginStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
+    });
+  } catch(e) {
+    if (msg) msg.textContent = 'Câmera bloqueada. Verifique as permissões.';
+    if (btn) btn.disabled = false;
+    area.style.display = 'none';
+    return;
+  }
+
+  const video = document.getElementById('faceLoginVideo');
+  video.srcObject = _loginStream;
+  await video.play().catch(()=>{});
+
+  _loginRunning  = true;
+  if (btn) btn.disabled = false;
+
+  let frames       = 0;
+  let detectado    = false;
+  let autenticando = false;
+
+  async function loop() {
+    if (!_loginRunning) return;
+
+    if (video.readyState >= 2) {
+      await _faceMesh.send({ image: video }).catch(()=>{});
+      frames++;
+
+      if (!detectado && _lastLandmarks) {
+        detectado = true;
+        if (msg) msg.textContent = 'Rosto detectado. Verificando...';
+      } else if (!detectado && frames > 10) {
+        if (msg) msg.textContent = 'Posicione seu rosto na câmera...';
+      }
+
+      // Após estabilizar 5 frames com rosto detectado, autenticar
+      if (_lastLandmarks && !autenticando && frames >= 5) {
+        autenticando = true;
+        const email = document.getElementById('faceLoginEmail')?.value.trim();
+        if (!email) {
+          if (msg) msg.textContent = 'Informe seu e-mail acima para continuar.';
+          autenticando = false;
+          _lastLandmarks = null;
+          frames = 0;
+        } else {
+          if (msg) msg.textContent = 'Identificando...';
+          const desc = _descritor(_lastLandmarks);
+          await _autenticarFace(email, desc);
+          return; // para o loop após tentativa
+        }
+      }
+    }
+    _loginRafId = requestAnimationFrame(loop);
+  }
+
+  if (msg) msg.textContent = 'Posicione seu rosto na câmera...';
+  _loginRafId = requestAnimationFrame(loop);
+}
+
+async function _autenticarFace(email, descritor) {
+  const msg = document.getElementById('faceLoginMsg');
+  try {
+    const res  = await fetch('/api/face-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, descriptor: descritor })
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.error || 'Não reconhecido');
+
+    if (msg) msg.textContent = 'Identidade confirmada! Entrando...';
+    pararLoginFacial();
+
+    const { error } = await sb.auth.signInWithPassword({ email, password: json.face_senha });
+    if (error) throw error;
+
+  } catch(e) {
+    const msg2 = document.getElementById('faceLoginMsg');
+    if (msg2) msg2.textContent = '⚠ ' + e.message;
+    // Reiniciar loop para nova tentativa
+    setTimeout(() => {
+      if (_loginRunning) {
+        _lastLandmarks = null;
+        let frames2 = 0, detectado2 = false, autenticando2 = false;
+        async function loop2() {
+          if (!_loginRunning) return;
+          if (document.getElementById('faceLoginVideo')?.readyState >= 2) {
+            await _faceMesh.send({ image: document.getElementById('faceLoginVideo') }).catch(()=>{});
+            frames2++;
+            if (!detectado2 && _lastLandmarks) { detectado2=true; if(msg2) msg2.textContent='Rosto detectado. Tente novamente...'; }
+            if (_lastLandmarks && !autenticando2 && frames2 >= 5) {
+              autenticando2 = true;
+              const email2 = document.getElementById('faceLoginEmail')?.value.trim();
+              if (email2) { await _autenticarFace(email2, _descritor(_lastLandmarks)); return; }
+            }
+          }
+          _loginRafId = requestAnimationFrame(loop2);
+        }
+        _loginRafId = requestAnimationFrame(loop2);
+      }
+    }, 2000);
+  }
+}
+
+function pararLoginFacial() {
+  _loginRunning = false;
+  cancelAnimationFrame(_loginRafId);
+  _loginRafId = null;
+  if (_loginStream) { _loginStream.getTracks().forEach(t=>t.stop()); _loginStream = null; }
+  const video = document.getElementById('faceLoginVideo');
+  if (video) video.srcObject = null;
+  const area = document.getElementById('faceLoginArea');
+  if (area) area.style.display = 'none';
+  const btn = document.getElementById('btnFaceLogin');
+  if (btn) btn.disabled = false;
+}
+
+// ════════════════════════════════════════════════════════════
+// CADASTRO — Perfil
 // ════════════════════════════════════════════════════════════
 
 async function verificarStatusFace() {
@@ -101,10 +225,8 @@ async function verificarStatusFace() {
   if (!statusEl || !currentUser) return;
   try {
     const { data } = await sb
-      .from('perfis_usuarios')
-      .select('face_descriptor')
-      .eq('user_id', currentUser.id)
-      .maybeSingle();
+      .from('perfis_usuarios').select('face_descriptor')
+      .eq('user_id', currentUser.id).maybeSingle();
     if (data?.face_descriptor?.length) {
       statusEl.innerHTML = '<span style="color:#16a34a">✓ Login facial ativado</span>';
       if (activateBtn) activateBtn.style.display = 'none';
@@ -114,9 +236,7 @@ async function verificarStatusFace() {
       if (activateBtn) activateBtn.style.display = 'inline-flex';
       if (removeBtn)   removeBtn.style.display   = 'none';
     }
-  } catch(e) {
-    statusEl.textContent = 'Não foi possível verificar o status.';
-  }
+  } catch { if (statusEl) statusEl.textContent = 'Não foi possível verificar.'; }
 }
 
 async function iniciarCadastroFace() {
@@ -125,14 +245,14 @@ async function iniciarCadastroFace() {
   if (!ok) { setFaceMsg('Erro ao carregar. Verifique sua conexão.', true); return; }
 
   try {
-    _faceStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
-  } catch(e) {
-    setFaceMsg('Câmera negada. Habilite nas configurações do navegador.', true); return;
-  }
+    _faceStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
+    });
+  } catch { setFaceMsg('Câmera negada. Habilite nas configurações.', true); return; }
 
   const video = document.getElementById('faceVideo');
   video.srcObject = _faceStream;
-  await new Promise(res => { video.onloadedmetadata = res; setTimeout(res, 1500); });
+  await new Promise(r => { video.onloadedmetadata = r; setTimeout(r, 1500); });
   await video.play();
 
   _faceDescriptors = [];
@@ -148,69 +268,62 @@ async function capturarFace() {
   const btn        = document.getElementById('faceCaptureBtn');
 
   btn.disabled = true;
-  if (captureMsg) captureMsg.textContent = 'Detectando...';
+  captureMsg.textContent = 'Detectando...';
+  _lastLandmarks = null;
+  await _faceMesh.send({ image: video }).catch(()=>{});
 
-  const landmarks = await _processarFrame(video);
-
-  if (!landmarks) {
+  if (!_lastLandmarks) {
     captureMsg.textContent = '⚠ Rosto não detectado. Melhore a iluminação e tente novamente.';
     btn.disabled = false;
     return;
   }
 
-  _faceDescriptors.push(_extrairDescritor(landmarks));
+  _faceDescriptors.push(_descritor(_lastLandmarks));
   const restantes = 3 - _faceDescriptors.length;
 
   if (restantes > 0) {
-    captureMsg.textContent = `✓ ${_faceDescriptors.length}/3 capturado. Mova levemente a cabeça e capture novamente.`;
+    captureMsg.textContent = `✓ ${_faceDescriptors.length}/3 capturado. Mova levemente a cabeça.`;
     btn.disabled = false;
     return;
   }
 
   captureMsg.textContent = 'Salvando...';
-  await _salvarDescriptorFace();
+  await _salvarDescriptor();
 }
 
-async function _salvarDescriptorFace() {
-  // Média dos 3 descritores
-  const media = new Array(128).fill(0).map((_, i) =>
-    _faceDescriptors.reduce((s, d) => s + d[i], 0) / _faceDescriptors.length
+async function _salvarDescriptor() {
+  const media = new Array(128).fill(0).map((_,i) =>
+    _faceDescriptors.reduce((s,d) => s+d[i], 0) / _faceDescriptors.length
   );
-
-  // Senha aleatória para autenticar via Supabase Auth após validação facial
   const faceSenha = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-
+    .map(b => b.toString(16).padStart(2,'0')).join('');
   try {
     const ok = await salvarPerfilBanco({ face_descriptor: media, face_senha: faceSenha });
-    if (!ok) throw new Error('Falha ao salvar no banco');
-
+    if (!ok) throw new Error('Falha ao salvar');
     const { error } = await sb.auth.updateUser({ password: faceSenha });
     if (error) throw error;
 
     pararWebcam();
-    document.getElementById('faceWebcamArea').style.display = 'none';
-    document.getElementById('faceRemoveBtn').style.display  = 'inline-flex';
-    document.getElementById('faceLoginStatus').innerHTML    = '<span style="color:#16a34a">✓ Login facial ativado</span>';
+    document.getElementById('faceWebcamArea').style.display  = 'none';
+    document.getElementById('faceRemoveBtn').style.display   = 'inline-flex';
+    document.getElementById('faceLoginStatus').innerHTML     = '<span style="color:#16a34a">✓ Login facial ativado</span>';
     setFaceMsg('Login facial ativado com sucesso!', false);
   } catch(e) {
     document.getElementById('faceCaptureMsg').textContent = '';
     document.getElementById('faceCaptureBtn').disabled    = false;
-    setFaceMsg('Erro ao salvar: ' + e.message, true);
+    setFaceMsg('Erro: ' + e.message, true);
   }
 }
 
 async function removerFace() {
-  if (!confirm('Remover login facial? Você voltará a usar e-mail e senha.')) return;
+  if (!confirm('Remover login facial?')) return;
   try {
     await salvarPerfilBanco({ face_descriptor: null, face_senha: null });
-    document.getElementById('faceLoginStatus').textContent  = 'Login facial não configurado.';
+    document.getElementById('faceLoginStatus').textContent   = 'Login facial não configurado.';
     document.getElementById('faceActivateBtn').style.display = 'inline-flex';
     document.getElementById('faceRemoveBtn').style.display   = 'none';
     setFaceMsg('Login facial removido.', false);
-  } catch(e) {
-    setFaceMsg('Erro ao remover: ' + e.message, true);
-  }
+  } catch(e) { setFaceMsg('Erro: ' + e.message, true); }
 }
 
 function cancelarCadastroFace() {
@@ -222,131 +335,8 @@ function cancelarCadastroFace() {
   setFaceMsg('', false);
 }
 
-// ════════════════════════════════════════════════════════════
-// LOGIN FACIAL — tela de entrada
-// ════════════════════════════════════════════════════════════
-
-let _faceLoginStream   = null;
-let _faceLoginInterval = null;
-
-async function iniciarLoginFacial() {
-  const area  = document.getElementById('faceLoginArea');
-  const msg   = document.getElementById('faceLoginMsg');
-  const btnAb = document.getElementById('btnFaceLogin');
-
-  if (area.style.display === 'flex') {
-    pararLoginFacial(); return;
-  }
-
-  if (msg) msg.textContent = 'Carregando...';
-  if (btnAb) btnAb.disabled = true;
-
-  const ok = await carregarMediaPipe();
-  if (!ok) {
-    if (msg) msg.textContent = 'Erro ao carregar reconhecimento.';
-    if (btnAb) btnAb.disabled = false;
-    return;
-  }
-
-  try {
-    _faceLoginStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
-  } catch(e) {
-    if (msg) msg.textContent = 'Câmera negada.';
-    if (btnAb) btnAb.disabled = false;
-    return;
-  }
-
-  const video = document.getElementById('faceLoginVideo');
-  video.srcObject = _faceLoginStream;
-  await new Promise(res => { video.onloadedmetadata = res; setTimeout(res, 1500); });
-  await video.play();
-
-  area.style.display = 'flex';
-  if (msg) msg.textContent = 'Aproxime seu rosto da câmera...';
-  if (btnAb) { btnAb.textContent = 'Cancelar'; btnAb.disabled = false; }
-
-  // Processar frames continuamente até autenticar
-  let tentativas = 0;
-  _faceLoginInterval = setInterval(async () => {
-    if (tentativas > 30) { // ~15 segundos
-      pararLoginFacial();
-      if (msg) msg.textContent = 'Tempo esgotado. Tente novamente.';
-      document.getElementById('btnFaceLogin').textContent = 'Entrar com rosto';
-      return;
-    }
-    tentativas++;
-    const landmarks = await _processarFrame(video);
-    if (!landmarks) return;
-
-    if (msg) msg.textContent = 'Rosto detectado. Verificando identidade...';
-    clearInterval(_faceLoginInterval);
-    await _autenticarFace(_extrairDescritor(landmarks));
-  }, 500);
-}
-
-async function _autenticarFace(descritor) {
-  const msg   = document.getElementById('faceLoginMsg');
-  const btnAb = document.getElementById('btnFaceLogin');
-
-  try {
-    // Buscar todos os usuários com face cadastrada
-    // A query retorna apenas email + face_descriptor + face_senha do próprio usuário
-    // Como não sabemos quem é ainda, buscamos via RPC ou com anon key
-    // Solução: buscar por similaridade — o usuário informa o e-mail E usa o rosto
-    // OU: criar endpoint API para não expor dados de outros usuários
-
-    // Abordagem simples e segura: pedir o e-mail na tela de login facial
-    const email = document.getElementById('faceLoginEmail')?.value.trim();
-    if (!email) {
-      if (msg) msg.textContent = 'Informe seu e-mail para o login facial.';
-      pararLoginFacial();
-      document.getElementById('btnFaceLogin').textContent = 'Entrar com rosto';
-      return;
-    }
-
-    // Buscar perfil do usuário pelo e-mail via API (service key no backend)
-    const res  = await fetch('/api/face-auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, descriptor: descritor })
-    });
-    const json = await res.json();
-
-    if (!res.ok || json.error) throw new Error(json.error || 'Falha na autenticação');
-
-    // Autenticar com a face_senha retornada
-    if (msg) msg.textContent = 'Identidade confirmada! Entrando...';
-    pararLoginFacial();
-
-    const { error } = await sb.auth.signInWithPassword({ email, password: json.face_senha });
-    if (error) throw error;
-
-  } catch(e) {
-    pararLoginFacial();
-    if (msg) msg.textContent = 'Falha: ' + e.message;
-    if (btnAb) btnAb.textContent = 'Entrar com rosto';
-  }
-}
-
-function pararLoginFacial() {
-  clearInterval(_faceLoginInterval);
-  _faceLoginInterval = null;
-  if (_faceLoginStream) {
-    _faceLoginStream.getTracks().forEach(t => t.stop());
-    _faceLoginStream = null;
-  }
-  const video = document.getElementById('faceLoginVideo');
-  if (video) video.srcObject = null;
-  const area = document.getElementById('faceLoginArea');
-  if (area) area.style.display = 'none';
-}
-
-// ════════════════════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════════════════════
-
 function pararWebcam() {
-  if (_faceStream) { _faceStream.getTracks().forEach(t => t.stop()); _faceStream = null; }
+  if (_faceStream) { _faceStream.getTracks().forEach(t=>t.stop()); _faceStream = null; }
   const video = document.getElementById('faceVideo');
   if (video) video.srcObject = null;
 }
