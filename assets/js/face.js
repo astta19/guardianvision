@@ -84,15 +84,16 @@ async function _capturarEVerificar() {
 
     setTimeout(async () => {
       fecharModalFace();
-      // Esconder authScreen imediatamente para não piscar antes do onAuthStateChange
-      const auth = document.getElementById('authScreen');
-      if (auth) { auth.style.display = 'none'; auth.classList.add('hidden'); }
+      // Loading fullscreen cobre tudo até o app carregar — sem piscar tela de login
+      const loading = document.getElementById('loadingScreen');
+      if (loading) { loading.style.display = 'flex'; loading.style.opacity = '1'; }
       const { error } = await sb.auth.signInWithPassword({ email, password: json.face_senha });
       if (error) {
-        if (auth) { auth.style.display = ''; auth.classList.remove('hidden'); }
+        if (loading) loading.style.display = 'none';
         const el = document.getElementById('loginMsg');
         if (el) { el.textContent = 'Erro: ' + error.message; el.className = 'auth-msg error'; }
       }
+      // Se ok: onAuthStateChange → showApp() → hideLoading() — loading some sozinho
     }, 700);
 
   } catch (e) {
