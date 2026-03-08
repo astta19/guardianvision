@@ -83,10 +83,10 @@ async function _capturarEVerificar() {
     _pararLoginCam();
 
     setTimeout(async () => {
-      fecharModalFace();
-      // Loading fullscreen cobre tudo até o app carregar — sem piscar tela de login
+      // Loading fullscreen ANTES de fechar o modal — cobre tudo sem piscar
       const loading = document.getElementById('loadingScreen');
       if (loading) { loading.style.display = 'flex'; loading.style.opacity = '1'; }
+      fecharModalFace();
       const { error } = await sb.auth.signInWithPassword({ email, password: json.face_senha });
       if (error) {
         if (loading) loading.style.display = 'none';
