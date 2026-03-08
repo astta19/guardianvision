@@ -6,66 +6,6 @@
 // GERAÇÃO DE DOCUMENTOS
 // ============================================================
 
-// ── Restaurar último DARF calculado ao abrir o modal ─────────────────────
-async function carregarUltimoDarf() {
-  if (!currentUser || !currentCliente?.id) return;
-  if (darfData) return; // já há dados na sessão
-
-  try {
-    const { data: saved } = await sb
-      .from('documentos_fiscais')
-      .select('dados')
-      .eq('user_id', currentUser.id)
-      .eq('cliente_id', currentCliente.id)
-      .eq('tipo', 'darf')
-      .order('criado_em', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!saved?.dados) return;
-    darfData = saved.dados;
-
-    // Preencher formulário com os dados salvos
-    const d = darfData;
-    if (d.regime)      document.getElementById('darfRegime').value      = d.regime;
-    if (d.competencia) document.getElementById('darfCompetencia').value = d.competencia;
-    if (typeof atualizarCamposDarf === 'function') atualizarCamposDarf();
-
-    // Renderizar resultado sem recalcular (usa darfData diretamente)
-    const linhasHtml = (d.linhas || []).map(l => `
-      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <strong>${l.desc}</strong>
-          ${l.obs ? `<div style="font-size:11px;color:var(--text-light)">${l.obs}</div>` : ''}
-        </div>
-        <strong>R$ ${(l.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong>
-      </div>`).join('');
-
-    const atrasadoHtml = d.diasAtraso > 0 ? `
-      <div style="margin-top:10px;padding:10px;background:#fef2f2;border-radius:8px;font-size:12px">
-        <strong style="color:#dc2626">⚠️ Em atraso — ${d.diasAtraso} dias</strong><br>
-        Multa: R$ ${(d.multa||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} ·
-        Juros: R$ ${(d.juros||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
-      </div>` : '';
-
-    const resultEl = document.getElementById('darfResult');
-    if (resultEl) {
-      resultEl.innerHTML = `
-        <div style="font-size:11px;color:var(--text-light);margin-bottom:8px;padding:6px 10px;background:var(--sidebar-hover);border-radius:6px">
-          📂 Último cálculo restaurado — ${d.competencia || ''}
-        </div>
-        <div>${linhasHtml}</div>
-        ${atrasadoHtml}
-        <div class="darf-total">Total a recolher: R$ ${(d.totalFinal||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`;
-      resultEl.className = 'darf-result show';
-    }
-    const actionsEl = document.getElementById('darfActions');
-    if (actionsEl) actionsEl.style.display = 'flex';
-
-  } catch(e) {} // silencioso
-}
-
-
 async function gerarConclusaoLLM(empresa, obrigacoes, resumoChat) {
   const prompt = `Você é um contador sênior. Com base na consulta fiscal abaixo, redija um parecer técnico com:
 1. Análise objetiva dos pontos levantados na consulta
@@ -84,28 +24,18 @@ ${resumoChat.substring(0, 3000)}
 Escreva apenas o texto do parecer, sem títulos nem formatação markdown. Máximo 4 parágrafos.`;
 
   try {
-    const provider  = (typeof AI_PROVIDER !== 'undefined') ? AI_PROVIDER : null;
-    const endpoint  = provider ? provider.getEndpoint() : '/api/chat';
-    const modelList = provider ? provider.getModels() : (typeof MODELS !== 'undefined' ? MODELS : ['llama-3.3-70b-versatile']);
-
-    // Montar body compatível com provedor ativo
-    const body = provider
-      ? provider.montarBody(modelList[0], [{ role: 'user', content: prompt }], undefined)
-      : { model: modelList[0], messages: [{ role: 'user', content: prompt }], max_tokens: 600, temperature: 0.3 };
-
-    const res = await fetch(endpoint, {
+    const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
-      body: JSON.stringify({ ...body, max_tokens: 1200, temperature: 0.3 }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODELS[0],
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 600,
+        temperature: 0.3
+      })
     });
     if (!res.ok) throw new Error('LLM indisponível');
     const data = await res.json();
-
-    // Normalizar resposta (Anthropic ou Groq)
-    if (provider) {
-      const norm = provider.normalizarResposta(data);
-      return norm.text?.trim() || null;
-    }
     return data.choices?.[0]?.message?.content?.trim() || null;
   } catch(e) {
     return null;
@@ -124,13 +54,12 @@ function getObrigacoesMes() {
   const ano = hoje.getFullYear();
   const regime = currentCliente?.regime_tributario || '';
   const isSimplesOuMEI = /simples|mei/i.test(regime);
-  const temEmpregado   = currentCliente?.tem_empregado === true;
 
   const todas = [
     {
       nome: 'DAS — Simples Nacional',
       venc: new Date(ano, mes, 20),
-      valor: darfData?.linhas?.find(l => l.codigo === '4128')?.valor || null,
+      valor: darfResult?.das || null,
       base: 'LC 123/2006, art. 21 § 3º; Resolução CGSN nº 140/2018, art. 38',
       desc: 'Documento de Arrecadação do Simples Nacional',
       aplica: isSimplesOuMEI
@@ -140,8 +69,9 @@ function getObrigacoesMes() {
       venc: new Date(ano, mes, 28),
       valor: null,
       base: 'IN RFB nº 2005/2021, art. 7º; Portaria RFB nº 402/2019',
-      desc: 'Declaração de Débitos e Créditos Tributários Federais Web',
-      aplica: temEmpregado
+      desc: 'Declaração de Débitos e Créditos Tributários Federais Web — MEI: obrigado apenas se possuir empregado',
+      aplica: !isSimplesOuMEI || true, // todos listados; MEI sem empregado pode ignorar
+      obs: isSimplesOuMEI ? '(MEI: verificar obrigatoriedade — só obrigado com empregado)' : null
     },
     {
       nome: 'EFD-Reinf',
@@ -149,7 +79,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'IN RFB nº 2043/2021; Resolução do Comitê Gestor do eSocial nº 2/2016',
       desc: 'Escrituração Fiscal Digital de Retenções e Outras Informações Fiscais',
-      aplica: temEmpregado
+      aplica: true
     },
     {
       nome: 'eSocial — Folha de Pagamento',
@@ -157,7 +87,7 @@ function getObrigacoesMes() {
       valor: null,
       base: 'Lei nº 8.212/1991, art. 32; Decreto nº 3.048/1999; Resolução eSocial nº 2/2016',
       desc: 'Obrigação acessória de informações trabalhistas, previdenciárias e fiscais',
-      aplica: temEmpregado
+      aplica: true
     },
     {
       nome: 'EFD-Contribuições',
@@ -170,7 +100,7 @@ function getObrigacoesMes() {
     {
       nome: 'IRPJ / CSLL — Estimativa',
       venc: new Date(ano, mes, 30),
-      valor: darfData?.linhas?.find(l => l.codigo === '2089')?.valor || null,
+      valor: darfResult?.irpj || null,
       base: 'Lei nº 9.430/1996, art. 2º; IN RFB nº 1700/2017',
       desc: 'Imposto de Renda Pessoa Jurídica e Contribuição Social sobre Lucro Líquido',
       aplica: /lucro real|lucro presumido/i.test(regime)
@@ -201,229 +131,12 @@ async function getResumoChatTexto() {
     .join('\n\n');
 }
 
-
-// ----------------------------------------------------------
-// PDF LIVRE — gerado com conteúdo direto do chat/IA
-// ----------------------------------------------------------
-async function gerarDocumentoLivrePDF(titulo, conteudo, subtitulo) {
-  if (!window.jspdf) throw new Error('jsPDF não carregado');
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const empresa = currentCliente || {};
-  const perfil  = perfilCache || {};
-  const W = 210, M = 15;
-
-  // Cabeçalho
-  doc.setFillColor(0, 0, 0);
-  doc.rect(0, 0, W, 28, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-  doc.text('Fiscal365', M, 11);
-  doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-  doc.text(titulo, M, 19);
-  if (subtitulo) { doc.setFontSize(9); doc.text(subtitulo, M, 25); }
-  doc.setTextColor(0, 0, 0);
-
-  let y = 36;
-
-  // Dados da empresa (se selecionada)
-  if (empresa.razao_social) {
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(M, y, W - M * 2, 18, 3, 3, 'F');
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-    doc.text(empresa.razao_social, M + 4, y + 7);
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(
-      `CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${empresa.regime_tributario || '—'}  |  ${new Date().toLocaleDateString('pt-BR')}`,
-      M + 4, y + 13
-    );
-    doc.setTextColor(0, 0, 0);
-    y += 26;
-  }
-
-  // Conteúdo — quebrar em parágrafos e paginar automaticamente
-  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-  const paragrafos = conteudo.split(/\n+/g).filter(p => p.trim());
-
-  for (const para of paragrafos) {
-    const texto = para.trim();
-    if (!texto) continue;
-
-    // Detectar se é título (linha curta em maiúsculas ou começa com número)
-    const ehTitulo = /^(\d+\.|[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ]{4,})/.test(texto) && texto.length < 80;
-
-    if (ehTitulo) {
-      if (y > 265) { doc.addPage(); y = 20; }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text(texto, M, y);
-      y += 8;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-    } else {
-      const linhas = doc.splitTextToSize(texto, W - M * 2);
-      const alturaBloco = linhas.length * 5.5;
-      if (y + alturaBloco > 272) { doc.addPage(); y = 20; }
-      doc.text(linhas, M, y);
-      y += alturaBloco + 4;
-    }
-  }
-
-  // Assinatura
-  if (y < 260) {
-    y = Math.max(y + 10, 250);
-    doc.setDrawColor(226, 232, 240);
-    doc.line(M, y, M + 70, y);
-    doc.setFontSize(8); doc.setTextColor(100, 116, 139);
-    doc.text(perfil.nome || currentUser?.email || '—', M, y + 5);
-    if (perfil.crc) doc.text('CRC: ' + perfil.crc, M, y + 10);
-  }
-
-  // Rodapé em todas as páginas
-  const pages = doc.internal.getNumberOfPages();
-  for (let p = 1; p <= pages; p++) {
-    doc.setPage(p);
-    doc.setDrawColor(226, 232, 240);
-    doc.line(M, 287, W - M, 287);
-    doc.setFontSize(7); doc.setTextColor(148, 163, 184);
-    doc.text('Fiscal365 — Documento auxiliar. Não substitui orientação de contador habilitado com CRC.', M, 291);
-    doc.text(`Página ${p}/${pages}`, W - M, 291, { align: 'right' });
-  }
-
-  const nomearq = titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40);
-  doc.save(`${nomearq}-${new Date().toISOString().slice(0, 10)}.pdf`);
-}
-
-// ----------------------------------------------------------
-// DOCX LIVRE — gerado com conteúdo direto do chat/IA
-// ----------------------------------------------------------
-async function gerarDocumentoLivreDocx(titulo, conteudo, subtitulo) {
-  if (typeof docx === 'undefined') throw new Error('Biblioteca DOCX não carregada');
-  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
-  const empresa = currentCliente || {};
-  const perfil  = perfilCache || {};
-
-  const paragrafos = conteudo.split(/\n+/g).filter(p => p.trim());
-
-  const children = [
-    // Título
-    new Paragraph({
-      children: [new TextRun({ text: 'Fiscal365', bold: true, size: 36, font: 'Calibri', color: '000000' })],
-      spacing: { after: 80 },
-    }),
-    new Paragraph({
-      children: [new TextRun({ text: titulo, bold: true, size: 28, font: 'Calibri', color: '1e293b' })],
-      spacing: { after: subtitulo ? 80 : 300 },
-    }),
-    ...(subtitulo ? [new Paragraph({
-      children: [new TextRun({ text: subtitulo, size: 22, font: 'Calibri', color: '475569' })],
-      spacing: { after: 300 },
-    })] : []),
-
-    // Dados da empresa
-    ...(empresa.razao_social ? [
-      new Paragraph({
-        children: [new TextRun({ text: empresa.razao_social, bold: true, size: 24, font: 'Calibri' })],
-        spacing: { after: 80 },
-      }),
-      new Paragraph({
-        children: [new TextRun({
-          text: `CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${empresa.regime_tributario || '—'}  |  ${new Date().toLocaleDateString('pt-BR')}`,
-          size: 20, font: 'Calibri', color: '64748b',
-        })],
-        spacing: { after: 80 },
-      }),
-      new Paragraph({
-        children: [new TextRun({
-          text: `Responsável: ${perfil.nome || currentUser?.email || '—'}${perfil.crc ? '  |  CRC: ' + perfil.crc : ''}`,
-          size: 20, font: 'Calibri', color: '64748b',
-        })],
-        spacing: { after: 400 },
-      }),
-    ] : []),
-  ];
-
-  // Corpo do documento
-  for (const para of paragrafos) {
-    const texto = para.trim();
-    if (!texto) continue;
-    const ehTitulo = /^(\d+\.|[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ]{4,})/.test(texto) && texto.length < 80;
-    children.push(new Paragraph({
-      ...(ehTitulo ? { heading: HeadingLevel.HEADING_2 } : {}),
-      children: [new TextRun({
-        text: texto,
-        bold: ehTitulo,
-        size: ehTitulo ? 24 : 22,
-        font: 'Calibri',
-      })],
-      spacing: { after: ehTitulo ? 200 : 160 },
-    }));
-  }
-
-  // Assinatura
-  children.push(
-    new Paragraph({ children: [], spacing: { before: 800 } }),
-    new Paragraph({
-      children: [new TextRun({ text: '_'.repeat(40), size: 22, font: 'Calibri' })],
-      spacing: { after: 80 },
-    }),
-    new Paragraph({
-      children: [new TextRun({ text: perfil.nome || currentUser?.email || '—', size: 20, font: 'Calibri', color: '475569' })],
-    }),
-    ...(perfil.crc ? [new Paragraph({
-      children: [new TextRun({ text: 'CRC: ' + perfil.crc, size: 20, font: 'Calibri', color: '475569' })],
-    })] : []),
-  );
-
-  const doc = new Document({
-    sections: [{ 
-      properties: { page: { margin: { top: 1440, bottom: 1440, left: 1800, right: 1440 } } },
-      children 
-    }],
-  });
-
-  const blob = await Packer.toBlob(doc);
-  const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), { href: url, download: titulo.toLowerCase().replace(/[^a-z0-9]/g,'-').slice(0,40) + '.docx' });
-  document.body.appendChild(a); a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
-}
-
 // ----------------------------------------------------------
 // PDF — Relatório Fiscal Mensal
 // ----------------------------------------------------------
 async function gerarRelatorioFiscal() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório.', 'warn');  return; }
-
-  // Buscar dados reais do banco em paralelo
-  let relDarfs = [], relLancamentos = [], relFuncionarios = [];
-  try {
-    const [rDarfs, rLanc, rFunc, rDarfCalc] = await Promise.allSettled([
-      sb.from('darf_historico')
-        .select('competencia,regime,total,status,data_pgto')
-        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
-        .order('competencia', { ascending: false }).limit(6),
-      sb.from('lancamentos')
-        .select('tipo,categoria,descricao,valor,data_venc,status')
-        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
-        .gte('data_venc', `${new Date().getFullYear()}-01-01`)
-        .order('data_venc', { ascending: false }).limit(30),
-      sb.from('dp_funcionarios')
-        .select('nome,cargo,tipo_contrato,salario_base')
-        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
-        .eq('status','ativo').limit(20),
-      sb.from('documentos_fiscais')
-        .select('dados').eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
-        .eq('tipo','darf').order('criado_em', { ascending: false }).limit(1).maybeSingle(),
-    ]);
-    relDarfs        = rDarfs.status      === 'fulfilled' ? rDarfs.value.data      || [] : [];
-    relLancamentos  = rLanc.status       === 'fulfilled' ? rLanc.value.data       || [] : [];
-    relFuncionarios = rFunc.status       === 'fulfilled' ? rFunc.value.data       || [] : [];
-    if (!darfData && rDarfCalc.status === 'fulfilled') darfData = rDarfCalc.value?.data?.dados || null;
-  } catch(e) {}
-
+  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório.'); return; }
   try {
 
   const { jsPDF } = window.jspdf;
@@ -497,93 +210,6 @@ async function gerarRelatorioFiscal() {
   });
   y = doc.lastAutoTable.finalY + 10;
 
-  // ── SEÇÃO: Dados financeiros reais do banco ─────────────
-  if (relLancamentos?.length > 0) {
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.text('Lançamentos Financeiros — Ano Corrente', margin, y); y += 4;
-    const rec   = relLancamentos.filter(l => l.tipo==='receita').reduce((a,l)=>a+ +l.valor,0);
-    const desp  = relLancamentos.filter(l => l.tipo==='despesa').reduce((a,l)=>a+ +l.valor,0);
-    const fmt   = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    // KPIs financeiros
-    const kpis = [['Receitas',fmt(rec),'#16a34a'],['Despesas',fmt(desp),'#dc2626'],['Saldo',fmt(rec-desp),rec>=desp?'#16a34a':'#dc2626']];
-    let kx = margin;
-    kpis.forEach(([lbl,val,cor]) => {
-      doc.setFillColor(248,250,252); doc.roundedRect(kx, y, 55, 14, 2, 2, 'F');
-      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,116,139);
-      doc.text(lbl, kx+4, y+5);
-      doc.setFontSize(10); doc.setFont('helvetica','bold');
-      const rgb = parseInt(cor.slice(1),16); doc.setTextColor((rgb>>16)&255,(rgb>>8)&255,rgb&255);
-      doc.text(val, kx+4, y+11);
-      kx += 60;
-    });
-    doc.setTextColor(0,0,0); y += 20;
-    // Top lançamentos
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin },
-      head: [['Descrição','Categoria','Tipo','Valor','Venc.','Status']],
-      body: relLancamentos.slice(0,10).map(l => [
-        (l.descricao||'').substring(0,30), l.categoria||'—',
-        l.tipo==='receita'?'Receita':'Despesa',
-        fmt(l.valor), new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR'), l.status||'—'
-      ]),
-      headStyles: { fillColor:[0,0,0], textColor:255, fontSize:8, fontStyle:'bold' },
-      bodyStyles: { fontSize:8 }, alternateRowStyles: { fillColor:[248,250,252] },
-      didParseCell: (data) => {
-        if (data.section==='body' && data.column.index===3) {
-          const row = relLancamentos[data.row.index];
-          if (row) data.cell.styles.textColor = row.tipo==='receita' ? [22,163,74] : [220,38,38];
-        }
-      }
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
-  // ── SEÇÃO: Histórico de DARFs ────────────────────────────
-  if (relDarfs?.length > 0) {
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.text('Histórico de DARFs — Últimas Competências', margin, y); y += 4;
-    const fmt = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin },
-      head: [['Competência','Regime','Total','Status','Pago em']],
-      body: relDarfs.map(d => [
-        d.competencia||'—', d.regime||'—', fmt(d.total),
-        d.status||'—',
-        d.data_pgto ? new Date(d.data_pgto+'T00:00').toLocaleDateString('pt-BR') : '—'
-      ]),
-      headStyles: { fillColor:[0,0,0], textColor:255, fontSize:9, fontStyle:'bold' },
-      bodyStyles: { fontSize:9 }, alternateRowStyles: { fillColor:[248,250,252] },
-      didParseCell: (data) => {
-        if (data.section==='body' && data.column.index===3) {
-          const v = data.cell.raw;
-          data.cell.styles.textColor = v==='pago' ? [22,163,74] : v==='pendente' ? [220,38,38] : [0,0,0];
-        }
-      }
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
-  // ── SEÇÃO: Quadro de pessoal ─────────────────────────────
-  if (relFuncionarios?.length > 0) {
-    if (y > 220) { doc.addPage(); y = 20; }
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.text(`Quadro de Pessoal — ${relFuncionarios.length} funcionário(s) ativo(s)`, margin, y); y += 4;
-    const fmt = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    const folha = relFuncionarios.reduce((a,f)=>a+ +f.salario_base,0);
-    doc.setFontSize(9); doc.setFont('helvetica','normal');
-    doc.text(`Folha bruta total: ${fmt(folha)}`, margin, y); y += 6;
-    doc.autoTable({
-      startY: y, margin: { left: margin, right: margin },
-      head: [['Funcionário','Cargo','Contrato','Salário Base']],
-      body: relFuncionarios.map(f => [f.nome||'—', f.cargo||'—', (f.tipo_contrato||'').toUpperCase(), fmt(f.salario_base)]),
-      headStyles: { fillColor:[0,0,0], textColor:255, fontSize:9, fontStyle:'bold' },
-      bodyStyles: { fontSize:9 }, alternateRowStyles: { fillColor:[248,250,252] }
-    });
-    y = doc.lastAutoTable.finalY + 10;
-  }
-
   // NFs analisadas
   if (nfeData?.length > 0) {
     doc.setFontSize(12); doc.setFont('helvetica', 'bold');
@@ -639,7 +265,7 @@ async function gerarRelatorioFiscal() {
   doc.save(`relatorio-fiscal-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.pdf`);
   } catch(e) {
     console.error('Erro ao gerar PDF:', e);
-    showToast('Erro ao gerar o relatório. Recarregue a página e tente novamente.', 'error');
+    alert('Erro ao gerar o relatório. Verifique se a página carregou completamente e tente novamente.');
   }
 }
 
@@ -648,8 +274,8 @@ async function gerarRelatorioFiscal() {
 // ----------------------------------------------------------
 async function gerarParecer() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o parecer.', 'warn'); return; }
-  if (typeof docx === 'undefined') { showToast('Biblioteca DOCX não carregada. Recarregue a página.', 'error'); return; }
+  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o parecer.'); return; }
+  if (typeof docx === 'undefined') { alert('Biblioteca DOCX não carregada. Recarregue a página.'); return; }
 
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
           Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType } = docx;
@@ -661,21 +287,12 @@ async function gerarParecer() {
   const obrigacoes = getObrigacoesMes();
   const resumoChat = getResumoChatTexto();
 
-  // Enriquecer com dados reais do banco se disponível
-  let ctxEmpresa = '';
-  if (typeof EmpresaContext !== 'undefined' && currentUser?.id) {
-    ctxEmpresa = await EmpresaContext.obterContexto(empresa, currentUser.id).catch(() => '');
-  }
-
   // Gerar conclusão via LLM
   const btnGen = document.getElementById('docGenBtn');
   const originalTitle = btnGen.title;
   btnGen.title = 'Gerando parecer...';
 
-  const resumoCompleto = ctxEmpresa
-    ? `DADOS FINANCEIROS DA EMPRESA:\n${ctxEmpresa}\n\nCONSULTA:\n${resumoChat}`
-    : resumoChat;
-  const conclusaoLLM = await gerarConclusaoLLM(empresa, obrigacoes, resumoCompleto);
+  const conclusaoLLM = await gerarConclusaoLLM(empresa, obrigacoes, resumoChat);
   const textoConclusao = conclusaoLLM ||
     `Com base na análise realizada em ${dataHoje}, foram identificadas ${obrigacoes.filter(o=>o.status==='Vencida').length} obrigação(ões) vencida(s) e ${obrigacoes.filter(o=>o.status==='Próxima').length} com vencimento próximo para a empresa ${empresa.razao_social}. Recomenda-se regularização imediata das pendências e acompanhamento contínuo dos prazos fiscais conforme legislação vigente.`;
 
@@ -771,35 +388,17 @@ async function gerarParecer() {
   URL.revokeObjectURL(url);
   } catch(e) {
     console.error('Erro ao gerar DOCX:', e);
-    showToast('Erro ao gerar o parecer. Recarregue a página e tente novamente.', 'error');
+    alert('Erro ao gerar o parecer. Verifique se a página carregou completamente e tente novamente.');
   }
 }
 
 // ----------------------------------------------------------
 // Excel — Planilha de Apuração
 // ----------------------------------------------------------
-async function gerarPlanilha() {
+function gerarPlanilha() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar a planilha.', 'warn'); return; }
+  if (!currentCliente) { alert('Selecione uma empresa antes de gerar a planilha.'); return; }
   try {
-
-  // Buscar dados reais do banco
-  let plLanc = [], plDarfs = [], plFunc = [];
-  try {
-    const [rL, rD, rF] = await Promise.allSettled([
-      sb.from('lancamentos').select('tipo,categoria,descricao,valor,data_venc,status')
-        .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id)
-        .gte('data_venc',`${new Date().getFullYear()}-01-01`).order('data_venc',{ascending:false}).limit(100),
-      sb.from('darf_historico').select('competencia,regime,total,status,data_pgto')
-        .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id)
-        .order('competencia',{ascending:false}).limit(12),
-      sb.from('dp_funcionarios').select('nome,cargo,tipo_contrato,salario_base')
-        .eq('user_id',currentUser.id).eq('cliente_id',currentCliente.id).eq('status','ativo').limit(30),
-    ]);
-    plLanc  = rL.status==='fulfilled' ? rL.value.data||[] : [];
-    plDarfs = rD.status==='fulfilled' ? rD.value.data||[] : [];
-    plFunc  = rF.status==='fulfilled' ? rF.value.data||[] : [];
-  } catch(e) {}
 
   const empresa = currentCliente;
   const mesAno = getMesAno();
@@ -831,16 +430,9 @@ async function gerarPlanilha() {
     ]) : []),
     [],
     ['CÁLCULOS TRIBUTÁRIOS'],
-    darfData?.linhas?.length > 0 ? [
-      ['Descrição', 'Código', 'Valor (R$)', 'Observação'],
-      ...darfData.linhas.map(l => [l.desc, l.codigo, l.valor?.toFixed(2) || '', l.obs || '']),
-      ['', '', '', ''],
-      ['Total Principal', '', darfData.totalPrincipal?.toFixed(2) || '', ''],
-      ...(darfData.diasAtraso > 0 ? [
-        ['Multa', '', darfData.multa?.toFixed(2) || '', `${darfData.diasAtraso} dias de atraso`],
-        ['Juros (Selic)', '', darfData.juros?.toFixed(2) || '', ''],
-      ] : []),
-      ['TOTAL A RECOLHER', '', darfData.totalFinal?.toFixed(2) || '', ''],
+    darfResult ? [
+      ['Tipo', 'Valor'],
+      ...Object.entries(darfResult).map(([k,v]) => [k.toUpperCase(), typeof v === 'number' ? v : ''])
     ].flat() : ['Nenhum cálculo realizado nesta sessão']
   ];
 
@@ -854,62 +446,7 @@ async function gerarPlanilha() {
 
   XLSX.utils.book_append_sheet(wb, ws, 'Resumo Financeiro');
 
-  // ABA 2: Lançamentos financeiros reais
-  if (plLanc.length > 0) {
-    const fmt = v => Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    const rec  = plLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+ +l.valor,0);
-    const desp = plLanc.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+ +l.valor,0);
-    const lancData = [
-      ['LANÇAMENTOS FINANCEIROS — ANO CORRENTE'],
-      [],
-      ['Receitas Totais:', fmt(rec), '', 'Despesas Totais:', fmt(desp), '', 'Saldo:', fmt(rec-desp)],
-      [],
-      ['Tipo','Categoria','Descrição','Valor (R$)','Vencimento','Status'],
-      ...plLanc.map(l=>[
-        l.tipo==='receita'?'Receita':'Despesa', l.categoria||'—', l.descricao||'—',
-        +l.valor, new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR'), l.status||'—'
-      ])
-    ];
-    const wsLanc = XLSX.utils.aoa_to_sheet(lancData);
-    wsLanc['!cols'] = [{wch:12},{wch:25},{wch:35},{wch:15},{wch:14},{wch:12}];
-    wsLanc['!merges'] = [{s:{r:0,c:0},e:{r:0,c:5}}];
-    XLSX.utils.book_append_sheet(wb, wsLanc, 'Financeiro');
-  }
-
-  // ABA 3: Histórico DARFs reais
-  if (plDarfs.length > 0) {
-    const fmt = v => Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    const darfsData = [
-      ['HISTÓRICO DE DARFS'],
-      [],
-      ['Competência','Regime','Total (R$)','Status','Pago em'],
-      ...plDarfs.map(d=>[d.competencia,d.regime,+d.total,d.status,d.data_pgto||'—'])
-    ];
-    const wsDarfs = XLSX.utils.aoa_to_sheet(darfsData);
-    wsDarfs['!cols'] = [{wch:14},{wch:20},{wch:15},{wch:12},{wch:14}];
-    wsDarfs['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}}];
-    XLSX.utils.book_append_sheet(wb, wsDarfs, 'DARFs');
-  }
-
-  // ABA 4: Quadro de pessoal real
-  if (plFunc.length > 0) {
-    const fmt = v => Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2});
-    const folha = plFunc.reduce((a,f)=>a+ +f.salario_base,0);
-    const funcData = [
-      ['QUADRO DE PESSOAL — FUNCIONÁRIOS ATIVOS'],
-      [],
-      ['Total de funcionários:', plFunc.length, '', 'Folha bruta:', fmt(folha)],
-      [],
-      ['Funcionário','Cargo','Tipo Contrato','Salário Base (R$)'],
-      ...plFunc.map(f=>[f.nome,f.cargo||'—',(f.tipo_contrato||'').toUpperCase(), +f.salario_base])
-    ];
-    const wsFunc = XLSX.utils.aoa_to_sheet(funcData);
-    wsFunc['!cols'] = [{wch:30},{wch:20},{wch:15},{wch:18}];
-    wsFunc['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
-    XLSX.utils.book_append_sheet(wb, wsFunc, 'Pessoal');
-  }
-
-  // ABA 5: Chat (log completo)
+  // ABA 2: Chat (log completo)
   if (currentChat.messages?.length > 0) {
     const chatData = [
       ['HISTÓRICO DA CONSULTA FISCAL'],
@@ -950,7 +487,7 @@ async function gerarPlanilha() {
   XLSX.writeFile(wb, `apuracao-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.xlsx`);
   } catch(e) {
     console.error('Erro ao gerar Excel:', e);
-    showToast('Erro ao gerar a planilha. Recarregue a página e tente novamente.', 'error');
+    alert('Erro ao gerar a planilha. Verifique se a página carregou completamente e tente novamente.');
   }
 }
 
@@ -959,11 +496,11 @@ async function gerarPlanilha() {
 // ----------------------------------------------------------
 async function gerarDasnSimei() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { showToast('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.', 'warn'); return; }
+  if (!currentCliente) { alert('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.'); return; }
 
   const regime = currentCliente.regime_tributario || '';
   if (!/mei/i.test(regime)) {
-    showToast('A DASN-SIMEI é exclusiva para MEI. Regime atual: ' + (regime || 'não informado'), 'warn', 5000);
+    alert('A DASN-SIMEI é exclusiva para Microempreendedores Individuais (MEI).\n\nEsta empresa está cadastrada como: ' + (regime || 'regime não informado'));
     return;
   }
 
@@ -1113,7 +650,7 @@ async function gerarDasnSimei() {
 
   } catch(e) {
     console.error('Erro ao gerar DASN-SIMEI:', e);
-    showToast('Erro ao gerar o documento. Recarregue a página.', 'error');
+    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
   }
 }
 
@@ -1122,7 +659,7 @@ async function gerarDasnSimei() {
 // ----------------------------------------------------------
 async function gerarDctfWeb() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório DCTFWeb.', 'warn'); return; }
+  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório DCTFWeb.'); return; }
 
   try {
     const { jsPDF } = window.jspdf;
@@ -1321,7 +858,7 @@ async function gerarDctfWeb() {
 
   } catch(e) {
     console.error('Erro ao gerar DCTFWeb:', e);
-    showToast('Erro ao gerar o documento. Recarregue a página.', 'error');
+    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
   }
 }
 
@@ -1336,12 +873,7 @@ async function carregarUploadsRecebidos() {
     el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Selecione uma empresa primeiro.</p>';
     return;
   }
-
   el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
-
-  console.log('[Recebidos] user_id:', currentUser?.id);
-  console.log('[Recebidos] cliente_id:', currentCliente?.id);
-
   try {
     const { data, error } = await sb
       .from('portal_uploads')
@@ -1350,52 +882,43 @@ async function carregarUploadsRecebidos() {
       .eq('cliente_id', currentCliente.id)
       .order('criado_em', { ascending: false })
       .limit(50);
-
     if (error) throw error;
-
     if (!data?.length) {
       el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
       return;
     }
-
-    const iconeMap = { pdf: 'file-text', nfe: 'scan-line', planilha: 'table', imagem: 'image', guia: 'receipt', extrato: 'landmark', outro: 'file' };
-    const corMap   = { pdf: '#dc2626', nfe: '#2563eb', planilha: '#16a34a', imagem: '#7c3aed', guia: '#d97706', extrato: '#0891b2', outro: '#64748b' };
-
+    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', outro:'file' };
+    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', outro:'#64748b' };
     el.innerHTML = data.map(u => {
-      const data_fmt = new Date(u.criado_em).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+      const fmt  = new Date(u.criado_em).toLocaleDateString('pt-BR');
       const icone = iconeMap[u.tipo_arquivo] || 'file';
       const cor   = corMap[u.tipo_arquivo]   || '#64748b';
-      return `
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);${!u.lido ? 'background:linear-gradient(90deg,rgba(59,130,246,.05) 0%,transparent 100%);border-radius:6px;padding:10px 6px;' : ''}">
+      const nome  = (u.nome_arquivo||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const path  = (u.storage_path||'').replace(/'/g,"\'");
+      const nomeQ = nome.replace(/'/g,"\'");
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
         <div style="width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:${u.lido ? '400' : '600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(u.nome_arquivo)}</div>
+          <div style="font-size:13px;font-weight:${u.lido?'400':'600'}">${nome}</div>
           <div style="font-size:11px;color:var(--text-light);margin-top:2px">
-            ${(u.tipo_arquivo||'outro').toUpperCase()} · ${u.tamanho_kb ? u.tamanho_kb + ' KB · ' : ''}${data_fmt}
-            ${u.descricao ? ` · <em>${escapeHtml(u.descricao)}</em>` : ''}
+            ${(u.tipo_arquivo||'outro').toUpperCase()} · ${u.tamanho_kb?u.tamanho_kb+' KB · ':''}${fmt}
+            ${u.descricao?'· '+u.descricao:''}
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
-          ${!u.lido ? `<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>` : ''}
-          <button onclick="baixarUpload('${u.id}','${escapeHtml(u.storage_path)}','${escapeHtml(u.nome_arquivo)}')"
-            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:4px;color:var(--text)">
-            <i data-lucide="download" style="width:11px;height:11px"></i> Baixar
+        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+          ${!u.lido?'<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>':''}
+          <button onclick="baixarUpload('${u.id}','${path}','${nomeQ}')"
+            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text)">
+            ⬇ Baixar
           </button>
-          ${!u.lido ? `<button onclick="marcarUploadLido('${u.id}', this)"
-            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text-light)">
-            Marcar lido
-          </button>` : ''}
         </div>
       </div>`;
     }).join('');
-
     if (window.lucide) lucide.createIcons();
-    atualizarBadgeRecebidos();
-
-  } catch (e) {
-    el.innerHTML = `<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro ao carregar: ${e.message}</p>`;
+  } catch(e) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro: '+e.message+'</p>';
   }
 }
 
@@ -1406,37 +929,8 @@ async function baixarUpload(id, path, nome) {
     const a = Object.assign(document.createElement('a'), { href: data.signedUrl, download: nome, target: '_blank' });
     document.body.appendChild(a); a.click();
     setTimeout(() => document.body.removeChild(a), 100);
-    // Marcar como lido automaticamente ao baixar
     await sb.from('portal_uploads').update({ lido: true }).eq('id', id).eq('user_id', currentUser.id);
-    atualizarBadgeRecebidos();
-  } catch (e) {
-    showToast('Erro ao baixar arquivo: ' + e.message, 'error');
+  } catch(e) {
+    alert('Erro ao baixar: ' + e.message);
   }
-}
-
-async function marcarUploadLido(id, btn) {
-  await sb.from('portal_uploads').update({ lido: true }).eq('id', id).eq('user_id', currentUser.id);
-  btn.closest('div[style]').querySelector('[style*="Novo"]')?.remove();
-  btn.remove();
-  atualizarBadgeRecebidos();
-}
-
-async function atualizarBadgeRecebidos() {
-  if (!currentUser) return;
-  try {
-    const { count } = await sb
-      .from('portal_uploads')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', currentUser.id)
-      .eq('lido', false);
-
-    const badge = document.getElementById('badgeRecebidos');
-    if (!badge) return;
-    if (count > 0) {
-      badge.textContent = count;
-      badge.style.display = 'inline';
-    } else {
-      badge.style.display = 'none';
-    }
-  } catch {}
 }
