@@ -398,7 +398,7 @@ async function renderHistoryList(list, hasMore = false) {
   }
 
   el.innerHTML = list.map(c => `
-    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
+    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="if(!this.dataset.renaming)openChat('${c.id}')">
       <div class="h-info">
         <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
@@ -502,6 +502,8 @@ async function saveChat() {
 
 async function renameChat(id, el) {
   const atual = el.textContent.trim();
+  const hItem = el.closest('.h-item');
+  if (hItem) hItem.dataset.renaming = '1';
   const input = document.createElement('input');
   input.value = atual;
   input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none';
@@ -516,6 +518,7 @@ async function renameChat(id, el) {
     span.dataset.chatId = id;
     span.setAttribute('title', 'Duplo clique para renomear');
     span.textContent = novo;
+    if (hItem) delete hItem.dataset.renaming;
     input.replaceWith(span);
     span.addEventListener('dblclick', e => {
       e.stopPropagation();
@@ -534,7 +537,7 @@ async function renameChat(id, el) {
   input.addEventListener('blur', salvar);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.value = atual; input.blur(); }
+    if (e.key === 'Escape') { if (hItem) delete hItem.dataset.renaming; input.value = atual; input.blur(); }
   });
 }
 
