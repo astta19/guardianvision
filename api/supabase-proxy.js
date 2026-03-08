@@ -238,8 +238,10 @@ export default async function handler(req, res) {
       if (userRole !== 'admin') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
-      const { nome } = payload || {};
-      if (!nome) return res.status(400).json({ error: 'nome é obrigatório' });
+      const nome = payload?.nome
+        || authUser.user_metadata?.full_name
+        || authUser.email?.split('@')[0]
+        || 'Meu Escritório';
 
       // Verificar se já tem escritório
       const existeRes = await fetch(
@@ -248,10 +250,16 @@ export default async function handler(req, res) {
       );
       const existe = await existeRes.json();
       if (existe?.[0]?.id) {
+        // Garantir que admin está vinculado
+        await fetch(`${SUPABASE_URL}/rest/v1/escritorio_usuarios`, {
+          method: 'POST',
+          headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
+          body: JSON.stringify({ escritorio_id: existe[0].id, user_id: authUser.id }),
+        });
         return res.status(200).json({ escritorio_id: existe[0].id, criado: false });
       }
 
-      // Criar escritório
+      // Criar escritório usando admin API direta (bypassa RLS)
       const criRes = await fetch(`${SUPABASE_URL}/rest/v1/escritorios`, {
         method: 'POST',
         headers: { ...sbHeaders, 'Prefer': 'return=representation' },
@@ -263,10 +271,10 @@ export default async function handler(req, res) {
       }
       const escritorio = criData[0];
 
-      // Auto-vincular o próprio admin
+      // Auto-vincular admin
       await fetch(`${SUPABASE_URL}/rest/v1/escritorio_usuarios`, {
         method: 'POST',
-        headers: sbHeaders,
+        headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
         body: JSON.stringify({ escritorio_id: escritorio.id, user_id: authUser.id }),
       });
 
