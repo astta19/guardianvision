@@ -94,7 +94,7 @@
         <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
 
         <!-- LOGIN FACIAL -->
-        <button id="btnFaceLogin" class="google-btn" onclick="iniciarLoginFacial()" type="button"
+        <button class="google-btn" onclick="abrirModalFace()" type="button"
           style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:0">
           <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -103,14 +103,6 @@
           </svg>
           Entrar com rosto
         </button>
-        <div id="faceLoginArea" style="display:none;flex-direction:column;align-items:center;gap:10px;padding:14px;background:var(--sidebar-hover);border-radius:12px;margin-top:4px">
-          <input type="email" id="faceLoginEmail" placeholder="Seu e-mail"
-            style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-          <video id="faceLoginVideo" width="220" height="165" autoplay muted playsinline
-            style="border-radius:8px;background:#000;transform:scaleX(-1);width:100%;max-width:220px"></video>
-          <span id="faceLoginMsg" style="font-size:12px;color:var(--text-light);text-align:center;line-height:1.5"></span>
-          <button onclick="pararLoginFacial()" style="font-size:12px;color:var(--text-light);background:none;border:none;cursor:pointer;padding:0">Cancelar</button>
-        </div>
 
         <div class="auth-msg" id="loginMsg"></div>
       </div>
@@ -2167,7 +2159,58 @@
   </div>
   <!-- /convitesModal -->
 
-  <script src="assets/js/face.js?v=2"></script>
-  <script src="assets/js/face.js?v=2"></script>
+  <!-- MODAL FACE LOGIN -->
+  <div id="faceModal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharModalFace()">
+    <div style="background:var(--bg);border-radius:20px;width:100%;max-width:380px;padding:28px 24px;box-shadow:0 32px 80px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
+
+      <!-- Fechar -->
+      <button onclick="fecharModalFace()" style="position:absolute;top:14px;right:14px;background:var(--sidebar-hover);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <!-- Ícone -->
+      <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1a1a1a,#333);display:flex;align-items:center;justify-content:center;margin-bottom:16px;flex-shrink:0">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M20 21a8 8 0 1 0-16 0"/>
+        </svg>
+      </div>
+
+      <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;color:var(--text)">Login com rosto</h3>
+      <p style="margin:0 0 20px;font-size:13px;color:var(--text-light);text-align:center;line-height:1.5">Posicione seu rosto na câmera para entrar automaticamente</p>
+
+      <!-- Campo e-mail -->
+      <input type="email" id="faceModalEmail" placeholder="Seu e-mail" autocomplete="email"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;margin-bottom:12px;outline:none"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+
+      <!-- Câmera -->
+      <div id="faceModalCamWrap" style="display:none;width:100%;position:relative;margin-bottom:12px">
+        <video id="faceModalVideo" autoplay muted playsinline
+          style="width:100%;border-radius:12px;background:#000;transform:scaleX(-1);display:block;max-height:240px;object-fit:cover"></video>
+        <!-- Overlay de detecção -->
+        <div id="faceModalOverlay" style="position:absolute;inset:0;border-radius:12px;border:2.5px solid transparent;transition:border-color .3s;pointer-events:none"></div>
+        <!-- Guia oval -->
+        <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 320 240" preserveAspectRatio="none">
+          <ellipse cx="160" cy="120" rx="90" ry="110" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2" stroke-dasharray="6 4"/>
+        </svg>
+      </div>
+
+      <!-- Status -->
+      <div id="faceModalStatus" style="font-size:13px;color:var(--text-light);text-align:center;min-height:18px;margin-bottom:16px;line-height:1.5"></div>
+
+      <!-- Botão principal -->
+      <button id="faceModalBtn" onclick="faceModalAcao()" style="width:100%;padding:13px;background:var(--text);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Abrir câmera
+      </button>
+
+    </div>
+  </div>
+  <!-- /MODAL FACE LOGIN -->
+
+  <script src="assets/js/face.js?v=3"></script>
 </body>
 </html>
