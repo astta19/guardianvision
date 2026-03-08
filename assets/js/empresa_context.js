@@ -229,3 +229,4 @@ const EmpresaContext = (() => {
     }
   };
 })();
+window.EmpresaContext = EmpresaContext;
