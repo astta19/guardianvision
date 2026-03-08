@@ -396,34 +396,61 @@ init();
     if (!selectedFile || !token) return;
 
     const btn  = document.getElementById('uploadBtn');
-    const tipo = document.querySelector('input[name="uploadTipo"]:checked')?.value || 'outro';
     const desc = document.getElementById('uploadDescricao').value.trim();
 
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Enviando...';
 
     try {
-      const form = new FormData();
-      form.append('token',    token);
-      form.append('tipo',     tipo);
-      form.append('descricao', desc);
-      form.append('arquivo',  selectedFile, selectedFile.name);
+      // Etapa 1: obter URL assinada
+      const metaRes = await fetch('/api/portal-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action:       'gerar_url',
+          token,
+          nome_arquivo: selectedFile.name,
+          mime_type:    selectedFile.type,
+          tamanho_kb:   Math.ceil(selectedFile.size / 1024),
+        }),
+      });
+      const meta = await metaRes.json();
+      if (!metaRes.ok || meta.erro) throw new Error(meta.erro || 'Erro ao preparar envio');
 
-      const res  = await fetch('/api/portal-upload', { method: 'POST', body: form });
-      const data = await res.json();
+      // Etapa 2: upload direto no Supabase Storage
+      const uploadRes = await fetch(meta.upload_url, {
+        method: 'PUT',
+        headers: { 'Content-Type': selectedFile.type },
+        body: selectedFile,
+      });
+      if (!uploadRes.ok) throw new Error('Falha no upload do arquivo');
 
-      if (!res.ok || data.erro) throw new Error(data.erro || 'Erro no envio');
+      // Etapa 3: registrar no banco
+      const regRes = await fetch('/api/portal-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action:       'registrar',
+          token,
+          nome_arquivo: selectedFile.name,
+          mime_type:    selectedFile.type,
+          tamanho_kb:   Math.ceil(selectedFile.size / 1024),
+          storage_path: meta.path,
+          descricao:    desc,
+        }),
+      });
+      const reg = await regRes.json();
+      if (!regRes.ok || reg.erro) throw new Error(reg.erro || 'Erro ao registrar');
 
       // Sucesso
       const lista = document.getElementById('uploadEnviados');
       lista.innerHTML = `<div class="upload-enviado-item">
         <i data-lucide="check-circle" style="width:15px;height:15px;color:var(--ok);flex-shrink:0"></i>
         <span>${esc(selectedFile.name)}</span>
-        <span class="ok">Enviado</span>
+        <span class="ok">Enviado ✓</span>
       </div>` + lista.innerHTML;
       if (window.lucide) lucide.createIcons();
 
-      // Reset
       selectedFile = null;
       document.getElementById('uploadInput').value = '';
       document.getElementById('uploadFilePreview').style.display = 'none';
