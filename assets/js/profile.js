@@ -398,7 +398,7 @@ async function renderHistoryList(list, hasMore = false) {
   }
 
   el.innerHTML = list.map(c => `
-    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="if(!this.dataset.renaming)openChat('${c.id}')">
+    <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" data-open-id="${c.id}">
       <div class="h-info">
         <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
@@ -412,16 +412,35 @@ async function renderHistoryList(list, hasMore = false) {
     el.innerHTML += `<button onclick="chatsPage++;loadChats(false)" style="width:100%;padding:10px;border:none;background:none;color:var(--accent);font-size:13px;cursor:pointer;border-top:1px solid var(--border)">Carregar mais conversas</button>`;
   }
 
-  // Duplo clique para renomear
-  el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
-    titleEl.addEventListener('dblclick', e => {
-      e.stopPropagation();
-      e.preventDefault();
-      renameChat(titleEl.dataset.chatId, titleEl);
+  lucide.createIcons();
+
+  // Click no item abre o chat
+  el.querySelectorAll('.h-item[data-open-id]').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.closest('.h-title')?.querySelector('input')) return;
+      if (e.target.closest('.btn-del')) return;
+      openChat(item.dataset.openId);
     });
   });
 
-  lucide.createIcons();
+  // Detecção manual de duplo clique no título
+  el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
+    let clicks = 0;
+    titleEl.addEventListener('click', e => {
+      e.stopPropagation();
+      clicks++;
+      if (clicks === 1) {
+        setTimeout(() => {
+          if (clicks >= 2) {
+            renameChat(titleEl.dataset.chatId, titleEl);
+          } else {
+            openChat(titleEl.dataset.chatId);
+          }
+          clicks = 0;
+        }, 250);
+      }
+    });
+  });
 }
 
 async function filterChats() {
@@ -501,44 +520,39 @@ async function saveChat() {
 
 
 async function renameChat(id, el) {
+  if (el.querySelector('input')) return;
   const atual = el.textContent.trim();
-  const hItem = el.closest('.h-item');
-  if (hItem) hItem.dataset.renaming = '1';
+
   const input = document.createElement('input');
   input.value = atual;
-  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none';
-  el.replaceWith(input);
+  input.style.cssText = 'width:100%;font-size:12px;padding:2px 4px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box';
+
+  el.textContent = '';
+  el.appendChild(input);
   input.focus();
   input.select();
 
+  let saved = false;
   const salvar = async () => {
+    if (saved) return;
+    saved = true;
     const novo = input.value.trim() || atual;
-    const span = document.createElement('div');
-    span.className = 'h-title';
-    span.dataset.chatId = id;
-    span.setAttribute('title', 'Duplo clique para renomear');
-    span.textContent = novo;
-    if (hItem) delete hItem.dataset.renaming;
-    input.replaceWith(span);
-    span.addEventListener('dblclick', e => {
-      e.stopPropagation();
-      e.preventDefault();
-      renameChat(id, span);
-    });
-    if (novo === atual) return;
-    const { error } = await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
-    if (!error && typeof currentChat !== 'undefined' && currentChat?.id === id) currentChat.title = novo;
-    if (!error && typeof allChats !== 'undefined') {
-      const chat = allChats.find(c => c.id === id);
+    el.textContent = novo;
+    if (novo !== atual) {
+      await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
+      if (currentChat?.id === id) currentChat.title = novo;
+      const chat = allChats?.find(c => c.id === id);
       if (chat) chat.title = novo;
     }
   };
 
   input.addEventListener('blur', salvar);
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { if (hItem) delete hItem.dataset.renaming; input.value = atual; input.blur(); }
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; el.textContent = atual; }
   });
+  input.addEventListener('click',     e => e.stopPropagation());
+  input.addEventListener('mousedown', e => e.stopPropagation());
 }
 
 async function deleteChat(id) {
