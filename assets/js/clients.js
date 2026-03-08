@@ -486,10 +486,16 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'documentos',  label: 'Documentos Fiscais', icon: 'file-text' },
-  { id: 'sped',        label: 'SPED EFD',           icon: 'layers' },
-  { id: 'exportar',    label: 'Exportar Conversa',  icon: 'download' },
-  { id: 'calculadora', label: 'Calculadora',         icon: 'calculator' },
+  { id: 'agenda',         label: 'Agenda',            icon: 'calendar-clock' },
+  { id: 'documentos',     label: 'Documentos Fiscais', icon: 'file-text' },
+  { id: 'sped',           label: 'SPED EFD',           icon: 'layers' },
+  { id: 'folha',          label: 'Folha de Pagamento', icon: 'users' },
+  { id: 'financeiro',     label: 'Financeiro',         icon: 'wallet' },
+  { id: 'perfil_empresa', label: 'Perfil Empresa',     icon: 'building-2' },
+  { id: 'calculadora',    label: 'Calculadora',        icon: 'calculator' },
+  { id: 'portal',         label: 'Portal do Cliente',  icon: 'external-link' },
+  { id: 'exportar',       label: 'Exportar Conversa',  icon: 'download' },
+  { id: 'compartilhar',   label: 'Compartilhar Chat',  icon: 'share-2' },
 ];
 
 async function abrirGerenciarPermissoes() {
