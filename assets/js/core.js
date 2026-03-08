@@ -514,6 +514,24 @@ async function carregarKPIs() {
   }
 }
 
+// Atualizar título da aba com o nome do chat
+// Stub: sistema de convites por URL foi substituído pelo modal de gestão de escritório
+function verificarConviteURL() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('convite');
+  if (!token) return;
+  // Remover parâmetro da URL sem recarregar
+  params.delete('convite');
+  const novaUrl = [window.location.pathname, params.toString()].filter(Boolean).join('?');
+  history.replaceState({}, '', novaUrl);
+  // Avisar que o fluxo de convite mudou
+  showToast('Para entrar em um escritório, solicite ao administrador que te adicione diretamente.', 'info', 5000);
+}
+
+function updateChatTitle(title) {
+  document.title = title ? `${title} — Fiscal365` : 'Fiscal365';
+}
+
 // Fechar modais com ESC
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
