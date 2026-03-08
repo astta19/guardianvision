@@ -118,6 +118,16 @@ async function capturarFace() {
   btn.disabled = true;
   if (captureMsg) captureMsg.textContent = 'Detectando rosto...';
 
+  // Aguardar vídeo ter dimensões válidas
+  if (!video.videoWidth || !video.videoHeight) {
+    await new Promise(res => { video.onloadeddata = res; setTimeout(res, 2000); });
+  }
+  if (!video.videoWidth || !video.videoHeight) {
+    if (captureMsg) captureMsg.textContent = '⚠ Câmera ainda inicializando. Tente novamente.';
+    btn.disabled = false;
+    return;
+  }
+
   const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
 
   const result = await faceapi
