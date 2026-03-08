@@ -73,7 +73,9 @@ async function _capturarEVerificar() {
 
   try {
     const res  = await fetch('/api/face-auth', { method: 'POST', body: form });
-    const json = await res.json();
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { throw new Error('API retornou: ' + text.substring(0, 200)); }
     if (!res.ok || json.error) throw new Error(json.error);
 
     _lSetBorder('#16a34a');
@@ -189,7 +191,9 @@ async function _capturarECadastrar() {
 
   try {
     const res  = await fetch('/api/face-auth', { method: 'POST', body: form });
-    const json = await res.json();
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { throw new Error('API retornou: ' + text.substring(0, 200)); }
     if (!res.ok || json.error) throw new Error(json.error || 'Erro no cadastro');
 
     const ok = await salvarPerfilBanco({ face_descriptor: json.person_uuid, face_senha: faceSenha });
