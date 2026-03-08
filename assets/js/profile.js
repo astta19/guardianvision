@@ -400,7 +400,7 @@ async function renderHistoryList(list, hasMore = false) {
   el.innerHTML = list.map(c => `
     <div class="h-item ${c.id === currentChat.id ? 'on' : ''}" onclick="openChat('${c.id}')">
       <div class="h-info">
-        <div class="h-title" ondblclick="event.stopPropagation();renameChat('${c.id}', this)" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
+        <div class="h-title" data-chat-id="${c.id}" title="Duplo clique para renomear">${escapeHtml(c.title || 'Nova Conversa')}</div>
         <div class="h-date">${new Date(c.created_at).toLocaleDateString('pt-BR')}</div>
       </div>
       <button class="btn-del" onclick="event.stopPropagation();deleteChat('${c.id}')">
@@ -411,6 +411,15 @@ async function renderHistoryList(list, hasMore = false) {
   if (hasMore) {
     el.innerHTML += `<button onclick="chatsPage++;loadChats(false)" style="width:100%;padding:10px;border:none;background:none;color:var(--accent);font-size:13px;cursor:pointer;border-top:1px solid var(--border)">Carregar mais conversas</button>`;
   }
+
+  // Duplo clique para renomear
+  el.querySelectorAll('.h-title[data-chat-id]').forEach(titleEl => {
+    titleEl.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      renameChat(titleEl.dataset.chatId, titleEl);
+    });
+  });
 
   lucide.createIcons();
 }
@@ -504,10 +513,15 @@ async function renameChat(id, el) {
     const novo = input.value.trim() || atual;
     const span = document.createElement('div');
     span.className = 'h-title';
-    span.setAttribute('ondblclick', `event.stopPropagation();renameChat('${id}', this)`);
+    span.dataset.chatId = id;
     span.setAttribute('title', 'Duplo clique para renomear');
     span.textContent = novo;
     input.replaceWith(span);
+    span.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      renameChat(id, span);
+    });
     if (novo === atual) return;
     const { error } = await sb.from('chats').update({ title: novo }).eq('id', id).eq('user_id', currentUser.id);
     if (!error && typeof currentChat !== 'undefined' && currentChat?.id === id) currentChat.title = novo;
