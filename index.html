@@ -2159,6 +2159,46 @@
   </div>
   <!-- /convitesModal -->
 
+
+  <!-- MODAL CADASTRO FACIAL (Perfil) -->
+  <div id="faceCadModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)_fecharCadModal()">
+    <div style="background:var(--bg);border-radius:20px;width:100%;max-width:380px;padding:28px 24px;box-shadow:0 32px 80px rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
+
+      <button onclick="_fecharCadModal()" style="position:absolute;top:14px;right:14px;background:var(--sidebar-hover);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1a1a1a,#333);display:flex;align-items:center;justify-content:center;margin-bottom:16px;flex-shrink:0">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
+
+      <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;color:var(--text)">Ativar login facial</h3>
+      <p style="margin:0 0 20px;font-size:13px;color:var(--text-light);text-align:center;line-height:1.5">Posicione seu rosto centralizado e clique em Capturar</p>
+
+      <!-- Câmera -->
+      <div id="faceCadCamWrap" style="display:none;width:100%;position:relative;margin-bottom:12px">
+        <video id="faceCadVideo" autoplay muted playsinline
+          style="width:100%;border-radius:12px;background:#000;transform:scaleX(-1);display:block;max-height:240px;object-fit:cover"></video>
+        <div id="faceCadOverlay" style="position:absolute;inset:0;border-radius:12px;border:2.5px solid transparent;transition:border-color .3s;pointer-events:none"></div>
+        <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 320 240" preserveAspectRatio="none">
+          <ellipse cx="160" cy="120" rx="90" ry="110" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2" stroke-dasharray="6 4"/>
+        </svg>
+      </div>
+
+      <div id="faceCadStatus" style="font-size:13px;color:var(--text-light);text-align:center;min-height:18px;margin-bottom:16px;line-height:1.5">Clique em Abrir câmera para começar.</div>
+
+      <div style="display:flex;gap:10px;width:100%">
+        <button id="faceCadBtn" onclick="_acaoCadModal()" style="flex:1;padding:13px;background:var(--text);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s">
+          Abrir câmera
+        </button>
+      </div>
+
+    </div>
+  </div>
+  <!-- /MODAL CADASTRO FACIAL -->
+
   <!-- MODAL FACE LOGIN -->
   <div id="faceModal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharModalFace()">
     <div style="background:var(--bg);border-radius:20px;width:100%;max-width:380px;padding:28px 24px;box-shadow:0 32px 80px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
@@ -2211,6 +2251,6 @@
   </div>
   <!-- /MODAL FACE LOGIN -->
 
-  <script src="assets/js/face.js?v=3"></script>
+  <script src="assets/js/face.js?v=4"></script>
 </body>
 </html>
