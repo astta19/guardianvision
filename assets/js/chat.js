@@ -1944,17 +1944,37 @@ function checkDeadlines() {
 
   const alertDiv = document.getElementById('deadlineAlerts');
   if (!alertDiv) return;
-  if (alerts.length > 0) {
-    alertDiv.innerHTML = alerts.map(a => `
-      <div class="alert alert-${a.severity}">
-        <i data-lucide="alert-circle"></i>
-        ${a.message}
+  if (!alerts.length) { alertDiv.innerHTML = ''; return; }
+
+  const hasHigh   = alerts.some(a => a.severity === 'high');
+  const bannerCls = hasHigh ? 'high' : 'medium';
+  const count     = alerts.length;
+  const label     = hasHigh
+    ? `${alerts.filter(a=>a.severity==='high').length} prazo(s) crítico(s)`
+    : `${count} prazo(s) próximo(s)`;
+
+  alertDiv.innerHTML = `
+    <div class="deadline-banner ${bannerCls}" onclick="toggleDeadlineDetail(this)">
+      <i data-lucide="${hasHigh ? 'alert-circle' : 'clock'}" style="width:14px;height:14px;flex-shrink:0"></i>
+      <div class="deadline-banner-tags">
+        ${alerts.slice(0,3).map(a =>
+          `<span class="deadline-tag ${a.severity}">${a.message}</span>`
+        ).join('')}
+        ${count > 3 ? `<span class="deadline-tag medium">+${count-3} mais</span>` : ''}
       </div>
-    `).join('');
-    lucide.createIcons();
-  } else {
-    alertDiv.innerHTML = '';
-  }
+      <i data-lucide="chevron-down" class="deadline-expand" style="width:13px;height:13px"></i>
+    </div>
+    <div class="deadline-detail" id="deadlineDetailPanel">
+      <div class="deadline-detail-inner">
+        ${alerts.map(a => `
+          <div class="deadline-row">
+            <div class="deadline-dot" style="background:${a.severity==='high'?'#dc2626':'#f59e0b'}"></div>
+            <span style="flex:1">${a.message}</span>
+            ${a.severity==='high' ? '<span style="font-size:10px;font-weight:700;color:#dc2626">URGENTE</span>' : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  lucide.createIcons();
 
   // Atualizar badge no botão da agenda
   const badge = document.getElementById('agendaBadgeCount');
@@ -1970,6 +1990,14 @@ function checkDeadlines() {
 
 
 
+
+function toggleDeadlineDetail(banner) {
+  const panel   = document.getElementById('deadlineDetailPanel');
+  const chevron = banner.querySelector('.deadline-expand');
+  if (!panel) return;
+  const open = panel.classList.toggle('open');
+  if (chevron) chevron.classList.toggle('open', open);
+}
 
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.dropdown-wrap')) closeDropdowns();
