@@ -1351,10 +1351,7 @@ async function carregarUploadsRecebidos() {
       .order('criado_em', { ascending: false })
       .limit(50);
 
-    console.log('[Recebidos] data:', data, 'error:', error);
-
     if (error) throw error;
-    console.log('[Recebidos] renderizando', data?.length, 'itens');
 
     if (!data?.length) {
       el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
@@ -1376,7 +1373,7 @@ async function carregarUploadsRecebidos() {
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:${u.lido ? '400' : '600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(u.nome_arquivo)}</div>
           <div style="font-size:11px;color:var(--text-light);margin-top:2px">
-            ${u.tipo_arquivo.toUpperCase()} · ${u.tamanho_kb ? u.tamanho_kb + ' KB · ' : ''}${data_fmt}
+            ${(u.tipo_arquivo||'outro').toUpperCase()} · ${u.tamanho_kb ? u.tamanho_kb + ' KB · ' : ''}${data_fmt}
             ${u.descricao ? ` · <em>${escapeHtml(u.descricao)}</em>` : ''}
           </div>
         </div>
@@ -1398,7 +1395,6 @@ async function carregarUploadsRecebidos() {
     atualizarBadgeRecebidos();
 
   } catch (e) {
-    console.error('[Recebidos] ERRO:', e);
     el.innerHTML = `<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro ao carregar: ${e.message}</p>`;
   }
 }
