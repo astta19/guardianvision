@@ -5,7 +5,7 @@
 // Modelos: /models/ na raiz do repositório
 // ============================================================
 
-const FACE_MODELS_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+const FACE_MODELS_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
 const FACE_THRESHOLD  = 0.45; // distância máxima para match
 
 let _faceApiLoaded   = false;
