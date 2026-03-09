@@ -508,8 +508,11 @@ async function _carregarMembros() {
       return;
     }
 
-    const proxyData = await supabaseProxy('listar_usuarios', {});
-    const allUsers  = proxyData.usuarios || proxyData.users || [];
+    let allUsers = [];
+    try {
+      const proxyData = await supabaseProxy('listar_usuarios', {});
+      allUsers = proxyData.usuarios || proxyData.users || [];
+    } catch(_) {}
 
     const membros = vinculos.map(v => {
       const u = allUsers.find(u => u.id === v.user_id);
