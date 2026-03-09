@@ -462,6 +462,145 @@ function fechar(id) {
 // GESTÃO DO ESCRITÓRIO
 // ════════════════════════════════════════════════════════════
 
+let _escritorioId = null;
+
+async function abrirConvites() {
+  const modal = document.getElementById('convitesModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('vincularMsg').textContent  = '';
+  document.getElementById('vincularEmail').value      = '';
+  await _carregarMembros();
+}
+
+function fecharConvites() {
+  const modal = document.getElementById('convitesModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function _garantirEscritorio() {
+  // Retorna id do escritório, criando se não existir
+  const { data, error } = await sb
+    .from('escritorios').select('id').eq('owner_id', currentUser.id).maybeSingle();
+  if (data?.id) { _escritorioId = data.id; return data.id; }
+
+  const { data: novo, error: errNovo } = await sb
+    .from('escritorios')
+    .insert({ nome: 'Meu Escritório', owner_id: currentUser.id })
+    .select('id').single();
+  if (errNovo) throw new Error('Não foi possível criar o escritório: ' + errNovo.message);
+
+  // Vincular o próprio admin
+  await sb.from('escritorio_usuarios')
+    .insert({ escritorio_id: novo.id, user_id: currentUser.id })
+    .select();
+
+  _escritorioId = novo.id;
+  return novo.id;
+}
+
+async function _carregarMembros() {
+  const el = document.getElementById('escritorioMembros');
+  if (!el) return;
+  el.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Carregando...</p>';
+
+  try {
+    const escId = await _garantirEscritorio();
+
+    // Usar RPC SECURITY DEFINER — bypassa RLS
+    const { data: membros, error } = await sb
+      .rpc('listar_usuarios_escritorio', { p_escritorio_id: escId });
+
+    if (error) throw new Error(error.message);
+
+    if (!membros?.length) {
+      el.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Nenhum membro ainda.</p>';
+      return;
+    }
+
+    el.innerHTML = membros.map(m => {
+      const isOwner = m.user_id === currentUser.id;
+      const inicial = (m.email || '?').charAt(0).toUpperCase();
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--sidebar-hover);border-radius:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${inicial}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.email}</div>
+            <div style="font-size:11px;color:var(--text-light)">${isOwner ? 'Administrador' : 'Contador'}</div>
+          </div>
+          ${!isOwner ? `<button onclick="_removerMembro('${escId}','${m.user_id}')" style="background:none;border:none;cursor:pointer;color:#dc2626;padding:4px" title="Remover">
+            <i data-lucide="user-minus" style="width:15px;height:15px"></i>
+          </button>` : ''}
+        </div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+
+  } catch (e) {
+    el.innerHTML = `<p style="color:#dc2626;font-size:13px;padding:12px">Erro: ${e.message}</p>`;
+  }
+}
+
+async function vincularUsuarioManual() {
+  const email = document.getElementById('vincularEmail').value.trim().toLowerCase();
+  const msgEl = document.getElementById('vincularMsg');
+  const btn   = document.getElementById('vincularBtn');
+  if (!email) { msgEl.style.color = '#dc2626'; msgEl.textContent = 'Informe o e-mail.'; return; }
+
+  btn.disabled = true;
+  msgEl.style.color = 'var(--text-light)';
+  msgEl.textContent = 'Buscando usuário...';
+
+  try {
+    const escId = await _garantirEscritorio();
+
+    // Buscar user_id pelo e-mail via proxy (tem acesso a auth.users)
+    const res   = await fetch('/api/supabase-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'listar_usuarios' })
+    });
+    const lista = await res.json();
+    const found = (lista.users || []).find(u => u.email?.toLowerCase() === email);
+    if (!found?.id) throw new Error('Usuário não encontrado. Ele precisa ter feito login ao menos uma vez.');
+
+    const { error } = await sb
+      .from('escritorio_usuarios')
+      .insert({ escritorio_id: escId, user_id: found.id });
+
+    if (error && error.code !== '23505') throw new Error(error.message);
+
+    msgEl.style.color = '#16a34a';
+    msgEl.textContent = '✓ Usuário adicionado!';
+    document.getElementById('vincularEmail').value = '';
+    await _carregarMembros();
+
+  } catch (e) {
+    msgEl.style.color = '#dc2626';
+    msgEl.textContent = '⚠ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function _removerMembro(escritorioId, userId) {
+  if (!confirm('Remover este membro do escritório?')) return;
+  const { error } = await sb
+    .from('escritorio_usuarios')
+    .delete()
+    .eq('escritorio_id', escritorioId)
+    .eq('user_id', userId);
+  if (!error) await _carregarMembros();
+  else alert('Erro ao remover: ' + error.message);
+}
+
+// ESC: tratado globalmente em core.js
+
+// ════════════════════════════════════════════════════════════
+// GESTÃO DO ESCRITÓRIO
+// ════════════════════════════════════════════════════════════
+
 async function abrirConvites() {
   const modal = document.getElementById('convitesModal');
   if (!modal) return;
