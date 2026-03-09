@@ -496,7 +496,7 @@ const PERMS_LIST = [
 ];
 
 async function abrirGerenciarPermissoes() {
-  if (!isAdmin()) return;
+  if (!isAdmin() && !isMaster()) return;
   const modal = document.getElementById('permissoesModal');
   if (!modal) return;
   modal.style.display = 'flex';
