@@ -126,7 +126,7 @@ export default async function handler(req, res) {
 
     // ── definir_permissoes ──────────────────────────────────────────
     if (action === 'definir_permissoes') {
-      if (userRole !== 'admin') {
+      if (userRole !== 'admin' && userRole !== 'master') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { userId, permissions } = payload || {};
