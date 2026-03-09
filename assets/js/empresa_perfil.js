@@ -83,6 +83,7 @@ function preencherFormPerfil(d) {
   set('epBairro',          d.bairro);
   set('epMunicipio',       d.municipio);
   set('epUf',              d.uf);
+  set('epCodMun',          d.cod_mun || '');
 
   // Aba Financeiro
   set('epFatMensal',   d.faturamento_mensal  ? Number(d.faturamento_mensal).toFixed(2)  : '');
@@ -157,6 +158,7 @@ async function epBuscarCNPJ() {
       bairro:     d.bairro,
       municipio:  d.municipio,
       uf:         d.uf,
+      cod_mun:    d.codigo_municipio ? String(d.codigo_municipio) : '',
       socios:     (d.qsa || d.quadro_societario || []).map(s => ({
         nome: s.nome_socio || s.nome,
         qualificacao: s.qualificacao_socio || s.qual || 'Sócio',
@@ -192,6 +194,7 @@ async function epBuscarCNPJ() {
     set('epBairro',      norm.bairro);
     set('epMunicipio',   norm.municipio);
     set('epUf',          norm.uf);
+    if (norm.cod_mun) { const el = document.getElementById('epCodMun'); if (el) el.value = norm.cod_mun; }
 
     // Sócios
     renderSocios(norm.socios);
@@ -207,7 +210,7 @@ async function epBuscarCNPJ() {
   }
 }
 
-// ── Auto-preencher endereço via CEP (ViaCEP) ─────────────
+// ── Auto-preencher endereço via CEP (ViaCEP) + código IBGE ──
 async function epBuscarCEP() {
   const cep = document.getElementById('epCep').value.replace(/\D/g,'');
   if (cep.length !== 8) return;
@@ -221,6 +224,11 @@ async function epBuscarCEP() {
     set('epBairro',     d.bairro);
     set('epMunicipio',  d.localidade);
     set('epUf',         d.uf);
+    // ViaCEP já retorna o código IBGE do município
+    if (d.ibge) {
+      const codMunEl = document.getElementById('epCodMun');
+      if (codMunEl) codMunEl.value = d.ibge;
+    }
     document.getElementById('epNumero')?.focus();
   } catch(e) {}
 }
@@ -318,6 +326,7 @@ async function salvarPerfilEmpresa() {
     bairro:      get('epBairro'),
     municipio:   get('epMunicipio'),
     uf:          get('epUf'),
+    cod_mun:     get('epCodMun') || '',
     // Financeiro
     faturamento_mensal: getNum('epFatMensal'),
     faturamento_anual:  getNum('epFatAnual'),
