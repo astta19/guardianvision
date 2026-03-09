@@ -515,11 +515,13 @@ async function _carregarMembros() {
       body: JSON.stringify({ action: 'listar_usuarios' })
     });
     const proxyData = await proxyRes.json();
-    const allUsers  = proxyData.users || [];
+    const allUsers  = proxyData.usuarios || proxyData.users || [];
 
     const membros = vinculos.map(v => {
       const u = allUsers.find(u => u.id === v.user_id);
-      return { user_id: v.user_id, email: u?.email || v.user_id };
+      // fallback: admin está filtrado do proxy, usar e-mail da sessão
+      const email = u?.email || (v.user_id === currentUser.id ? currentUser.email : v.user_id);
+      return { user_id: v.user_id, email };
     });
 
     el.innerHTML = membros.map(m => {
@@ -560,7 +562,7 @@ async function vincularUsuarioManual() {
       body: JSON.stringify({ action: 'listar_usuarios' })
     });
     const lista = await res.json();
-    const found = (lista.users || []).find(u => u.email?.toLowerCase() === email);
+    const found = (lista.usuarios || lista.users || []).find(u => u.email?.toLowerCase() === email);
     if (!found?.id) throw new Error('Usuário não encontrado. Ele precisa ter feito login ao menos uma vez.');
 
     const { error } = await sb
