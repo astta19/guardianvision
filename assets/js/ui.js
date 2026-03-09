@@ -508,13 +508,7 @@ async function _carregarMembros() {
       return;
     }
 
-    // Buscar e-mails via proxy (service key, bypassa RLS)
-    const proxyRes  = await fetch('/api/supabase-proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'listar_usuarios' })
-    });
-    const proxyData = await proxyRes.json();
+    const proxyData = await supabaseProxy('listar_usuarios', {});
     const allUsers  = proxyData.usuarios || proxyData.users || [];
 
     const membros = vinculos.map(v => {
@@ -556,12 +550,7 @@ async function vincularUsuarioManual() {
   try {
     const escId = await _getEscritorioId();
 
-    const res   = await fetch('/api/supabase-proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'listar_usuarios' })
-    });
-    const lista = await res.json();
+    const lista = await supabaseProxy('listar_usuarios', {});
     const found = (lista.usuarios || lista.users || []).find(u => u.email?.toLowerCase() === email);
     if (!found?.id) throw new Error('Usuário não encontrado. Ele precisa ter feito login ao menos uma vez.');
 
