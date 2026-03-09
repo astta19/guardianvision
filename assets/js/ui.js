@@ -479,24 +479,16 @@ function fecharConvites() {
 }
 
 async function _garantirEscritorio() {
-  // Retorna id do escritório, criando se não existir
+  if (_escritorioId) return _escritorioId;
+
   const { data, error } = await sb
     .from('escritorios').select('id').eq('owner_id', currentUser.id).maybeSingle();
+
+  if (error) throw new Error('Erro ao buscar escritório: ' + error.message);
   if (data?.id) { _escritorioId = data.id; return data.id; }
 
-  const { data: novo, error: errNovo } = await sb
-    .from('escritorios')
-    .insert({ nome: 'Meu Escritório', owner_id: currentUser.id })
-    .select('id').single();
-  if (errNovo) throw new Error('Não foi possível criar o escritório: ' + errNovo.message);
-
-  // Vincular o próprio admin
-  await sb.from('escritorio_usuarios')
-    .insert({ escritorio_id: novo.id, user_id: currentUser.id })
-    .select();
-
-  _escritorioId = novo.id;
-  return novo.id;
+  // Não existe — orientar a executar o SQL
+  throw new Error('Escritório não encontrado. Execute o SQL check_escritorio.sql no Supabase.');
 }
 
 async function _carregarMembros() {
@@ -508,15 +500,32 @@ async function _carregarMembros() {
     const escId = await _garantirEscritorio();
 
     // Usar RPC SECURITY DEFINER — bypassa RLS
-    const { data: membros, error } = await sb
-      .rpc('listar_usuarios_escritorio', { p_escritorio_id: escId });
+    // Buscar via proxy (service key bypassa RLS)
+    const proxyRes = await fetch('/api/supabase-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'listar_usuarios' })
+    });
+    const proxyData = await proxyRes.json();
+    const todosUsers = proxyData.users || [];
 
-    if (error) throw new Error(error.message);
+    // Buscar vínculos do escritório
+    const { data: vinculos, error: vErr } = await sb
+      .from('escritorio_usuarios')
+      .select('user_id')
+      .eq('escritorio_id', escId);
 
-    if (!membros?.length) {
+    if (vErr) throw new Error(vErr.message);
+    if (!vinculos?.length) {
       el.innerHTML = '<p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Nenhum membro ainda.</p>';
       return;
     }
+
+    // Cruzar user_id com e-mail
+    const membros = vinculos.map(v => {
+      const u = todosUsers.find(u => u.id === v.user_id);
+      return { user_id: v.user_id, email: u?.email || v.user_id };
+    });
 
     el.innerHTML = membros.map(m => {
       const isOwner = m.user_id === currentUser.id;
