@@ -176,7 +176,7 @@ function applyAdminUI() {
 
 // Chamada pelo admin para definir permissões de um contador
 async function definirPermissoes(userId, permissions) {
-  if (!isAdmin()) return false;
+  if (!isAdmin() && !isMaster()) return false;
   try {
     const session = await sb.auth.getSession();
     const token = session?.data?.session?.access_token;
