@@ -113,8 +113,16 @@ export default async function handler(req, res) {
         },
       });
       const data = await r.json();
-      const usuarios = (data.users || [])
-        .filter(u => u.id !== authUser.id)
+      const allUsers = data.users || [];
+
+      // master: retorna TODOS (para cruzar com vínculos de escritório no frontend)
+      // admin: retorna apenas quem não é master e não é ele mesmo
+      const usuarios = allUsers
+        .filter(u => {
+          if (u.id === authUser.id) return false;
+          if (userRole === 'master') return true;
+          return u.user_metadata?.role !== 'master';
+        })
         .map(u => ({
           id: u.id,
           email: u.email,
