@@ -11,11 +11,6 @@ const ALLOWED_ACTIONS = [
   'listar_usuarios',
   'definir_permissoes',
   'buscar_permissoes',
-  'criar_escritorio',
-  'convidar_usuario',
-  'listar_convites',
-  'vincular_usuario_escritorio',
-  'buscar_usuario_por_email',
 ];
 
 export default async function handler(req, res) {
@@ -48,7 +43,6 @@ export default async function handler(req, res) {
 
   const authUser = await authRes.json();
   const userRole = authUser?.user_metadata?.role || 'contador';
-  const isAdminOrMaster = userRole === 'admin' || userRole === 'master';
 
   const sbHeaders = {
     'apikey': SUPABASE_SERVICE_KEY,
@@ -84,7 +78,7 @@ export default async function handler(req, res) {
 
     // ── buscar_estatisticas ─────────────────────────────────────────
     if (action === 'buscar_estatisticas') {
-      if (!isAdminOrMaster) {
+      if (userRole !== 'admin') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const r = await fetch(
@@ -97,7 +91,7 @@ export default async function handler(req, res) {
 
     // ── buscar_treinamento_count ────────────────────────────────────
     if (action === 'buscar_treinamento_count') {
-      if (!isAdminOrMaster) {
+      if (userRole !== 'admin') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const r = await fetch(`${SUPABASE_URL}/rest/v1/dados_treinamento?select=id`, {
@@ -109,82 +103,30 @@ export default async function handler(req, res) {
 
     // ── listar_usuarios ─────────────────────────────────────────────
     if (action === 'listar_usuarios') {
-      if (!isAdminOrMaster) {
+      if (userRole !== 'admin' && userRole !== 'master') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
-
-      // Master vê todos; admin vê só o seu escritório
-      let escritorioId;
-      if (userRole === 'master') {
-        // Master pode passar escritorio_id específico ou listar o próprio
-        escritorioId = payload?.escritorio_id || null;
-        if (!escritorioId) {
-          const escRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
-            { headers: sbHeaders }
-          );
-          const escData = await escRes.json();
-          escritorioId = escData?.[0]?.id;
-        }
-      } else {
-        const escRes = await fetch(
-          `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
-          { headers: sbHeaders }
-        );
-        const escData = await escRes.json();
-        escritorioId = escData?.[0]?.id;
-      }
-      if (!escritorioId) {
-        return res.status(200).json({ usuarios: [], escritorio_id: null });
-      }
-
-      // 2. Buscar user_ids do escritório
-      const membrosRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/escritorio_usuarios?escritorio_id=eq.${escritorioId}&select=user_id`,
-        { headers: sbHeaders }
-      );
-      const membrosData = await membrosRes.json();
-      const memberIds = (Array.isArray(membrosData) ? membrosData : [])
-        .map(m => m.user_id)
-        .filter(id => id !== authUser.id);
-
-      if (!memberIds.length) {
-        return res.status(200).json({ usuarios: [], escritorio_id: escritorioId });
-      }
-
-      // 3. Buscar detalhes via admin API (email, metadata)
-      const allUsersRes = await fetch(
-        `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
-        { headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'apikey': SUPABASE_SERVICE_KEY } }
-      );
-      const allUsersData = await allUsersRes.json();
-      const allUsers = allUsersData.users || [];
-
-      // 4. Buscar permissões da tabela user_permissions
-      const permsRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/user_permissions?user_id=in.(${memberIds.join(',')})&select=user_id,permissions`,
-        { headers: sbHeaders }
-      );
-      const permsData = await permsRes.json();
-      const permsMap = {};
-      (Array.isArray(permsData) ? permsData : []).forEach(p => { permsMap[p.user_id] = p.permissions || []; });
-
-      const usuarios = memberIds.map(uid => {
-        const u = allUsers.find(x => x.id === uid) || {};
-        return {
-          id: uid,
-          email: u.email || '',
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=100`, {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+        },
+      });
+      const data = await r.json();
+      const usuarios = (data.users || [])
+        .filter(u => u.id !== authUser.id)
+        .map(u => ({
+          id: u.id,
+          email: u.email,
           role: u.user_metadata?.role || 'contador',
-          permissions: permsMap[uid] || u.user_metadata?.permissions || [],
-        };
-      }).filter(u => u.email);
-
-      return res.status(200).json({ usuarios, escritorio_id: escritorioId });
+          permissions: u.user_metadata?.permissions || [],
+        }));
+      return res.status(200).json({ usuarios });
     }
 
     // ── definir_permissoes ──────────────────────────────────────────
     if (action === 'definir_permissoes') {
-      if (!isAdminOrMaster) {
+      if (userRole !== 'admin') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
       const { userId, permissions } = payload || {};
@@ -248,149 +190,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ permissions });
     }
 
-    // ── criar_escritorio ────────────────────────────────────────────
-    if (action === 'criar_escritorio') {
-      if (!isAdminOrMaster) {
-        return res.status(403).json({ error: 'Acesso restrito a administradores' });
-      }
-      const nome = payload?.nome
-        || authUser.user_metadata?.full_name
-        || authUser.email?.split('@')[0]
-        || 'Meu Escritório';
-
-      // Verificar se já tem escritório
-      const existeRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
-        { headers: sbHeaders }
-      );
-      const existe = await existeRes.json();
-      if (existe?.[0]?.id) {
-        // Garantir que admin está vinculado
-        await fetch(`${SUPABASE_URL}/rest/v1/escritorio_usuarios`, {
-          method: 'POST',
-          headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
-          body: JSON.stringify({ escritorio_id: existe[0].id, user_id: authUser.id }),
-        });
-        return res.status(200).json({ escritorio_id: existe[0].id, criado: false });
-      }
-
-      // Criar escritório usando admin API direta (bypassa RLS)
-      const criRes = await fetch(`${SUPABASE_URL}/rest/v1/escritorios`, {
-        method: 'POST',
-        headers: { ...sbHeaders, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ nome, owner_id: authUser.id }),
-      });
-      const criData = await criRes.json();
-      if (!criRes.ok || !criData?.[0]?.id) {
-        return res.status(500).json({ error: 'Falha ao criar escritório', detail: criData });
-      }
-      const escritorio = criData[0];
-
-      // Auto-vincular admin
-      await fetch(`${SUPABASE_URL}/rest/v1/escritorio_usuarios`, {
-        method: 'POST',
-        headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ escritorio_id: escritorio.id, user_id: authUser.id }),
-      });
-
-      return res.status(200).json({ escritorio_id: escritorio.id, criado: true });
-    }
-
-    // ── convidar_usuario ─────────────────────────────────────────────
-    if (action === 'convidar_usuario') {
-      if (!isAdminOrMaster) {
-        return res.status(403).json({ error: 'Acesso restrito a administradores' });
-      }
-      const { email, escritorio_id } = payload || {};
-      if (!email || !escritorio_id) {
-        return res.status(400).json({ error: 'email e escritorio_id são obrigatórios' });
-      }
-
-      // Confirmar que o escritório pertence ao admin
-      const escRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/escritorios?id=eq.${escritorio_id}&owner_id=eq.${authUser.id}&select=id`,
-        { headers: sbHeaders }
-      );
-      const esc = await escRes.json();
-      if (!esc?.[0]) return res.status(403).json({ error: 'Escritório não autorizado' });
-
-      // Criar convite
-      const convRes = await fetch(`${SUPABASE_URL}/rest/v1/convites`, {
-        method: 'POST',
-        headers: { ...sbHeaders, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ escritorio_id, convidado_por: authUser.id, email }),
-      });
-      const convData = await convRes.json();
-      const convite = convData?.[0];
-      if (!convite?.token) {
-        return res.status(500).json({ error: 'Falha ao criar convite', detail: convData });
-      }
-      return res.status(200).json({ token: convite.token, expira_em: convite.expira_em });
-    }
-
-    // ── listar_convites ──────────────────────────────────────────────
-    if (action === 'listar_convites') {
-      if (!isAdminOrMaster) {
-        return res.status(403).json({ error: 'Acesso restrito a administradores' });
-      }
-      const { escritorio_id } = payload || {};
-      if (!escritorio_id) return res.status(400).json({ error: 'escritorio_id obrigatório' });
-
-      const r = await fetch(
-        `${SUPABASE_URL}/rest/v1/convites?escritorio_id=eq.${escritorio_id}&usado=eq.false&order=criado_em.desc`,
-        { headers: sbHeaders }
-      );
-      const data = await r.json();
-      return res.status(200).json({ convites: data || [] });
-    }
-
-    // ── buscar_usuario_por_email ────────────────────────────────────
-    if (action === 'buscar_usuario_por_email') {
-      if (!isAdminOrMaster) {
-        return res.status(403).json({ error: 'Acesso restrito a administradores' });
-      }
-      const { email } = payload || {};
-      if (!email) return res.status(400).json({ error: 'email obrigatório' });
-
-      const r = await fetch(
-        `${SUPABASE_URL}/auth/v1/admin/users?per_page=100`,
-        { headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'apikey': SUPABASE_SERVICE_KEY } }
-      );
-      const data = await r.json();
-      const found = (data.users || []).find(u => u.email === email);
-      if (!found) return res.status(200).json({ user_id: null });
-      return res.status(200).json({ user_id: found.id, email: found.email });
-    }
-
-    // ── vincular_usuario_escritorio ──────────────────────────────────
-    if (action === 'vincular_usuario_escritorio') {
-      if (!isAdminOrMaster) {
-        return res.status(403).json({ error: 'Acesso restrito a administradores' });
-      }
-      const { user_id, escritorio_id } = payload || {};
-      if (!user_id || !escritorio_id) {
-        return res.status(400).json({ error: 'user_id e escritorio_id são obrigatórios' });
-      }
-
-      // Confirmar que o escritório pertence ao admin
-      const escRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/escritorios?id=eq.${escritorio_id}&owner_id=eq.${authUser.id}&select=id`,
-        { headers: sbHeaders }
-      );
-      const esc = await escRes.json();
-      if (!esc?.[0]) return res.status(403).json({ error: 'Escritório não autorizado' });
-
-      await fetch(`${SUPABASE_URL}/rest/v1/escritorio_usuarios`, {
-        method: 'POST',
-        headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ escritorio_id, user_id }),
-      });
-
-      return res.status(200).json({ ok: true });
-    }
-
   } catch (error) {
     console.error('supabase-proxy erro:', error);
-    return res.status(500).json({ error: error?.message || 'Erro interno', stack: error?.stack });
+    return res.status(502).json({ error: 'Erro interno ao processar a requisição' });
   }
 }
