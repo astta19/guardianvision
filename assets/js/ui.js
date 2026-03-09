@@ -483,10 +483,10 @@ async function _getEscritorioId() {
   if (_escritorioId) return _escritorioId;
   const { data, error } = await sb
     .from('escritorios').select('id')
-    .eq('owner_id', currentUser.id).maybeSingle();
+    .eq('owner_id', currentUser.id).limit(1);
   if (error) throw new Error('Erro ao buscar escritório: ' + error.message);
-  if (!data?.id) throw new Error('Escritório não encontrado. Execute o SQL check_escritorio.sql no Supabase.');
-  _escritorioId = data.id;
+  if (!data?.length) throw new Error('Escritório não encontrado. Execute o SQL check_escritorio.sql no Supabase.');
+  _escritorioId = data[0].id;
   return _escritorioId;
 }
 
