@@ -106,6 +106,7 @@
     .upload-enviados { margin-top: 4px; }
     .upload-enviado-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
     .upload-enviado-item:last-child { border-bottom: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .upload-enviado-item .ok { color: var(--ok); font-size: 11px; font-weight: 600; }
 
     @media (max-width: 480px) {
@@ -147,7 +148,10 @@ async function init() {
 
     renderPortal(data);
     // token_id vem do /api/portal (com service key, sem RLS)
-    if (data.token_id) initUpload(data.token_id);
+    if (data.token_id) {
+      initUpload(data.token_id);
+      carregarArquivosEnviados(data.token_id);
+    }
   } catch (e) {
     renderErro('Erro de conexão', 'Não foi possível carregar os dados. Tente novamente em instantes.');
   } finally {
@@ -235,6 +239,11 @@ function renderPortal(d) {
       ${docs.length === 10 ? '<div class="paginacao-nota">Exibindo os 10 documentos mais recentes. Solicite ao seu contador para ver mais.</div>' : ''}
     </div>` : ''}
 
+    <div class="card" id="arquivosEnviadosCard" style="display:none">
+      <div class="card-title"><i data-lucide="inbox" style="width:14px;height:14px"></i> Arquivos Enviados por Mim</div>
+      <div id="arquivosEnviadosLista"></div>
+    </div>
+
     <div class="card" id="uploadCard">
       <div class="card-title"><i data-lucide="upload" style="width:14px;height:14px"></i> Enviar Documentos ao Contador</div>
 
@@ -246,23 +255,22 @@ function renderPortal(d) {
       </div>
 
       <div id="uploadDropArea" class="upload-area">
-        <i data-lucide="file-up" style="width:28px;height:28px;opacity:.4;margin:0 auto"></i>
-        <p>Arraste um arquivo ou <strong>clique para selecionar</strong></p>
-        <small>PDF, imagem, XML ou planilha — máx. 10MB</small>
-        <input type="file" id="uploadInput" style="display:none"
+        <i data-lucide="files" style="width:28px;height:28px;opacity:.4;margin:0 auto"></i>
+        <p>Arraste arquivos ou <strong>clique para selecionar</strong></p>
+        <small>PDF, imagem, XML ou planilha · máx. 10MB por arquivo · vários de uma vez</small>
+        <input type="file" id="uploadInput" style="display:none" multiple
           accept=".pdf,.jpg,.jpeg,.png,.webp,.xml,.xls,.xlsx">
       </div>
 
-      <div id="uploadFilePreview" style="display:none" class="upload-file-preview">
-        <div id="uploadFileName">—</div>
-        <span id="uploadFileSize">—</span>
-      </div>
+      <!-- Fila de arquivos selecionados -->
+      <div id="uploadFilaLista" style="display:none;flex-direction:column;gap:6px;margin-bottom:10px"></div>
 
       <textarea id="uploadDescricao" class="upload-desc" rows="2"
-        placeholder="Descrição opcional (ex: Extrato fevereiro/2025)"></textarea>
+        placeholder="Descrição opcional (ex: Extratos fevereiro/2025)"></textarea>
 
       <button id="uploadBtn" class="upload-btn" disabled>
-        <i data-lucide="send" style="width:15px;height:15px"></i> Enviar ao contador
+        <i data-lucide="send" style="width:15px;height:15px"></i>
+        Enviar <span id="uploadBtnCount"></span>
       </button>
 
       <div id="uploadEnviados" class="upload-enviados" style="margin-top:12px"></div>
@@ -336,6 +344,53 @@ function renderDoc(d) {
     </div>`;
 }
 
+async function carregarArquivosEnviados(tokenId) {
+  const card = document.getElementById('arquivosEnviadosCard');
+  const lista = document.getElementById('arquivosEnviadosLista');
+  if (!card || !lista) return;
+
+  try {
+    // Buscar uploads via RPC usando o token_id (sem auth)
+    const res = await fetch(`${UPLOAD_SB_URL}/rest/v1/portal_uploads?token_id=eq.${tokenId}&order=criado_em.desc&limit=50`, {
+      headers: {
+        'apikey': UPLOAD_SB_ANON,
+        'Authorization': 'Bearer ' + UPLOAD_SB_ANON,
+      }
+    });
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) return;
+
+    card.style.display = '';
+    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', outro:'file', guia:'receipt', extrato:'landmark' };
+    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', guia:'#ea580c', extrato:'#0891b2', outro:'#64748b' };
+
+    lista.innerHTML = data.map(u => {
+      const tipo  = u.tipo_arquivo || 'outro';
+      const icone = iconeMap[tipo] || 'file';
+      const cor   = corMap[tipo]   || '#64748b';
+      const data_ = new Date(u.criado_em).toLocaleDateString('pt-BR');
+      const hora  = new Date(u.criado_em).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="width:30px;height:30px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i data-lucide="${icone}" style="width:15px;height:15px;color:${cor}"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.nome_arquivo)}</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:1px">
+              ${tipo.toUpperCase()}${u.tamanho_kb ? ' · ' + u.tamanho_kb + ' KB' : ''} · ${data_} às ${hora}
+              ${u.descricao ? ' · ' + esc(u.descricao) : ''}
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#16a34a;flex-shrink:0">✓ Enviado</span>
+        </div>`;
+    }).join('');
+    lucide.createIcons();
+  } catch(e) {
+    console.warn('carregarArquivosEnviados:', e);
+  }
+}
+
 function renderErro(titulo, msg) {
   document.getElementById('app').innerHTML = `
     <div class="erro-box">
@@ -357,114 +412,158 @@ const UPLOAD_SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 const UPLOAD_TIPOS   = ['application/pdf','image/jpeg','image/png','image/webp',
                         'text/xml','application/xml','application/vnd.ms-excel',
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-let _uploadFile    = null;
+const UPLOAD_MAX_MB  = 10;
+
+let _uploadFila    = []; // [{file, id, status:'pendente'|'enviando'|'ok'|'erro', msg}]
 let _uploadTokenId = null;
 
 function initUpload(tokenId) {
   _uploadTokenId = tokenId;
   const drop  = document.getElementById('uploadDropArea');
   const input = document.getElementById('uploadInput');
-  const btn   = document.getElementById('uploadBtn');
   if (!drop) return;
   drop.addEventListener('click', () => input.click());
   drop.addEventListener('dragover',  e => { e.preventDefault(); drop.classList.add('drag'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
   drop.addEventListener('drop', e => {
     e.preventDefault(); drop.classList.remove('drag');
-    if (e.dataTransfer.files[0]) setUploadFile(e.dataTransfer.files[0]);
+    adicionarArquivos(e.dataTransfer.files);
   });
-  input.addEventListener('change', () => { if (input.files[0]) setUploadFile(input.files[0]); });
-  btn.addEventListener('click', enviarUpload);
+  input.addEventListener('change', () => adicionarArquivos(input.files));
+  document.getElementById('uploadBtn').addEventListener('click', enviarLote);
 }
 
-function setUploadFile(f) {
-  if (f.size > 10 * 1024 * 1024) { alert('Arquivo muito grande. Limite: 10MB.'); return; }
-  if (!UPLOAD_TIPOS.includes(f.type)) { alert('Tipo não permitido. Use PDF, imagem, XML ou planilha.'); return; }
-  _uploadFile = f;
-  document.getElementById('uploadFileName').textContent = f.name;
-  document.getElementById('uploadFileSize').textContent = (f.size/1024).toFixed(1) + ' KB';
-  document.getElementById('uploadFilePreview').style.display = 'flex';
-  document.getElementById('uploadBtn').disabled = false;
+function adicionarArquivos(files) {
+  let rejeitados = [];
+  Array.from(files).forEach(f => {
+    if (f.size > UPLOAD_MAX_MB * 1024 * 1024) { rejeitados.push(f.name + ' (muito grande)'); return; }
+    if (!UPLOAD_TIPOS.includes(f.type))        { rejeitados.push(f.name + ' (tipo inválido)'); return; }
+    // Evitar duplicatas pelo nome
+    if (_uploadFila.find(u => u.file.name === f.name)) return;
+    _uploadFila.push({ file: f, id: Date.now() + Math.random(), status: 'pendente', msg: '' });
+  });
+  if (rejeitados.length) alert('Ignorados:\n' + rejeitados.join('\n'));
+  renderFila();
+  document.getElementById('uploadInput').value = '';
 }
 
-async function enviarUpload() {
-  if (!_uploadFile || !_uploadTokenId) {
-    alert('Erro: token não carregado. Recarregue a página.');
-    return;
-  }
-  const btn  = document.getElementById('uploadBtn');
+function renderFila() {
+  const el = document.getElementById('uploadFilaLista');
+  if (!_uploadFila.length) { el.style.display = 'none'; el.innerHTML = ''; atualizarBtnLote(); return; }
+  el.style.display = 'flex';
+  el.innerHTML = _uploadFila.map((u, i) => {
+    const kb   = (u.file.size / 1024).toFixed(0) + ' KB';
+    const cor  = u.status === 'ok' ? '#16a34a' : u.status === 'erro' ? '#dc2626' : u.status === 'enviando' ? 'var(--accent)' : 'var(--text-light)';
+    const icone= u.status === 'ok' ? 'check-circle' : u.status === 'erro' ? 'x-circle' : u.status === 'enviando' ? 'loader' : 'file';
+    const spin = u.status === 'enviando' ? 'style="animation:spin 1s linear infinite"' : '';
+    const canDel = u.status !== 'enviando' && u.status !== 'ok';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--sidebar-hover);border-radius:8px;font-size:12px">
+      <i data-lucide="${icone}" ${spin} style="width:14px;height:14px;color:${cor};flex-shrink:0"></i>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${esc(u.file.name)}</span>
+      <span style="color:var(--text-light);flex-shrink:0">${kb}</span>
+      ${u.msg ? `<span style="color:${cor};flex-shrink:0">${esc(u.msg)}</span>` : ''}
+      ${canDel ? `<button onclick="removerDaFila(${i})" style="background:none;border:none;cursor:pointer;padding:0;color:var(--text-light)" title="Remover"><i data-lucide="x" style="width:12px;height:12px"></i></button>` : ''}
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+  atualizarBtnLote();
+}
+
+function removerDaFila(i) {
+  _uploadFila.splice(i, 1);
+  renderFila();
+}
+
+function atualizarBtnLote() {
+  const pendentes = _uploadFila.filter(u => u.status === 'pendente').length;
+  const btn = document.getElementById('uploadBtn');
+  const cnt = document.getElementById('uploadBtnCount');
+  btn.disabled = pendentes === 0;
+  cnt.textContent = pendentes > 0 ? `(${pendentes} arquivo${pendentes > 1 ? 's' : ''})` : '';
+}
+
+async function enviarLote() {
   const desc = (document.getElementById('uploadDescricao').value || '').trim();
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Enviando...';
+  const pendentes = _uploadFila.filter(u => u.status === 'pendente');
+  if (!pendentes.length || !_uploadTokenId) return;
 
-  try {
-    const safe = _uploadFile.name.replace(/[^a-zA-Z0-9._-]/g,'_').substring(0,80);
-    const path = `${_uploadTokenId}/${Date.now()}_${safe}`;
+  document.getElementById('uploadBtn').disabled = true;
 
-    // 1. Upload no Storage
-    const upRes = await fetch(`${UPLOAD_SB_URL}/storage/v1/object/portal-uploads/${path}`, {
-      method: 'POST',
-      headers: {
-        'apikey': UPLOAD_SB_ANON,
-        'Authorization': 'Bearer ' + UPLOAD_SB_ANON,
-        'Content-Type': _uploadFile.type,
-        'x-upsert': 'false',
-      },
-      body: _uploadFile,
-    });
-    if (!upRes.ok) {
-      const raw = await upRes.text();
-      let msg;
-      try { msg = JSON.parse(raw).message; } catch { msg = raw.substring(0, 150); }
-      throw new Error('Storage ' + upRes.status + ': ' + msg);
+  for (const u of pendentes) {
+    u.status = 'enviando'; u.msg = '';
+    renderFila();
+    try {
+      await _enviarUmArquivo(u.file, desc);
+      u.status = 'ok'; u.msg = '✓ Enviado';
+
+      // Adicionar na lista de enviados
+      const lista = document.getElementById('uploadEnviados');
+      lista.innerHTML = '<div class="upload-enviado-item">'
+        + '<i data-lucide="check-circle" style="width:15px;height:15px;color:var(--ok);flex-shrink:0"></i>'
+        + '<span style="flex:1">' + esc(u.file.name) + '</span>'
+        + '<span class="ok">Enviado ✓</span></div>' + lista.innerHTML;
+    } catch(e) {
+      u.status = 'erro'; u.msg = e.message;
     }
+    renderFila();
+  }
 
-    // 2. Registrar no banco via RPC
-    const tipo = _uploadFile.type.includes('pdf') ? 'pdf'
-               : _uploadFile.type.includes('xml') ? 'nfe'
-               : _uploadFile.type.includes('image') ? 'imagem'
-               : _uploadFile.type.includes('sheet') || _uploadFile.type.includes('excel') ? 'planilha'
-               : 'outro';
-    const regRes = await fetch(`${UPLOAD_SB_URL}/rest/v1/rpc/portal_registrar_upload`, {
-      method: 'POST',
-      headers: {
-        'apikey': UPLOAD_SB_ANON,
-        'Authorization': 'Bearer ' + UPLOAD_SB_ANON,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        p_token_id:   _uploadTokenId,
-        p_nome:       _uploadFile.name,
-        p_tipo:       tipo,
-        p_tamanho_kb: Math.ceil(_uploadFile.size / 1024),
-        p_path:       path,
-        p_descricao:  desc || null,
-      }),
-    });
-    if (!regRes.ok) {
-      const e = await regRes.json().catch(() => ({}));
-      throw new Error('RPC: ' + (e.message || regRes.status));
-    }
-
-    // Sucesso
-    const lista = document.getElementById('uploadEnviados');
-    lista.innerHTML = '<div class="upload-enviado-item">'
-      + '<i data-lucide="check-circle" style="width:15px;height:15px;color:var(--ok);flex-shrink:0"></i>'
-      + '<span style="flex:1">' + esc(_uploadFile.name) + '</span>'
-      + '<span class="ok">Enviado ✓</span></div>' + lista.innerHTML;
-    lucide.createIcons();
-    _uploadFile = null;
-    document.getElementById('uploadInput').value = '';
-    document.getElementById('uploadFilePreview').style.display = 'none';
+  lucide.createIcons();
+  // Limpar fila de arquivos enviados com sucesso após 3s
+  setTimeout(() => {
+    _uploadFila = _uploadFila.filter(u => u.status !== 'ok');
+    renderFila();
     document.getElementById('uploadDescricao').value = '';
-    document.getElementById('uploadBtn').disabled = true;
+    if (_uploadTokenId) carregarArquivosEnviados(_uploadTokenId);
+  }, 3000);
+}
 
-  } catch(e) {
-    alert('Erro ao enviar: ' + e.message);
-    btn.disabled = false;
-  } finally {
-    btn.innerHTML = '<i data-lucide="send" style="width:15px;height:15px"></i> Enviar ao contador';
-    lucide.createIcons();
+async function _enviarUmArquivo(file, desc) {
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g,'_').substring(0,80);
+  const path = `${_uploadTokenId}/${Date.now()}_${safe}`;
+
+  // 1. Upload no Storage
+  const upRes = await fetch(`${UPLOAD_SB_URL}/storage/v1/object/portal-uploads/${path}`, {
+    method: 'POST',
+    headers: {
+      'apikey': UPLOAD_SB_ANON,
+      'Authorization': 'Bearer ' + UPLOAD_SB_ANON,
+      'Content-Type': file.type,
+      'x-upsert': 'false',
+    },
+    body: file,
+  });
+  if (!upRes.ok) {
+    const raw = await upRes.text();
+    let msg; try { msg = JSON.parse(raw).message; } catch { msg = raw.substring(0,100); }
+    throw new Error('Storage ' + upRes.status + ': ' + msg);
+  }
+
+  // 2. Registrar no banco via RPC
+  const tipo = file.type.includes('pdf') ? 'pdf'
+             : file.type.includes('xml') ? 'nfe'
+             : file.type.includes('image') ? 'imagem'
+             : file.type.includes('sheet') || file.type.includes('excel') ? 'planilha'
+             : 'outro';
+  const regRes = await fetch(`${UPLOAD_SB_URL}/rest/v1/rpc/portal_registrar_upload`, {
+    method: 'POST',
+    headers: {
+      'apikey': UPLOAD_SB_ANON,
+      'Authorization': 'Bearer ' + UPLOAD_SB_ANON,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      p_token_id:   _uploadTokenId,
+      p_nome:       file.name,
+      p_tipo:       tipo,
+      p_tamanho_kb: Math.ceil(file.size / 1024),
+      p_path:       path,
+      p_descricao:  desc || null,
+    }),
+  });
+  if (!regRes.ok) {
+    const e = await regRes.json().catch(() => ({}));
+    throw new Error('RPC: ' + (e.message || regRes.status));
   }
 }
 
