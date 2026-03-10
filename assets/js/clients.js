@@ -489,10 +489,18 @@ async function salvarAcessos(clienteId) {
 // ══════════════════════════════════════════════════════════════
 
 const PERMS_LIST = [
-  { id: 'documentos',  label: 'Documentos Fiscais', icon: 'file-text' },
-  { id: 'sped',        label: 'SPED EFD',           icon: 'layers' },
-  { id: 'exportar',    label: 'Exportar Conversa',  icon: 'download' },
-  { id: 'calculadora', label: 'Calculadora',         icon: 'calculator' },
+  { id: 'agenda',        label: 'Agenda Fiscal',      icon: 'calendar-clock' },
+  { id: 'documentos',    label: 'Documentos Fiscais', icon: 'file-text' },
+  { id: 'sped',          label: 'SPED EFD',           icon: 'layers' },
+  { id: 'folha',         label: 'Dep. Pessoal',       icon: 'users' },
+  { id: 'financeiro',    label: 'Financeiro',         icon: 'bar-chart-2' },
+  { id: 'perfil_empresa',label: 'Perfil da Empresa',  icon: 'building-2' },
+  { id: 'portal',        label: 'Portal do Cliente',  icon: 'link' },
+  { id: 'calculadora',   label: 'Calculadora',        icon: 'calculator' },
+  { id: 'exportar',      label: 'Exportar Conversa',  icon: 'download' },
+  { id: 'compartilhar',  label: 'Compartilhar Chat',  icon: 'share-2' },
+  { id: 'arquivos',      label: 'Anexar Arquivos',    icon: 'paperclip' },
+  { id: 'gerar_doc',     label: 'Gerar Documentos',   icon: 'file-plus' },
 ];
 
 async function abrirGerenciarPermissoes() {
