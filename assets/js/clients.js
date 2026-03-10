@@ -639,42 +639,69 @@ async function verArquivosCliente(clienteId, clienteNome) {
       return;
     }
 
-    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', outro:'file' };
-    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', outro:'#64748b' };
+    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', guia:'receipt', extrato:'landmark', outro:'file' };
+    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', guia:'#ea580c', extrato:'#0891b2', outro:'#64748b' };
+    const labelMap = { pdf:'PDF', nfe:'NF-e / XML', planilha:'Planilha', imagem:'Imagem', guia:'Guia', extrato:'Extrato', outro:'Outro' };
 
-    // Guardar uploads no window para acesso pelo botão (evita escape de args no onclick)
+    // Guardar uploads no window para acesso pelo botão
     window._uploadsPortal = {};
     data.forEach(u => { window._uploadsPortal[u.id] = u; });
 
-    el.innerHTML = data.map(u => {
+    // Agrupar por tipo
+    const grupos = {};
+    data.forEach(u => {
+      const tipo = u.tipo_arquivo || 'outro';
+      if (!grupos[tipo]) grupos[tipo] = [];
+      grupos[tipo].push(u);
+    });
+
+    const renderItem = u => {
       const fmt   = new Date(u.criado_em).toLocaleDateString('pt-BR');
+      const hora  = new Date(u.criado_em).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
       const tipo  = u.tipo_arquivo || 'outro';
       const icone = iconeMap[tipo] || 'file';
       const cor   = corMap[tipo]   || '#64748b';
       const nome  = escapeHtml(u.nome_arquivo || '');
       return `
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="width:30px;height:30px;border-radius:8px;background:var(--sidebar-hover);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i data-lucide="${icone}" style="width:15px;height:15px;color:${cor}"></i>
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:${u.lido?'400':'600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
           <div style="font-size:11px;color:var(--text-light);margin-top:2px">
-            ${tipo.toUpperCase()} · ${u.tamanho_kb ? u.tamanho_kb+' KB · ' : ''}${fmt}${u.descricao ? ' · '+escapeHtml(u.descricao) : ''}
+            ${u.tamanho_kb ? u.tamanho_kb+' KB · ' : ''}${fmt} às ${hora}${u.descricao ? ' · '+escapeHtml(u.descricao) : ''}
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
-          ${!u.lido ? '<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px;white-space:nowrap">Novo</span>' : ''}
+        <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
+          ${!u.lido ? '<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>' : ''}
           <button data-uid="${u.id}" onclick="baixarArquivoPortal(this.dataset.uid)"
-            style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text);display:flex;align-items:center;gap:4px">
+            style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text);display:flex;align-items:center;gap:3px">
             <i data-lucide="download" style="width:11px;height:11px"></i> Baixar
           </button>
           <button data-uid="${u.id}" onclick="excluirArquivoPortal(this.dataset.uid, this)"
-            style="font-size:11px;padding:3px 8px;border:1px solid #fca5a5;border-radius:6px;background:var(--bg);cursor:pointer;color:#dc2626;display:flex;align-items:center;gap:4px">
-            <i data-lucide="trash-2" style="width:11px;height:11px"></i> Excluir
+            style="font-size:11px;padding:4px 8px;border:1px solid #fca5a5;border-radius:6px;background:var(--bg);cursor:pointer;color:#dc2626;display:flex;align-items:center;gap:3px">
+            <i data-lucide="trash-2" style="width:11px;height:11px"></i>
           </button>
         </div>
       </div>`;
+    };
+
+    el.innerHTML = Object.entries(grupos).map(([tipo, itens]) => {
+      const label = labelMap[tipo] || tipo.toUpperCase();
+      const cor   = corMap[tipo] || '#64748b';
+      const icone = iconeMap[tipo] || 'file';
+      const novos = itens.filter(u => !u.lido).length;
+      return `
+        <div style="margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 0 4px;font-size:11px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid ${cor}22">
+            <i data-lucide="${icone}" style="width:12px;height:12px"></i>
+            ${label}
+            <span style="font-weight:400;color:var(--text-light)">(${itens.length})</span>
+            ${novos ? `<span style="margin-left:auto;background:#dbeafe;color:#1d4ed8;font-size:10px;padding:1px 6px;border-radius:10px">${novos} novo${novos>1?'s':''}</span>` : ''}
+          </div>
+          ${itens.map(renderItem).join('')}
+        </div>`;
     }).join('');
 
     lucide.createIcons();
