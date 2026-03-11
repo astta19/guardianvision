@@ -464,6 +464,72 @@ function fechar(id) {
 
 let _escritorioId = null;
 
+// ── Gestão do Escritório — tabs ─────────────────────────────
+function gestaoSwitchTab(tab) {
+  const isMembros = tab === 'membros';
+  document.getElementById('gestaoSecMembros').style.display  = isMembros ? '' : 'none';
+  document.getElementById('gestaoSecLogins').style.display   = isMembros ? 'none' : '';
+  document.getElementById('gestaoTabMembros').style.color         = isMembros ? 'var(--accent)' : 'var(--text-light)';
+  document.getElementById('gestaoTabMembros').style.fontWeight    = isMembros ? '600' : '400';
+  document.getElementById('gestaoTabMembros').style.borderBottom  = isMembros ? '2px solid var(--accent)' : '2px solid transparent';
+  document.getElementById('gestaoTabLogins').style.color          = isMembros ? 'var(--text-light)' : 'var(--accent)';
+  document.getElementById('gestaoTabLogins').style.fontWeight     = isMembros ? '400' : '600';
+  document.getElementById('gestaoTabLogins').style.borderBottom   = isMembros ? '2px solid transparent' : '2px solid var(--accent)';
+  if (!isMembros) _carregarLogins();
+}
+
+async function _carregarLogins() {
+  const el = document.getElementById('gestaoLoginsLista');
+  if (!el) return;
+  el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
+  try {
+    const res = await supabaseProxy('listar_logins', {});
+    if (res?.error) throw new Error(res.error);
+    const logins = res.logins || [];
+    if (!logins.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum usuário encontrado.</p>';
+      return;
+    }
+    const fmtData = iso => {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    };
+    const roleLabel = { master: 'Master', admin: 'Admin', contador: 'Contador' };
+    const roleCor   = { master: '#7c3aed', admin: '#2563eb', contador: '#16a34a' };
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);color:var(--text-light)">
+            <th style="text-align:left;padding:6px 8px;font-weight:600">Usuário</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">Cadastro</th>
+            <th style="text-align:left;padding:6px 8px;font-weight:600">Último login</th>
+            <th style="text-align:center;padding:6px 8px;font-weight:600">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logins.map(u => `
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:8px 8px">
+                <div style="font-weight:500;color:var(--text)">${escapeHtml(u.nome || u.email)}</div>
+                ${u.nome ? `<div style="font-size:11px;color:var(--text-light)">${escapeHtml(u.email)}</div>` : ''}
+                <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:${roleCor[u.role]||'#64748b'}22;color:${roleCor[u.role]||'#64748b'}">${roleLabel[u.role]||u.role}</span>
+              </td>
+              <td style="padding:8px 8px;color:var(--text-light);white-space:nowrap">${fmtData(u.created_at)}</td>
+              <td style="padding:8px 8px;white-space:nowrap;${!u.last_sign_in_at?'color:var(--text-light)':''}">${fmtData(u.last_sign_in_at)}</td>
+              <td style="padding:8px 8px;text-align:center">
+                ${u.email_confirmed
+                  ? '<span style="font-size:10px;font-weight:700;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:8px">Ativo</span>'
+                  : '<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#d97706;padding:2px 7px;border-radius:8px">Pendente</span>'}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
 async function abrirConvites() {
   const modal = document.getElementById('convitesModal');
   if (!modal) return;
