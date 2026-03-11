@@ -9,6 +9,7 @@ const ALLOWED_ACTIONS = [
   'buscar_estatisticas',
   'buscar_treinamento_count',
   'listar_usuarios',
+  'listar_logins',
   'definir_permissoes',
   'buscar_permissoes',
 ];
@@ -130,6 +131,37 @@ export default async function handler(req, res) {
           permissions: u.user_metadata?.permissions || [],
         }));
       return res.status(200).json({ usuarios });
+    }
+
+    // ── listar_logins ────────────────────────────────────────────────
+    if (action === 'listar_logins') {
+      if (userRole !== 'admin' && userRole !== 'master') {
+        return res.status(403).json({ error: 'Acesso restrito a administradores' });
+      }
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=200`, {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+        },
+      });
+      const data = await r.json();
+      const logins = (data.users || [])
+        .map(u => ({
+          id:             u.id,
+          email:          u.email,
+          role:           u.user_metadata?.role || 'contador',
+          nome:           u.user_metadata?.nome || null,
+          created_at:     u.created_at,
+          last_sign_in_at: u.last_sign_in_at || null,
+          confirmed_at:   u.confirmed_at || null,
+          email_confirmed: !!u.email_confirmed_at,
+        }))
+        .sort((a, b) => {
+          if (!a.last_sign_in_at) return 1;
+          if (!b.last_sign_in_at) return -1;
+          return new Date(b.last_sign_in_at) - new Date(a.last_sign_in_at);
+        });
+      return res.status(200).json({ logins });
     }
 
     // ── definir_permissoes ──────────────────────────────────────────
