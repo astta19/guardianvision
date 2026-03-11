@@ -770,9 +770,13 @@
                 <i data-lucide="calculator"></i>
                 <span>Calculadora</span>
               </button>
-              <button class="tool-card" data-perm="portal" id="portalHeaderBtn" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
+              <button class="tool-card" data-perm="portal" id="portalHeaderBtn" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none;position:relative">
                 <i data-lucide="external-link"></i>
                 <span>Portal</span>
+                <span id="portalBadge" style="display:none;position:absolute;top:4px;right:4px;
+                  background:#dc2626;color:#fff;font-size:9px;font-weight:700;
+                  min-width:16px;height:16px;border-radius:8px;padding:0 4px;
+                  display:none;align-items:center;justify-content:center;line-height:1"></span>
               </button>
             </div>
 
@@ -883,9 +887,34 @@
             </div>
           </div>
         </div>
+        <!-- Dashboard consolidado — visível apenas para master -->
+        <div id="dashboardMaster" style="display:none;margin-top:16px;width:100%;max-width:560px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Visão do Escritório</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#ede9fe"><i data-lucide="users" style="color:#7c3aed;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="dmContadores">—</div><div class="kpi-lbl">Contadores ativos</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#dcfce7"><i data-lucide="trending-up" style="color:#16a34a;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="dmHonorarios">—</div><div class="kpi-lbl">Honorários (mês)</div></div>
+            </div>
+            <div class="kpi-card" onclick="_checkUploadsNaoLidos()" style="cursor:pointer">
+              <div class="kpi-icon" style="background:#fce7f3"><i data-lucide="inbox" style="color:#db2777;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="dmUploadsNaoLidos">—</div><div class="kpi-lbl">Arquivos não lidos</div></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon" style="background:#fef3c7"><i data-lucide="user-check" style="color:#d97706;width:18px;height:18px"></i></div>
+              <div><div class="kpi-val" id="dmFuncionarios">—</div><div class="kpi-lbl">Funcionários ativos</div></div>
+            </div>
+          </div>
+          <!-- Breakdown por regime -->
+          <div id="dmRegimes" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
       </div>
     </div>
 
+    <div class="inp-area">
     <div class="inp-area">
       <div class="inp-row">
         <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..." maxlength="8000"
@@ -1490,6 +1519,14 @@
           <button onclick="finNavMes(-1)" class="dp-btn-sec" style="padding:4px 10px">‹</button>
           <strong id="finMesLabel" style="font-size:13px">—</strong>
           <button onclick="finNavMes(1)" class="dp-btn-sec" style="padding:4px 10px">›</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:4px;justify-content:flex-end">
+          <button onclick="finExportarPDF()" class="dp-btn-sec" style="font-size:11px;padding:4px 10px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="file-text" style="width:12px;height:12px"></i> PDF
+          </button>
+          <button onclick="finExportarExcel()" class="dp-btn-sec" style="font-size:11px;padding:4px 10px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="table" style="width:12px;height:12px"></i> Excel
+          </button>
         </div>
 
         <!-- Filtro tipo -->
