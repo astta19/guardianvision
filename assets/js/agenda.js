@@ -87,6 +87,23 @@ async function agendaCarregar() {
 }
 
 // ── Gerar tarefas automáticas por cliente e regime ───────────
+// Feriados nacionais fixos Brasil (MM-DD)
+const FERIADOS_NACIONAIS = new Set([
+  '01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','12-25'
+]);
+
+function proximoDiaUtil(data) {
+  const d = new Date(data);
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const dow = d.getDay();
+    const mmdd = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if (dow !== 0 && dow !== 6 && !FERIADOS_NACIONAIS.has(mmdd)) break;
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
 function agendaGerarAutomaticas() {
   const tarefas = [];
   const hoje = new Date();
@@ -108,12 +125,12 @@ function agendaGerarAutomaticas() {
       if (ob.mensal) {
         // Gerar para os meses do ano filtrado
         for (let mes = 0; mes < 12; mes++) {
-          const prazo = new Date(agendaFiltroAno, mes, ob.dia);
+          const prazo = proximoDiaUtil(new Date(agendaFiltroAno, mes, ob.dia));
           tarefas.push(agendaMontarTarefa(cliente, ob, prazo));
         }
       } else {
         // Anual — mês fixo
-        const prazo = new Date(agendaFiltroAno, ob.mes - 1, ob.dia);
+        const prazo = proximoDiaUtil(new Date(agendaFiltroAno, ob.mes - 1, ob.dia));
         tarefas.push(agendaMontarTarefa(cliente, ob, prazo));
       }
     }
