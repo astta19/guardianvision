@@ -70,7 +70,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|portal\\.html$).*)",
+      "source": "/((?!api/|assets/|.*\\.js$|.*\\.css$|.*\\.html$).*)",
       "destination": "/index.html"
     }
   ]
