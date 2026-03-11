@@ -62,10 +62,10 @@ function _ciSom() {
   } catch(_) {}
 }
 
-// ── Fingerprint de dedup ──────────────────────────────────────
+// Fingerprint robusto — não depende de timestamp (que diverge entre local e banco)
 function _ciFpKey(msg) {
-  const min = (msg.criado_em || '').slice(0, 16);
-  return `${msg.user_id}_${min}_${(msg.conteudo||'').slice(0,20)}`;
+  // Usa user_id + primeiros 40 chars do conteúdo como chave determinística
+  return `${msg.user_id}|${(msg.conteudo || '').slice(0, 40)}`;
 }
 
 // ── Bootstrap ────────────────────────────────────────────────
@@ -170,7 +170,7 @@ function _ciSubscribe() {
       event: 'INSERT', schema: 'public',
       table: 'chat_interno_mensagens',
       filter: `escritorio_id=eq.${_ciEscId}`,
-    }, ({ new: row }) => _ciReceber(row))
+    }, ({ new: row }) => _ciReceber(row, 'pg'))
     .subscribe();
 
   _ciPr = sb.channel(`ci_pr_${_ciEscId}`, { config: { presence: { key: currentUser.id } } })
@@ -188,7 +188,10 @@ function _ciSubscribe() {
 }
 
 // ── Receber mensagem (broadcast + pg_changes) ─────────────────
-function _ciReceber(msg) {
+function _ciReceber(msg, fonte) {
+  // Mensagens próprias via pg_changes: já renderizadas localmente, ignorar
+  if (fonte === 'pg' && msg.user_id === currentUser.id) return;
+
   const key = msg.id || _ciFpKey(msg);
   if (_ciFp.has(key)) return;
   _ciFp.add(key);
@@ -533,7 +536,10 @@ async function _ciEnviarMensagem(conteudo) {
     escritorio_id: _ciEscId, user_id: currentUser.id,
     conteudo, nome_sender: nome, avatar_sender: avatar,
   });
-  if (error) showToast('Erro ao salvar mensagem.', 'error');
+  if (error) {
+    console.error('ci_insert error:', error);
+    showToast(`Erro ao salvar: ${error.message}`, 'error');
+  }
 }
 
 function ciKeyDown(e) {
