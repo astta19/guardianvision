@@ -44,6 +44,7 @@ async function openHonorarios() {
   document.getElementById('honModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   honTodos = true;
+  _honAtualizarToggle();
   await honCarregar();
 }
 
@@ -52,8 +53,33 @@ function closeHonorarios() {
   document.body.style.overflow = '';
 }
 
+function honToggleFiltro() {
+  if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
+  honTodos = !honTodos;
+  _honAtualizarToggle();
+  honCarregar();
+}
+
+function _honAtualizarToggle() {
+  const btn   = document.getElementById('honToggleBtn');
+  const lbl   = document.getElementById('honToggleLbl');
+  const sub   = document.getElementById('honSubtitulo');
+  const nome  = currentCliente ? (currentCliente.nome_fantasia || currentCliente.razao_social) : null;
+
+  if (honTodos) {
+    if (lbl) lbl.textContent = 'Todos';
+    if (btn) btn.style.background = '';
+    if (sub) sub.textContent = 'Todos os clientes do escritório';
+  } else {
+    if (lbl) lbl.textContent = nome || 'Empresa';
+    if (btn) { btn.style.background = 'var(--accent)'; btn.style.color = 'var(--bg)'; }
+    if (sub) sub.textContent = nome ? `Filtrando: ${nome}` : 'Empresa selecionada';
+  }
+}
+
 // ── Carregar dados ───────────────────────────────────────────
 async function honCarregar() {
+  _honAtualizarToggle();
   honRenderLoading();
   const compStr = `${String(honMes + 1).padStart(2,'0')}/${honAno}`;
 
