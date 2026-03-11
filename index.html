@@ -254,6 +254,16 @@
             <option value="true">Sim (possui CLT / pró-labore com INSS)</option>
           </select>
         </div>
+        <div class="form-field" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>Honorário Mensal (R$)</label>
+            <input type="number" id="fHonValor" step="0.01" min="0" placeholder="Ex: 350,00">
+          </div>
+          <div>
+            <label>Dia de Vencimento</label>
+            <input type="number" id="fHonDia" min="1" max="28" placeholder="10" value="10">
+          </div>
+        </div>
         <div class="form-field admin-only" id="fContadoresField" style="display:none">
           <label>Atribuir contadores</label>
           <div id="fContadoresList" style="display:flex;flex-direction:column;gap:6px;max-height:120px;overflow-y:auto;padding:4px 0">
@@ -484,6 +494,25 @@
           <div style="margin-top:16px;padding:12px;background:var(--sidebar-hover);border-radius:10px;font-size:12px;color:var(--text-light)">
             <i data-lucide="info" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>
             O faturamento anual é calculado automaticamente a partir do mensal se deixado em branco. Os valores de pró-labore dos sócios (aba Sócios) somam automaticamente ao pró-labore total.
+          </div>
+          <!-- Honorários -->
+          <div style="margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:10px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <i data-lucide="receipt" style="width:13px;height:13px;color:#16a34a"></i> Honorários Mensais
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Valor do Honorário (R$)</label>
+                <input id="epHonorarioValor" type="number" step="0.01" min="0" placeholder="Ex: 350,00"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Dia de Vencimento</label>
+                <input id="epHonorarioDia" type="number" min="1" max="28" placeholder="10"
+                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--text-light);margin-top:8px">Usado em <strong>Honorários → Gerar mês</strong> para criar cobranças automaticamente para todos os clientes.</p>
           </div>
         </div>
 
