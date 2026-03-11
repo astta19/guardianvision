@@ -89,6 +89,8 @@ function preencherFormPerfil(d) {
   set('epFatMensal',   d.faturamento_mensal  ? Number(d.faturamento_mensal).toFixed(2)  : '');
   set('epFatAnual',    d.faturamento_anual   ? Number(d.faturamento_anual).toFixed(2)   : '');
   set('epProlabore',   d.prolabore_total     ? Number(d.prolabore_total).toFixed(2)     : '');
+  set('epHonorarioValor', d.honorario_valor  ? Number(d.honorario_valor).toFixed(2)     : '');
+  set('epHonorarioDia',   d.honorario_dia_venc || 10);
 
   // Aba Sócios
   renderSocios(d.socios || []);
@@ -328,9 +330,11 @@ async function salvarPerfilEmpresa() {
     uf:          get('epUf'),
     cod_mun:     get('epCodMun') || '',
     // Financeiro
-    faturamento_mensal: getNum('epFatMensal'),
-    faturamento_anual:  getNum('epFatAnual'),
-    prolabore_total:    prolaboreTotal || null,
+    faturamento_mensal:  getNum('epFatMensal'),
+    faturamento_anual:   getNum('epFatAnual'),
+    prolabore_total:     prolaboreTotal || null,
+    honorario_valor:     getNum('epHonorarioValor') || null,
+    honorario_dia_venc:  parseInt(get('epHonorarioDia')) || 10,
     // Sócios
     socios: _sociosTemp.filter(s => s.nome),
     // Payload bruto da Receita
