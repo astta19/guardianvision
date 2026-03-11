@@ -370,8 +370,8 @@ async function showApp() {
   checkConnection();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
-  if (typeof atualizarBadgeRecebidos === 'function') atualizarBadgeRecebidos();
   carregarKPIs();
+  iniciarPollingUploads();
   if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
     if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
   });
@@ -510,6 +510,7 @@ async function carregarKPIs() {
 
     dashboard.style.display = 'block';
     if (window.lucide) lucide.createIcons();
+    if (isMaster()) carregarDashboardMaster();
   } catch(e) {
     console.error('KPI error:', e);
   }
@@ -556,3 +557,126 @@ document.addEventListener('keydown', e => {
   ];
   closers.forEach(fn => { try { fn(); } catch {} });
 });
+
+// ── Dashboard Master ─────────────────────────────────────────
+async function carregarDashboardMaster() {
+  const el = document.getElementById('dashboardMaster');
+  if (!el) return;
+  el.style.display = 'block';
+
+  try {
+    const hoje = new Date();
+    const mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+    const mesFim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
+
+    const [
+      { data: usuariosData },
+      { count: cUploads },
+      { count: cFuncionarios },
+      { data: honorariosData },
+      { data: clientesData },
+    ] = await Promise.all([
+      // contadores via proxy
+      supabaseProxy('listar_logins', {}).then(r => ({ data: r?.logins || [] })),
+      // uploads não lidos
+      sb.from('portal_uploads').select('*', { count: 'exact', head: true })
+        .eq('lido', false),
+      // funcionários ativos
+      sb.from('dp_funcionarios').select('*', { count: 'exact', head: true })
+        .eq('status', 'ativo'),
+      // honorários recebidos no mês
+      sb.from('lancamentos').select('valor')
+        .eq('tipo', 'receita')
+        .eq('status', 'pago')
+        .gte('data_pgto', mesIni)
+        .lte('data_pgto', mesFim),
+      // clientes por regime
+      sb.from('clientes').select('regime_tributario'),
+    ]);
+
+    // Contadores (exclui master)
+    const contadores = (usuariosData || []).filter(u => u.role !== 'master');
+    const elC = document.getElementById('dmContadores');
+    if (elC) elC.textContent = contadores.length;
+
+    // Arquivos não lidos
+    const elU = document.getElementById('dmUploadsNaoLidos');
+    if (elU) elU.textContent = cUploads ?? '—';
+
+    // Funcionários ativos
+    const elF = document.getElementById('dmFuncionarios');
+    if (elF) elF.textContent = cFuncionarios ?? '—';
+
+    // Honorários do mês
+    const totalHon = (honorariosData || []).reduce((s, l) => s + (+l.valor||0), 0);
+    const elH = document.getElementById('dmHonorarios');
+    if (elH) elH.textContent = totalHon > 0
+      ? 'R$ ' + totalHon.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      : 'R$ 0';
+
+    // Breakdown por regime
+    const regimes = {};
+    (clientesData || []).forEach(c => {
+      const r = c.regime_tributario || 'Não definido';
+      regimes[r] = (regimes[r] || 0) + 1;
+    });
+    const corRegime = {
+      'MEI': '#7c3aed', 'Simples Nacional': '#2563eb',
+      'Lucro Presumido': '#d97706', 'Lucro Real': '#dc2626',
+    };
+    const elR = document.getElementById('dmRegimes');
+    if (elR) {
+      elR.innerHTML = Object.entries(regimes)
+        .sort((a,b) => b[1]-a[1])
+        .map(([r, n]) => {
+          const cor = corRegime[r] || '#64748b';
+          return `<span style="font-size:11px;padding:3px 10px;border-radius:10px;
+            background:${cor}18;color:${cor};font-weight:600">${r}: ${n}</span>`;
+        }).join('');
+    }
+
+    if (window.lucide) lucide.createIcons();
+  } catch(e) {
+    console.error('dashboardMaster:', e);
+  }
+}
+
+// ── Polling: arquivos recebidos não lidos ────────────────────
+let _pollingUploadTimer  = null;
+let _pollingUploadUltimoCount = -1;
+
+async function iniciarPollingUploads() {
+  if (_pollingUploadTimer) return; // já rodando
+  await _checkUploadsNaoLidos();
+  _pollingUploadTimer = setInterval(_checkUploadsNaoLidos, 5 * 60 * 1000); // 5 min
+}
+
+async function _checkUploadsNaoLidos() {
+  if (!currentUser) return;
+  try {
+    const { count } = await sb
+      .from('portal_uploads')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('lido', false);
+
+    const badge = document.getElementById('portalBadge');
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    // Toast apenas quando o número aumenta (novo arquivo chegou)
+    if (_pollingUploadUltimoCount >= 0 && count > _pollingUploadUltimoCount) {
+      const novos = count - _pollingUploadUltimoCount;
+      showToast(`📥 ${novos} novo${novos > 1 ? 's arquivos recebidos' : ' arquivo recebido'} no portal`, 'info');
+    }
+    _pollingUploadUltimoCount = count ?? 0;
+  } catch(e) {
+    // silencioso — polling não deve quebrar UI
+  }
+}
