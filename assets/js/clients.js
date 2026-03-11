@@ -748,8 +748,12 @@ async function excluirArquivoPortal(uid, btn) {
     if (errStorage) throw errStorage;
 
     // 2. Remover registro da tabela
-    const { error: errDb } = await sb.from('portal_uploads').delete().eq('id', uid).eq('user_id', currentUser.id);
+    const { error: errDb, count } = await sb.from('portal_uploads').delete()
+      .eq('id', uid)
+      .eq('user_id', currentUser.id)
+      .select('id', { count: 'exact', head: true });
     if (errDb) throw errDb;
+    if (count === 0) throw new Error('Sem permissão para excluir este arquivo (RLS).');
 
     // 3. Remover do cache local e do DOM
     delete window._uploadsPortal[uid];
