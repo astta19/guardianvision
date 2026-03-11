@@ -423,15 +423,16 @@ function calcularFolha() {
 
   // Descontos por tipo de contrato
   let inss = 0, irrf = 0, baseIRRF = 0, fgts = 0, pat = 0, rat = 0, obs = [];
-  // Adicionais opcionais
-  const vtPerc   = parseFloat(document.getElementById('folhaVTPerc')?.value)    || 0;
-  const vlVT     = r2(bruto * Math.min(vtPerc / 100, 0.06)); // teto 6% CLT
-  const insalubGrau = document.getElementById('folhaInsalub')?.value || 'nenhum';
-  const SALMIN   = 1518.00;
-  const insalubridade = insalubrGrau(insalubrGrau, SALMIN);
+  // Adicionais de provento (entram no bruto antes de INSS/IRRF)
+  const SALMIN        = 1518.00;
+  const grauInsalub   = document.getElementById('folhaInsalub')?.value || 'nenhum';
+  const insalubridade = calcInsalubridade(grauInsalub, SALMIN);
   const periculosidade = document.getElementById('folhaPericulosidade')?.checked
-    ? r2(bruto * 0.30) : 0;
-  const brutoFinal = r2(bruto + insalubridade + periculosidade);
+    ? r2(sal * 0.30) : 0;  // 30% sobre salário BASE (não sobre bruto)
+  const brutoFinal    = r2(bruto + insalubridade + periculosidade);
+  // VT: desconto sobre brutoFinal (calculado após encargos, não compõe base INSS)
+  const vtPerc = parseFloat(document.getElementById('folhaVTPerc')?.value) || 0;
+  const vlVT   = r2(brutoFinal * Math.min(vtPerc / 100, 0.06));
 
   if (tipo === 'clt') {
     inss     = calcularINSS(brutoFinal);
@@ -490,7 +491,7 @@ function calcularFolha() {
 }
 
 // Helper: calcular insalubridade por grau
-function insalubrGrau(grau, salMin) {
+function calcInsalubridade(grau, salMin) {
   if (grau === 'minimo')  return r2(salMin * 0.10);
   if (grau === 'medio')   return r2(salMin * 0.20);
   if (grau === 'maximo')  return r2(salMin * 0.40);
