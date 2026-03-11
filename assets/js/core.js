@@ -550,6 +550,7 @@ document.addEventListener('keydown', e => {
     () => { const m = document.getElementById('agendaModal');       if (m?.style.display !== 'none' && typeof closeAgenda === 'function') closeAgenda(); },
     () => { const m = document.getElementById('finModal');          if (m?.style.display !== 'none' && typeof closeFinanceiro === 'function') closeFinanceiro(); },
     () => { const m = document.getElementById('folhaModal');        if (m?.style.display !== 'none' && typeof closeFolha === 'function') closeFolha(); },
+    () => { const m = document.getElementById('honModal');          if (m?.style.display !== 'none' && typeof closeHonorarios === 'function') closeHonorarios(); },
     () => { const m = document.getElementById('portalAdminModal');  if (m?.style.display !== 'none' && typeof fecharPortalAdmin === 'function') fecharPortalAdmin(); },
     () => { const m = document.getElementById('calcModal');         if (m?.style.display !== 'none') m.style.display = 'none'; },
     () => { const m = document.getElementById('statsModal');        if (m?.style.display !== 'none') m.style.display = 'none'; },
