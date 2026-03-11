@@ -118,10 +118,21 @@ function _ciAvatarHtml(uid, src, nome, sz) {
   const fs  = Math.round(sz * 0.42);
   const cor = _ciCor(uid);
   const ini = escapeHtml((nome || '?')[0].toUpperCase());
-  const fb  = `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${cor};color:#fff;font-size:${fs}px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ini}</div>`;
-  if (!src) return fb;
-  // onerror troca para div fallback inline
-  return `<img src="${escapeHtml(src)}" style="width:${sz}px;height:${sz}px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.outerHTML='${fb.replace(/'/g, "\\'")}';" alt="">`;
+  if (!src) {
+    return `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${cor};color:#fff;font-size:${fs}px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ini}</div>`;
+  }
+  // onerror chama função global — evita problemas com aspas dentro de atributo HTML
+  return `<img src="${escapeHtml(src)}" style="width:${sz}px;height:${sz}px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="ciAvatarFallback(this,'${uid}','${ini}',${sz})" alt="">`;
+}
+
+// Fallback global chamado pelo onerror do img
+function ciAvatarFallback(img, uid, ini, sz) {
+  const fs  = Math.round(sz * 0.42);
+  const cor = _ciCor(uid);
+  const div = document.createElement('div');
+  div.style.cssText = `width:${sz}px;height:${sz}px;border-radius:50%;background:${cor};color:#fff;font-size:${fs}px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
+  div.textContent = ini;
+  img.replaceWith(div);
 }
 
 function _ciAvatar(uid, sz) {
@@ -171,8 +182,6 @@ function _ciReceber(msg) {
   const key = msg.id || `${msg.user_id}_${msg.criado_em}`;
   if (_ciIds.has(key)) return;
   _ciIds.add(key);
-
-  // Atualizar cache de perfil com dados embutidos na mensagem
   if (msg.user_id && msg.nome_sender && !_ciPerfis[msg.user_id]?.nome) {
     _ciPerfis[msg.user_id] = {
       user_id:    msg.user_id,
@@ -211,7 +220,7 @@ async function abrirChatInterno() {
   if (title) title.textContent = _ciEscNome;
 
   _ciPagina = 0;
-  _ciIds.clear();
+  // NÃO limpar _ciIds aqui — mantém dedup de msgs já renderizadas via broadcast
   await _ciCarregarHistorico(false);
   _ciMarcarLidas();
   setTimeout(() => document.getElementById('ciInput')?.focus(), 100);
