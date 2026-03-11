@@ -343,6 +343,8 @@ async function saveNewClient() {
     nome_fantasia: fantasia || null,
     regime_tributario: regime || null,
     inscricao_estadual: ie || null,
+    honorario_valor:    parseFloat(document.getElementById('fHonValor')?.value) || null,
+    honorario_dia_venc: parseInt(document.getElementById('fHonDia')?.value) || 10,
     user_id: currentUser.id
   });
 
