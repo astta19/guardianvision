@@ -396,6 +396,59 @@ async function saveNewClient() {
   setCurrentCliente(novo);
   closeClientModal();
   newChat();
+  exibirChecklistOnboarding(novo);
+}
+
+// ── Checklist de onboarding ─────────────────────────────────
+function exibirChecklistOnboarding(cliente) {
+  const pendencias = [];
+  if (!cliente.cnpj)               pendencias.push({ icon: 'hash',        texto: 'Preencher CNPJ' });
+  if (!cliente.regime_tributario)  pendencias.push({ icon: 'landmark',    texto: 'Definir regime tributário' });
+  if (!cliente.nome_fantasia)      pendencias.push({ icon: 'tag',         texto: 'Adicionar nome fantasia' });
+
+  // Verificar contador vinculado e portal (async, exibe depois)
+  Promise.all([
+    sb.from('clientes_usuarios').select('id',{count:'exact',head:true}).eq('cliente_id', cliente.id),
+    sb.from('portal_tokens').select('id',{count:'exact',head:true}).eq('cliente_id', cliente.id).gt('expira_em', new Date().toISOString()),
+  ]).then(([{count: cContador}, {count: cPortal}]) => {
+    if (!cContador) pendencias.push({ icon: 'user-check', texto: 'Vincular um contador' });
+    if (!cPortal)   pendencias.push({ icon: 'link',       texto: 'Gerar link do portal' });
+    if (!pendencias.length) return; // tudo ok, não exibir
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:var(--card);border-radius:16px;padding:24px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center">
+            <i data-lucide="clipboard-list" style="width:18px;height:18px;color:#d97706"></i>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:700">Empresa cadastrada!</div>
+            <div style="font-size:12px;color:var(--text-light)">Complete o cadastro para começar</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+          ${pendencias.map(p => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+              <i data-lucide="${p.icon}" style="width:15px;height:15px;color:#d97706;flex-shrink:0"></i>
+              <span style="font-size:13px">${p.texto}</span>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="this.closest('[style*=fixed]').remove()"
+            style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text)">
+            Depois
+          </button>
+          <button onclick="openClientModal();this.closest('[style*=fixed]').remove()"
+            style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--accent);cursor:pointer;font-size:13px;color:#fff;font-weight:600">
+            Ver empresa
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    if (window.lucide) lucide.createIcons();
+  }).catch(() => {});
 }
 
 async function gerenciarAcessos(clienteId, clienteNome) {
