@@ -100,6 +100,11 @@ async function setCurrentCliente(cliente) {
   document.getElementById('headerClientName').textContent = displayName;
   badge.style.display = 'flex';
 
+  // Se honorários estiver aberto, recarregar para a nova empresa
+  if (document.getElementById('honModal')?.style.display !== 'none' && typeof honCarregar === 'function') {
+    await honCarregar();
+  }
+
   // Recarregar chats filtrados
   loadChats();
 }
