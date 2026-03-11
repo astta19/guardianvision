@@ -1751,9 +1751,10 @@
               <div class="dp-field">
                 <label class="dp-lbl">Tipo de Contrato</label>
                 <select id="dpFuncTipo" class="c-inp">
-                  <option value="clt">CLT</option>
-                  <option value="pj">PJ / Autônomo</option>
-                  <option value="estagio">Estágio</option>
+                  <option value="clt">CLT — Carteira Assinada</option>
+                  <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
+                  <option value="autonomo_rpa">Autônomo / RPA (Pessoa Física)</option>
+                  <option value="estagio">Estagiário (Lei 11.788/2008)</option>
                 </select>
               </div>
               <div class="dp-field">
@@ -1886,9 +1887,10 @@
             <div class="dp-field">
               <label class="dp-lbl">Tipo de Contrato</label>
               <select id="folhaTipoContrato" class="c-inp" onchange="calcularFolha()">
-                <option value="clt">CLT</option>
-                <option value="pj">PJ / Autônomo</option>
-                <option value="estagio">Estágio</option>
+                <option value="clt">CLT — Carteira Assinada</option>
+                <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
+                <option value="autonomo_rpa">Autônomo / RPA (Pessoa Física)</option>
+                <option value="estagio">Estagiário (Lei 11.788/2008)</option>
               </select>
             </div>
             <div class="dp-field">
@@ -1923,6 +1925,21 @@
               <label class="dp-lbl">Outros Acréscimos (R$) <small style="color:var(--text-light)">comissões, ajudas de custo…</small></label>
               <input type="number" id="folhaOutrosAcr" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Insalubridade</label>
+              <select id="folhaInsalub" class="c-inp" onchange="calcularFolha()">
+                <option value="nenhum">Nenhuma</option>
+                <option value="minimo">Mínimo (10% sal. mín.)</option>
+                <option value="medio">Médio (20% sal. mín.)</option>
+                <option value="maximo">Máximo (40% sal. mín.)</option>
+              </select>
+            </div>
+            <div class="dp-field" style="padding-top:4px">
+              <label class="dp-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" id="folhaPericulosidade" onchange="calcularFolha()" style="width:15px;height:15px;cursor:pointer">
+                <span>Periculosidade (30% s/ salário base)</span>
+              </label>
+            </div>
           </div>
 
           <div class="dp-section-lbl">Descontos Adicionais</div>
@@ -1932,7 +1949,23 @@
               <input type="number" id="folhaPensao" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Outros Descontos (R$) <small style="color:var(--text-light)">VT, VR, plano…</small></label>
+              <label class="dp-lbl">Vale Transporte — % desc. (máx 6%)</label>
+              <input type="number" id="folhaVTPerc" class="c-inp" placeholder="6" step="0.5" min="0" max="6" oninput="calcularFolha()">
+            </div>
+            <div class="dp-field span2" id="folhaPjRetencoes" style="display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <label class="dp-lbl">ISS Retido na Fonte (R$) <small style="color:var(--text-light)">municipal, 2–5%</small></label>
+                  <input type="number" id="folhaPjISS" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
+                </div>
+                <div>
+                  <label class="dp-lbl">CSRF Retida (R$) <small style="color:var(--text-light)">PIS+COFINS+CSLL 4,65%</small></label>
+                  <input type="number" id="folhaPjCSRF" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
+                </div>
+              </div>
+            </div>
+            <div class="dp-field span2">
+              <label class="dp-lbl">Outros Descontos (R$) <small style="color:var(--text-light)">VR, plano, adiantamento…</small></label>
               <input type="number" id="folhaOutrosDesc" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
           </div>
@@ -2115,6 +2148,10 @@
                 <input type="checkbox" id="dpRescAviso" checked style="width:16px;height:16px;cursor:pointer">
                 <span>Aviso Prévio Indenizado</span>
               </label>
+            </div>
+            <div class="dp-field span2">
+              <label class="dp-lbl">Saldo FGTS Acumulado (R$) <small style="color:var(--text-light)">consultar app FGTS — base da multa 40%/20%</small></label>
+              <input type="number" id="dpRescFgtsAcum" class="c-inp" placeholder="0,00" step="0.01" min="0">
             </div>
           </div>
 
