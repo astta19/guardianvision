@@ -44,7 +44,48 @@
   .deadline-row { display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border); }
   .deadline-row:last-child { border-bottom:none; }
   .deadline-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
-</style>
+
+    /* ── Honorários ─────────────────────────────────────── */
+    .hon-kpi-card {
+      padding: 12px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--bg);
+    }
+    .hon-kpi-label { font-size: 10px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: .5px; }
+    .hon-kpi-val   { font-size: 16px; font-weight: 800; color: var(--text); margin-top: 3px; }
+    .hon-grupo-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px 4px 4px; }
+    .hon-label-venc { color: #dc2626; } .hon-label-pend { color: #d97706; }
+    .hon-label-pago { color: #16a34a; } .hon-label-isen { color: #64748b; }
+    .hon-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--card); margin-bottom: 6px; transition: border-color .15s, box-shadow .15s;
+    }
+    .hon-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .hon-item-venc  { border-color: #fca5a5; background: #fff5f5; }
+    .dark .hon-item-venc { background: rgba(220,38,38,.06); border-color: #7f1d1d; }
+    .hon-item-pago  { opacity: .75; }
+    .hon-item-left  { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .hon-avatar { width: 34px; height: 34px; border-radius: 9px; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .hon-item-info  { flex: 1; min-width: 0; }
+    .hon-item-nome  { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hon-item-meta  { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; align-items: center; }
+    .hon-item-meta span { font-size: 11px; color: var(--text-light); }
+    .hon-regime-badge { padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 700 !important; }
+    .hon-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .hon-valor      { font-size: 14px; font-weight: 800; white-space: nowrap; color: var(--text); }
+    .hon-valor-pago { color: #16a34a; } .hon-valor-venc { color: #dc2626; }
+    .hon-acoes      { display: flex; gap: 4px; }
+    .hon-btn { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; color: var(--text-light); display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .hon-btn:hover       { background: var(--hover); color: var(--text); }
+    .hon-btn-pagar       { border-color: #bbf7d0; color: #16a34a; background: #f0fdf4; }
+    .hon-btn-pagar:hover { background: #dcfce7; }
+    .hon-btn-del         { border-color: #fca5a5; color: #dc2626; }
+    .hon-btn-del:hover   { background: #fef2f2; }
+    .hon-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; color: var(--text-light); text-align: center; gap: 8px; }
+    .hon-empty p { font-size: 13px; }
+    .hon-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: hon-spin .7s linear infinite; }
+    @keyframes hon-spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
 <!-- TELA DE LOADING -->
@@ -761,6 +802,10 @@
               <button class="tool-card" data-perm="financeiro" onclick="openFinanceiro(); closeDropdowns()" style="display:none">
                 <i data-lucide="wallet"></i>
                 <span>Financeiro</span>
+              </button>
+              <button class="tool-card" data-perm="honorarios" onclick="openHonorarios(); closeDropdowns()" style="display:none">
+                <i data-lucide="receipt"></i>
+                <span>Honorários</span>
               </button>
               <button class="tool-card" data-perm="perfil_empresa" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
                 <i data-lucide="building-2" style="width:20px;height:20px"></i>
@@ -2293,5 +2338,103 @@
   <!-- /MODAL FACE LOGIN -->
 
   <script src="assets/js/face.js?v=4"></script>
+
+  <!-- ══════════════════════════════════════════════════
+       MODAL: HONORÁRIOS
+  ══════════════════════════════════════════════════ -->
+  <div id="honModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+    z-index:5600;align-items:center;justify-content:center;overflow:hidden"
+    onclick="if(event.target===this)closeHonorarios()">
+    <div class="dp-modal" style="max-width:740px">
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:9px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i data-lucide="receipt" style="width:16px;height:16px;color:#16a34a"></i>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:700">Honorários</div>
+            <div style="font-size:11px;color:var(--text-light);font-weight:400">Controle de receitas do escritório</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="honRelatorioInadimplencia()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px;color:#dc2626;border-color:#fca5a5">
+            <i data-lucide="alert-triangle" style="width:12px;height:12px"></i> Inadimplência
+          </button>
+          <button onclick="honGerarCompetencia()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="zap" style="width:12px;height:12px"></i> Gerar mês
+          </button>
+          <button onclick="honNovo()" class="dp-btn-pri" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="plus" style="width:12px;height:12px"></i> Novo
+          </button>
+          <button class="dp-close-btn" onclick="closeHonorarios()">
+            <i data-lucide="x" style="width:14px;height:14px"></i>
+          </button>
+        </div>
+      </div>
+      <div class="dp-body" style="padding:0">
+        <div style="padding:16px 20px 0;background:var(--card);border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <button onclick="honNavMes(-1)" class="dp-btn-sec" style="padding:4px 12px;font-size:16px">&#8249;</button>
+            <strong id="honMesLabel" style="font-size:14px;font-weight:700">&#8212;</strong>
+            <button onclick="honNavMes(1)" class="dp-btn-sec" style="padding:4px 12px;font-size:16px">&#8250;</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+            <div class="hon-kpi-card"><div class="hon-kpi-label">Total</div><div class="hon-kpi-val" id="honKpiTotal">&#8212;</div></div>
+            <div class="hon-kpi-card" style="border-color:#bbf7d0"><div class="hon-kpi-label" style="color:#16a34a">Recebido</div><div class="hon-kpi-val" style="color:#16a34a" id="honKpiRecebido">&#8212;</div></div>
+            <div class="hon-kpi-card" style="border-color:#fde68a"><div class="hon-kpi-label" style="color:#d97706">A receber</div><div class="hon-kpi-val" style="color:#d97706" id="honKpiPendente">&#8212;</div></div>
+            <div class="hon-kpi-card" style="border-color:#fca5a5;cursor:pointer" onclick="honRelatorioInadimplencia()"><div class="hon-kpi-label" style="color:#dc2626">Inadimplentes</div><div class="hon-kpi-val" style="color:#dc2626;font-size:22px" id="honKpiInadimpl">&#8212;</div></div>
+          </div>
+        </div>
+        <div id="honCorpo" style="overflow-y:auto;max-height:360px;padding:8px 12px"></div>
+        <div id="honFormPanel" style="display:none;border-top:1px solid var(--border);padding:16px 20px;background:var(--card)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <span id="honFormTitulo" style="font-size:13px;font-weight:700">Novo Honor&#225;rio</span>
+            <button onclick="honFecharForm()" style="background:none;border:none;cursor:pointer;color:var(--text-light)"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+          </div>
+          <input type="hidden" id="honFormId">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Valor (R$) *</label>
+              <input id="honFormValor" type="number" min="0" step="0.01" placeholder="0,00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Dia de vencimento *</label>
+              <input id="honFormDia" type="number" min="1" max="28" placeholder="10" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Status</label>
+              <select id="honFormStatus" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="isento">Isento</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Descri&#231;&#227;o</label>
+              <input id="honFormDescricao" type="text" placeholder="Honor&#225;rios cont&#225;beis..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Data de pagamento</label>
+              <input id="honFormPgto" type="date" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Observa&#231;&#227;o</label>
+            <input id="honFormObs" type="text" placeholder="Opcional..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button onclick="honFecharForm()" class="dp-btn-sec">Cancelar</button>
+            <button id="honSalvarBtn" onclick="honSalvar()" class="dp-btn-pri">
+              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /honModal -->
+  <script src="honorarios.js"></script>
 </body>
 </html>
