@@ -372,6 +372,7 @@ async function showApp() {
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
   iniciarPollingUploads();
+  if (isMaster()) carregarDashboardMaster();
   if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
     if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
   });
@@ -510,7 +511,7 @@ async function carregarKPIs() {
 
     dashboard.style.display = 'block';
     if (window.lucide) lucide.createIcons();
-    if (isMaster()) carregarDashboardMaster();
+
   } catch(e) {
     console.error('KPI error:', e);
   }
@@ -560,9 +561,13 @@ document.addEventListener('keydown', e => {
 
 // ── Dashboard Master ─────────────────────────────────────────
 async function carregarDashboardMaster() {
+  if (!isMaster()) return;
   const el = document.getElementById('dashboardMaster');
   if (!el) return;
   el.style.display = 'block';
+  // Garantir que o container pai (kpiDashboard) também esteja visível
+  const kpi = document.getElementById('kpiDashboard');
+  if (kpi) kpi.style.display = 'block';
 
   try {
     const hoje = new Date();
