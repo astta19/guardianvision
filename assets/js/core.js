@@ -368,6 +368,8 @@ async function showApp() {
   }
   applyAdminUI();
   checkConnection();
+  // Chat interno: inicializar para admin e contadores com permissão
+  if (typeof ciInit === 'function') ciInit();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
