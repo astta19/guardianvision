@@ -341,6 +341,106 @@ async function finExcluir(id) {
   await finCarregar();
 }
 
+// ── Exportações ──────────────────────────────────────────────
+function finExportarPDF() {
+  const lista = finFiltrados();
+  const mesLabel = `${MESES[lancFiltroMes]}/${lancFiltroAno}`;
+  const cliente = typeof currentCliente !== 'undefined' ? (currentCliente?.razao_social || '') : '';
+
+  const totalRec  = lista.filter(l => l.tipo === 'receita').reduce((s, l) => s + (+l.valor||0), 0);
+  const totalDesp = lista.filter(l => l.tipo === 'despesa').reduce((s, l) => s + (+l.valor||0), 0);
+  const saldo     = totalRec - totalDesp;
+
+  const linhas = lista.map(l => {
+    const data = new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR');
+    const sinal = l.tipo === 'receita' ? '+' : '-';
+    const cor   = l.tipo === 'receita' ? '#16a34a' : '#dc2626';
+    return `
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:6px 8px;font-size:12px">${data}</td>
+        <td style="padding:6px 8px;font-size:12px">${l.descricao||''}</td>
+        <td style="padding:6px 8px;font-size:12px;color:#64748b">${l.categoria||''}</td>
+        <td style="padding:6px 8px;font-size:12px;text-align:center">
+          <span style="padding:2px 6px;border-radius:8px;font-size:11px;font-weight:600;
+            background:${l.status==='pago'?'#dcfce7':'#fef9c3'};
+            color:${l.status==='pago'?'#16a34a':'#d97706'}">
+            ${l.status==='pago'?'Pago':'Pendente'}
+          </span>
+        </td>
+        <td style="padding:6px 8px;font-size:12px;text-align:right;color:${cor};font-weight:600">
+          ${sinal} R$ ${fmtBRL(+l.valor)}
+        </td>
+      </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>Financeiro ${mesLabel}</title>
+    <style>body{font-family:Arial,sans-serif;margin:32px;color:#1e293b}
+    h2{margin:0 0 4px}p{margin:0 0 16px;color:#64748b;font-size:13px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f8fafc;padding:8px;font-size:12px;text-align:left;border-bottom:2px solid #e2e8f0}
+    .resumo{display:flex;gap:24px;margin-bottom:20px}
+    .resumo-item{padding:12px 20px;border-radius:8px;background:#f8fafc}
+    .resumo-label{font-size:11px;color:#64748b}
+    .resumo-valor{font-size:16px;font-weight:700;margin-top:2px}
+    @media print{button{display:none}}</style>
+  </head><body>
+    <h2>Extrato Financeiro — ${mesLabel}</h2>
+    <p>${cliente ? cliente + ' · ' : ''}Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
+    <div class="resumo">
+      <div class="resumo-item"><div class="resumo-label">Receitas</div>
+        <div class="resumo-valor" style="color:#16a34a">R$ ${fmtBRL(totalRec)}</div></div>
+      <div class="resumo-item"><div class="resumo-label">Despesas</div>
+        <div class="resumo-valor" style="color:#dc2626">R$ ${fmtBRL(totalDesp)}</div></div>
+      <div class="resumo-item"><div class="resumo-label">Saldo</div>
+        <div class="resumo-valor" style="color:${saldo>=0?'#16a34a':'#dc2626'}">R$ ${fmtBRL(saldo)}</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Status</th><th style="text-align:right">Valor</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 400);
+}
+
+function finExportarExcel() {
+  const lista = finFiltrados();
+  const mesLabel = `${MESES[lancFiltroMes]}_${lancFiltroAno}`;
+
+  const header = ['Data Venc','Data Pgto','Tipo','Categoria','Descrição','Valor','Status','Observação'];
+  const rows = lista.map(l => [
+    l.data_venc || '',
+    l.data_pgto || '',
+    l.tipo === 'receita' ? 'Receita' : 'Despesa',
+    l.categoria || '',
+    l.descricao || '',
+    +l.valor || 0,
+    l.status === 'pago' ? 'Pago' : 'Pendente',
+    l.observacao || '',
+  ]);
+
+  // Montar CSV (abre no Excel/Sheets sem dependência externa)
+  const csv = [header, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+    .join('\r\n');
+
+  const bom = '﻿'; // UTF-8 BOM para Excel reconhecer acentos
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), {
+    href: url,
+    download: `Financeiro_${mesLabel}.csv`
+  });
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
 function finNavMes(delta) {
   lancFiltroMes += delta;
   if (lancFiltroMes < 0)  { lancFiltroMes = 11; lancFiltroAno--; }
