@@ -2382,10 +2382,13 @@
           </div>
           <div>
             <div style="font-size:14px;font-weight:700">Honorários</div>
-            <div style="font-size:11px;color:var(--text-light);font-weight:400">Controle de receitas do escritório</div>
+            <div id="honSubtitulo" style="font-size:11px;color:var(--text-light);font-weight:400">Controle de receitas do escritório</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
+          <button id="honToggleBtn" onclick="honToggleFiltro()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px">
+            <i data-lucide="filter" style="width:12px;height:12px"></i> <span id="honToggleLbl">Todos</span>
+          </button>
           <button onclick="honRelatorioInadimplencia()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px;color:#dc2626;border-color:#fca5a5">
             <i data-lucide="alert-triangle" style="width:12px;height:12px"></i> Inadimplência
           </button>
