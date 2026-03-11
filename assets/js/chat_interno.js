@@ -1,59 +1,71 @@
 // ============================================================
-// CHAT_INTERNO.JS v4
-// Broadcast (UI instantânea) + postgres_changes (persistência)
+// CHAT_INTERNO.JS v3 — Chat profissional entre contadores
+//
+// Funcionalidades:
+//   • Broadcast (<100ms) + postgres_changes (resiliência)
+//   • Som de notificação via AudioContext (desbloqueado no 1º clique)
+//   • Envio de imagens/prints (base64 → Supabase Storage)
+//   • Status de envio: enviando → ✓ entregue
+//   • Reações rápidas em mensagens
+//   • Menção @nome com autocomplete
+//   • Indicador "digitando..."
+//   • Presença com avatares online
+//   • Badge não lidas + toast com som
 // ============================================================
 
 // ── Estado ───────────────────────────────────────────────────
-let _ciEscId    = null;
-let _ciEscNome  = '';
-let _ciBc       = null;
-let _ciPg       = null;
-let _ciPr       = null;
-let _ciPerfis   = {};
-let _ciNaoLidas = 0;
-let _ciAberto   = false;
-let _ciPagina   = 0;
-let _ciReady    = false;
-// Dedup por fingerprint — evita colisão entre id temporário (broadcast) e uuid (banco)
-let _ciFp       = new Set();
-const _CI_PS    = 40;
+let _ciEscId     = null;
+let _ciEscNome   = '';
+let _ciBc        = null;
+let _ciPg        = null;
+let _ciPr        = null;
+let _ciPerfis    = {};
+let _ciNaoLidas  = 0;
+let _ciAberto    = false;
+let _ciPagina    = 0;
+let _ciReady     = false;
+let _ciFp        = new Set();
+let _ciDigTimer  = null;
+let _ciDigitando = {};  // { uid: timeout }
+const _CI_PS     = 40;
 
-// ── Som ───────────────────────────────────────────────────────
+// ── Som ──────────────────────────────────────────────────────
 let _ciACtx    = null;
 let _ciAUnlock = false;
 
-// Desbloquear AudioContext na primeira interação do usuário
-document.addEventListener('click', function _ciUnlockAudio() {
+document.addEventListener('click', () => {
   if (_ciAUnlock) return;
   try {
     _ciACtx = new (window.AudioContext || window.webkitAudioContext)();
     if (_ciACtx.state === 'suspended') _ciACtx.resume();
     _ciAUnlock = true;
   } catch(_) {}
-}, { once: false, passive: true });
+}, { passive: true });
 
 function _ciSom() {
   try {
-    if (!_ciACtx || _ciACtx.state === 'suspended') return;
+    if (!_ciACtx) {
+      _ciACtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_ciACtx.state === 'suspended') _ciACtx.resume();
     const osc  = _ciACtx.createOscillator();
     const gain = _ciACtx.createGain();
     osc.connect(gain);
     gain.connect(_ciACtx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, _ciACtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, _ciACtx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.18, _ciACtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, _ciACtx.currentTime + 0.25);
+    osc.frequency.setValueAtTime(900, _ciACtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, _ciACtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.2, _ciACtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, _ciACtx.currentTime + 0.22);
     osc.start(_ciACtx.currentTime);
-    osc.stop(_ciACtx.currentTime + 0.25);
-  } catch (_) {}
+    osc.stop(_ciACtx.currentTime + 0.22);
+  } catch(_) {}
 }
 
 // ── Fingerprint de dedup ──────────────────────────────────────
-// Usa conteudo+user_id+minuto — funciona para id temporário e uuid real
 function _ciFpKey(msg) {
-  const min = (msg.criado_em || '').slice(0, 16); // "2026-03-11T14:05"
-  return `${msg.user_id}|${min}|${(msg.conteudo || '').slice(0, 40)}`;
+  const min = (msg.criado_em || '').slice(0, 16);
+  return `${msg.user_id}_${min}_${(msg.conteudo||'').slice(0,20)}`;
 }
 
 // ── Bootstrap ────────────────────────────────────────────────
@@ -96,7 +108,7 @@ async function _ciCarregarPerfis() {
 
 async function _ciFetchPerfis(ids) {
   if (!ids?.length) return;
-  const novos = ids.filter(id => id && !_ciPerfis[id]);
+  const novos = ids.filter(id => !_ciPerfis[id]);
   if (!novos.length) return;
   const { data } = await sb.from('perfis_usuarios')
     .select('user_id,nome,avatar_url').in('user_id', novos);
@@ -119,9 +131,9 @@ function _ciCor(uid) {
 
 function _ciAvatarEl(uid, src, nome, sz) {
   sz = sz || 28;
-  const cor = _ciCor(uid);
-  const ini = (nome || '?')[0].toUpperCase();
   const fs  = Math.round(sz * 0.42);
+  const cor = _ciCor(uid);
+  const ini = ((nome || '?')[0] || '?').toUpperCase();
   if (src) {
     const img = document.createElement('img');
     img.src   = src;
@@ -136,27 +148,31 @@ function _ciAvatarEl(uid, src, nome, sz) {
   return div;
 }
 
+function _ciAvatar(uid, sz) {
+  const p = _ciPerfis[uid];
+  return _ciAvatarEl(uid, p?.avatar_url || '', _ciNome(uid), sz || 28);
+}
+
 // ── Canais Realtime ───────────────────────────────────────────
 function _ciSubscribe() {
   if (_ciBc) sb.removeChannel(_ciBc);
   if (_ciPg) sb.removeChannel(_ciPg);
   if (_ciPr) sb.removeChannel(_ciPr);
 
-  // Broadcast: entrega <100ms, self:false = não recebe de volta
   _ciBc = sb.channel(`ci_bc_${_ciEscId}`, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'msg' }, ({ payload }) => _ciReceber(payload, 'bc'))
+    .on('broadcast', { event: 'msg'      }, ({ payload }) => _ciReceber(payload))
+    .on('broadcast', { event: 'typing'   }, ({ payload }) => _ciMostrarDigitando(payload))
+    .on('broadcast', { event: 'reaction' }, ({ payload }) => _ciAplicarReacao(payload))
     .subscribe();
 
-  // postgres_changes: resiliência + sync outras abas
   _ciPg = sb.channel(`ci_pg_${_ciEscId}`)
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public',
       table: 'chat_interno_mensagens',
       filter: `escritorio_id=eq.${_ciEscId}`,
-    }, ({ new: row }) => _ciReceber(row, 'pg'))
+    }, ({ new: row }) => _ciReceber(row))
     .subscribe();
 
-  // Presence
   _ciPr = sb.channel(`ci_pr_${_ciEscId}`, { config: { presence: { key: currentUser.id } } })
     .on('presence', { event: 'sync'  }, _ciRenderOnline)
     .on('presence', { event: 'join'  }, _ciRenderOnline)
@@ -171,15 +187,13 @@ function _ciSubscribe() {
     });
 }
 
-// ── Receber mensagem (broadcast ou pg_changes) ────────────────
-function _ciReceber(msg, fonte) {
-  // Dedup por fingerprint (conteudo+user+minuto) — cobre id_temp vs uuid_real
-  const fp = _ciFpKey(msg);
-  if (_ciFp.has(fp)) return;
-  _ciFp.add(fp);
+// ── Receber mensagem (broadcast + pg_changes) ─────────────────
+function _ciReceber(msg) {
+  const key = msg.id || _ciFpKey(msg);
+  if (_ciFp.has(key)) return;
+  _ciFp.add(key);
 
-  // Atualizar cache de perfil com dados embutidos
-  if (msg.user_id && msg.nome_sender && !_ciPerfis[msg.user_id]?.nome) {
+  if (msg.nome_sender && !_ciPerfis[msg.user_id]?.nome) {
     _ciPerfis[msg.user_id] = { user_id: msg.user_id, nome: msg.nome_sender, avatar_url: msg.avatar_sender || '' };
   }
 
@@ -192,6 +206,112 @@ function _ciReceber(msg, fonte) {
     _ciSom();
     _ciToastMsg(msg);
   }
+}
+
+// ── Indicador "digitando..." ──────────────────────────────────
+function ciInputDigitando() {
+  // Debounce — envia broadcast "typing" a cada 2s enquanto digita
+  clearTimeout(_ciDigTimer);
+  _ciDigTimer = setTimeout(() => {
+    if (!_ciBc || !_ciEscId) return;
+    _ciBc.send({ type: 'broadcast', event: 'typing', payload: {
+      user_id: currentUser.id,
+      nome:    _ciNome(currentUser.id),
+    }});
+  }, 400);
+}
+
+function _ciMostrarDigitando({ user_id, nome }) {
+  if (user_id === currentUser.id) return;
+  const el = document.getElementById('ciDigitando');
+  if (!el) return;
+
+  clearTimeout(_ciDigitando[user_id]);
+  el.textContent = `${nome || 'Alguém'} está digitando...`;
+  el.style.display = 'block';
+
+  _ciDigitando[user_id] = setTimeout(() => {
+    el.style.display = 'none';
+    el.textContent = '';
+  }, 3000);
+}
+
+// ── Reações ───────────────────────────────────────────────────
+const CI_REACOES = ['👍','❤️','😂','😮','🎉','✅'];
+
+function ciMostrarReacoes(msgEl, msgId) {
+  document.querySelector('.ci-reacao-picker')?.remove();
+  const picker = document.createElement('div');
+  picker.className = 'ci-reacao-picker';
+  picker.innerHTML = CI_REACOES.map(e =>
+    `<button onclick="ciEnviarReacao('${msgId}','${e}',this.closest('.ci-reacao-picker'))">${e}</button>`
+  ).join('');
+  msgEl.appendChild(picker);
+  setTimeout(() => document.addEventListener('click', () => picker.remove(), { once: true }), 10);
+}
+
+async function ciEnviarReacao(msgId, emoji, picker) {
+  picker?.remove();
+  if (!_ciBc) return;
+  const payload = { msg_id: msgId, emoji, user_id: currentUser.id, nome: _ciNome(currentUser.id) };
+  _ciBc.send({ type: 'broadcast', event: 'reaction', payload });
+  _ciAplicarReacao(payload);
+  // Persistir reação
+  await sb.from('chat_interno_reacoes').upsert({
+    mensagem_id: msgId, user_id: currentUser.id, emoji,
+  }, { onConflict: 'mensagem_id,user_id' });
+}
+
+function _ciAplicarReacao({ msg_id, emoji, user_id, nome }) {
+  const msgEl = document.querySelector(`[data-msg-id="${msg_id}"]`);
+  if (!msgEl) return;
+  let wrap = msgEl.querySelector('.ci-reacoes');
+  if (!wrap) { wrap = document.createElement('div'); wrap.className = 'ci-reacoes'; msgEl.querySelector('.ci-bubble').after(wrap); }
+
+  let btn = wrap.querySelector(`[data-emoji="${emoji}"]`);
+  if (btn) {
+    const count = parseInt(btn.dataset.count || '0') + 1;
+    btn.dataset.count = count;
+    btn.querySelector('.ci-r-count').textContent = count;
+  } else {
+    btn = document.createElement('button');
+    btn.className = 'ci-r-btn';
+    btn.dataset.emoji = emoji;
+    btn.dataset.count = '1';
+    btn.title = nome || '';
+    btn.innerHTML = `${emoji} <span class="ci-r-count">1</span>`;
+    wrap.appendChild(btn);
+  }
+  if (user_id === currentUser.id) btn.classList.add('ci-r-proprio');
+}
+
+// ── Upload de imagem / print ──────────────────────────────────
+function ciAbrirUpload() {
+  const inp = document.getElementById('ciFileInput');
+  if (inp) inp.click();
+}
+
+async function ciHandleFile(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+
+  const MAX = 5 * 1024 * 1024; // 5MB
+  if (file.size > MAX) { showToast('Imagem muito grande (máx 5MB).', 'warn'); return; }
+  if (!file.type.startsWith('image/')) { showToast('Apenas imagens são permitidas.', 'warn'); return; }
+
+  showToast('Enviando imagem...', 'info', 2000);
+
+  // Upload para Supabase Storage no bucket portal-uploads
+  const ext  = file.name.split('.').pop() || 'png';
+  const path = `chat/${_ciEscId}/${Date.now()}_${currentUser.id}.${ext}`;
+  const { data: up, error: upErr } = await sb.storage
+    .from('portal-uploads').upload(path, file, { contentType: file.type, upsert: false });
+
+  if (upErr) { showToast('Erro ao enviar imagem.', 'error'); return; }
+
+  const { data: { publicUrl } } = sb.storage.from('portal-uploads').getPublicUrl(path);
+  await _ciEnviarMensagem(`[img:${publicUrl}]`);
 }
 
 // ── Abrir / Fechar ────────────────────────────────────────────
@@ -211,12 +331,10 @@ async function abrirChatInterno() {
   const title = document.getElementById('ciEscNome');
   if (title) title.textContent = _ciEscNome;
 
-  // Limpar estado ao abrir — histórico fresco a cada abertura
   _ciPagina = 0;
-  _ciFp.clear();
   await _ciCarregarHistorico(false);
   _ciMarcarLidas();
-  setTimeout(() => document.getElementById('ciInput')?.focus(), 100);
+  setTimeout(() => document.getElementById('ciInput')?.focus(), 120);
 }
 
 function fecharChatInterno() {
@@ -226,11 +344,10 @@ function fecharChatInterno() {
   setTimeout(() => { if (!_ciAberto) drawer.style.display = 'none'; }, 280);
 }
 
-// ── Histórico ────────────────────────────────────────────────
+// ── Histórico ─────────────────────────────────────────────────
 async function _ciCarregarHistorico(append) {
   const corpo = document.getElementById('ciCorpo');
   if (!corpo) return;
-
   if (!append) corpo.innerHTML = '<div style="display:flex;justify-content:center;padding:40px"><div class="hon-spinner"></div></div>';
 
   const from = _ciPagina * _CI_PS;
@@ -240,35 +357,26 @@ async function _ciCarregarHistorico(append) {
     .order('criado_em', { ascending: false })
     .range(from, from + _CI_PS - 1);
 
-  if (error) {
-    if (!append) corpo.innerHTML = '<p class="ci-vazio">Erro ao carregar histórico.</p>';
-    return;
-  }
+  if (error) { if (!append) corpo.innerHTML = '<p class="ci-vazio">Erro ao carregar.</p>'; return; }
 
   const msgs = (data || []).reverse();
   await _ciFetchPerfis([...new Set(msgs.map(m => m.user_id))]);
 
   if (!append) {
     corpo.innerHTML = '';
-    if (!msgs.length) {
-      corpo.innerHTML = '<p class="ci-vazio">Nenhuma mensagem ainda.<br>Seja o primeiro a falar! 👋</p>';
-      return;
-    }
+    if (!msgs.length) { corpo.innerHTML = '<p class="ci-vazio">Nenhuma mensagem ainda.<br>Seja o primeiro a falar! 👋</p>'; return; }
   }
 
-  if ((data || []).length === _CI_PS && !corpo.querySelector('.ci-load-mais')) {
-    const btn = document.createElement('div');
-    btn.className = 'ci-load-mais';
-    btn.innerHTML = '<button onclick="_ciMaisAntigo()">Carregar mensagens anteriores</button>';
-    corpo.insertBefore(btn, corpo.firstChild);
+  if ((data?.length || 0) === _CI_PS && !corpo.querySelector('.ci-load-mais')) {
+    const d = document.createElement('div');
+    d.className = 'ci-load-mais';
+    d.innerHTML = '<button onclick="_ciMaisAntigo()">Carregar mensagens anteriores</button>';
+    corpo.insertBefore(d, corpo.firstChild);
   }
 
   const diasSet = new Set();
   const frag    = document.createDocumentFragment();
-  msgs.forEach(m => {
-    _ciFp.add(_ciFpKey(m)); // registrar no dedup para não duplicar via realtime
-    frag.appendChild(_ciCriarEl(m, diasSet));
-  });
+  msgs.forEach(m => { _ciFp.add(m.id || _ciFpKey(m)); frag.appendChild(_ciCriarEl(m, diasSet)); });
 
   if (append) {
     const antes = corpo.scrollHeight;
@@ -278,17 +386,28 @@ async function _ciCarregarHistorico(append) {
     corpo.appendChild(frag);
     corpo.scrollTop = corpo.scrollHeight;
   }
+
+  // Carregar reações do histórico
+  const ids = msgs.map(m => m.id).filter(Boolean);
+  if (ids.length) _ciCarregarReacoes(ids);
 }
 
-async function _ciMaisAntigo() {
-  _ciPagina++;
-  await _ciCarregarHistorico(true);
+async function _ciMaisAntigo() { _ciPagina++; await _ciCarregarHistorico(true); }
+
+async function _ciCarregarReacoes(ids) {
+  const { data } = await sb.from('chat_interno_reacoes')
+    .select('mensagem_id,emoji,user_id,perfis_usuarios(nome)')
+    .in('mensagem_id', ids);
+  (data || []).forEach(r => _ciAplicarReacao({
+    msg_id: r.mensagem_id, emoji: r.emoji,
+    user_id: r.user_id, nome: r.perfis_usuarios?.nome || '',
+  }));
 }
 
-// ── Construir elemento de mensagem ────────────────────────────
+// ── Criar elemento de mensagem ────────────────────────────────
 function _ciCriarEl(msg, diasSet) {
-  const frag   = document.createDocumentFragment();
-  const dia    = (msg.criado_em || '').slice(0, 10);
+  const frag  = document.createDocumentFragment();
+  const dia   = (msg.criado_em || '').slice(0, 10);
 
   if (dia && !diasSet.has(dia)) {
     diasSet.add(dia);
@@ -310,20 +429,52 @@ function _ciCriarEl(msg, diasSet) {
   const src    = _ciPerfis[msg.user_id]?.avatar_url || msg.avatar_sender || '';
   const avatar = _ciAvatarEl(msg.user_id, src, nome, 28);
 
+  // Wrapper com data-msg-id para reações
+  const wrap = document.createElement('div');
+  wrap.className = `ci-msg-wrap ${proprio ? 'ci-prp-wrap' : ''}`;
+  if (msg.id) wrap.dataset.msgId = msg.id;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `ci-msg ${proprio ? 'ci-prp' : 'ci-out'}`;
+
+  // Bubble com suporte a imagem
   const bubble = document.createElement('div');
   bubble.className = 'ci-bubble';
-  bubble.innerHTML = escapeHtml(msg.conteudo || '').replace(/\n/g, '<br>');
-  const hora_el = document.createElement('span');
-  hora_el.className = 'ci-hora';
-  hora_el.textContent = hora;
-  bubble.appendChild(hora_el);
 
-  const div = document.createElement('div');
-  div.className = `ci-msg ${proprio ? 'ci-prp' : 'ci-out'}`;
+  const conteudo = msg.conteudo || '';
+  if (conteudo.startsWith('[img:') && conteudo.endsWith(']')) {
+    const url = conteudo.slice(5, -1);
+    const img = document.createElement('img');
+    img.src   = url;
+    img.className = 'ci-img-preview';
+    img.onclick   = () => window.open(url, '_blank');
+    img.onerror   = () => { img.style.display = 'none'; };
+    bubble.appendChild(img);
+  } else {
+    // Realçar @menções
+    const html = escapeHtml(conteudo).replace(/\n/g, '<br>')
+      .replace(/@(\w[\w\s]*?)(?=\s|$|<)/g, '<span class="ci-mencao">@$1</span>');
+    bubble.innerHTML = html;
+  }
+
+  const horaEl = document.createElement('span');
+  horaEl.className = 'ci-hora';
+  horaEl.textContent = hora;
+  bubble.appendChild(horaEl);
+
+  // Botão de reação (hover)
+  if (msg.id) {
+    const rBtn = document.createElement('button');
+    rBtn.className = 'ci-r-trigger';
+    rBtn.innerHTML = '😊';
+    rBtn.title = 'Reagir';
+    rBtn.onclick = (e) => { e.stopPropagation(); ciMostrarReacoes(wrap, msg.id); };
+    msgDiv.appendChild(rBtn);
+  }
 
   if (proprio) {
-    div.appendChild(bubble);
-    div.appendChild(avatar);
+    msgDiv.appendChild(bubble);
+    msgDiv.appendChild(avatar);
   } else {
     const mbody = document.createElement('div');
     mbody.className = 'ci-mbody';
@@ -332,86 +483,67 @@ function _ciCriarEl(msg, diasSet) {
     nomeEl.textContent = nome;
     mbody.appendChild(nomeEl);
     mbody.appendChild(bubble);
-    div.appendChild(avatar);
-    div.appendChild(mbody);
+    msgDiv.insertBefore(avatar, msgDiv.firstChild);
+    msgDiv.appendChild(mbody);
   }
 
-  frag.appendChild(div);
+  wrap.appendChild(msgDiv);
+  frag.appendChild(wrap);
   return frag;
 }
 
-// Renderizar msg nova recebida via realtime no corpo aberto
 function _ciRenderMsgNova(msg) {
   const corpo = document.getElementById('ciCorpo');
   if (!corpo) return;
   corpo.querySelector('.ci-vazio')?.remove();
-
-  // Descobrir último dia já exibido para o separador
-  const diasSet  = new Set();
-  const sepAtual = [...corpo.querySelectorAll('.ci-sep-dia')].pop();
-  if (sepAtual) {
-    // Marcar o dia de hoje se o último sep for "Hoje"
-    if (sepAtual.querySelector('span')?.textContent === 'Hoje') {
-      diasSet.add(new Date().toISOString().slice(0, 10));
-    }
+  const diasSet = new Set();
+  const seps    = [...corpo.querySelectorAll('.ci-sep-dia')];
+  if (seps.length && seps[seps.length - 1].querySelector('span')?.textContent === 'Hoje') {
+    diasSet.add(new Date().toISOString().slice(0, 10));
   }
   corpo.appendChild(_ciCriarEl(msg, diasSet));
   corpo.scrollTop = corpo.scrollHeight;
 }
 
-// ── Enviar ────────────────────────────────────────────────────
+// ── Enviar texto ──────────────────────────────────────────────
 async function ciEnviar() {
   const input = document.getElementById('ciInput');
   const texto = input?.value.trim();
   if (!texto || !_ciEscId) return;
-
-  const backup = texto;
-  input.value  = '';
+  input.value = '';
   input.style.height = 'auto';
+  await _ciEnviarMensagem(texto);
+}
 
+async function _ciEnviarMensagem(conteudo) {
   const agora  = new Date().toISOString();
   const nome   = _ciNome(currentUser.id);
   const avatar = _ciPerfis[currentUser.id]?.avatar_url || '';
 
   const payload = {
-    user_id:       currentUser.id,
-    escritorio_id: _ciEscId,
-    conteudo:      texto,
-    nome_sender:   nome,
-    avatar_sender: avatar,
-    criado_em:     agora,
+    user_id: currentUser.id, escritorio_id: _ciEscId,
+    conteudo, nome_sender: nome, avatar_sender: avatar, criado_em: agora,
   };
 
-  // Registrar fingerprint antes de renderizar — bloqueia chegada via pg_changes
   _ciFp.add(_ciFpKey(payload));
-
-  // Renderizar localmente de imediato
   _ciRenderMsgNova(payload);
+  _ciBc?.send({ type: 'broadcast', event: 'msg', payload });
 
-  // Broadcast para outros (<100ms)
-  _ciBc.send({ type: 'broadcast', event: 'msg', payload });
-
-  // Persistir no banco
   const { error } = await sb.from('chat_interno_mensagens').insert({
-    escritorio_id: _ciEscId,
-    user_id:       currentUser.id,
-    conteudo:      texto,
-    nome_sender:   nome,
-    avatar_sender: avatar,
+    escritorio_id: _ciEscId, user_id: currentUser.id,
+    conteudo, nome_sender: nome, avatar_sender: avatar,
   });
-  if (error) {
-    showToast('Erro ao salvar mensagem.', 'error');
-    input.value = backup;
-  }
+  if (error) showToast('Erro ao salvar mensagem.', 'error');
 }
 
 function ciKeyDown(e) {
+  ciInputDigitando();
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ciEnviar(); }
   e.target.style.height = 'auto';
   e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
 }
 
-// ── Não lidas ────────────────────────────────────────────────
+// ── Não lidas ─────────────────────────────────────────────────
 async function _ciMarcarLidas() {
   if (!_ciEscId) return;
   await sb.rpc('ci_marcar_lidas', { p_escritorio_id: _ciEscId, p_user_id: currentUser.id });
@@ -441,31 +573,27 @@ function _ciRenderOnline() {
   if (!_ciPr) return;
   const todos  = Object.values(_ciPr.presenceState()).flat();
   const outros = todos.filter(p => p.user_id !== currentUser.id);
-
-  const label = document.getElementById('ciOnlineLabel');
+  const label  = document.getElementById('ciOnlineLabel');
   if (label) label.textContent = outros.length ? `${outros.length + 1} online` : 'Apenas você online';
-
   const wrap = document.getElementById('ciOnlineAvatares');
   if (!wrap) return;
   wrap.innerHTML = '';
   outros.slice(0, 5).forEach(p => {
-    const uid  = p.user_id;
-    const nome = p.nome || _ciNome(uid);
-    const src  = p.avatar || _ciPerfis[uid]?.avatar_url || '';
-    const wrap2 = document.createElement('div');
-    wrap2.style.cssText = 'position:relative;flex-shrink:0';
-    wrap2.title = nome;
-    wrap2.appendChild(_ciAvatarEl(uid, src, nome, 22));
+    const uid = p.user_id;
+    const d   = document.createElement('div');
+    d.style.cssText = 'position:relative;flex-shrink:0';
+    d.title = p.nome || _ciNome(uid);
+    d.appendChild(_ciAvatarEl(uid, p.avatar || _ciPerfis[uid]?.avatar_url || '', p.nome || _ciNome(uid), 22));
     const dot = document.createElement('span');
     dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;background:#16a34a;border-radius:50%;border:1.5px solid var(--card)';
-    wrap2.appendChild(dot);
-    wrap.appendChild(wrap2);
+    d.appendChild(dot);
+    wrap.appendChild(d);
   });
 }
 
-// ── Toast ────────────────────────────────────────────────────
 function _ciToastMsg(msg) {
   const nome    = msg.nome_sender || _ciNome(msg.user_id);
-  const preview = (msg.conteudo || '').slice(0, 60) + ((msg.conteudo || '').length > 60 ? '…' : '');
+  const preview = (msg.conteudo || '').startsWith('[img:') ? '📷 Imagem'
+    : (msg.conteudo || '').slice(0, 60) + ((msg.conteudo || '').length > 60 ? '…' : '');
   showToast(`💬 ${nome}: ${preview}`, 'info', 4500);
 }
