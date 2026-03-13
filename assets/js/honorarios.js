@@ -164,7 +164,7 @@ function honRenderItem(h) {
   const regime    = cl.regime_tributario || '';
   const venceu    = _honVencido(h);
   const dataVenc  = _honDataVenc(h);
-  const dataPgto  = h.data_pgto ? new Date(h.data_pgto+'T00:00').toLocaleDateString('pt-BR') : null;
+  const dataPgto  = h.data_pgto ? new Date(h.data_pgto+'T12:00').toLocaleDateString('pt-BR') : null;
   const regimeCor = _honRegimeCor(regime);
 
   return `
@@ -507,7 +507,7 @@ function honGerarRecibo(id) {
   const nome    = cl.nome_fantasia || cl.razao_social || '—';
   const regime  = cl.regime_tributario || '';
   const dataVenc = _honDataVenc(h).toLocaleDateString('pt-BR');
-  const dataPgto = h.data_pgto ? new Date(h.data_pgto+'T00:00').toLocaleDateString('pt-BR') : null;
+  const dataPgto = h.data_pgto ? new Date(h.data_pgto+'T12:00').toLocaleDateString('pt-BR') : null;
   const escritorio = currentUser?.user_metadata?.nome || currentUser?.email || 'Escritório';
   const hoje    = new Date().toLocaleDateString('pt-BR');
 
