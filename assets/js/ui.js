@@ -182,8 +182,8 @@ async function carregarChatCompartilhado(token) {
 async function toggleDropdown(id) {
   const el = document.getElementById(id);
   if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  document.querySelectorAll('.dropdown-menu').forEach(d => d.style.display = 'none');
+  const isOpen = el.style.display === 'block';
+  closeDropdowns(); // fechar todos antes
   el.style.display = isOpen ? 'none' : 'block';
 }
 
@@ -447,7 +447,10 @@ function copyShareLink() {
 }
 
 function closeDropdowns() {
-  document.querySelectorAll('.hdr-dropdown').forEach(d => d.classList.remove('on'));
+  document.querySelectorAll('.hdr-dropdown').forEach(d => {
+    d.style.display = 'none';
+    d.classList.remove('on');
+  });
 }
 
 
