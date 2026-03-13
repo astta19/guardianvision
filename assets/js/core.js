@@ -13,6 +13,28 @@ let currentCliente = null;
 let currentChat    = { id: null, title: 'Nova Conversa', messages: [] };
 let perfilCache    = null;
 let allChats       = [];
+
+// Cache do escritório do usuário atual — usado em inserts de todas as tabelas
+let _escIdCache = null;
+
+// Retorna o escritorio_id do usuário atual (com cache).
+// Retorna null silenciosamente se não encontrar — não quebra fluxo.
+async function getEscritorioIdAtual() {
+  if (_escIdCache) return _escIdCache;
+  if (!currentUser) return null;
+  try {
+    const { data } = await sb.from('escritorios').select('id')
+      .eq('owner_id', currentUser.id).limit(1);
+    _escIdCache = data?.[0]?.id || null;
+    // Se não for owner, verificar se é membro
+    if (!_escIdCache) {
+      const { data: mem } = await sb.from('escritorio_usuarios').select('escritorio_id')
+        .eq('user_id', currentUser.id).limit(1);
+      _escIdCache = mem?.[0]?.escritorio_id || null;
+    }
+    return _escIdCache;
+  } catch { return null; }
+}
 let chatsPage      = 0;
 let nfeData        = [];
 let darfData = null;
@@ -355,7 +377,7 @@ function showAuthScreen() {
   showAuthState('login');
   const ue = document.getElementById('userEmail');
   if (ue) ue.textContent = '—';
-  allChats = []; currentCliente = null; perfilCache = null;
+  allChats = []; currentCliente = null; perfilCache = null; _escIdCache = null;
   currentChat = { id: null, title: 'Nova Conversa', messages: [] };
 
   // Limpar estado de módulos que cacheiam dados do usuário
@@ -496,19 +518,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loading = document.getElementById('loadingScreen');
     if (loading && loading.style.display !== 'none') { hideLoading(); showAuthScreen(); }
   }, 6000);
-});
-
-// ── FECHAR MODAIS COM ESC ────────────────────────
-document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  // Fechar em ordem de prioridade (modal mais aberto fecha primeiro)
-  if (typeof closeSped === 'function' && document.getElementById('spedModal')?.style.display !== 'none') { closeSped(); return; }
-  if (typeof closeProfile === 'function' && document.getElementById('profileModal')?.style.display !== 'none') { closeProfile(); return; }
-  if (document.getElementById('statsModal')?.style.display !== 'none') { if (typeof closeStats === 'function') closeStats(); return; }
-  if (document.getElementById('learningStatsModal')?.style.display !== 'none') { if (typeof closeLearningStats === 'function') closeLearningStats(); return; }
-  if (document.getElementById('shareModal')?.style.display !== 'none') { if (typeof closeShareModal === 'function') closeShareModal(); return; }
-  if (!document.getElementById('clientModal')?.classList.contains('hidden')) { if (typeof closeClientModal === 'function') closeClientModal(); return; }
-  if (document.getElementById('permissoesModal')?.style.display !== 'none') { if (typeof fecharPermissoesModal === 'function') fecharPermissoesModal(); return; }
 });
 
 async function carregarKPIs() {
