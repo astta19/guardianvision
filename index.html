@@ -2572,6 +2572,27 @@
     </div>
   </div>
   <!-- /honModal -->
+
+  <!-- Mini-modal: data de recebimento de honorário -->
+  <div id="honPagoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9100;align-items:center;justify-content:center">
+    <div style="background:var(--card);border-radius:14px;padding:24px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Confirmar recebimento</div>
+      <div id="honPagoNome" style="font-size:12px;color:var(--text-light);margin-bottom:16px"></div>
+      <label style="font-size:12px;font-weight:600;color:var(--text-light);display:block;margin-bottom:6px">Data do recebimento</label>
+      <input type="date" id="honPagoData"
+        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="honPagoFechar()"
+          style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text)">
+          Cancelar
+        </button>
+        <button onclick="honPagoConfirmar()"
+          style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--accent);cursor:pointer;font-size:13px;color:#fff;font-weight:600">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
   <script src="assets/js/honorarios.js?v=1"></script>
 
   <!-- ── Chat Interno ───────────────────────────────────────── -->
