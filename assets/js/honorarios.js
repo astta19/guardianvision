@@ -260,9 +260,11 @@ async function honGerarCompetencia() {
     }
 
     // Inserir apenas os que ainda não existem (ON CONFLICT ignora)
+    const _escGer = await getEscritorioIdAtual();
     const registros = clientes.map(c => ({
       user_id:        currentUser.id,
       cliente_id:     c.id,
+      escritorio_id:  _escGer,
       valor:          c.honorario_valor,
       dia_vencimento: c.honorario_dia_venc || 10,
       competencia:    compStr,
@@ -383,9 +385,11 @@ async function honSalvar() {
 
   if (!clienteId) { showToast('Selecione uma empresa primeiro.', 'warn'); btn.disabled = false; btn.textContent = 'Salvar'; return; }
 
+  const _escHon = await getEscritorioIdAtual();
   const payload = {
     user_id:        currentUser.id,
     cliente_id:     clienteId,
+    escritorio_id:  _escHon,
     valor,
     dia_vencimento: dia,
     descricao:      document.getElementById('honFormDescricao').value.trim() || null,
