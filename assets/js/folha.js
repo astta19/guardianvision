@@ -199,7 +199,7 @@ function dpRenderFuncionarios() {
       <div class="dp-func-info">
         <div class="dp-func-nome">${escapeHtml(f.nome)}</div>
         <div class="dp-func-sub">${escapeHtml(f.cargo || '—')} · ${(f.tipo_contrato||'clt').toUpperCase()}</div>
-        <div class="dp-func-sub">Adm: ${f.admissao ? new Date(f.admissao+'T00:00').toLocaleDateString('pt-BR') : '—'} · R$ ${fmtBRL(f.salario_base)}</div>
+        <div class="dp-func-sub">Adm: ${f.admissao ? new Date(f.admissao+'T12:00').toLocaleDateString('pt-BR') : '—'} · R$ ${fmtBRL(f.salario_base)}</div>
       </div>
       <div class="dp-func-btns">
         <button class="dp-icon-btn" onclick="event.stopPropagation();dpEditarFunc('${f.id}')" title="Editar">
@@ -619,7 +619,7 @@ function calcularFerias() {
   const irrf     = calcularIRRF(baseIRRF);
   const liq      = r2(bruto - inss - irrf);
 
-  const admissao = func.admissao ? new Date(func.admissao + 'T00:00') : null;
+  const admissao = func.admissao ? new Date(func.admissao + 'T12:00') : null;
   const mesesTrab = admissao ? Math.floor((new Date() - admissao) / (30.44 * 86400000)) : null;
 
   const d = {
@@ -808,7 +808,7 @@ function calcularRescisao() {
     el.innerHTML = `<div class="dp-recibo">
       <div class="dp-recibo-hd">
         <span class="dp-recibo-nm">${escapeHtml(func.nome)} — Rescisão</span>
-        <span class="dp-recibo-sub">${MOTIVOS[motivo]||motivo} · ${new Date(dtDeslig+'T00:00').toLocaleDateString('pt-BR')}</span>
+        <span class="dp-recibo-sub">${MOTIVOS[motivo]||motivo} · ${new Date(dtDeslig+'T12:00').toLocaleDateString('pt-BR')}</span>
       </div>
       <div class="dp-sec"><div class="dp-sec-title">Verbas Rescisórias</div>
         <table class="dp-table">
@@ -1020,7 +1020,7 @@ async function dpCarregarRelatorio() {
       html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:8px">';
       for (const f of atFuncs) {
         const extra   = fotoMap[f.id] || {};
-        const adm     = f.admissao ? new Date(f.admissao+'T00:00') : null;
+        const adm     = f.admissao ? new Date(f.admissao+'T12:00') : null;
         const meses   = adm ? Math.floor((new Date()-adm)/(30.44*86400000)) : null;
         const tempo   = meses !== null ? (meses >= 12 ? Math.floor(meses/12)+'a '+(meses%12||0)+'m' : meses+'m') : '—';
         const tipo    = (f.tipo_contrato||'clt').toUpperCase();
@@ -1133,8 +1133,8 @@ function dpRescAutoPreench() {
   const txt     = document.getElementById('dpRescInfoTxt');
   if (!func || !card || !txt) return;
 
-  const adm     = func.admissao ? new Date(func.admissao+'T00:00') : null;
-  const deslig  = dtDesl ? new Date(dtDesl+'T00:00') : new Date();
+  const adm     = func.admissao ? new Date(func.admissao+'T12:00') : null;
+  const deslig  = dtDesl ? new Date(dtDesl+'T12:00') : new Date();
   const meses   = adm ? Math.floor((deslig - adm) / (30.44 * 86400000)) : null;
   const saldo   = dtDesl ? deslig.getDate() : null;
   const mFer    = meses !== null ? (meses % 12 || 0) : null;
@@ -1429,7 +1429,7 @@ async function dpExportarRelatorioPDF() {
     body: ativos.map(f => [
       f.nome||'—', f.cargo||'—', (f.tipo_contrato||'clt').toUpperCase(),
       f.cpf||'—',
-      f.admissao ? new Date(f.admissao+'T00:00').toLocaleDateString('pt-BR') : '—',
+      f.admissao ? new Date(f.admissao+'T12:00').toLocaleDateString('pt-BR') : '—',
       fmt(f.salario_base),
     ]),
     headStyles: { fillColor:[0,0,0], textColor:255, fontSize:8, fontStyle:'bold' },
