@@ -93,16 +93,16 @@ async function showStats() {
   try {
 const { data: interacoes } = await sb
   .from('interacoes_chat')
-  .select('id, tokens_usados, feedback_usuario, criado_em')
+  .select('id, tokens_utilizados, feedback_usuario, data_interacao')
   .eq('user_id', currentUser.id)
-  .order('criado_em', { ascending: false })
+  .order('data_interacao', { ascending: false })
   .limit(100);
 
 const total = interacoes?.length || 0;
-const tokens = (interacoes || []).reduce((s, r) => s + (r.tokens_usados || 0), 0);
+const tokens = (interacoes || []).reduce((s, r) => s + (r.tokens_utilizados || 0), 0);
 const positivos = (interacoes || []).filter(r => r.feedback_usuario >= 4).length;
 const hoje = new Date().toISOString().slice(0, 10);
-const hojeCount = (interacoes || []).filter(r => r.criado_em?.startsWith(hoje)).length;
+const hojeCount = (interacoes || []).filter(r => r.data_interacao?.startsWith(hoje)).length;
 
 const { data: docs } = await sb
   .from('documentos_fiscais')
