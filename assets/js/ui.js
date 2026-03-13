@@ -370,67 +370,126 @@ async function showLearningStats() {
   if (statsDiv) statsDiv.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:24px">Carregando...</p>';
 
   try {
-    let countRAG = 0, countDocs = 0, countTreinamento = 0;
-
-    try {
-      const r = await sb.from('interacoes_chat')
-        .select('id', { count: 'exact', head: true })
+    const [
+      { count: countFeedback },
+      { count: countDocs },
+      { count: countBase },
+      { data: interacoes },
+      { data: docsBase },
+    ] = await Promise.all([
+      // Feedbacks positivos (nota >= 4)
+      sb.from('interacoes_chat').select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id).gte('feedback_usuario', 4),
+      // Documentos analisados nos chats
+      sb.from('documentos_analisados').select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id),
+      // Pares Q&A da base de conhecimento
+      sb.from('dados_treinamento').select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id).eq('fonte', 'base_conhecimento'),
+      // Últimas interações para feedback médio
+      sb.from('interacoes_chat').select('feedback_usuario')
         .eq('user_id', currentUser.id)
-        .gte('feedback_usuario', 4);
-      countRAG = r.count || 0;
-    } catch(e) {}
+        .not('feedback_usuario', 'is', null)
+        .order('data_interacao', { ascending: false }).limit(100),
+      // Documentos únicos na base (para listar)
+      sb.from('documentos_analisados').select('id, nome_arquivo, tipo_arquivo, created_at, resumo')
+        .eq('user_id', currentUser.id)
+        .ilike('resumo', '[BASE]%')
+        .order('created_at', { ascending: false }).limit(20),
+    ]);
 
-    try {
-      const r = await sb.from('documentos_analisados')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id);
-      countDocs = r.count || 0;
-    } catch(e) {}
-
-    if (isAdmin()) {
-      try {
-        const r = await supabaseProxy('buscar_treinamento_count', {});
-        countTreinamento = r?.count ?? 0;
-      } catch(e) {}
-    }
-
-    const { data: interacoes } = await sb
-      .from('interacoes_chat')
-      .select('feedback_usuario')
-      .eq('user_id', currentUser.id)
-      .order('criado_em', { ascending: false })
-      .limit(50);
-
-    const total = interacoes?.length || 0;
-    const avgFeedback = total > 0
-      ? ((interacoes || []).reduce((s, r) => s + (r.feedback_usuario || 0), 0) / total).toFixed(1)
+    const avgFeedback = interacoes?.length
+      ? ((interacoes).reduce((s, r) => s + (r.feedback_usuario || 0), 0) / interacoes.length).toFixed(1)
       : '—';
 
-    if (!statsDiv) return;
+    const cor = (v) => v > 0 ? 'var(--accent)' : 'var(--text-light)';
 
-    statsDiv.innerHTML =
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">' +
-        '<div style="background:var(--sidebar-hover);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:24px;font-weight:700;color:var(--primary)">' + countTreinamento + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Dados de treinamento</div>' +
-        '</div>' +
-        '<div style="background:var(--sidebar-hover);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:24px;font-weight:700;color:var(--primary)">' + countRAG + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Feedbacks positivos</div>' +
-        '</div>' +
-        '<div style="background:var(--sidebar-hover);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:24px;font-weight:700;color:var(--primary)">' + countDocs + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Docs analisados</div>' +
-        '</div>' +
-        '<div style="background:var(--sidebar-hover);border-radius:10px;padding:14px;text-align:center">' +
-          '<div style="font-size:24px;font-weight:700;color:var(--primary)">' + avgFeedback + '</div>' +
-          '<div style="font-size:11px;color:var(--text-light);margin-top:3px">Feedback médio</div>' +
-        '</div>' +
-      '</div>';
+    // KPIs
+    const kpiHtml = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+        <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:700;color:${cor(countBase)}">${countBase ?? 0}</div>
+          <div style="font-size:10px;color:var(--text-light);margin-top:2px;line-height:1.3">Pares Q&A<br>na base</div>
+        </div>
+        <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:700;color:${cor(countFeedback)}">${countFeedback ?? 0}</div>
+          <div style="font-size:10px;color:var(--text-light);margin-top:2px;line-height:1.3">Feedbacks<br>positivos</div>
+        </div>
+        <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:700;color:var(--accent)">${avgFeedback}</div>
+          <div style="font-size:10px;color:var(--text-light);margin-top:2px;line-height:1.3">Nota<br>média</div>
+        </div>
+      </div>`;
+
+    // Como funciona o aprendizado
+    const explicacaoHtml = `
+      <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12px;line-height:1.6;color:var(--text-light)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:6px;font-size:13px">Como a IA aprende</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div><span style="color:var(--accent);font-weight:600">① Documentos</span> — arquivos subidos são lidos e a IA extrai pares Q&A automaticamente</div>
+          <div><span style="color:var(--accent);font-weight:600">② Feedbacks</span> — respostas avaliadas como "Muito útil" entram na base de conhecimento</div>
+          <div><span style="color:var(--accent);font-weight:600">③ RAG</span> — a cada pergunta, o sistema busca respostas anteriores relevantes e injeta no contexto</div>
+        </div>
+      </div>`;
+
+    // Documentos da base de conhecimento
+    let docsHtml = '';
+    if (docsBase?.length) {
+      docsHtml = `
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">
+          Documentos na base (${docsBase.length})
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto">
+          ${docsBase.map(d => {
+            const data = new Date(d.created_at).toLocaleDateString('pt-BR');
+            const tipo = d.tipo_arquivo || 'doc';
+            const icone = tipo.includes('pdf') ? 'file-text' : tipo.includes('plan') || tipo.includes('xls') ? 'table' : 'file';
+            const resumo = (d.resumo || '').replace('[BASE] ', '').split(' — ')[0];
+            return `
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+                <i data-lucide="${icone}" style="width:13px;height:13px;color:var(--accent);flex-shrink:0"></i>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(d.nome_arquivo)}</div>
+                  <div style="font-size:10px;color:var(--text-light)">${resumo} · ${data}</div>
+                </div>
+                <button onclick="excluirDocumentoBase('${d.id}', this)"
+                  style="background:none;border:none;cursor:pointer;padding:2px;color:var(--text-light);flex-shrink:0;opacity:.6"
+                  title="Remover da base">
+                  <i data-lucide="trash-2" style="width:12px;height:12px"></i>
+                </button>
+              </div>`;
+          }).join('')}
+        </div>`;
+    } else {
+      docsHtml = `<div style="font-size:12px;color:var(--text-light);text-align:center;padding:12px 0">
+        Nenhum documento na base ainda. Use o botão abaixo para adicionar.
+      </div>`;
+    }
+
+    if (!statsDiv) return;
+    statsDiv.innerHTML = kpiHtml + explicacaoHtml + docsHtml;
+    if (window.lucide) lucide.createIcons();
 
   } catch(e) {
     console.error('showLearningStats:', e);
     if (statsDiv) statsDiv.innerHTML = '<p style="color:var(--error);text-align:center;padding:16px">Erro ao carregar dados de aprendizado.</p>';
+  }
+}
+
+async function excluirDocumentoBase(docId, btn) {
+  if (!docId) return;
+  const ok = await showConfirm('Remover este documento da base de conhecimento?');
+  if (!ok) return;
+  if (btn) btn.disabled = true;
+  try {
+    const { error } = await sb.from('documentos_analisados').delete()
+      .eq('id', docId).eq('user_id', currentUser.id);
+    if (error) throw error;
+    showToast('Documento removido da base.', 'success');
+    await showLearningStats(); // recarregar
+  } catch(e) {
+    showToast('Erro ao remover: ' + e.message, 'error');
+    if (btn) btn.disabled = false;
   }
 }
 
