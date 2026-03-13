@@ -203,7 +203,7 @@ function agendaRender() {
 
   // Filtrar
   const tarefas = agendaTarefas.filter(t => {
-    const prazo = new Date(t.prazo + 'T00:00:00');
+    const prazo = new Date(t.prazo + 'T12:00');
     if (prazo.getMonth() !== agendaFiltroMes || prazo.getFullYear() !== agendaFiltroAno) return false;
     if (agendaFiltroStatus !== 'todos' && t.status !== agendaFiltroStatus) return false;
     if (agendaFiltroCliente !== 'todos' && t.cliente_id !== agendaFiltroCliente) return false;
@@ -215,12 +215,12 @@ function agendaRender() {
 
   // Contadores do cabeçalho
   const todas = agendaTarefas.filter(t => {
-    const prazo = new Date(t.prazo + 'T00:00:00');
+    const prazo = new Date(t.prazo + 'T12:00');
     return prazo.getMonth() === agendaFiltroMes && prazo.getFullYear() === agendaFiltroAno;
   });
-  const vencidas  = todas.filter(t => new Date(t.prazo + 'T00:00:00') < hoje && t.status === 'pendente');
+  const vencidas  = todas.filter(t => new Date(t.prazo + 'T12:00') < hoje && t.status === 'pendente');
   const proximas  = todas.filter(t => {
-    const d = Math.ceil((new Date(t.prazo + 'T00:00:00') - hoje) / 86400000);
+    const d = Math.ceil((new Date(t.prazo + 'T12:00') - hoje) / 86400000);
     return d >= 0 && d <= 7 && t.status === 'pendente';
   });
   const concluidas = todas.filter(t => t.status === 'concluida');
@@ -254,7 +254,7 @@ function agendaRender() {
   });
 
   el.innerHTML = Object.entries(porDia).map(([dia, items]) => {
-    const prazoDate = new Date(dia + 'T00:00:00');
+    const prazoDate = new Date(dia + 'T12:00');
     const diasAte = Math.ceil((prazoDate - hoje) / 86400000);
     const diaLabel = prazoDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
     const diaStatus = diasAte < 0 ? 'vencido' : diasAte === 0 ? 'hoje' : diasAte <= 3 ? 'urgente' : 'normal';
@@ -351,7 +351,7 @@ async function agendaIgnorar(id, clienteId, obrigacaoId, prazo, titulo, statusAt
 
 async function agendaPersistirAutomatica(clienteId, obrigacaoId, prazo, titulo, status) {
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const prazoDate = new Date(prazo + 'T00:00:00');
+  const prazoDate = new Date(prazo + 'T12:00');
   const dias = Math.ceil((prazoDate - hoje) / 86400000);
   const prioridade = dias < 0 ? 'alta' : dias <= 3 ? 'alta' : dias <= 7 ? 'media' : 'baixa';
 
