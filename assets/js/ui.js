@@ -370,37 +370,19 @@ async function showLearningStats() {
   if (statsDiv) statsDiv.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:24px">Carregando...</p>';
 
   try {
-    const [
-      { count: countFeedback },
-      { count: countDocs },
-      { count: countBase },
-      { data: interacoes },
-      { data: docsBase },
-    ] = await Promise.all([
-      // Feedbacks positivos (nota >= 4)
-      sb.from('interacoes_chat').select('id', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id).gte('feedback_usuario', 4),
-      // Documentos analisados nos chats
-      sb.from('documentos_analisados').select('id', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id),
-      // Pares Q&A da base de conhecimento
-      sb.from('dados_treinamento').select('id', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id).eq('fonte', 'base_conhecimento'),
-      // Últimas interações para feedback médio
-      sb.from('interacoes_chat').select('feedback_usuario')
-        .eq('user_id', currentUser.id)
-        .not('feedback_usuario', 'is', null)
-        .order('data_interacao', { ascending: false }).limit(100),
-      // Documentos únicos na base (para listar)
-      sb.from('documentos_analisados').select('id, nome_arquivo, tipo_arquivo, created_at, resumo')
+    // Buscar contagens via proxy (usa service key — ignora RLS do SELECT)
+    const [statsProxy, { data: docsBase }] = await Promise.all([
+      supabaseProxy('buscar_base_conhecimento', { userId: currentUser.id }).catch(() => ({})),
+      sb.from('documentos_analisados')
+        .select('id, nome_arquivo, tipo_arquivo, created_at, resumo')
         .eq('user_id', currentUser.id)
         .ilike('resumo', '[BASE]%')
         .order('created_at', { ascending: false }).limit(20),
     ]);
 
-    const avgFeedback = interacoes?.length
-      ? ((interacoes).reduce((s, r) => s + (r.feedback_usuario || 0), 0) / interacoes.length).toFixed(1)
-      : '—';
+    const countBase     = statsProxy.countBase     ?? 0;
+    const countFeedback = statsProxy.countFeedback ?? 0;
+    const avgFeedback   = statsProxy.avgFeedback   ?? '—';
 
     const cor = (v) => v > 0 ? 'var(--accent)' : 'var(--text-light)';
 
