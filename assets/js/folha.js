@@ -295,9 +295,11 @@ async function dpSalvarFunc() {
   const salario = parseFloat(document.getElementById('dpFuncSalario').value);
   if (!nome || !admissao || !salario) { showToast('Nome, admissão e salário são obrigatórios.', 'warn'); return; }
 
+  const _escId = await getEscritorioIdAtual();
   const payload = {
     user_id:       currentUser.id,
     cliente_id:    currentCliente.id,
+    escritorio_id: _escId,
     nome,
     cargo:         document.getElementById('dpFuncCargo')?.value.trim()    || null,
     cpf:           document.getElementById('dpFuncCPF')?.value.replace(/\D/g,'') || null,
@@ -570,8 +572,10 @@ async function dpSalvarHolerite() {
   const btn = document.getElementById('dpSalvarHoleriteBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
   try {
+    const _escHol = await getEscritorioIdAtual();
     const { error } = await sb.from('dp_holerites').upsert({
       user_id: currentUser.id, cliente_id: currentCliente?.id,
+      escritorio_id: _escHol,
       funcionario_id: d.funcId, competencia: d.competencia,
       dias_trabalhados: d.diasTrabalhados, salario_bruto: d.salarioBruto,
       he50_horas: d.horasExtras50, he100_horas: d.horasExtras100,
@@ -658,8 +662,10 @@ async function dpSalvarFerias() {
   const d = window._dpFeriasData;
   if (!d || !currentUser) { showToast('Calcule as férias primeiro.', 'warn'); return; }
   try {
+    const _escFer = await getEscritorioIdAtual();
     const { error } = await sb.from('dp_eventos').insert({
       user_id: currentUser.id, cliente_id: currentCliente?.id,
+      escritorio_id: _escFer,
       funcionario_id: d.funcId, tipo: 'ferias', competencia: d.competencia, dados: d,
     });
     if (error) throw error;
@@ -735,8 +741,10 @@ async function dpSalvarDecimo() {
   const d = window._dpDecimoData;
   if (!d || !currentUser) { showToast('Calcule o 13º primeiro.', 'warn'); return; }
   try {
+    const _escDec = await getEscritorioIdAtual();
     const { error } = await sb.from('dp_eventos').insert({
       user_id: currentUser.id, cliente_id: currentCliente?.id,
+      escritorio_id: _escDec,
       funcionario_id: d.funcId, tipo: 'decimo_terceiro', competencia: d.competencia, dados: d,
     });
     if (error) throw error;
@@ -845,8 +853,10 @@ async function dpSalvarRescisao() {
     await sb.from('dp_funcionarios')
       .update({ status: 'rescindido', atualizado_em: new Date().toISOString() })
       .eq('id', d.funcId).eq('user_id', currentUser.id);
+    const _escResc = await getEscritorioIdAtual();
     const { error } = await sb.from('dp_eventos').insert({
       user_id: currentUser.id, cliente_id: currentCliente?.id,
+      escritorio_id: _escResc,
       funcionario_id: d.funcId, tipo: 'rescisao',
       competencia: d.dtDeslig?.slice(0, 7), dados: d,
     });
