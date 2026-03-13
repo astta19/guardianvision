@@ -385,7 +385,7 @@ class FiscalLearningService {
         .from('documentos_analisados')
         .select('nome_arquivo, tipo_arquivo, conteudo_extraido, resumo, tags_extraidas, chat_id, cliente_id')
         .not('conteudo_extraido', 'is', null)
-        .order('data_upload', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(20);
       if (clienteId) qDocs = qDocs.eq('cliente_id', clienteId);
       if (currentUser?.id) qDocs = qDocs.eq('user_id', currentUser.id);
@@ -507,64 +507,189 @@ async function enviarFeedback(nota) {
   ultimaInteracaoId = null;
 }
 
+// ============================================================
+// SISTEMA DE APRENDIZADO — Upload e extração inteligente
+// ============================================================
+
+// Chunking: divide conteúdo em blocos de ~2000 chars por parágrafo/seção
+function _chunkar(texto, tamanhoMax = 2000) {
+  const chunks = [];
+  const paragrafos = texto.split(/\n{2,}/).filter(p => p.trim().length > 50);
+  let bloco = '';
+  for (const p of paragrafos) {
+    if ((bloco + '\n\n' + p).length > tamanhoMax && bloco) {
+      chunks.push(bloco.trim());
+      bloco = p;
+    } else {
+      bloco = bloco ? bloco + '\n\n' + p : p;
+    }
+  }
+  if (bloco.trim()) chunks.push(bloco.trim());
+  // Se não houver parágrafos duplos, fatiar por tamanho
+  if (!chunks.length) {
+    for (let i = 0; i < texto.length; i += tamanhoMax) {
+      const c = texto.slice(i, i + tamanhoMax).trim();
+      if (c.length > 100) chunks.push(c);
+    }
+  }
+  return chunks;
+}
+
+// Gera pares Q&A a partir de um chunk via API Anthropic
+async function _gerarQAPorChunk(chunk, nomeArquivo, indice, total) {
+  try {
+    const res = await fetch('/api/chat-anthropic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        stream: false,
+        messages: [{
+          role: 'user',
+          content: `Você é um assistente contábil/fiscal brasileiro especializado.
+Analise o trecho abaixo (${indice + 1}/${total}) do arquivo "${nomeArquivo}" e gere de 1 a 4 pares de perguntas e respostas que um contador faria sobre esse conteúdo.
+Foque em: valores, alíquotas, prazos, CNPJs, regras fiscais, obrigações, procedimentos.
+Ignore cabeçalhos genéricos, páginas em branco ou conteúdo sem relevância contábil.
+
+TRECHO:
+${chunk}
+
+Responda APENAS em JSON válido, sem markdown, no formato:
+{"pares": [{"pergunta": "...", "resposta": "..."}]}
+Se o trecho não tiver conteúdo fiscal relevante, retorne: {"pares": []}`
+        }],
+      })
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const text = (data.content || []).find(b => b.type === 'text')?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return parsed.pares || [];
+  } catch { return []; }
+}
+
 async function handleBatchUpload(event) {
   const files = Array.from(event.target.files);
   if (!files.length) return;
 
   const progressEl = document.getElementById('batchProgress');
-  const MAX_SIZE = 20 * 1024 * 1024; // 20MB por arquivo no batch
-  let sucesso = 0;
-  let erro = 0;
+  const MAX_SIZE = 20 * 1024 * 1024;
+  let totalPares = 0, totalErro = 0;
 
-  progressEl.innerHTML = `<i data-lucide="loader" style="width:12px;height:12px;vertical-align:middle"></i> Processando ${files.length} arquivo(s)...`;
-  lucide.createIcons();
+  const setProgress = (msg, tipo = '') => {
+    if (!progressEl) return;
+    progressEl.innerHTML = `<span style="color:${tipo === 'erro' ? 'var(--error)' : 'var(--text-light)'}">${msg}</span>`;
+  };
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    progressEl.innerHTML = `Processando ${i + 1}/${files.length}: ${escapeHtml(file.name)}`;
+  setProgress(`<i data-lucide="loader" style="width:12px;height:12px;vertical-align:middle;animation:spin 1s linear infinite"></i> Iniciando processamento de ${files.length} arquivo(s)...`);
+  if (window.lucide) lucide.createIcons();
+
+  for (let fi = 0; fi < files.length; fi++) {
+    const file = files[fi];
 
     if (file.size > MAX_SIZE) {
-      erro++;
+      setProgress(`⚠ ${escapeHtml(file.name)}: arquivo muito grande (máx 20MB). Pulando...`);
+      totalErro++;
       continue;
     }
 
     try {
+      // 1. Extrair texto do arquivo
+      setProgress(`📄 (${fi + 1}/${files.length}) Extraindo texto: ${escapeHtml(file.name)}...`);
       const fileData = await processFile(file);
 
-      // Salvar na base de conhecimento como dados_treinamento
-      await supabaseProxy('inserir_treinamento', {
-        pergunta: `[BASE DE CONHECIMENTO] ${file.name}`,
-        resposta: fileData.content || 'Conteúdo não extraído',
-        fonte: 'base_conhecimento',
-        qualidade: 5,
-        user_id: currentUser.id,
-        cliente_id: currentCliente?.id || null
+      if (!fileData.content || fileData.content.length < 100) {
+        setProgress(`⚠ ${escapeHtml(file.name)}: conteúdo insuficiente para indexar.`);
+        continue;
+      }
+
+      // 2. Verificar duplicata pelo nome + user
+      const { count: jaExiste } = await sb.from('dados_treinamento')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id)
+        .eq('fonte', 'base_conhecimento')
+        .ilike('pergunta', `%${file.name}%`);
+
+      if (jaExiste > 0) {
+        setProgress(`ℹ ${escapeHtml(file.name)}: já indexado anteriormente. Pulando.`);
+        await new Promise(r => setTimeout(r, 800));
+        continue;
+      }
+
+      // 3. Dividir em chunks semânticos
+      const chunks = _chunkar(fileData.content);
+      setProgress(`🔍 (${fi + 1}/${files.length}) ${escapeHtml(file.name)}: ${chunks.length} seção(ões) encontrada(s). Gerando Q&A com IA...`);
+
+      let paresArquivo = 0;
+
+      for (let ci = 0; ci < chunks.length; ci++) {
+        setProgress(`🧠 (${fi + 1}/${files.length}) ${escapeHtml(file.name)}: analisando seção ${ci + 1}/${chunks.length}...`);
+        const pares = await _gerarQAPorChunk(chunks[ci], file.name, ci, chunks.length);
+
+        for (const par of pares) {
+          if (!par.pergunta || !par.resposta || par.pergunta.length < 10) continue;
+          try {
+            await supabaseProxy('inserir_treinamento', {
+              pergunta: par.pergunta,
+              resposta: par.resposta,
+              fonte: 'base_conhecimento',
+              qualidade: 5,
+              user_id: currentUser.id,
+              cliente_id: currentCliente?.id || null,
+            });
+            paresArquivo++;
+            totalPares++;
+          } catch { totalErro++; }
+        }
+
+        // Pausa entre chunks para não saturar rate limit
+        if (ci < chunks.length - 1) await new Promise(r => setTimeout(r, 600));
+      }
+
+      // 4. Salvar referência do documento completo para RAG de documentos
+      await getLearningService().salvarDocumento(null, {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        content: fileData.content,
+        summary: `[BASE] ${fileData.summary} — ${paresArquivo} Q&A extraídos`,
       });
 
-      // Também salvar em documentos_analisados para RAG
-      await getLearningService().salvarDocumento(currentChat?.id || null, {
-        ...fileData,
-        summary: `[BASE] ${fileData.summary}`
-      });
+      setProgress(`✅ ${escapeHtml(file.name)}: ${paresArquivo} par(es) Q&A indexado(s).`);
+      await new Promise(r => setTimeout(r, 600));
 
-      sucesso++;
     } catch (e) {
-      erro++;
+      setProgress(`❌ ${escapeHtml(file.name)}: erro — ${e.message}`, 'erro');
+      totalErro++;
+      await new Promise(r => setTimeout(r, 500));
     }
   }
 
-  // Reset input
   event.target.value = '';
 
   registrarAuditLog('BATCH_UPLOAD', 'dados_treinamento', null, {
-    arquivos: files.length, sucesso, erro,
+    arquivos: files.length, pares: totalPares, erros: totalErro,
     cliente_id: currentCliente?.id || null
   });
+
+  const corStatus = totalErro > 0 && totalPares === 0 ? 'var(--error)' : '#16a34a';
   progressEl.innerHTML = `
-    <span style="color:var(--success)">✓ ${sucesso} arquivo(s) adicionado(s) à base</span>
-    ${erro > 0 ? `<span style="color:var(--error)"> · ${erro} com erro</span>` : ''}
-    <br><small style="color:var(--text-light)">O sistema usará estes documentos como referência nas próximas consultas</small>
-  `;
+    <div style="margin-top:8px;padding:10px 12px;background:var(--sidebar-hover);border-radius:8px;border-left:3px solid ${corStatus}">
+      <div style="font-size:13px;font-weight:600;color:${corStatus}">
+        ${totalPares > 0 ? `✅ ${totalPares} par(es) Q&A adicionados à base de conhecimento` : '⚠ Nenhum conteúdo indexado'}
+      </div>
+      ${totalErro > 0 ? `<div style="font-size:11px;color:var(--error);margin-top:3px">${totalErro} erro(s) durante o processo</div>` : ''}
+      <div style="font-size:11px;color:var(--text-light);margin-top:4px">
+        A IA usará este conhecimento automaticamente nas próximas consultas relacionadas.
+      </div>
+    </div>`;
+
+  // Atualizar painel de aprendizado se estiver aberto
+  if (document.getElementById('learningStatsModal')?.style.display !== 'none') {
+    await showLearningStats();
+  }
 }
 
 
