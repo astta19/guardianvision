@@ -107,7 +107,9 @@ export default async function handler(req, res) {
       if (userRole !== 'admin' && userRole !== 'master') {
         return res.status(403).json({ error: 'Acesso restrito a administradores' });
       }
-      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=100`, {
+
+      // Buscar todos os usuários da plataforma via Auth Admin API
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`, {
         headers: {
           'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
           'apikey': SUPABASE_SERVICE_KEY,
@@ -116,20 +118,46 @@ export default async function handler(req, res) {
       const data = await r.json();
       const allUsers = data.users || [];
 
-      // master: retorna TODOS (para cruzar com vínculos de escritório no frontend)
-      // admin: retorna apenas quem não é master e não é ele mesmo
+      // master: retorna TODOS — necessário para busca de usuário por e-mail ao adicionar membros
+      if (userRole === 'master') {
+        const usuarios = allUsers
+          .filter(u => u.id !== authUser.id)
+          .map(u => ({
+            id: u.id,
+            email: u.email,
+            role: u.user_metadata?.role || 'contador',
+            permissions: u.user_metadata?.permissions || [],
+          }));
+        return res.status(200).json({ usuarios });
+      }
+
+      // admin: retorna apenas membros do próprio escritório — filtro server-side
+      const escRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
+        { headers: sbHeaders }
+      );
+      const escData = await escRes.json();
+      const escId = escData?.[0]?.id || null;
+
+      let membrosIds = new Set();
+      if (escId) {
+        const memRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/escritorio_usuarios?escritorio_id=eq.${escId}&select=user_id`,
+          { headers: sbHeaders }
+        );
+        const memData = await memRes.json();
+        (memData || []).forEach(m => membrosIds.add(m.user_id));
+      }
+
       const usuarios = allUsers
-        .filter(u => {
-          if (u.id === authUser.id) return false;
-          if (userRole === 'master') return true;
-          return u.user_metadata?.role !== 'master';
-        })
+        .filter(u => u.id !== authUser.id && membrosIds.has(u.id))
         .map(u => ({
           id: u.id,
           email: u.email,
           role: u.user_metadata?.role || 'contador',
           permissions: u.user_metadata?.permissions || [],
         }));
+
       return res.status(200).json({ usuarios });
     }
 
@@ -172,6 +200,27 @@ export default async function handler(req, res) {
       const { userId, permissions } = payload || {};
       if (!userId || !Array.isArray(permissions)) {
         return res.status(400).json({ error: 'userId e permissions são obrigatórios' });
+      }
+
+      // Verificar se o userId alvo pertence ao escritório do admin (proteção multi-tenant)
+      // master pode alterar qualquer usuário
+      if (userRole !== 'master') {
+        const escRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${authUser.id}&select=id&limit=1`,
+          { headers: sbHeaders }
+        );
+        const escData = await escRes.json();
+        const escId = escData?.[0]?.id || null;
+        if (escId) {
+          const memRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/escritorio_usuarios?escritorio_id=eq.${escId}&user_id=eq.${userId}&select=user_id&limit=1`,
+            { headers: sbHeaders }
+          );
+          const memData = await memRes.json();
+          if (!memData?.length) {
+            return res.status(403).json({ error: 'Usuário não pertence ao seu escritório' });
+          }
+        }
       }
 
       // 1. Buscar user_metadata atual para MERGE (não sobrescrever role/theme/nome)
