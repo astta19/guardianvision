@@ -93,7 +93,7 @@ function finRenderTudo() {
 
 function finFiltrados() {
   return lancamentos.filter(l => {
-    const d = new Date(l.data_venc + 'T00:00');
+    const d = new Date(l.data_venc + 'T12:00');
     const mesOk = d.getMonth() === lancFiltroMes && d.getFullYear() === lancFiltroAno;
     const tipoOk = lancFiltroTipo === 'todos' || l.tipo === lancFiltroTipo;
     return mesOk && tipoOk;
@@ -106,7 +106,7 @@ function finRenderKPIs() {
   const anoAtual = new Date().getFullYear();
 
   const doMes = todos.filter(l => {
-    const d = new Date(l.data_venc + 'T00:00');
+    const d = new Date(l.data_venc + 'T12:00');
     return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
   });
 
@@ -115,7 +115,7 @@ function finRenderKPIs() {
   const saldoMes = recMes - despMes;
 
   const vencidos = todos.filter(l =>
-    l.status === 'pendente' && new Date(l.data_venc + 'T00:00') < new Date()
+    l.status === 'pendente' && new Date(l.data_venc + 'T12:00') < new Date()
   );
   const totalVencido = vencidos.reduce((a,l) => a + +l.valor, 0);
 
@@ -144,11 +144,11 @@ function finRenderFluxo() {
   const ano = lancFiltroAno;
   const meses = Array.from({length:12}, (_,i) => {
     const rec  = lancamentos.filter(l => {
-      const d = new Date(l.data_venc+'T00:00');
+      const d = new Date(l.data_venc+'T12:00');
       return d.getMonth()===i && d.getFullYear()===ano && l.tipo==='receita';
     }).reduce((a,l) => a + +l.valor, 0);
     const desp = lancamentos.filter(l => {
-      const d = new Date(l.data_venc+'T00:00');
+      const d = new Date(l.data_venc+'T12:00');
       return d.getMonth()===i && d.getFullYear()===ano && l.tipo==='despesa';
     }).reduce((a,l) => a + +l.valor, 0);
     return { mes: MESES[i], rec, desp, saldo: rec - desp };
@@ -210,16 +210,16 @@ function finRenderLista() {
 }
 
 function finRenderLancamento(l) {
-  const venceu = l.status === 'pendente' && new Date(l.data_venc+'T00:00') < new Date();
+  const venceu = l.status === 'pendente' && new Date(l.data_venc+'T12:00') < new Date();
   const isRec  = l.tipo === 'receita';
-  const dataFmt = new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR');
+  const dataFmt = new Date(l.data_venc+'T12:00').toLocaleDateString('pt-BR');
   return `
     <div class="fin-item ${venceu ? 'fin-item-vencido' : ''}">
       <div class="fin-item-left">
         <div class="fin-tipo-dot" style="background:${isRec ? '#16a34a' : '#dc2626'}"></div>
         <div>
           <div class="fin-item-desc">${escapeHtml(l.descricao)}</div>
-          <div class="fin-item-meta">${escapeHtml(l.categoria)} · Venc: ${dataFmt}${l.data_pgto ? ' · Pago: '+new Date(l.data_pgto+'T00:00').toLocaleDateString('pt-BR') : ''}${venceu ? ' <span style="color:#dc2626;font-weight:600">VENCIDO</span>' : ''}</div>
+          <div class="fin-item-meta">${escapeHtml(l.categoria)} · Venc: ${dataFmt}${l.data_pgto ? ' · Pago: '+new Date(l.data_pgto+'T12:00').toLocaleDateString('pt-BR') : ''}${venceu ? ' <span style="color:#dc2626;font-weight:600">VENCIDO</span>' : ''}</div>
         </div>
       </div>
       <div class="fin-item-right">
@@ -352,7 +352,7 @@ function finExportarPDF() {
   const saldo     = totalRec - totalDesp;
 
   const linhas = lista.map(l => {
-    const data = new Date(l.data_venc+'T00:00').toLocaleDateString('pt-BR');
+    const data = new Date(l.data_venc+'T12:00').toLocaleDateString('pt-BR');
     const sinal = l.tipo === 'receita' ? '+' : '-';
     const cor   = l.tipo === 'receita' ? '#16a34a' : '#dc2626';
     return `
