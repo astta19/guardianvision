@@ -187,6 +187,7 @@ class FiscalLearningService {
         .from('estatisticas_aprendizado')
         .select('id, soma_notas, total_feedbacks')
         .eq('data', hoje)
+        .eq('user_id', currentUser?.id || '')
         .maybeSingle();
 
       if (existing) {
@@ -205,6 +206,7 @@ class FiscalLearningService {
           .from('estatisticas_aprendizado')
           .insert({
             data: hoje,
+            user_id: currentUser?.id || null,
             total_interacoes: 1,
             total_feedbacks: 1,
             soma_notas: nota,
@@ -278,6 +280,7 @@ class FiscalLearningService {
         .order('qualidade', { ascending: false })
         .limit(10);
       if (clienteId) qTreinamento = qTreinamento.eq('cliente_id', clienteId);
+      if (currentUser?.id) qTreinamento = qTreinamento.eq('user_id', currentUser.id);
 
       const [{ data: interacoes }, { data: treinamento }] = await Promise.all([
         qInteracoes, qTreinamento
@@ -300,7 +303,7 @@ class FiscalLearningService {
 
       if (candidatos.length === 0) return null;
 
-      const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length > 3);
+      const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length >= 2);
 
       const pontuados = candidatos.map(c => {
         const texto = (c.pergunta + ' ' + c.tags.join(' ')).toLowerCase();
@@ -317,7 +320,7 @@ class FiscalLearningService {
       if (relevantes.length === 0) return null;
 
       return relevantes.map(c =>
-        `P: ${c.pergunta}\nR: ${c.resposta.substring(0, 500)}`
+        `P: ${c.pergunta}\nR: ${c.resposta.substring(0, 1500)}`
       ).join('\n\n---\n\n');
 
     } catch (error) {
@@ -385,11 +388,12 @@ class FiscalLearningService {
         .order('data_upload', { ascending: false })
         .limit(20);
       if (clienteId) qDocs = qDocs.eq('cliente_id', clienteId);
+      if (currentUser?.id) qDocs = qDocs.eq('user_id', currentUser.id);
       const { data } = await qDocs;
 
       if (!data || data.length === 0) return null;
 
-      const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length > 3);
+      const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length >= 2);
 
       const pontuados = data.map(doc => {
         const texto = ((doc.conteudo_extraido || '') + ' ' + (doc.tags_extraidas || []).join(' ')).toLowerCase();
