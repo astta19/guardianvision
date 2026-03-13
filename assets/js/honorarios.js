@@ -286,22 +286,42 @@ async function honGerarCompetencia() {
 }
 
 // ── Marcar como pago ─────────────────────────────────────────
-async function honMarcarPago(id) {
+let _honPagoId = null; // id do honorário pendente de confirmação
+
+function honMarcarPago(id) {
   const h = honLista.find(x => x.id === id);
   if (!h) return;
+  _honPagoId = id;
 
-  // Modal rápido para data de pagamento
-  const hoje = new Date().toISOString().slice(0,10);
-  const dataPgto = prompt(`Data do recebimento (${new Date().toLocaleDateString('pt-BR')}):`, hoje);
-  if (dataPgto === null) return; // cancelou
+  const nome = h.clientes?.nome_fantasia || h.clientes?.razao_social || 'Cliente';
+  document.getElementById('honPagoNome').textContent = `${nome} — R$ ${fmtHon(+h.valor)}`;
+  document.getElementById('honPagoData').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('honPagoModal').style.display = 'flex';
+}
+
+function honPagoFechar() {
+  document.getElementById('honPagoModal').style.display = 'none';
+  _honPagoId = null;
+}
+
+async function honPagoConfirmar() {
+  if (!_honPagoId) return;
+  const dataPgto = document.getElementById('honPagoData').value;
+  if (!dataPgto) { showToast('Informe a data do recebimento.', 'warn'); return; }
+
+  const btn = document.querySelector('#honPagoModal button:last-child');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   const { error } = await sb.from('honorarios').update({
     status: 'pago',
-    data_pgto: dataPgto || hoje,
+    data_pgto: dataPgto,
     atualizado_em: new Date().toISOString(),
-  }).eq('id', id).eq('user_id', currentUser.id);
+  }).eq('id', _honPagoId).eq('user_id', currentUser.id);
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Confirmar'; }
 
   if (error) { showToast('Erro: ' + error.message, 'error'); return; }
+  honPagoFechar();
   showToast('Honorário marcado como recebido.', 'success');
   await honCarregar();
 }
