@@ -12,6 +12,8 @@ const ALLOWED_ACTIONS = [
   'listar_logins',
   'definir_permissoes',
   'buscar_permissoes',
+  'buscar_base_conhecimento',
+  'excluir_treinamento',
 ];
 
 export default async function handler(req, res) {
@@ -277,6 +279,66 @@ export default async function handler(req, res) {
       const data = await r.json();
       const permissions = data?.[0]?.permissions || [];
       return res.status(200).json({ permissions });
+    }
+
+    // ── buscar_base_conhecimento ────────────────────────────────────
+    if (action === 'buscar_base_conhecimento') {
+      const { userId } = payload || {};
+      const uid = userId || authUser.id;
+      // Contador só acessa seus próprios dados; admin acessa qualquer um
+      if (uid !== authUser.id && userRole !== 'admin' && userRole !== 'master') {
+        return res.status(403).json({ error: 'Acesso negado' });
+      }
+
+      const [rCount, rDocs] = await Promise.all([
+        // Contar pares Q&A da base de conhecimento
+        fetch(
+          `${SUPABASE_URL}/rest/v1/dados_treinamento?user_id=eq.${uid}&fonte=eq.base_conhecimento&select=id`,
+          { headers: { ...sbHeaders, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' } }
+        ),
+        // Contar feedbacks positivos
+        fetch(
+          `${SUPABASE_URL}/rest/v1/interacoes_chat?user_id=eq.${uid}&feedback_usuario=gte.4&select=id`,
+          { headers: { ...sbHeaders, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' } }
+        ),
+      ]);
+
+      const countBase = parseInt(rCount.headers.get('content-range')?.split('/')[1] || '0');
+      const countFeedback = parseInt(rDocs.headers.get('content-range')?.split('/')[1] || '0');
+
+      // Buscar média de feedback
+      const rAvg = await fetch(
+        `${SUPABASE_URL}/rest/v1/interacoes_chat?user_id=eq.${uid}&feedback_usuario=not.is.null&select=feedback_usuario&order=data_interacao.desc&limit=100`,
+        { headers: sbHeaders }
+      );
+      const avgData = await rAvg.json().catch(() => []);
+      const avgFeedback = avgData.length
+        ? (avgData.reduce((s, r) => s + (r.feedback_usuario || 0), 0) / avgData.length).toFixed(1)
+        : null;
+
+      return res.status(200).json({ countBase, countFeedback, avgFeedback });
+    }
+
+    // ── excluir_treinamento ──────────────────────────────────────────
+    if (action === 'excluir_treinamento') {
+      const { id } = payload || {};
+      if (!id) return res.status(400).json({ error: 'id obrigatório' });
+
+      // Verificar que o registro pertence ao usuário (exceto master)
+      if (userRole !== 'master') {
+        const check = await fetch(
+          `${SUPABASE_URL}/rest/v1/dados_treinamento?id=eq.${id}&user_id=eq.${authUser.id}&select=id&limit=1`,
+          { headers: sbHeaders }
+        );
+        const rows = await check.json().catch(() => []);
+        if (!rows?.length) return res.status(403).json({ error: 'Registro não encontrado ou sem permissão' });
+      }
+
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/dados_treinamento?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: sbHeaders,
+      });
+      return res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
     }
 
   } catch (error) {
