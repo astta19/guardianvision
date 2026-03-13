@@ -1,16 +1,11 @@
 // ============================================================
-// CHAT_INTERNO.JS v3 — Chat profissional entre contadores
-//
-// Funcionalidades:
-//   • Broadcast (<100ms) + postgres_changes (resiliência)
-//   • Som de notificação via AudioContext (desbloqueado no 1º clique)
-//   • Envio de imagens/prints (base64 → Supabase Storage)
-//   • Status de envio: enviando → ✓ entregue
-//   • Reações rápidas em mensagens
-//   • Menção @nome com autocomplete
-//   • Indicador "digitando..."
-//   • Presença com avatares online
-//   • Badge não lidas + toast com som
+// CHAT_INTERNO.JS v4
+// Arquitetura de dedup corrigida:
+//   - Msgs próprias: renderizadas localmente, tempId no Set,
+//     pg_changes ignorado via fonte='pg' + user_id check
+//   - Msgs de outros: broadcast registra UUID-like key,
+//     pg_changes registra UUID real — ambos usam conteudo+uid+min
+//     como chave normalizada para garantir match
 // ============================================================
 
 // ── Estado ───────────────────────────────────────────────────
@@ -24,9 +19,9 @@ let _ciNaoLidas  = 0;
 let _ciAberto    = false;
 let _ciPagina    = 0;
 let _ciReady     = false;
-let _ciFp        = new Set();
+let _ciFp        = new Set(); // chaves de dedup
 let _ciDigTimer  = null;
-let _ciDigitando = {};  // { uid: timeout }
+let _ciDigitando = {};
 const _CI_PS     = 40;
 
 // ── Som ──────────────────────────────────────────────────────
@@ -44,14 +39,10 @@ document.addEventListener('click', () => {
 
 function _ciSom() {
   try {
-    if (!_ciACtx) {
-      _ciACtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
+    if (!_ciACtx) _ciACtx = new (window.AudioContext || window.webkitAudioContext)();
     if (_ciACtx.state === 'suspended') _ciACtx.resume();
-    const osc  = _ciACtx.createOscillator();
-    const gain = _ciACtx.createGain();
-    osc.connect(gain);
-    gain.connect(_ciACtx.destination);
+    const osc = _ciACtx.createOscillator(), gain = _ciACtx.createGain();
+    osc.connect(gain); gain.connect(_ciACtx.destination);
     osc.type = 'sine';
     osc.frequency.setValueAtTime(900, _ciACtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(600, _ciACtx.currentTime + 0.1);
@@ -62,10 +53,12 @@ function _ciSom() {
   } catch(_) {}
 }
 
-// Fingerprint robusto — não depende de timestamp (que diverge entre local e banco)
-function _ciFpKey(msg) {
-  // Usa user_id + primeiros 40 chars do conteúdo como chave determinística
-  return `${msg.user_id}|${(msg.conteudo || '').slice(0, 40)}`;
+// ── Chave de dedup ────────────────────────────────────────────
+// Usa uid + minuto + primeiros 60 chars — funciona tanto para
+// o broadcast (sem id definitivo) quanto para o pg_changes (com UUID)
+function _ciKey(msg) {
+  const min = (msg.criado_em || new Date().toISOString()).slice(0, 16); // "2026-03-13T14:05"
+  return `${msg.user_id}|${min}|${(msg.conteudo || '').slice(0, 60)}`;
 }
 
 // ── Bootstrap ────────────────────────────────────────────────
@@ -131,14 +124,13 @@ function _ciCor(uid) {
 
 function _ciAvatarEl(uid, src, nome, sz) {
   sz = sz || 28;
-  const fs  = Math.round(sz * 0.42);
-  const cor = _ciCor(uid);
+  const fs = Math.round(sz * 0.42), cor = _ciCor(uid);
   const ini = ((nome || '?')[0] || '?').toUpperCase();
   if (src) {
     const img = document.createElement('img');
-    img.src   = src;
+    img.src = src;
     img.style.cssText = `width:${sz}px;height:${sz}px;border-radius:50%;object-fit:cover;flex-shrink:0`;
-    img.alt   = '';
+    img.alt = '';
     img.onerror = () => img.replaceWith(_ciAvatarEl(uid, '', nome, sz));
     return img;
   }
@@ -160,7 +152,7 @@ function _ciSubscribe() {
   if (_ciPr) sb.removeChannel(_ciPr);
 
   _ciBc = sb.channel(`ci_bc_${_ciEscId}`, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'msg'      }, ({ payload }) => _ciReceber(payload))
+    .on('broadcast', { event: 'msg'      }, ({ payload }) => _ciReceber(payload, 'bc'))
     .on('broadcast', { event: 'typing'   }, ({ payload }) => _ciMostrarDigitando(payload))
     .on('broadcast', { event: 'reaction' }, ({ payload }) => _ciAplicarReacao(payload))
     .subscribe();
@@ -181,23 +173,32 @@ function _ciSubscribe() {
       if (s !== 'SUBSCRIBED') return;
       await _ciPr.track({
         user_id: currentUser.id,
-        nome:    _ciNome(currentUser.id),
-        avatar:  _ciPerfis[currentUser.id]?.avatar_url || '',
+        nome: _ciNome(currentUser.id),
+        avatar: _ciPerfis[currentUser.id]?.avatar_url || '',
       });
     });
 }
 
-// ── Receber mensagem (broadcast + pg_changes) ─────────────────
+// ── Receber — lógica de dedup corrigida ───────────────────────
 function _ciReceber(msg, fonte) {
-  // Mensagens próprias via pg_changes: já renderizadas localmente, ignorar
+  // REGRA 1: msgs próprias via pg_changes → sempre ignorar
+  // (já foram renderizadas localmente antes do INSERT)
   if (fonte === 'pg' && msg.user_id === currentUser.id) return;
 
-  const key = msg.id || _ciFpKey(msg);
+  // REGRA 2: dedup por chave normalizada uid+minuto+conteudo
+  // Tanto o broadcast quanto o pg_changes do mesmo usuário
+  // produzem a mesma key → segunda chegada é ignorada
+  const key = _ciKey(msg);
   if (_ciFp.has(key)) return;
   _ciFp.add(key);
 
+  // Atualizar cache de perfil com dados embutidos
   if (msg.nome_sender && !_ciPerfis[msg.user_id]?.nome) {
-    _ciPerfis[msg.user_id] = { user_id: msg.user_id, nome: msg.nome_sender, avatar_url: msg.avatar_sender || '' };
+    _ciPerfis[msg.user_id] = {
+      user_id: msg.user_id,
+      nome: msg.nome_sender,
+      avatar_url: msg.avatar_sender || '',
+    };
   }
 
   if (_ciAberto) {
@@ -211,16 +212,12 @@ function _ciReceber(msg, fonte) {
   }
 }
 
-// ── Indicador "digitando..." ──────────────────────────────────
+// ── "Digitando..." ────────────────────────────────────────────
 function ciInputDigitando() {
-  // Debounce — envia broadcast "typing" a cada 2s enquanto digita
   clearTimeout(_ciDigTimer);
   _ciDigTimer = setTimeout(() => {
-    if (!_ciBc || !_ciEscId) return;
-    _ciBc.send({ type: 'broadcast', event: 'typing', payload: {
-      user_id: currentUser.id,
-      nome:    _ciNome(currentUser.id),
-    }});
+    _ciBc?.send({ type: 'broadcast', event: 'typing',
+      payload: { user_id: currentUser.id, nome: _ciNome(currentUser.id) } });
   }, 400);
 }
 
@@ -228,90 +225,103 @@ function _ciMostrarDigitando({ user_id, nome }) {
   if (user_id === currentUser.id) return;
   const el = document.getElementById('ciDigitando');
   if (!el) return;
-
   clearTimeout(_ciDigitando[user_id]);
   el.textContent = `${nome || 'Alguém'} está digitando...`;
   el.style.display = 'block';
-
   _ciDigitando[user_id] = setTimeout(() => {
-    el.style.display = 'none';
-    el.textContent = '';
+    el.style.display = 'none'; el.textContent = '';
   }, 3000);
 }
 
 // ── Reações ───────────────────────────────────────────────────
 const CI_REACOES = ['👍','❤️','😂','😮','🎉','✅'];
 
-function ciMostrarReacoes(msgEl, msgId) {
+function ciMostrarReacoes(wrapEl, msgId) {
   document.querySelector('.ci-reacao-picker')?.remove();
   const picker = document.createElement('div');
   picker.className = 'ci-reacao-picker';
-  picker.innerHTML = CI_REACOES.map(e =>
-    `<button onclick="ciEnviarReacao('${msgId}','${e}',this.closest('.ci-reacao-picker'))">${e}</button>`
-  ).join('');
-  msgEl.appendChild(picker);
+  CI_REACOES.forEach(e => {
+    const btn = document.createElement('button');
+    btn.textContent = e;
+    btn.onclick = (ev) => { ev.stopPropagation(); ciEnviarReacao(msgId, e); picker.remove(); };
+    picker.appendChild(btn);
+  });
+  wrapEl.style.position = 'relative';
+  wrapEl.appendChild(picker);
   setTimeout(() => document.addEventListener('click', () => picker.remove(), { once: true }), 10);
 }
 
-async function ciEnviarReacao(msgId, emoji, picker) {
-  picker?.remove();
+async function ciEnviarReacao(msgId, emoji) {
   if (!_ciBc) return;
   const payload = { msg_id: msgId, emoji, user_id: currentUser.id, nome: _ciNome(currentUser.id) };
   _ciBc.send({ type: 'broadcast', event: 'reaction', payload });
   _ciAplicarReacao(payload);
-  // Persistir reação
-  await sb.from('chat_interno_reacoes').upsert({
-    mensagem_id: msgId, user_id: currentUser.id, emoji,
-  }, { onConflict: 'mensagem_id,user_id' });
+  await sb.from('chat_interno_reacoes').upsert(
+    { mensagem_id: msgId, user_id: currentUser.id, emoji },
+    { onConflict: 'mensagem_id,user_id' }
+  );
 }
 
 function _ciAplicarReacao({ msg_id, emoji, user_id, nome }) {
-  const msgEl = document.querySelector(`[data-msg-id="${msg_id}"]`);
-  if (!msgEl) return;
-  let wrap = msgEl.querySelector('.ci-reacoes');
-  if (!wrap) { wrap = document.createElement('div'); wrap.className = 'ci-reacoes'; msgEl.querySelector('.ci-bubble').after(wrap); }
+  // Buscar o wrap correto pelo data-msg-id
+  const wrapEl = document.querySelector(`.ci-msg-wrap[data-msg-id="${msg_id}"]`);
+  if (!wrapEl) return;
 
-  let btn = wrap.querySelector(`[data-emoji="${emoji}"]`);
+  let reacoes = wrapEl.querySelector('.ci-reacoes');
+  if (!reacoes) {
+    reacoes = document.createElement('div');
+    reacoes.className = 'ci-reacoes';
+    wrapEl.appendChild(reacoes);
+  }
+
+  let btn = reacoes.querySelector(`[data-emoji="${CSS.escape(emoji)}"]`);
   if (btn) {
-    const count = parseInt(btn.dataset.count || '0') + 1;
-    btn.dataset.count = count;
-    btn.querySelector('.ci-r-count').textContent = count;
+    const n = parseInt(btn.dataset.count || '0') + 1;
+    btn.dataset.count = n;
+    btn.querySelector('.ci-r-count').textContent = n;
   } else {
     btn = document.createElement('button');
     btn.className = 'ci-r-btn';
     btn.dataset.emoji = emoji;
     btn.dataset.count = '1';
     btn.title = nome || '';
-    btn.innerHTML = `${emoji} <span class="ci-r-count">1</span>`;
-    wrap.appendChild(btn);
+    const span = document.createElement('span');
+    span.className = 'ci-r-count';
+    span.textContent = '1';
+    btn.append(document.createTextNode(emoji + ' '), span);
+    reacoes.appendChild(btn);
   }
   if (user_id === currentUser.id) btn.classList.add('ci-r-proprio');
 }
 
-// ── Upload de imagem / print ──────────────────────────────────
+// ── Upload de imagem ──────────────────────────────────────────
 function ciAbrirUpload() {
-  const inp = document.getElementById('ciFileInput');
-  if (inp) inp.click();
+  document.getElementById('ciFileInput')?.click();
 }
 
 async function ciHandleFile(input) {
   const file = input.files?.[0];
   input.value = '';
   if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Imagem muito grande (máx 5MB).', 'warn'); return; }
+  if (!file.type.startsWith('image/')) { showToast('Apenas imagens são suportadas.', 'warn'); return; }
 
-  const MAX = 5 * 1024 * 1024; // 5MB
-  if (file.size > MAX) { showToast('Imagem muito grande (máx 5MB).', 'warn'); return; }
-  if (!file.type.startsWith('image/')) { showToast('Apenas imagens são permitidas.', 'warn'); return; }
+  showToast('Enviando imagem...', 'info', 3000);
 
-  showToast('Enviando imagem...', 'info', 2000);
+  const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
+  // Path: chat_img/{uid}/{timestamp}.ext
+  // Primeiro folder = uid do usuário → bate com a policy existente
+  const path = `chat_img/${currentUser.id}/${Date.now()}.${ext}`;
 
-  // Upload para Supabase Storage no bucket portal-uploads
-  const ext  = file.name.split('.').pop() || 'png';
-  const path = `chat/${_ciEscId}/${Date.now()}_${currentUser.id}.${ext}`;
-  const { data: up, error: upErr } = await sb.storage
-    .from('portal-uploads').upload(path, file, { contentType: file.type, upsert: false });
+  const { error: upErr } = await sb.storage
+    .from('portal-uploads')
+    .upload(path, file, { contentType: file.type, upsert: false });
 
-  if (upErr) { showToast('Erro ao enviar imagem.', 'error'); return; }
+  if (upErr) {
+    console.error('storage upload error:', upErr);
+    showToast(`Erro ao enviar imagem: ${upErr.message}`, 'error');
+    return;
+  }
 
   const { data: { publicUrl } } = sb.storage.from('portal-uploads').getPublicUrl(path);
   await _ciEnviarMensagem(`[img:${publicUrl}]`);
@@ -323,7 +333,7 @@ async function abrirChatInterno() {
     await ciInit();
     if (!_ciReady) { showToast('Chat indisponível.', 'warn'); return; }
   }
-  _ciAberto   = true;
+  _ciAberto = true;
   _ciNaoLidas = 0;
   _ciRenderBadge();
 
@@ -351,7 +361,11 @@ function fecharChatInterno() {
 async function _ciCarregarHistorico(append) {
   const corpo = document.getElementById('ciCorpo');
   if (!corpo) return;
-  if (!append) corpo.innerHTML = '<div style="display:flex;justify-content:center;padding:40px"><div class="hon-spinner"></div></div>';
+
+  if (!append) {
+    corpo.innerHTML = '<div style="display:flex;justify-content:center;padding:40px"><div class="hon-spinner"></div></div>';
+    _ciFp.clear(); // limpar dedup ao recarregar histórico completo
+  }
 
   const from = _ciPagina * _CI_PS;
   const { data, error } = await sb.from('chat_interno_mensagens')
@@ -360,14 +374,20 @@ async function _ciCarregarHistorico(append) {
     .order('criado_em', { ascending: false })
     .range(from, from + _CI_PS - 1);
 
-  if (error) { if (!append) corpo.innerHTML = '<p class="ci-vazio">Erro ao carregar.</p>'; return; }
+  if (error) {
+    if (!append) corpo.innerHTML = '<p class="ci-vazio">Erro ao carregar.</p>';
+    return;
+  }
 
   const msgs = (data || []).reverse();
   await _ciFetchPerfis([...new Set(msgs.map(m => m.user_id))]);
 
   if (!append) {
     corpo.innerHTML = '';
-    if (!msgs.length) { corpo.innerHTML = '<p class="ci-vazio">Nenhuma mensagem ainda.<br>Seja o primeiro a falar! 👋</p>'; return; }
+    if (!msgs.length) {
+      corpo.innerHTML = '<p class="ci-vazio">Nenhuma mensagem ainda.<br>Seja o primeiro a falar! 👋</p>';
+      return;
+    }
   }
 
   if ((data?.length || 0) === _CI_PS && !corpo.querySelector('.ci-load-mais')) {
@@ -378,8 +398,13 @@ async function _ciCarregarHistorico(append) {
   }
 
   const diasSet = new Set();
-  const frag    = document.createDocumentFragment();
-  msgs.forEach(m => { _ciFp.add(m.id || _ciFpKey(m)); frag.appendChild(_ciCriarEl(m, diasSet)); });
+  const frag = document.createDocumentFragment();
+  msgs.forEach(m => {
+    // Registrar AMBAS as chaves: key normalizada E id UUID
+    _ciFp.add(_ciKey(m));
+    if (m.id) _ciFp.add(m.id);
+    frag.appendChild(_ciCriarEl(m, diasSet));
+  });
 
   if (append) {
     const antes = corpo.scrollHeight;
@@ -390,7 +415,6 @@ async function _ciCarregarHistorico(append) {
     corpo.scrollTop = corpo.scrollHeight;
   }
 
-  // Carregar reações do histórico
   const ids = msgs.map(m => m.id).filter(Boolean);
   if (ids.length) _ciCarregarReacoes(ids);
 }
@@ -408,9 +432,16 @@ async function _ciCarregarReacoes(ids) {
 }
 
 // ── Criar elemento de mensagem ────────────────────────────────
+// Último dia renderizado por _ciRenderMsgNova — rastreado via DOM
+function _ciUltimoDia() {
+  const seps = document.querySelectorAll('#ciCorpo .ci-sep-dia');
+  if (!seps.length) return '';
+  return seps[seps.length - 1].dataset.dia || '';
+}
+
 function _ciCriarEl(msg, diasSet) {
-  const frag  = document.createDocumentFragment();
-  const dia   = (msg.criado_em || '').slice(0, 10);
+  const frag = document.createDocumentFragment();
+  const dia  = (msg.criado_em || '').slice(0, 10);
 
   if (dia && !diasSet.has(dia)) {
     diasSet.add(dia);
@@ -420,6 +451,7 @@ function _ciCriarEl(msg, diasSet) {
       : new Date(dia + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
     const sep = document.createElement('div');
     sep.className = 'ci-sep-dia';
+    sep.dataset.dia = dia; // armazenar data no DOM, não no texto
     sep.innerHTML = `<span>${label}</span>`;
     frag.appendChild(sep);
   }
@@ -427,12 +459,11 @@ function _ciCriarEl(msg, diasSet) {
   const proprio = msg.user_id === currentUser.id;
   const hora    = msg.criado_em
     ? new Date(msg.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : '';
+    : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const nome   = _ciPerfis[msg.user_id]?.nome || msg.nome_sender || _ciNome(msg.user_id);
   const src    = _ciPerfis[msg.user_id]?.avatar_url || msg.avatar_sender || '';
   const avatar = _ciAvatarEl(msg.user_id, src, nome, 28);
 
-  // Wrapper com data-msg-id para reações
   const wrap = document.createElement('div');
   wrap.className = `ci-msg-wrap ${proprio ? 'ci-prp-wrap' : ''}`;
   if (msg.id) wrap.dataset.msgId = msg.id;
@@ -440,7 +471,6 @@ function _ciCriarEl(msg, diasSet) {
   const msgDiv = document.createElement('div');
   msgDiv.className = `ci-msg ${proprio ? 'ci-prp' : 'ci-out'}`;
 
-  // Bubble com suporte a imagem
   const bubble = document.createElement('div');
   bubble.className = 'ci-bubble';
 
@@ -448,15 +478,14 @@ function _ciCriarEl(msg, diasSet) {
   if (conteudo.startsWith('[img:') && conteudo.endsWith(']')) {
     const url = conteudo.slice(5, -1);
     const img = document.createElement('img');
-    img.src   = url;
+    img.src = url;
     img.className = 'ci-img-preview';
-    img.onclick   = () => window.open(url, '_blank');
-    img.onerror   = () => { img.style.display = 'none'; };
+    img.onclick = () => window.open(url, '_blank');
+    img.onerror = () => { img.style.display = 'none'; };
     bubble.appendChild(img);
   } else {
-    // Realçar @menções
     const html = escapeHtml(conteudo).replace(/\n/g, '<br>')
-      .replace(/@(\w[\w\s]*?)(?=\s|$|<)/g, '<span class="ci-mencao">@$1</span>');
+      .replace(/@(\S+)/g, '<span class="ci-mencao">@$1</span>');
     bubble.innerHTML = html;
   }
 
@@ -465,11 +494,11 @@ function _ciCriarEl(msg, diasSet) {
   horaEl.textContent = hora;
   bubble.appendChild(horaEl);
 
-  // Botão de reação (hover)
+  // Botão reação — só em msgs com ID real (salvas no banco)
   if (msg.id) {
     const rBtn = document.createElement('button');
     rBtn.className = 'ci-r-trigger';
-    rBtn.innerHTML = '😊';
+    rBtn.textContent = '😊';
     rBtn.title = 'Reagir';
     rBtn.onclick = (e) => { e.stopPropagation(); ciMostrarReacoes(wrap, msg.id); };
     msgDiv.appendChild(rBtn);
@@ -486,7 +515,7 @@ function _ciCriarEl(msg, diasSet) {
     nomeEl.textContent = nome;
     mbody.appendChild(nomeEl);
     mbody.appendChild(bubble);
-    msgDiv.insertBefore(avatar, msgDiv.firstChild);
+    msgDiv.appendChild(avatar);
     msgDiv.appendChild(mbody);
   }
 
@@ -499,16 +528,16 @@ function _ciRenderMsgNova(msg) {
   const corpo = document.getElementById('ciCorpo');
   if (!corpo) return;
   corpo.querySelector('.ci-vazio')?.remove();
-  const diasSet = new Set();
-  const seps    = [...corpo.querySelectorAll('.ci-sep-dia')];
-  if (seps.length && seps[seps.length - 1].querySelector('span')?.textContent === 'Hoje') {
-    diasSet.add(new Date().toISOString().slice(0, 10));
-  }
+
+  // Usar data-dia do DOM em vez de comparar texto
+  const dia     = (msg.criado_em || new Date().toISOString()).slice(0, 10);
+  const diasSet = new Set([_ciUltimoDia()]);
+
   corpo.appendChild(_ciCriarEl(msg, diasSet));
   corpo.scrollTop = corpo.scrollHeight;
 }
 
-// ── Enviar texto ──────────────────────────────────────────────
+// ── Enviar ────────────────────────────────────────────────────
 async function ciEnviar() {
   const input = document.getElementById('ciInput');
   const texto = input?.value.trim();
@@ -523,22 +552,25 @@ async function _ciEnviarMensagem(conteudo) {
   const nome   = _ciNome(currentUser.id);
   const avatar = _ciPerfis[currentUser.id]?.avatar_url || '';
 
-  const payload = {
-    user_id: currentUser.id, escritorio_id: _ciEscId,
-    conteudo, nome_sender: nome, avatar_sender: avatar, criado_em: agora,
-  };
+  const localMsg = { user_id: currentUser.id, escritorio_id: _ciEscId,
+    conteudo, nome_sender: nome, avatar_sender: avatar, criado_em: agora };
 
-  _ciFp.add(_ciFpKey(payload));
-  _ciRenderMsgNova(payload);
-  _ciBc?.send({ type: 'broadcast', event: 'msg', payload });
+  // Registrar chave normalizada ANTES de renderizar
+  // Quando o pg_changes chegar com o mesmo uid+min+conteudo → ignorado
+  _ciFp.add(_ciKey(localMsg));
+  _ciRenderMsgNova(localMsg);
 
+  // Broadcast para outros via canal instantâneo
+  _ciBc?.send({ type: 'broadcast', event: 'msg', payload: localMsg });
+
+  // Persistir
   const { error } = await sb.from('chat_interno_mensagens').insert({
     escritorio_id: _ciEscId, user_id: currentUser.id,
     conteudo, nome_sender: nome, avatar_sender: avatar,
   });
   if (error) {
-    console.error('ci_insert error:', error);
-    showToast(`Erro ao salvar: ${error.message}`, 'error');
+    console.error('ci insert:', error);
+    showToast(`Erro ao enviar: ${error.message}`, 'error');
   }
 }
 
@@ -574,7 +606,7 @@ function _ciRenderBadge() {
   b.style.display = _ciNaoLidas > 0 ? 'flex' : 'none';
 }
 
-// ── Presença ─────────────────────────────────────────────────
+// ── Presença ──────────────────────────────────────────────────
 function _ciRenderOnline() {
   if (!_ciPr) return;
   const todos  = Object.values(_ciPr.presenceState()).flat();
@@ -585,11 +617,10 @@ function _ciRenderOnline() {
   if (!wrap) return;
   wrap.innerHTML = '';
   outros.slice(0, 5).forEach(p => {
-    const uid = p.user_id;
-    const d   = document.createElement('div');
+    const d = document.createElement('div');
     d.style.cssText = 'position:relative;flex-shrink:0';
-    d.title = p.nome || _ciNome(uid);
-    d.appendChild(_ciAvatarEl(uid, p.avatar || _ciPerfis[uid]?.avatar_url || '', p.nome || _ciNome(uid), 22));
+    d.title = p.nome || _ciNome(p.user_id);
+    d.appendChild(_ciAvatarEl(p.user_id, p.avatar || _ciPerfis[p.user_id]?.avatar_url || '', p.nome || _ciNome(p.user_id), 22));
     const dot = document.createElement('span');
     dot.style.cssText = 'position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;background:#16a34a;border-radius:50%;border:1.5px solid var(--card)';
     d.appendChild(dot);
@@ -597,6 +628,7 @@ function _ciRenderOnline() {
   });
 }
 
+// ── Toast ─────────────────────────────────────────────────────
 function _ciToastMsg(msg) {
   const nome    = msg.nome_sender || _ciNome(msg.user_id);
   const preview = (msg.conteudo || '').startsWith('[img:') ? '📷 Imagem'
