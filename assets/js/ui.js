@@ -464,6 +464,10 @@ function fechar(id) {
 
 let _escritorioId = null;
 
+function escritorioReset() {
+  _escritorioId = null;
+}
+
 // ── Gestão do Escritório — tabs ─────────────────────────────
 function gestaoSwitchTab(tab) {
   const isMembros = tab === 'membros';
