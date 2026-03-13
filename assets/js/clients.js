@@ -100,6 +100,9 @@ async function setCurrentCliente(cliente) {
   document.getElementById('headerClientName').textContent = displayName;
   badge.style.display = 'flex';
 
+  // Limpar dados de NF-e do cliente anterior — evita cruzamento entre empresas
+  if (typeof nfeData !== 'undefined') nfeData = [];
+
   // Se honorários estiver aberto, recarregar para a nova empresa
   if (document.getElementById('honModal')?.style.display !== 'none' && typeof honCarregar === 'function') {
     await honCarregar();
