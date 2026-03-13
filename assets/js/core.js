@@ -356,6 +356,13 @@ function showAuthScreen() {
   if (ue) ue.textContent = '—';
   allChats = []; currentCliente = null; perfilCache = null;
   currentChat = { id: null, title: 'Nova Conversa', messages: [] };
+
+  // Limpar estado de módulos que cacheiam dados do usuário
+  if (typeof learningService !== 'undefined') learningService = null;
+  if (_pollingUploadTimer) { clearInterval(_pollingUploadTimer); _pollingUploadTimer = null; }
+  _pollingUploadUltimoCount = -1;
+  if (typeof ciReset === 'function') ciReset();
+  if (typeof escritorioReset === 'function') escritorioReset();
   const hList = document.getElementById('hList');
   if (hList) hList.innerHTML = '';
   const msgs = document.getElementById('msgs');
@@ -389,6 +396,11 @@ async function showApp() {
   }
   applyAdminUI();
   checkConnection();
+  // Carregar perfil ANTES dos módulos que dependem de perfilCache (nome, CRC, avatar)
+  if (typeof carregarPerfil === 'function') {
+    await carregarPerfil();
+    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
+  }
   // Chat interno: inicializar para admin e contadores com permissão
   if (typeof ciInit === 'function') ciInit();
   if (typeof loadClientes === 'function') loadClientes();
@@ -396,9 +408,6 @@ async function showApp() {
   carregarKPIs();
   iniciarPollingUploads();
   if (isMaster()) carregarDashboardMaster();
-  if (typeof carregarPerfil === 'function') carregarPerfil().then(() => {
-    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
-  });
   if (window.lucide) lucide.createIcons();
   // Carregar chat compartilhado via link (?shared=TOKEN)
   const _sharedToken = new URLSearchParams(window.location.search).get('shared');
