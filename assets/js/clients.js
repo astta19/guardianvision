@@ -579,16 +579,8 @@ async function abrirGerenciarPermissoes() {
   try {
     const res = await supabaseProxy('listar_usuarios', {});
     if (!res?.usuarios) throw new Error(res?.error || 'Sem dados');
-    const todos = res.usuarios;
-
-    // Filtrar apenas usuários do escritório do admin logado
-    const { data: vinculos } = await sb
-      .from('escritorio_usuarios')
-      .select('user_id')
-      .eq('escritorio_id', (await sb.from('escritorios').select('id').eq('owner_id', currentUser.id).limit(1)).data?.[0]?.id || '');
-
-    const idsEscritorio = new Set((vinculos || []).map(v => v.user_id));
-    usuarios = todos.filter(u => idsEscritorio.has(u.id));
+    // servidor já filtra por escritório do admin autenticado
+    usuarios = res.usuarios;
   } catch(e) {
     content.innerHTML = `<p style="color:var(--error);font-size:13px;padding:12px">Erro ao carregar: ${e.message}</p>`;
     return;
