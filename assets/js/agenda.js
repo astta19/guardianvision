@@ -52,14 +52,12 @@ function closeAgenda() {
 async function agendaCarregar() {
   agendaRenderLoading();
 
-  // Carregar clientes do usuário
-  let { data: clientes } = isAdmin()
-    ? await sb.from('clientes').select('id, razao_social, nome_fantasia, regime_tributario, cnpj, tem_empregado').order('razao_social')
-    : await sb.from('clientes_usuarios').select('clientes(id, razao_social, nome_fantasia, regime_tributario, cnpj, tem_empregado)').eq('user_id', currentUser.id);
-
-  if (!isAdmin() && clientes) {
-    clientes = clientes.map(r => r.clientes).filter(Boolean);
-  }
+  // Carregar clientes do usuário — sempre filtrado por user_id
+  const { data: clientes } = await sb
+    .from('clientes')
+    .select('id, razao_social, nome_fantasia, regime_tributario, cnpj, tem_empregado')
+    .eq('user_id', currentUser.id)
+    .order('razao_social');
   agendaClientes = clientes || [];
 
   // Carregar tarefas manuais do banco
