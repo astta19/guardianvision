@@ -115,9 +115,11 @@ async function spedCriarPeriodo() {
   const lastDay = new Date(ano, mes, 0).getDate();
   const dt_fin = `${ano}-${String(mes).padStart(2,'0')}-${lastDay}`;
 
+  const _escSped = await getEscritorioIdAtual();
   const { data, error } = await sb.from('sped_periodos').insert({
     cliente_id: currentCliente.id,
     user_id: currentUser.id,
+    escritorio_id: _escSped,
     periodo, dt_ini, dt_fin,
     nome_emp: currentCliente.razao_social,
     cnpj: currentCliente.cnpj?.replace(/\D/g,''),
