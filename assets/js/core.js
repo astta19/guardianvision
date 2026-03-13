@@ -521,7 +521,8 @@ async function carregarKPIs() {
         sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('status', 'pendente')
           .lt('prazo', hoje.toISOString().slice(0,10)),
-        sb.from('clientes').select('*', { count: 'exact', head: true }),
+        sb.from('clientes').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id),
         sb.from('documentos_fiscais').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('tipo', 'darf')
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
