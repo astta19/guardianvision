@@ -6,7 +6,7 @@
 // ── Abrir modal de gestão de links ──────────────────────────
 async function abrirPortalCliente() {
   if (!currentCliente) {
-    alert('Selecione uma empresa primeiro.');
+    showToast('Selecione uma empresa primeiro.', 'warn');
     return;
   }
   closeDropdowns();
@@ -95,9 +95,10 @@ async function portalGerarLink() {
     const { data, error } = await sb
       .from('portal_tokens')
       .insert({
-        cliente_id: currentCliente.id,
-        user_id:    currentUser.id,
-        expira_em:  new Date(Date.now() + validade * 86400000).toISOString()
+        cliente_id:   currentCliente.id,
+        user_id:      currentUser.id,
+        escritorio_id: await getEscritorioIdAtual(),
+        expira_em:    new Date(Date.now() + validade * 86400000).toISOString()
       })
       .select('token')
       .single();
@@ -148,7 +149,7 @@ async function portalCopiarLink(link, btn) {
 function portalRevogarLink(tokenId) {
   showConfirm('Revogar este link? O cliente perderá o acesso imediatamente.', async () => {
     const { error } = await sb.from('portal_tokens').delete().eq('id', tokenId);
-    if (error) { alert('Erro ao revogar: ' + error.message); return; }
+    if (error) { showToast('Erro ao revogar o link. Tente novamente.', 'error'); return; }
     await portalCarregarLinks();
     portalShowMsg('Link revogado.', 'info');
   });
