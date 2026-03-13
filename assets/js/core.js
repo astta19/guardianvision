@@ -300,19 +300,40 @@ function doLogout() {
 // HTML usa: confirmModal, confirmModalText, confirmModalCancel, confirmModalOk
 function showConfirm(msg, onConfirm, hideCancel) {
   const modal = document.getElementById('confirmModal');
-  if (!modal) return;
+  if (!modal) {
+    // Fallback sem modal: resolve via confirm() nativo e chama callback se existir
+    const ok = window.confirm(msg);
+    if (ok && typeof onConfirm === 'function') onConfirm();
+    return Promise.resolve(ok);
+  }
+
   const txt = document.getElementById('confirmModalText');
   if (txt) txt.textContent = msg;
   const cancelBtn = document.getElementById('confirmModalCancel');
   if (cancelBtn) cancelBtn.style.display = hideCancel ? 'none' : '';
   modal.style.display = 'flex';
-  window._confirmCallback = onConfirm;
+
+  return new Promise(resolve => {
+    // Guardar resolve E callback para suportar ambos os padrões simultaneamente
+    window._confirmResolve   = resolve;
+    window._confirmCallback  = typeof onConfirm === 'function' ? onConfirm : null;
+  });
 }
 
 function closeConfirm(confirmed) {
   const modal = document.getElementById('confirmModal');
   if (modal) modal.style.display = 'none';
-  if (confirmed && typeof window._confirmCallback === 'function') window._confirmCallback();
+
+  // Resolver a Promise primeiro
+  if (typeof window._confirmResolve === 'function') {
+    window._confirmResolve(!!confirmed);
+  }
+  // Executar callback legado se existir e confirmado
+  if (confirmed && typeof window._confirmCallback === 'function') {
+    window._confirmCallback();
+  }
+
+  window._confirmResolve  = null;
   window._confirmCallback = null;
 }
 
