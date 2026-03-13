@@ -21,6 +21,13 @@ const AI_PROVIDER = {
     ],
   },
 
+  // Prompt caching e citations
+  citations: { enabled: false },
+
+  ativarCitations(ativo) {
+    this.citations.enabled = !!ativo;
+  },
+
   // Configurações de thinking
   thinking: {
     enabled:      false,       // ativado dinamicamente por pergunta
@@ -159,6 +166,17 @@ const AI_PROVIDER = {
         type: 'enabled',
         budget_tokens: this.thinking.budget_tokens,
       } : undefined;
+
+      // Citations — ativar em blocos de documento se citations.enabled
+      if (this.citations.enabled) {
+        for (const msg of msgs) {
+          if (msg.role === 'user' && Array.isArray(msg.content)) {
+            msg.content = msg.content.map(blk =>
+              blk.type === 'document' ? { ...blk, citations: { enabled: true } } : blk
+            );
+          }
+        }
+      }
 
       // Prompt caching nas mensagens: marcar a penúltima mensagem user
       // (a última não pode ser cacheada pois muda a cada turno)
