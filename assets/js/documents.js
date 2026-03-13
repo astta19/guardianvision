@@ -862,74 +862,151 @@ async function gerarDctfWeb() {
   }
 }
 
+// ============================================================
+// GERAÇÃO DE DOCUMENTOS LIVRES — chamados pela IA via tool use
+// ============================================================
 
-// ============================================================
-// UPLOADS RECEBIDOS DO PORTAL
-// ============================================================
-async function carregarUploadsRecebidos() {
-  const el = document.getElementById('uploadsRecebidosLista');
-  if (!el) return;
-  if (!currentCliente?.id) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Selecione uma empresa primeiro.</p>';
-    return;
+async function gerarDocumentoLivrePDF(titulo, conteudo, subtitulo) {
+  if (!window.jspdf) { showToast('Biblioteca PDF não carregada.', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+
+  const doc   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const perfil = perfilCache || {};
+  const empresa = currentCliente;
+  const W = 210, M = 15;
+  const hoje = new Date();
+
+  // Cabeçalho
+  doc.setFillColor(0, 0, 0);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.text('Fiscal365', M, 12);
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  doc.text(titulo || 'Documento', M, 19);
+  if (subtitulo) doc.text(subtitulo, M, 24);
+  doc.setTextColor(0, 0, 0);
+
+  let y = 36;
+
+  // Dados da empresa
+  if (empresa) {
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(M, y, W - M * 2, 18, 2, 2, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(empresa.razao_social || '—', M + 3, y + 7);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${empresa.regime_tributario || '—'}  |  Gerado em: ${hoje.toLocaleDateString('pt-BR')}`, M + 3, y + 13);
+    doc.setTextColor(0, 0, 0);
+    y += 24;
   }
-  el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
-  try {
-    const { data, error } = await sb
-      .from('portal_uploads')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .eq('cliente_id', currentCliente.id)
-      .order('criado_em', { ascending: false })
-      .limit(50);
-    if (error) throw error;
-    if (!data?.length) {
-      el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
-      return;
+
+  // Conteúdo — quebrar em linhas respeitando margem
+  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+  const linhaMax = W - M * 2;
+  const paragrafos = (conteudo || '').split('\n');
+
+  for (const paragrafo of paragrafos) {
+    if (!paragrafo.trim()) { y += 4; continue; }
+    // Detectar título de seção (linha toda em maiúsculas ou começa com #)
+    const ehTitulo = /^#+\s/.test(paragrafo) || paragrafo === paragrafo.toUpperCase();
+    const texto = paragrafo.replace(/^#+\s*/, '');
+    if (ehTitulo) {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+      doc.text(texto, M, y); y += 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    } else {
+      const linhas = doc.splitTextToSize(texto, linhaMax);
+      for (const linha of linhas) {
+        if (y > 278) { doc.addPage(); y = 20; }
+        doc.text(linha, M, y); y += 5;
+      }
+      y += 2;
     }
-    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', outro:'file' };
-    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', outro:'#64748b' };
-    el.innerHTML = data.map(u => {
-      const fmt   = new Date(u.criado_em).toLocaleDateString('pt-BR');
-      const icone = iconeMap[u.tipo_arquivo] || 'file';
-      const cor   = corMap[u.tipo_arquivo]   || '#64748b';
-      const nome  = (u.nome_arquivo||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      const path  = (u.storage_path||'').replace(/'/g,"\'");
-      const nomeQ = (u.nome_arquivo||'').replace(/'/g,"\'");
-      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="width:32px;height:32px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <i data-lucide="${icone}" style="width:16px;height:16px;color:${cor}"></i>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:${u.lido?'400':'600'}">${nome}</div>
-          <div style="font-size:11px;color:var(--text-light);margin-top:2px">
-            ${(u.tipo_arquivo||'outro').toUpperCase()} · ${u.tamanho_kb?u.tamanho_kb+' KB · ':''}${fmt}${u.descricao?' · '+u.descricao:''}
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-          ${!u.lido?'<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>':''}
-          <button onclick="baixarUpload('${u.id}','${path}','${nomeQ}')"
-            style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text)">
-            ⬇ Baixar
-          </button>
-        </div>
-      </div>`;
-    }).join('');
-    if (window.lucide) lucide.createIcons();
-  } catch(e) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro: '+e.message+'</p>';
   }
+
+  // Rodapé
+  const pages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(226, 232, 240); doc.line(M, 287, W - M, 287);
+    doc.setFontSize(7); doc.setTextColor(148, 163, 184);
+    doc.text(`Fiscal365  |  ${perfil.nome || currentUser?.email || ''}  |  ${hoje.toLocaleDateString('pt-BR')}`, M, 291);
+    doc.text(`Pág. ${p}/${pages}`, W - M, 291, { align: 'right' });
+  }
+
+  const nomeArquivo = `${(titulo || 'documento').toLowerCase().replace(/\s+/g, '-')}-${hoje.toISOString().slice(0, 10)}.pdf`;
+  doc.save(nomeArquivo);
 }
 
-async function baixarUpload(id, path, nome) {
-  try {
-    const { data, error } = await sb.storage.from('portal-uploads').createSignedUrl(path, 60);
-    if (error) throw error;
-    const a = Object.assign(document.createElement('a'), { href: data.signedUrl, download: nome, target: '_blank' });
-    document.body.appendChild(a); a.click();
-    setTimeout(() => document.body.removeChild(a), 100);
-    await sb.from('portal_uploads').update({ lido: true }).eq('id', id).eq('user_id', currentUser.id);
-  } catch(e) {
-    alert('Erro ao baixar: ' + e.message);
+async function gerarDocumentoLivreDocx(titulo, conteudo, subtitulo) {
+  if (typeof docx === 'undefined') { showToast('Biblioteca DOCX não carregada.', 'error'); return; }
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+
+  const perfil  = perfilCache || {};
+  const empresa = currentCliente;
+  const hoje    = new Date().toLocaleDateString('pt-BR');
+
+  // Converter conteúdo em parágrafos DOCX
+  const children = [];
+
+  // Cabeçalho do documento
+  children.push(new Paragraph({
+    children: [new TextRun({ text: 'Fiscal365', bold: true, size: 36, font: 'Calibri' })],
+    spacing: { after: 80 }
+  }));
+  children.push(new Paragraph({
+    children: [new TextRun({ text: titulo || 'Documento', size: 28, font: 'Calibri', color: '475569' })],
+    spacing: { after: subtitulo ? 80 : 300 }
+  }));
+  if (subtitulo) {
+    children.push(new Paragraph({
+      children: [new TextRun({ text: subtitulo, size: 22, font: 'Calibri', color: '64748b' })],
+      spacing: { after: 300 }
+    }));
   }
+
+  // Dados da empresa
+  if (empresa) {
+    children.push(new Paragraph({
+      children: [new TextRun({ text: empresa.razao_social || '—', bold: true, size: 24, font: 'Calibri' })],
+      spacing: { after: 80 }
+    }));
+    children.push(new Paragraph({
+      children: [new TextRun({ text: `CNPJ: ${empresa.cnpj || '—'}  |  Regime: ${empresa.regime_tributario || '—'}`, size: 20, font: 'Calibri', color: '64748b' })],
+      spacing: { after: 80 }
+    }));
+    children.push(new Paragraph({
+      children: [new TextRun({ text: `Gerado em: ${hoje}  |  ${perfil.nome || currentUser?.email || ''}`, size: 20, font: 'Calibri', color: '64748b' })],
+      spacing: { after: 400 }
+    }));
+  }
+
+  // Conteúdo — parsear linhas
+  for (const linha of (conteudo || '').split('\n')) {
+    if (!linha.trim()) { children.push(new Paragraph({ spacing: { after: 120 } })); continue; }
+    const ehTitulo = /^#+\s/.test(linha);
+    const texto = linha.replace(/^#+\s*/, '');
+    if (ehTitulo) {
+      children.push(new Paragraph({
+        text: texto, heading: HeadingLevel.HEADING_2,
+        spacing: { before: 300, after: 120 }
+      }));
+    } else {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: texto, size: 22, font: 'Calibri' })],
+        spacing: { after: 120 }
+      }));
+    }
+  }
+
+  const docObj = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(docObj);
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(window.document.createElement('a'), { href: url });
+  a.download = `${(titulo || 'documento').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.docx`;
+  window.document.body.appendChild(a); a.click();
+  setTimeout(() => { window.document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
 }
