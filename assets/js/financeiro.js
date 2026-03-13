@@ -289,9 +289,11 @@ async function finSalvar() {
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
+  const _escFin = await getEscritorioIdAtual();
   const payload = {
     user_id:      currentUser.id,
     cliente_id:   currentCliente.id,
+    escritorio_id: _escFin,
     tipo:         document.getElementById('lancTipo').value,
     categoria:    document.getElementById('lancCategoria').value,
     descricao,
