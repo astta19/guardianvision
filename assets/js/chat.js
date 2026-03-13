@@ -1533,17 +1533,82 @@ POSTURA PROFISSIONAL:
     };
     const { text: replyText, toolCalls } = normalized;
 
-    // ── Tool use: executar ações e montar resposta composta ──
+    // ── Tool use: executar ações e fechar o loop com a API ───
     let toolCardsHtml = '';
     let toolMsgsTexto = '';
+    let replyTextoFinal = replyText; // pode ser atualizado após o loop de tools
+
     if (toolCalls?.length && typeof processarToolCalls === 'function') {
       const resultados = await processarToolCalls(toolCalls);
       toolCardsHtml = renderToolCard(resultados);
       toolMsgsTexto = resultados.map(r => r.msg).join(' ');
       if (window.lucide) setTimeout(() => lucide.createIcons(), 100);
+
+      // ── Fechar loop com Anthropic: enviar tool_result e obter resposta final ──
+      // Protocolo: assistant(tool_use) → user(tool_result) → assistant(texto final)
+      if (provider?.current === 'anthropic') {
+        try {
+          // 1. Montar bloco assistant com os tool_use originais
+          const toolUseBlocks = toolCalls.map(tc => {
+            let input = {};
+            try { input = JSON.parse(tc.function?.arguments || '{}'); } catch {}
+            return { type: 'tool_use', id: tc.id || `tool_${tc.function?.name}`, name: tc.function?.name, input };
+          });
+
+          // 2. Montar bloco user com tool_result de cada execução
+          const toolResultBlocks = resultados.map((r, i) => ({
+            type: 'tool_result',
+            tool_use_id: toolCalls[i]?.id || `tool_${toolCalls[i]?.function?.name}`,
+            content: r.ok ? r.msg : `Erro: ${r.msg}`,
+          }));
+
+          // 3. Montar mensagens com o histórico + tool_use + tool_result
+          const msgsComToolResult = [
+            ...messagesToSend.filter(m => m.role !== 'system'),
+            { role: 'assistant', content: replyText ? [{ type: 'text', text: replyText }, ...toolUseBlocks] : toolUseBlocks },
+            { role: 'user',      content: toolResultBlocks },
+          ];
+
+          // 4. Chamar API novamente para obter o texto conclusivo
+          showTypingIndicator();
+          const bodyFinal = provider.montarBody(model, [
+            ...messagesToSend.filter(m => m.role === 'system'),
+            ...msgsComToolResult,
+          ], undefined, []); // sem tools na segunda chamada — só texto
+
+          const respostaFinal = await new Promise((res, rej) => {
+            let textoAcumulado = '';
+            let bolhaFinal = null;
+            streamResposta(
+              endpoint, bodyFinal,
+              (chunk) => {
+                textoAcumulado = chunk;
+                if (!bolhaFinal) {
+                  hideTypingIndicator();
+                  bolhaFinal = addMessageStreaming(false);
+                }
+                updateStreamBubble(bolhaFinal, chunk);
+              },
+              null,
+              (result) => res({ text: result.text || textoAcumulado, bubble: bolhaFinal }),
+              (err) => { hideTypingIndicator(); rej(new Error(err.error || 'Erro na resposta final')); }
+            );
+          });
+
+          if (respostaFinal.text) replyTextoFinal = respostaFinal.text;
+          // Finalizar bolha da resposta final se veio por streaming
+          if (respostaFinal.bubble) {
+            respostaFinal.bubble.classList.remove('streaming');
+            respostaFinal.bubble.querySelector('.bubble').innerHTML = formatTextWithLinks(replyTextoFinal);
+          }
+        } catch (toolLoopErr) {
+          console.warn('[tool loop] Falha ao fechar ciclo com Anthropic:', toolLoopErr.message);
+          // Não bloquear — o toolCard já foi renderizado
+        }
+      }
     }
 
-    const reply = replyText + (toolMsgsTexto && !replyText ? toolMsgsTexto : '');
+    const reply = replyTextoFinal + (toolMsgsTexto && !replyTextoFinal ? toolMsgsTexto : '');
     const replyFinal = toolCardsHtml
       ? `<div class="tool-cards-wrap">${toolCardsHtml}</div>${reply ? '<div class="tool-text-reply">' + reply + '</div>' : ''}`
       : reply;
@@ -1563,7 +1628,7 @@ POSTURA PROFISSIONAL:
 
     const assistantMessage = {
       role: 'assistant',
-      content: replyText || '',   // só texto puro — toolMsgsTexto não deve ir para o contexto da API
+      content: replyTextoFinal || '',  // texto final após loop de tool_result
       confidence,
       interactionId: interacaoId
     };
@@ -1589,12 +1654,12 @@ POSTURA PROFISSIONAL:
           ${data._tokens ? `<span class="badge-tokens" title="Tokens usados">${(data._tokens.input||0)+(data._tokens.output||0)} tok</span>` : ''}
         </div>`;
       finalizeStreamBubble(data._bubble, toolCardsHtml
-        ? `<div class="tool-cards-wrap">${toolCardsHtml}</div>${replyText ? '<div class="tool-text-reply">' + replyText + '</div>' : ''}`
-        : replyText, footer);
+        ? `<div class="tool-cards-wrap">${toolCardsHtml}</div>${replyTextoFinal ? '<div class="tool-text-reply">' + replyTextoFinal + '</div>' : ''}`
+        : replyTextoFinal, footer);
       if (data._tokens) updateTokenCounter(data._tokens.input, data._tokens.output, data._tokens.cacheRead, data._tokens.cacheWrite);
     } else {
       // Sem bolha de streaming — addMessage com texto puro + toolCards em seguida
-      addMessage(replyText || toolMsgsTexto || '...', false, confidence, null, interacaoId, null, normalized.model);
+      addMessage(replyTextoFinal || toolMsgsTexto || '...', false, confidence, null, interacaoId, null, normalized.model);
       if (toolCardsHtml) {
         const msgs = document.getElementById('msgs');
         const lastBubble = msgs.querySelector('.msg:last-child .bubble');
