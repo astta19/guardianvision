@@ -574,6 +574,7 @@ document.addEventListener('keydown', e => {
     () => { const m = document.getElementById('agendaModal');       if (m?.style.display !== 'none' && typeof closeAgenda === 'function') closeAgenda(); },
     () => { const m = document.getElementById('finModal');          if (m?.style.display !== 'none' && typeof closeFinanceiro === 'function') closeFinanceiro(); },
     () => { const m = document.getElementById('folhaModal');        if (m?.style.display !== 'none' && typeof closeFolha === 'function') closeFolha(); },
+    () => { const m = document.getElementById('honPagoModal');       if (m?.style.display !== 'none' && typeof honPagoFechar === 'function') honPagoFechar(); },
     () => { const m = document.getElementById('honModal');          if (m?.style.display !== 'none' && typeof closeHonorarios === 'function') closeHonorarios(); },
     () => { const m = document.getElementById('portalAdminModal');  if (m?.style.display !== 'none' && typeof fecharPortalAdmin === 'function') fecharPortalAdmin(); },
     () => { const m = document.getElementById('calcModal');         if (m?.style.display !== 'none') m.style.display = 'none'; },
@@ -599,6 +600,18 @@ async function carregarDashboardMaster() {
     const mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
     const mesFim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
 
+    // Buscar membros do escritório do master para isolar as queries
+    const { data: escData } = await sb.from('escritorios').select('id')
+      .eq('owner_id', currentUser.id).limit(1);
+    const escId = escData?.[0]?.id || null;
+
+    let membrosIds = [currentUser.id];
+    if (escId) {
+      const { data: membros } = await sb.from('escritorio_usuarios')
+        .select('user_id').eq('escritorio_id', escId);
+      if (membros?.length) membrosIds = membros.map(m => m.user_id);
+    }
+
     const [
       { data: usuariosData },
       { count: cUploads },
@@ -608,20 +621,20 @@ async function carregarDashboardMaster() {
     ] = await Promise.all([
       // contadores via proxy
       supabaseProxy('listar_logins', {}).then(r => ({ data: r?.logins || [] })),
-      // uploads não lidos
+      // uploads não lidos — apenas dos membros do escritório
       sb.from('portal_uploads').select('*', { count: 'exact', head: true })
-        .eq('lido', false),
-      // funcionários ativos
+        .in('user_id', membrosIds).eq('lido', false),
+      // funcionários ativos — apenas dos membros do escritório
       sb.from('dp_funcionarios').select('*', { count: 'exact', head: true })
-        .eq('status', 'ativo'),
-      // honorários recebidos no mês
+        .in('user_id', membrosIds).eq('status', 'ativo'),
+      // honorários recebidos no mês — apenas dos membros do escritório
       sb.from('lancamentos').select('valor')
-        .eq('tipo', 'receita')
-        .eq('status', 'pago')
-        .gte('data_pgto', mesIni)
-        .lte('data_pgto', mesFim),
-      // clientes por regime
-      sb.from('clientes').select('regime_tributario'),
+        .in('user_id', membrosIds)
+        .eq('tipo', 'receita').eq('status', 'pago')
+        .gte('data_pgto', mesIni).lte('data_pgto', mesFim),
+      // clientes por regime — apenas dos membros do escritório
+      sb.from('clientes').select('regime_tributario')
+        .in('user_id', membrosIds),
     ]);
 
     // Contadores (exclui master)
