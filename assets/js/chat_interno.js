@@ -76,6 +76,25 @@ async function ciInit() {
   if (btn) btn.style.display = 'flex';
 }
 
+function ciReset() {
+  // Cancelar subscriptions ativas
+  if (_ciBc) { try { sb.removeChannel(_ciBc); } catch {} _ciBc = null; }
+  if (_ciPg) { try { sb.removeChannel(_ciPg); } catch {} _ciPg = null; }
+  if (_ciPr) { try { sb.removeChannel(_ciPr); } catch {} _ciPr = null; }
+  // Resetar estado
+  _ciEscId     = null;
+  _ciEscNome   = '';
+  _ciReady     = false;
+  _ciFp        = new Set();
+  _ciPerfis    = {};
+  _ciNaoLidas  = 0;
+  _ciAberto    = false;
+  _ciPagina    = 0;
+  if (_ciDigTimer) { clearTimeout(_ciDigTimer); _ciDigTimer = null; }
+  const btn = document.getElementById('ciBtnHeader');
+  if (btn) btn.style.display = 'none';
+}
+
 function _ciTemPermissao() {
   return (currentUser?.user_metadata?.permissions || []).includes('chat_interno');
 }
