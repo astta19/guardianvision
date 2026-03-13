@@ -427,21 +427,24 @@ async function honExcluir(id) {
 
 // ── Relatório de inadimplência ────────────────────────────────
 async function honRelatorioInadimplencia() {
-  // Buscar últimos 3 meses para ver padrão
-  const registros = [];
+  // Montar as 3 competências de uma vez e buscar em query única
   const hoje = new Date();
-  for (let i = 0; i < 3; i++) {
+  const comps = Array.from({ length: 3 }, (_, i) => {
     let m = hoje.getMonth() - i;
     let y = hoje.getFullYear();
     if (m < 0) { m += 12; y--; }
-    const comp = `${String(m+1).padStart(2,'0')}/${y}`;
-    const { data } = await sb.from('honorarios')
-      .select('*, clientes(razao_social, nome_fantasia, regime_tributario)')
-      .eq('user_id', currentUser.id)
-      .eq('competencia', comp)
-      .eq('status', 'pendente');
-    if (data) registros.push(...data.map(r => ({ ...r, _comp: comp })));
-  }
+    return `${String(m + 1).padStart(2, '0')}/${y}`;
+  });
+
+  const { data, error } = await sb.from('honorarios')
+    .select('*, clientes(razao_social, nome_fantasia, regime_tributario)')
+    .eq('user_id', currentUser.id)
+    .in('competencia', comps)
+    .eq('status', 'pendente');
+
+  if (error) { showToast('Erro ao buscar inadimplência: ' + error.message, 'error'); return; }
+
+  const registros = (data || []).map(r => ({ ...r, _comp: r.competencia }));
 
   if (!registros.length) {
     showToast('Nenhuma inadimplência nos últimos 3 meses.', 'success');
