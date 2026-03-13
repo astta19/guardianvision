@@ -91,7 +91,8 @@ function setConnectionStatus(text, icon, color) {
 
 async function checkConnection() {
   try {
-    const { error } = await sb.from('chats').select('id', { count: 'exact', head: true });
+    const { error } = await sb.from('perfis_usuarios').select('user_id', { count: 'exact', head: true })
+      .eq('user_id', currentUser?.id || '00000000-0000-0000-0000-000000000000');
     if (error) {
       if (error.status === 401 || error.message?.includes('JWT')) { handleSessionExpired(); return; }
       throw error;
@@ -572,6 +573,8 @@ function updateChatTitle(title) {
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const closers = [
+    // Dropdowns — fecham primeiro, antes de qualquer modal
+    () => { const m = document.getElementById('toolsMenu'); if (m?.style.display === 'block' && typeof closeDropdowns === 'function') closeDropdowns(); },
     () => { const m = document.getElementById('confirmModal');      if (m?.style.display !== 'none') closeConfirm(false); },
     () => { const m = document.getElementById('clientModal');       if (!m?.classList.contains('hidden') && typeof closeClientModal === 'function') closeClientModal(); },
     () => { const m = document.getElementById('empresaPerfilModal');if (m?.style.display !== 'none' && typeof closeEmpresaPerfil === 'function') closeEmpresaPerfil(); },
