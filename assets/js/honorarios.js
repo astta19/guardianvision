@@ -311,6 +311,7 @@ function honEditar(id) {
   const h = honLista.find(x => x.id === id);
   if (!h) return;
   document.getElementById('honFormId').value          = h.id;
+  document.getElementById('honFormClienteId').value   = h.cliente_id; // preservar ao editar
   document.getElementById('honFormValor').value       = h.valor;
   document.getElementById('honFormDia').value         = h.dia_vencimento;
   document.getElementById('honFormDescricao').value   = h.descricao || '';
@@ -326,6 +327,7 @@ function honEditar(id) {
 function honNovo() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   document.getElementById('honFormId').value         = '';
+  document.getElementById('honFormClienteId').value  = ''; // vazio = usar currentCliente ao salvar
   document.getElementById('honFormValor').value      = '';
   document.getElementById('honFormDia').value        = '10';
   document.getElementById('honFormDescricao').value  = `Honorários contábeis ${String(honMes+1).padStart(2,'0')}/${honAno}`;
@@ -354,9 +356,16 @@ async function honSalvar() {
   btn.disabled = true; btn.textContent = 'Salvando...';
 
   const compStr = `${String(honMes + 1).padStart(2,'0')}/${honAno}`;
+  // Ao editar: preservar o cliente_id original do registro (campo oculto honFormClienteId)
+  // Ao criar:  usar currentCliente.id
+  const clienteIdSalvo = document.getElementById('honFormClienteId').value;
+  const clienteId = (id && clienteIdSalvo) ? clienteIdSalvo : currentCliente?.id;
+
+  if (!clienteId) { showToast('Selecione uma empresa primeiro.', 'warn'); btn.disabled = false; btn.textContent = 'Salvar'; return; }
+
   const payload = {
     user_id:        currentUser.id,
-    cliente_id:     currentCliente.id,
+    cliente_id:     clienteId,
     valor,
     dia_vencimento: dia,
     descricao:      document.getElementById('honFormDescricao').value.trim() || null,
