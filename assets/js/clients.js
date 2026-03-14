@@ -110,6 +110,8 @@ async function setCurrentCliente(cliente) {
   if (lcBadge) lcBadge.textContent = displayName;
   const balBadge = document.getElementById('balEmpresaBadge');
   if (balBadge) balBadge.textContent = displayName;
+  const dreBadge = document.getElementById('dreEmpresaBadge');
+  if (dreBadge) dreBadge.textContent = displayName;
 
   // Se honorários estiver aberto, recarregar para a nova empresa
   if (document.getElementById('honModal')?.style.display !== 'none' && typeof honCarregar === 'function') {
