@@ -80,7 +80,7 @@ const EmpresaContext = (() => {
     if (!cliente) return '';
 
     const fmt  = v => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const fmtD = d => d ? new Date(d + 'T00:00').toLocaleDateString('pt-BR') : '—';
+    const fmtD = d => d ? new Date(d + 'T12:00').toLocaleDateString('pt-BR') : '—';
     const lines = [];
 
     // Dados cadastrais da empresa
@@ -151,7 +151,7 @@ const EmpresaContext = (() => {
       const rec  = dados.lancamentos.filter(l => l.tipo === 'receita').reduce((a,l) => a + +l.valor, 0);
       const desp = dados.lancamentos.filter(l => l.tipo === 'despesa').reduce((a,l) => a + +l.valor, 0);
       const vencidos = dados.lancamentos.filter(l =>
-        l.status === 'pendente' && new Date(l.data_venc + 'T00:00') < new Date()
+        l.status === 'pendente' && new Date(l.data_venc + 'T12:00') < new Date()
       );
       lines.push('\n── FINANCEIRO (ano corrente) ────────────');
       lines.push(`  Receitas: R$ ${fmt(rec)}`);
@@ -215,7 +215,7 @@ const EmpresaContext = (() => {
 
   // ── API pública ───────────────────────────────────────────
   return {
-    invalidar() { _cache = null; _cacheTs = 0; },
+    invalidar() { _cache = null; _cacheTs = 0; _cacheId = null; },
 
     async obterContexto(cliente, userId) {
       if (!cliente?.id) return '';
