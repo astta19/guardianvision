@@ -1196,6 +1196,9 @@ async function send() {
     // CRIAR CONTEXTO DOS ARQUIVOS (TODOS OS ARQUIVOS DA CONVERSA)
     const fileContext = createFileContext();
 
+    // ── Envio via AI_PROVIDER (Groq ou Anthropic) ───────────
+    const provider   = (typeof AI_PROVIDER !== 'undefined') ? AI_PROVIDER : null;
+
     // Ativar citations automaticamente se há documentos anexados
     if (currentFiles.some(f => f.content && !f.type?.startsWith('image/'))) {
       provider?.ativarCitations?.(true);
@@ -1500,8 +1503,7 @@ POSTURA PROFISSIONAL:
       ...recentChatMessages
     ];
 
-    // ── Envio via AI_PROVIDER (Groq ou Anthropic) ───────────
-    const provider   = (typeof AI_PROVIDER !== 'undefined') ? AI_PROVIDER : null;
+    // ── Continua envio via AI_PROVIDER ───────────────────────
     const modelList  = provider ? provider.getModels() : MODELS;
     const endpoint   = provider ? provider.getEndpoint() : '/api/chat';
     const tools      = (_modoFocado || typeof CHAT_TOOLS === 'undefined') ? undefined : CHAT_TOOLS;
