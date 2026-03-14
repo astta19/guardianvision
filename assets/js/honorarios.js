@@ -348,6 +348,7 @@ function honEditar(id) {
 // ── Novo ─────────────────────────────────────────────────────
 function honNovo() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
+  const nomeCliente = currentCliente.nome_fantasia || currentCliente.razao_social;
   document.getElementById('honFormId').value         = '';
   document.getElementById('honFormClienteId').value  = ''; // vazio = usar currentCliente ao salvar
   document.getElementById('honFormValor').value      = '';
@@ -356,7 +357,10 @@ function honNovo() {
   document.getElementById('honFormObs').value        = '';
   document.getElementById('honFormStatus').value     = 'pendente';
   document.getElementById('honFormPgto').value       = '';
-  document.getElementById('honFormTitulo').textContent = 'Novo Honorário';
+  // Em modo Todos: indicar para qual cliente está criando
+  document.getElementById('honFormTitulo').textContent = honTodos
+    ? `Novo Honorário — ${nomeCliente}`
+    : 'Novo Honorário';
   document.getElementById('honFormPanel').style.display = '';
   document.getElementById('honFormPanel').scrollIntoView({ behavior: 'smooth' });
 }
