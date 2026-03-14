@@ -14,6 +14,7 @@ const ALLOWED_ACTIONS = [
   'buscar_permissoes',
   'buscar_base_conhecimento',
   'excluir_treinamento',
+  'buscar_usuario_por_email',
 ];
 
 export default async function handler(req, res) {
@@ -279,6 +280,27 @@ export default async function handler(req, res) {
       const data = await r.json();
       const permissions = data?.[0]?.permissions || [];
       return res.status(200).json({ permissions });
+    }
+
+    // ── buscar_usuario_por_email ────────────────────────────────────
+    // Busca um único usuário por email para adicionar ao escritório
+    // Retorna apenas id + email — sem dados sensíveis
+    if (action === 'buscar_usuario_por_email') {
+      if (userRole !== 'admin' && userRole !== 'master') {
+        return res.status(403).json({ error: 'Acesso restrito a administradores' });
+      }
+      const { email } = payload || {};
+      if (!email) return res.status(400).json({ error: 'email obrigatório' });
+
+      const r = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`,
+        { headers: { 'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`, 'apikey': SUPABASE_SERVICE_KEY } }
+      );
+      const data = await r.json();
+      const found = (data.users || []).find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (!found) return res.status(404).json({ error: 'Usuário não encontrado. Ele precisa ter feito login ao menos uma vez.' });
+
+      return res.status(200).json({ id: found.id, email: found.email });
     }
 
     // ── buscar_base_conhecimento ────────────────────────────────────
