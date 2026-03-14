@@ -103,6 +103,10 @@ async function setCurrentCliente(cliente) {
   // Limpar dados de NF-e do cliente anterior — evita cruzamento entre empresas
   if (typeof nfeData !== 'undefined') nfeData = [];
 
+  // Atualizar badge de empresa em módulos contábeis
+  const pcBadge = document.getElementById('pcEmpresaBadge');
+  if (pcBadge) pcBadge.textContent = displayName;
+
   // Se honorários estiver aberto, recarregar para a nova empresa
   if (document.getElementById('honModal')?.style.display !== 'none' && typeof honCarregar === 'function') {
     await honCarregar();
@@ -566,6 +570,7 @@ const PERMS_LIST = [
   { id: 'compartilhar',  label: 'Compartilhar Chat',  icon: 'share-2' },
   { id: 'arquivos',      label: 'Anexar Arquivos',    icon: 'paperclip' },
   { id: 'gerar_doc',     label: 'Gerar Documentos',   icon: 'file-plus' },
+  { id: 'contabilidade', label: 'Contabilidade',       icon: 'book-open' },
 ];
 
 async function abrirGerenciarPermissoes() {
