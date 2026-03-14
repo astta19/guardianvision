@@ -690,25 +690,6 @@ async function vincularUsuarioManual() {
   }
 }
 
-    const { error } = await sb
-      .from('escritorio_usuarios')
-      .insert({ escritorio_id: escId, user_id: found.id });
-
-    if (error && error.code !== '23505') throw new Error(error.message);
-
-    msgEl.style.color = '#16a34a';
-    msgEl.textContent = '✓ Usuário adicionado!';
-    document.getElementById('vincularEmail').value = '';
-    await _carregarMembros();
-
-  } catch (e) {
-    msgEl.style.color = '#dc2626';
-    msgEl.textContent = '⚠ ' + e.message;
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 async function _removerMembro(escritorioId, userId) {
   const ok = await showConfirm('Remover este membro do escritório?');
   if (!ok) return;
