@@ -23,9 +23,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <!-- reCAPTCHA v3 — invisível, sem fricção para o usuário -->
-  <script src="https://www.google.com/recaptcha/api.js?render=RECAPTCHA_SITE_KEY_HERE" async defer></script>
-  <script>window.RECAPTCHA_SITE_KEY = 'RECAPTCHA_SITE_KEY_HERE';</script>
 
   <!-- Estilos -->
   <link rel="stylesheet" href="assets/css/app.css?v=6">
@@ -47,107 +44,7 @@
   .deadline-row { display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border); }
   .deadline-row:last-child { border-bottom:none; }
   .deadline-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
-
-    /* ── Honorários ─────────────────────────────────────── */
-    .hon-kpi-card {
-      padding: 12px 14px; border-radius: 10px;
-      border: 1px solid var(--border); background: var(--bg);
-    }
-    .hon-kpi-label { font-size: 10px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: .5px; }
-    .hon-kpi-val   { font-size: 16px; font-weight: 800; color: var(--text); margin-top: 3px; }
-    .hon-grupo-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 10px 4px 4px; }
-    .hon-label-venc { color: #dc2626; } .hon-label-pend { color: #d97706; }
-    .hon-label-pago { color: #16a34a; } .hon-label-isen { color: #64748b; }
-    .hon-item {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border);
-      background: var(--card); margin-bottom: 6px; transition: border-color .15s, box-shadow .15s;
-    }
-    .hon-item:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-    .hon-item-venc  { border-color: #fca5a5; background: #fff5f5; }
-    .dark .hon-item-venc { background: rgba(220,38,38,.06); border-color: #7f1d1d; }
-    .hon-item-pago  { opacity: .75; }
-    .hon-item-left  { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-    .hon-avatar { width: 34px; height: 34px; border-radius: 9px; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .hon-item-info  { flex: 1; min-width: 0; }
-    .hon-item-nome  { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hon-item-meta  { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; align-items: center; }
-    .hon-item-meta span { font-size: 11px; color: var(--text-light); }
-    .hon-regime-badge { padding: 1px 7px; border-radius: 8px; font-size: 10px; font-weight: 700 !important; }
-    .hon-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .hon-valor      { font-size: 14px; font-weight: 800; white-space: nowrap; color: var(--text); }
-    .hon-valor-pago { color: #16a34a; } .hon-valor-venc { color: #dc2626; }
-    .hon-acoes      { display: flex; gap: 4px; }
-    .hon-btn { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; color: var(--text-light); display: flex; align-items: center; justify-content: center; transition: all .15s; }
-    .hon-btn:hover       { background: var(--hover); color: var(--text); }
-    .hon-btn-pagar       { border-color: #bbf7d0; color: #16a34a; background: #f0fdf4; }
-    .hon-btn-pagar:hover { background: #dcfce7; }
-    .hon-btn-del         { border-color: #fca5a5; color: #dc2626; }
-    .hon-btn-del:hover   { background: #fef2f2; }
-
-    /* ── Chat Interno ────────────────────────────────────── */
-    #ciBtnHeader { display:none;position:relative;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--text-light);transition:all .15s;flex-shrink:0 }
-    #ciBtnHeader:hover { background:var(--sidebar-hover);color:var(--text) }
-    #ciBadge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:#dc2626;color:#fff;border-radius:99px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg);pointer-events:none }
-    #ciDrawer { display:none;position:fixed;top:0;right:0;width:340px;max-width:95vw;height:100vh;background:var(--card);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(0,0,0,.12);z-index:8800;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1) }
-    #ciDrawer.ci-open { transform:translateX(0) }
-    .ci-header { display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0 }
-    .ci-header-info { flex:1;min-width:0 }
-    .ci-header-title { font-size:14px;font-weight:700;color:var(--text) }
-    .ci-header-sub { font-size:11px;color:var(--text-light);margin-top:1px;display:flex;align-items:center;gap:6px }
-    .ci-fechar { background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;border-radius:6px;display:flex;align-items:center }
-    .ci-fechar:hover { background:var(--sidebar-hover);color:var(--text) }
-    #ciCorpo { flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:2px }
-    .ci-vazio { text-align:center;color:var(--text-light);font-size:13px;padding:40px 16px;line-height:1.7;margin:auto }
-    .ci-sep-dia { display:flex;align-items:center;gap:8px;padding:10px 0 6px;color:var(--text-light);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px }
-    .ci-sep-dia::before,.ci-sep-dia::after { content:'';flex:1;height:1px;background:var(--border) }
-    .ci-load-mais { text-align:center;padding:4px 0 10px }
-    .ci-load-mais button { background:none;border:1px solid var(--border);border-radius:20px;padding:4px 14px;font-size:11px;cursor:pointer;color:var(--text-light) }
-    .ci-load-mais button:hover { background:var(--sidebar-hover);color:var(--text) }
-    /* mensagem */
-    .ci-msg-wrap { display:flex;flex-direction:column;position:relative }
-    .ci-msg-wrap:hover .ci-r-trigger { opacity:1 }
-    .ci-prp-wrap { align-items:flex-end }
-    .ci-msg { display:flex;align-items:flex-end;gap:8px;max-width:88% }
-    .ci-prp { flex-direction:row-reverse;align-self:flex-end }
-    .ci-out { align-self:flex-start }
-    .ci-mbody { display:flex;flex-direction:column;gap:3px;min-width:0 }
-    .ci-nome { font-size:11px;font-weight:600;color:var(--text-light);padding-left:4px }
-    .ci-bubble { background:var(--sidebar-hover);border-radius:14px 14px 14px 4px;padding:8px 12px;font-size:13px;color:var(--text);line-height:1.55;word-break:break-word;max-width:230px;position:relative }
-    .ci-prp .ci-bubble { background:var(--primary);color:#fff;border-radius:14px 14px 4px 14px }
-    .ci-hora { display:block;font-size:10px;opacity:.5;margin-top:4px;text-align:right }
-    /* imagem */
-    .ci-img-preview { max-width:200px;max-height:200px;border-radius:10px;cursor:pointer;display:block;margin-top:4px }
-    /* menção */
-    .ci-mencao { background:rgba(124,58,237,.15);color:#7c3aed;border-radius:4px;padding:0 3px;font-weight:600 }
-    .ci-prp .ci-mencao { background:rgba(255,255,255,.25);color:#fff }
-    /* reações */
-    .ci-reacoes { display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding-left:36px }
-    .ci-prp-wrap .ci-reacoes { padding-left:0;justify-content:flex-end }
-    .ci-r-btn { background:var(--sidebar-hover);border:1px solid var(--border);border-radius:20px;padding:2px 7px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px }
-    .ci-r-btn.ci-r-proprio { border-color:var(--primary);background:rgba(124,58,237,.08) }
-    .ci-r-count { font-size:11px;font-weight:600;color:var(--text-light) }
-    .ci-r-trigger { position:absolute;right:-28px;top:50%;transform:translateY(-50%);background:var(--card);border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;padding:0 }
-    .ci-prp-wrap .ci-r-trigger { right:auto;left:-28px }
-    .ci-reacao-picker { position:absolute;bottom:110%;right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px 8px;display:flex;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100 }
-    .ci-reacao-picker button { background:none;border:none;font-size:18px;cursor:pointer;padding:2px 4px;border-radius:6px;line-height:1 }
-    .ci-reacao-picker button:hover { background:var(--sidebar-hover) }
-    /* digitando */
-    #ciDigitando { display:none;font-size:11px;color:var(--text-light);padding:4px 14px;font-style:italic;flex-shrink:0 }
-    /* rodapé */
-    .ci-rodape { padding:8px 10px;border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:6px;flex-shrink:0 }
-    .ci-rodape-actions { display:flex;gap:4px;align-items:flex-end }
-    .ci-action-btn { width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--text-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s }
-    .ci-action-btn:hover { background:var(--sidebar-hover);color:var(--text) }
-    #ciInput { flex:1;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;min-height:36px;max-height:120px;line-height:1.5;overflow-y:auto }
-    #ciInput:focus { border-color:var(--primary) }
-    .ci-send { width:34px;height:34px;border-radius:10px;background:var(--primary);border:none;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s }
-    .ci-send:hover { opacity:.85 }
-    .hon-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; color: var(--text-light); text-align: center; gap: 8px; }
-    .hon-empty p { font-size: 13px; }
-    .hon-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: hon-spin .7s linear infinite; }
-    @keyframes hon-spin { to { transform: rotate(360deg); } }
-    </style>
+</style>
 </head>
 <body>
 <!-- TELA DE LOADING -->
@@ -187,11 +84,6 @@
             onkeypress="if(event.key==='Enter') doLogin()">
         </div>
         <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
-        <div style="font-size:10px;color:var(--text-light);text-align:center;margin-top:6px;line-height:1.5">
-          Protegido por reCAPTCHA —
-          <a href="https://policies.google.com/privacy" target="_blank" style="color:inherit">Privacidade</a> ·
-          <a href="https://policies.google.com/terms" target="_blank" style="color:inherit">Termos</a>
-        </div>
 
         <div class="auth-divider"><span>ou</span></div>
 
@@ -200,18 +92,6 @@
           Continuar com Google
         </button>
         <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
-
-        <!-- LOGIN FACIAL -->
-        <button class="google-btn" onclick="abrirModalFace()" type="button"
-          style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
-            <path d="M20 21a8 8 0 1 0-16 0"/>
-          </svg>
-          Entrar com rosto
-        </button>
-
         <div class="auth-msg" id="loginMsg"></div>
       </div>
 
@@ -320,16 +200,6 @@
             <option value="false">Não (sem folha de pagamento)</option>
             <option value="true">Sim (possui CLT / pró-labore com INSS)</option>
           </select>
-        </div>
-        <div class="form-field" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div>
-            <label>Honorário Mensal (R$)</label>
-            <input type="number" id="fHonValor" step="0.01" min="0" placeholder="Ex: 350,00">
-          </div>
-          <div>
-            <label>Dia de Vencimento</label>
-            <input type="number" id="fHonDia" min="1" max="28" placeholder="10" value="10">
-          </div>
         </div>
         <div class="form-field admin-only" id="fContadoresField" style="display:none">
           <label>Atribuir contadores</label>
@@ -521,7 +391,6 @@
             <div>
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Município</label>
               <input id="epMunicipio" type="text" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-              <input id="epCodMun" type="hidden">
             </div>
             <div>
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">UF</label>
@@ -561,25 +430,6 @@
           <div style="margin-top:16px;padding:12px;background:var(--sidebar-hover);border-radius:10px;font-size:12px;color:var(--text-light)">
             <i data-lucide="info" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>
             O faturamento anual é calculado automaticamente a partir do mensal se deixado em branco. Os valores de pró-labore dos sócios (aba Sócios) somam automaticamente ao pró-labore total.
-          </div>
-          <!-- Honorários -->
-          <div style="margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:10px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
-              <i data-lucide="receipt" style="width:13px;height:13px;color:#16a34a"></i> Honorários Mensais
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div>
-                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Valor do Honorário (R$)</label>
-                <input id="epHonorarioValor" type="number" step="0.01" min="0" placeholder="Ex: 350,00"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-              </div>
-              <div>
-                <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px">Dia de Vencimento</label>
-                <input id="epHonorarioDia" type="number" min="1" max="28" placeholder="10"
-                  style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-              </div>
-            </div>
-            <p style="font-size:11px;color:var(--text-light);margin-top:8px">Usado em <strong>Honorários → Gerar mês</strong> para criar cobranças automaticamente para todos os clientes.</p>
           </div>
         </div>
 
@@ -899,14 +749,6 @@
                 <i data-lucide="wallet"></i>
                 <span>Financeiro</span>
               </button>
-              <button class="tool-card" data-perm="honorarios" onclick="openHonorarios(); closeDropdowns()" style="display:none">
-                <i data-lucide="receipt"></i>
-                <span>Honorários</span>
-              </button>
-              <button class="tool-card" data-perm="contabilidade" onclick="openPlanoConta(); closeDropdowns()" style="display:none">
-                <i data-lucide="book-open"></i>
-                <span>Contabilidade</span>
-              </button>
               <button class="tool-card" data-perm="perfil_empresa" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
                 <i data-lucide="building-2" style="width:20px;height:20px"></i>
                 <span>Perfil Empresa</span>
@@ -915,13 +757,13 @@
                 <i data-lucide="calculator"></i>
                 <span>Calculadora</span>
               </button>
-              <button class="tool-card" data-perm="portal" id="portalHeaderBtn" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none;position:relative">
+              <button class="tool-card" data-perm="portal" id="portalHeaderBtn" onclick="abrirPortalCliente(); closeDropdowns()" style="display:none">
                 <i data-lucide="external-link"></i>
                 <span>Portal</span>
-                <span id="portalBadge" style="display:none;position:absolute;top:4px;right:4px;
-                  background:#dc2626;color:#fff;font-size:9px;font-weight:700;
-                  min-width:16px;height:16px;border-radius:8px;padding:0 4px;
-                  display:none;align-items:center;justify-content:center;line-height:1"></span>
+              </button>
+              <button class="tool-card" data-perm="contabilidade" onclick="openPlanoConta(); closeDropdowns()" style="display:none">
+                <i data-lucide="book-open"></i>
+                <span>Contabilidade</span>
               </button>
             </div>
 
@@ -964,14 +806,6 @@
 
           </div>
         </div>
-
-        <div class="toolbar-sep"></div>
-
-        <!-- Chat Interno -->
-        <button id="ciBtnHeader" onclick="abrirChatInterno()" title="Chat do Escritório" aria-label="Chat">
-          <i data-lucide="message-square" style="width:15px;height:15px"></i>
-          <span id="ciBadge"></span>
-        </button>
 
         <div class="toolbar-sep"></div>
 
@@ -1039,30 +873,6 @@
               <div><div class="kpi-val" id="kpiVencidos">—</div><div class="kpi-lbl">Prazos vencidos</div></div>
             </div>
           </div>
-        </div>
-        <!-- Dashboard consolidado — visível apenas para master -->
-        <div id="dashboardMaster" style="display:none;margin-top:16px;width:100%;max-width:560px">
-          <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Visão do Escritório</div>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#ede9fe"><i data-lucide="users" style="color:#7c3aed;width:18px;height:18px"></i></div>
-              <div><div class="kpi-val" id="dmContadores">—</div><div class="kpi-lbl">Contadores ativos</div></div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#dcfce7"><i data-lucide="trending-up" style="color:#16a34a;width:18px;height:18px"></i></div>
-              <div><div class="kpi-val" id="dmHonorarios">—</div><div class="kpi-lbl">Honorários (mês)</div></div>
-            </div>
-            <div class="kpi-card" onclick="_checkUploadsNaoLidos()" style="cursor:pointer">
-              <div class="kpi-icon" style="background:#fce7f3"><i data-lucide="inbox" style="color:#db2777;width:18px;height:18px"></i></div>
-              <div><div class="kpi-val" id="dmUploadsNaoLidos">—</div><div class="kpi-lbl">Arquivos não lidos</div></div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-icon" style="background:#fef3c7"><i data-lucide="user-check" style="color:#d97706;width:18px;height:18px"></i></div>
-              <div><div class="kpi-val" id="dmFuncionarios">—</div><div class="kpi-lbl">Funcionários ativos</div></div>
-            </div>
-          </div>
-          <!-- Breakdown por regime -->
-          <div id="dmRegimes" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap"></div>
         </div>
       </div>
     </div>
@@ -1138,7 +948,14 @@
           <i data-lucide="receipt" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>DARF / DAS
         </button>
         <button class="doc-tab" onclick="switchDocTab('historico', this);darfHistoricoCarregar()">
+          <button class="doc-tab" id="tabRecebidos" onclick="switchDocTab('recebidos', this);carregarUploadsRecebidos()">
+  <i data-lucide="inbox" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Recebidos
+</button>
           <i data-lucide="history" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Histórico
+        </button>
+        <button class="doc-tab" id="tabRecebidos" onclick="switchDocTab('recebidos', this);carregarUploadsRecebidos()">
+          <i data-lucide="inbox" style="width:13px;height:13px;vertical-align:middle;margin-right:4px"></i>Recebidos
+          <span id="badgeRecebidos" style="display:none;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px"></span>
         </button>
       </div>
 
@@ -1386,35 +1203,6 @@
               <button onclick="salvarSenha()" class="btn-sa" style="align-self:flex-end;padding:8px 20px;font-size:13px;">Alterar senha</button>
             </div>
           </div>
-
-          <!-- Seção: Login Facial -->
-          <div style="margin-bottom:20px;">
-            <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Login Facial</h4>
-            <div id="faceLoginStatus" style="font-size:13px;color:var(--text-light);margin-bottom:12px;">Verificando...</div>
-            <div id="faceWebcamArea" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:12px;">
-              <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;width:100%;max-width:320px;">
-                <video id="faceVideo" autoplay muted playsinline style="width:100%;display:block;border-radius:12px;"></video>
-                <canvas id="faceCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;"></canvas>
-              </div>
-              <div id="faceCaptureMsg" style="font-size:12px;color:var(--text-light);text-align:center;min-height:18px;"></div>
-              <div style="display:flex;gap:8px;">
-                <button onclick="capturarFace()" id="faceCaptureBtn" class="btn-sa" style="padding:8px 18px;font-size:13px;">
-                  <i data-lucide="camera" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Capturar
-                </button>
-                <button onclick="cancelarCadastroFace()" style="padding:8px 14px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;color:var(--text);">Cancelar</button>
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button onclick="iniciarCadastroFace()" id="faceActivateBtn" class="btn-sa" style="padding:8px 16px;font-size:13px;display:none;">
-                <i data-lucide="scan-face" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Ativar login facial
-              </button>
-              <button onclick="removerFace()" id="faceRemoveBtn" style="padding:8px 16px;font-size:13px;border:1px solid #fca5a5;border-radius:8px;background:var(--bg);cursor:pointer;color:#dc2626;display:none;">
-                <i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Remover login facial
-              </button>
-            </div>
-            <div id="faceMsg" class="auth-msg" style="margin-top:8px;"></div>
-          </div>
-
         </div>
 
         <!-- ABA NOTIFICAÇÕES -->
@@ -1475,7 +1263,15 @@
         <div class="c-row"><span>Total:</span><span id="rT">-</span></div>
       </div>
 
-
+      <!-- Painel: Documentos Recebidos do Portal -->
+      <div id="docPanelRecebidos" class="doc-panel">
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:12px">
+          Arquivos enviados pelo cliente via portal. Marque como lido após verificar.
+        </p>
+        <div id="uploadsRecebidosLista">
+          <p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Selecione uma empresa para ver os arquivos recebidos.</p>
+        </div>
+      </div>
 
     </div>
     </div>
@@ -1539,7 +1335,7 @@
   <script src="assets/js/ai_provider.js?v=1"></script>
   <script src="assets/js/chat_tools.js?v=1"></script>
   <script src="assets/js/core.js?v=12"></script>
-  <script src="assets/js/ui.js?v=8"></script>
+  <script src="assets/js/ui.js?v=7"></script>
   <script src="assets/js/clients.js?v=9"></script>
   <script src="assets/js/chat.js?v=8"></script>
   <script src="assets/js/fiscal.js?v=8"></script>
@@ -1646,7 +1442,7 @@
   <!-- ══════════════════════════════════════════════════════════
        MODAL FINANCEIRO — Lançamentos + Fluxo de Caixa
   ══════════════════════════════════════════════════════════ -->
-  <div id="finModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:center;justify-content:center;padding:16px;overflow-y:auto" onclick="if(event.target===this)closeFinanceiro()">
+  <div id="finModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFinanceiro()">
     <div class="dp-modal" style="max-width:720px">
 
       <div class="dp-modal-hd">
@@ -1671,14 +1467,6 @@
           <button onclick="finNavMes(-1)" class="dp-btn-sec" style="padding:4px 10px">‹</button>
           <strong id="finMesLabel" style="font-size:13px">—</strong>
           <button onclick="finNavMes(1)" class="dp-btn-sec" style="padding:4px 10px">›</button>
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:4px;justify-content:flex-end">
-          <button onclick="finExportarPDF()" class="dp-btn-sec" style="font-size:11px;padding:4px 10px;display:flex;align-items:center;gap:4px">
-            <i data-lucide="file-text" style="width:12px;height:12px"></i> PDF
-          </button>
-          <button onclick="finExportarExcel()" class="dp-btn-sec" style="font-size:11px;padding:4px 10px;display:flex;align-items:center;gap:4px">
-            <i data-lucide="table" style="width:12px;height:12px"></i> Excel
-          </button>
         </div>
 
         <!-- Filtro tipo -->
@@ -1751,7 +1539,7 @@
     </div>
   </div><!-- /finModal -->
 
-  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:center;justify-content:center;padding:16px;overflow-y:auto" onclick="if(event.target===this)closeFolha()">
+  <div id="folhaModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5500;align-items:flex-end;justify-content:center;overflow:hidden" onclick="if(event.target===this)closeFolha()">
     <div class="dp-modal">
 
       <!-- ── Cabeçalho ── -->
@@ -1830,10 +1618,9 @@
               <div class="dp-field">
                 <label class="dp-lbl">Tipo de Contrato</label>
                 <select id="dpFuncTipo" class="c-inp">
-                  <option value="clt">CLT — Carteira Assinada</option>
-                  <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
-                  <option value="autonomo_rpa">Autônomo / RPA (Pessoa Física)</option>
-                  <option value="estagio">Estagiário (Lei 11.788/2008)</option>
+                  <option value="clt">CLT</option>
+                  <option value="pj">PJ / Autônomo</option>
+                  <option value="estagio">Estágio</option>
                 </select>
               </div>
               <div class="dp-field">
@@ -1966,10 +1753,9 @@
             <div class="dp-field">
               <label class="dp-lbl">Tipo de Contrato</label>
               <select id="folhaTipoContrato" class="c-inp" onchange="calcularFolha()">
-                <option value="clt">CLT — Carteira Assinada</option>
-                <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
-                <option value="autonomo_rpa">Autônomo / RPA (Pessoa Física)</option>
-                <option value="estagio">Estagiário (Lei 11.788/2008)</option>
+                <option value="clt">CLT</option>
+                <option value="pj">PJ / Autônomo</option>
+                <option value="estagio">Estágio</option>
               </select>
             </div>
             <div class="dp-field">
@@ -2004,21 +1790,6 @@
               <label class="dp-lbl">Outros Acréscimos (R$) <small style="color:var(--text-light)">comissões, ajudas de custo…</small></label>
               <input type="number" id="folhaOutrosAcr" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
-            <div class="dp-field">
-              <label class="dp-lbl">Insalubridade</label>
-              <select id="folhaInsalub" class="c-inp" onchange="calcularFolha()">
-                <option value="nenhum">Nenhuma</option>
-                <option value="minimo">Mínimo (10% sal. mín.)</option>
-                <option value="medio">Médio (20% sal. mín.)</option>
-                <option value="maximo">Máximo (40% sal. mín.)</option>
-              </select>
-            </div>
-            <div class="dp-field" style="padding-top:4px">
-              <label class="dp-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="folhaPericulosidade" onchange="calcularFolha()" style="width:15px;height:15px;cursor:pointer">
-                <span>Periculosidade (30% s/ salário base)</span>
-              </label>
-            </div>
           </div>
 
           <div class="dp-section-lbl">Descontos Adicionais</div>
@@ -2028,23 +1799,7 @@
               <input type="number" id="folhaPensao" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Vale Transporte — % desc. (máx 6%)</label>
-              <input type="number" id="folhaVTPerc" class="c-inp" placeholder="6" step="0.5" min="0" max="6" oninput="calcularFolha()">
-            </div>
-            <div class="dp-field span2" id="folhaPjRetencoes" style="display:none">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <div>
-                  <label class="dp-lbl">ISS Retido na Fonte (R$) <small style="color:var(--text-light)">municipal, 2–5%</small></label>
-                  <input type="number" id="folhaPjISS" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
-                </div>
-                <div>
-                  <label class="dp-lbl">CSRF Retida (R$) <small style="color:var(--text-light)">PIS+COFINS+CSLL 4,65%</small></label>
-                  <input type="number" id="folhaPjCSRF" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
-                </div>
-              </div>
-            </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl">Outros Descontos (R$) <small style="color:var(--text-light)">VR, plano, adiantamento…</small></label>
+              <label class="dp-lbl">Outros Descontos (R$) <small style="color:var(--text-light)">VT, VR, plano…</small></label>
               <input type="number" id="folhaOutrosDesc" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
           </div>
@@ -2228,10 +1983,6 @@
                 <span>Aviso Prévio Indenizado</span>
               </label>
             </div>
-            <div class="dp-field span2">
-              <label class="dp-lbl">Saldo FGTS Acumulado (R$) <small style="color:var(--text-light)">consultar app FGTS — base da multa 40%/20%</small></label>
-              <input type="number" id="dpRescFgtsAcum" class="c-inp" placeholder="0,00" step="0.01" min="0">
-            </div>
           </div>
 
           <button onclick="calcularRescisao()" class="dp-btn-pri" style="margin-top:4px;width:100%">
@@ -2341,18 +2092,6 @@
           <i data-lucide="x" style="width:14px;height:14px"></i>
         </button>
       </div>
-      <!-- Tabs -->
-      <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;gap:4px">
-        <button id="gestaoTabMembros" onclick="gestaoSwitchTab('membros')"
-          style="font-size:13px;padding:10px 14px;border:none;background:none;cursor:pointer;color:var(--accent);font-weight:600;border-bottom:2px solid var(--accent);margin-bottom:-1px">
-          Membros
-        </button>
-        <button id="gestaoTabLogins" onclick="gestaoSwitchTab('logins')"
-          style="font-size:13px;padding:10px 14px;border:none;background:none;cursor:pointer;color:var(--text-light);font-weight:400;border-bottom:2px solid transparent;margin-bottom:-1px">
-          Histórico de Logins
-        </button>
-      </div>
-
       <div class="dp-body" style="display:flex;flex-direction:column;gap:16px">
 
         <!-- Adicionar usuário por e-mail -->
@@ -2371,17 +2110,10 @@
         </div>
 
         <!-- Membros do escritório -->
-        <div id="gestaoSecMembros">
+        <div>
           <div class="dp-section-lbl">Membros do escritório</div>
           <div id="escritorioMembros" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
             <p style="color:var(--text-light);font-size:13px;text-align:center;padding:12px">Carregando...</p>
-          </div>
-        </div>
-
-        <!-- Histórico de Logins -->
-        <div id="gestaoSecLogins" style="display:none">
-          <div id="gestaoLoginsLista">
-            <p style="color:var(--text-light);font-size:13px;text-align:center;padding:20px">Carregando...</p>
           </div>
         </div>
 
@@ -2390,288 +2122,19 @@
   </div>
   <!-- /convitesModal -->
 
-
-  <!-- MODAL CADASTRO FACIAL (Perfil) -->
-  <div id="faceCadModal" style="display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)_fecharCadModal()">
-    <div style="background:var(--bg);border-radius:20px;width:100%;max-width:380px;padding:28px 24px;box-shadow:0 32px 80px rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
-
-      <button onclick="_fecharCadModal()" style="position:absolute;top:14px;right:14px;background:var(--sidebar-hover);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-
-      <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1a1a1a,#333);display:flex;align-items:center;justify-content:center;margin-bottom:16px;flex-shrink:0">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-        </svg>
-      </div>
-
-      <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;color:var(--text)">Ativar login facial</h3>
-      <p style="margin:0 0 20px;font-size:13px;color:var(--text-light);text-align:center;line-height:1.5">Posicione seu rosto centralizado e clique em Capturar</p>
-
-      <!-- Câmera -->
-      <div id="faceCadCamWrap" style="display:none;width:100%;position:relative;margin-bottom:12px">
-        <video id="faceCadVideo" autoplay muted playsinline
-          style="width:100%;border-radius:12px;background:#000;transform:scaleX(-1);display:block;max-height:240px;object-fit:cover"></video>
-        <div id="faceCadOverlay" style="position:absolute;inset:0;border-radius:12px;border:2.5px solid transparent;transition:border-color .3s;pointer-events:none"></div>
-        <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 320 240" preserveAspectRatio="none">
-          <ellipse cx="160" cy="120" rx="90" ry="110" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2" stroke-dasharray="6 4"/>
-        </svg>
-      </div>
-
-      <div id="faceCadStatus" style="font-size:13px;color:var(--text-light);text-align:center;min-height:18px;margin-bottom:16px;line-height:1.5">Clique em Abrir câmera para começar.</div>
-
-      <div style="display:flex;gap:10px;width:100%">
-        <button id="faceCadBtn" onclick="_acaoCadModal()" style="flex:1;padding:13px;background:var(--text);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s">
-          Abrir câmera
-        </button>
-      </div>
-
-    </div>
-  </div>
-  <!-- /MODAL CADASTRO FACIAL -->
-
-  <!-- MODAL FACE LOGIN -->
-  <div id="faceModal" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)fecharModalFace()">
-    <div style="background:var(--bg);border-radius:20px;width:100%;max-width:380px;padding:28px 24px;box-shadow:0 32px 80px rgba(0,0,0,0.3);display:flex;flex-direction:column;align-items:center;gap:0;position:relative">
-
-      <!-- Fechar -->
-      <button onclick="fecharModalFace()" style="position:absolute;top:14px;right:14px;background:var(--sidebar-hover);border:none;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-light)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-
-      <!-- Ícone -->
-      <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#1a1a1a,#333);display:flex;align-items:center;justify-content:center;margin-bottom:16px;flex-shrink:0">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M20 21a8 8 0 1 0-16 0"/>
-        </svg>
-      </div>
-
-      <h3 style="margin:0 0 4px;font-size:18px;font-weight:700;color:var(--text)">Login com rosto</h3>
-      <p style="margin:0 0 20px;font-size:13px;color:var(--text-light);text-align:center;line-height:1.5">Posicione seu rosto na câmera para entrar automaticamente</p>
-
-      <!-- Campo e-mail -->
-      <input type="email" id="faceModalEmail" placeholder="Seu e-mail" autocomplete="email"
-        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:14px;margin-bottom:12px;outline:none"
-        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-
-      <!-- Câmera -->
-      <div id="faceModalCamWrap" style="display:none;width:100%;position:relative;margin-bottom:12px">
-        <video id="faceModalVideo" autoplay muted playsinline
-          style="width:100%;border-radius:12px;background:#000;transform:scaleX(-1);display:block;max-height:240px;object-fit:cover"></video>
-        <!-- Overlay de detecção -->
-        <div id="faceModalOverlay" style="position:absolute;inset:0;border-radius:12px;border:2.5px solid transparent;transition:border-color .3s;pointer-events:none"></div>
-        <!-- Guia oval -->
-        <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 320 240" preserveAspectRatio="none">
-          <ellipse cx="160" cy="120" rx="90" ry="110" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2" stroke-dasharray="6 4"/>
-        </svg>
-      </div>
-
-      <!-- Status -->
-      <div id="faceModalStatus" style="font-size:13px;color:var(--text-light);text-align:center;min-height:18px;margin-bottom:16px;line-height:1.5"></div>
-
-      <!-- Botão principal -->
-      <button id="faceModalBtn" onclick="faceModalAcao()" style="width:100%;padding:13px;background:var(--text);color:var(--bg);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-          <circle cx="12" cy="13" r="4"/>
-        </svg>
-        Abrir câmera
-      </button>
-
-    </div>
-  </div>
-  <!-- /MODAL FACE LOGIN -->
-
-  <script src="assets/js/face.js?v=4"></script>
-
-  <!-- ══════════════════════════════════════════════════
-       MODAL: HONORÁRIOS
-  ══════════════════════════════════════════════════ -->
-  <div id="honModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
-    z-index:5600;align-items:center;justify-content:center;overflow:hidden"
-    onclick="if(event.target===this)closeHonorarios()">
-    <div class="dp-modal" style="max-width:740px">
-      <div class="dp-modal-hd">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:9px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <i data-lucide="receipt" style="width:16px;height:16px;color:#16a34a"></i>
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:700">Honorários</div>
-            <div id="honSubtitulo" style="font-size:11px;color:var(--text-light);font-weight:400">Controle de receitas do escritório</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button id="honToggleBtn" onclick="honToggleFiltro()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px">
-            <i data-lucide="filter" style="width:12px;height:12px"></i> <span id="honToggleLbl">Todos</span>
-          </button>
-          <button onclick="honRelatorioInadimplencia()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px;color:#dc2626;border-color:#fca5a5">
-            <i data-lucide="alert-triangle" style="width:12px;height:12px"></i> Inadimplência
-          </button>
-          <button onclick="honGerarCompetencia()" class="dp-btn-sec" style="font-size:11px;padding:5px 10px;display:flex;align-items:center;gap:4px">
-            <i data-lucide="zap" style="width:12px;height:12px"></i> Gerar mês
-          </button>
-          <button onclick="honNovo()" class="dp-btn-pri" style="font-size:11px;padding:5px 12px;display:flex;align-items:center;gap:4px">
-            <i data-lucide="plus" style="width:12px;height:12px"></i> Novo
-          </button>
-          <button class="dp-close-btn" onclick="closeHonorarios()">
-            <i data-lucide="x" style="width:14px;height:14px"></i>
-          </button>
-        </div>
-      </div>
-      <div class="dp-body" style="padding:0">
-        <div style="padding:16px 20px 0;background:var(--card);border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <button onclick="honNavMes(-1)" class="dp-btn-sec" style="padding:4px 12px;font-size:16px">&#8249;</button>
-            <strong id="honMesLabel" style="font-size:14px;font-weight:700">&#8212;</strong>
-            <button onclick="honNavMes(1)" class="dp-btn-sec" style="padding:4px 12px;font-size:16px">&#8250;</button>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-            <div class="hon-kpi-card"><div class="hon-kpi-label">Total</div><div class="hon-kpi-val" id="honKpiTotal">&#8212;</div></div>
-            <div class="hon-kpi-card" style="border-color:#bbf7d0"><div class="hon-kpi-label" style="color:#16a34a">Recebido</div><div class="hon-kpi-val" style="color:#16a34a" id="honKpiRecebido">&#8212;</div></div>
-            <div class="hon-kpi-card" style="border-color:#fde68a"><div class="hon-kpi-label" style="color:#d97706">A receber</div><div class="hon-kpi-val" style="color:#d97706" id="honKpiPendente">&#8212;</div></div>
-            <div class="hon-kpi-card" style="border-color:#fca5a5;cursor:pointer" onclick="honRelatorioInadimplencia()"><div class="hon-kpi-label" style="color:#dc2626">Inadimplentes</div><div class="hon-kpi-val" style="color:#dc2626;font-size:22px" id="honKpiInadimpl">&#8212;</div></div>
-          </div>
-        </div>
-        <div id="honCorpo" style="overflow-y:auto;max-height:360px;padding:8px 12px"></div>
-        <div id="honFormPanel" style="display:none;border-top:1px solid var(--border);padding:16px 20px;background:var(--card)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <span id="honFormTitulo" style="font-size:13px;font-weight:700">Novo Honor&#225;rio</span>
-            <button onclick="honFecharForm()" style="background:none;border:none;cursor:pointer;color:var(--text-light)"><i data-lucide="x" style="width:14px;height:14px"></i></button>
-          </div>
-          <input type="hidden" id="honFormId">
-          <input type="hidden" id="honFormClienteId">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Valor (R$) *</label>
-              <input id="honFormValor" type="number" min="0" step="0.01" placeholder="0,00" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Dia de vencimento *</label>
-              <input id="honFormDia" type="number" min="1" max="28" placeholder="10" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Status</label>
-              <select id="honFormStatus" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-                <option value="isento">Isento</option>
-              </select>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Descri&#231;&#227;o</label>
-              <input id="honFormDescricao" type="text" placeholder="Honor&#225;rios cont&#225;beis..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-            </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Data de pagamento</label>
-              <input id="honFormPgto" type="date" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-            </div>
-          </div>
-          <div style="margin-bottom:12px">
-            <label style="font-size:11px;color:var(--text-light);display:block;margin-bottom:3px">Observa&#231;&#227;o</label>
-            <input id="honFormObs" type="text" placeholder="Opcional..." style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-          </div>
-          <div style="display:flex;gap:8px;justify-content:flex-end">
-            <button onclick="honFecharForm()" class="dp-btn-sec">Cancelar</button>
-            <button id="honSalvarBtn" onclick="honSalvar()" class="dp-btn-pri">
-              <i data-lucide="save" style="width:13px;height:13px"></i> Salvar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- /honModal -->
-
-  <!-- Mini-modal: data de recebimento de honorário -->
-  <div id="honPagoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9100;align-items:center;justify-content:center">
-    <div style="background:var(--card);border-radius:14px;padding:24px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px">Confirmar recebimento</div>
-      <div id="honPagoNome" style="font-size:12px;color:var(--text-light);margin-bottom:16px"></div>
-      <label style="font-size:12px;font-weight:600;color:var(--text-light);display:block;margin-bottom:6px">Data do recebimento</label>
-      <input type="date" id="honPagoData"
-        style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
-      <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="honPagoFechar()"
-          style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text)">
-          Cancelar
-        </button>
-        <button onclick="honPagoConfirmar()"
-          style="flex:1;padding:9px;border:none;border-radius:8px;background:var(--accent);cursor:pointer;font-size:13px;color:#fff;font-weight:600">
-          Confirmar
-        </button>
-      </div>
-    </div>
-  </div>
-  <script src="assets/js/honorarios.js?v=1"></script>
-
-  <!-- ── Chat Interno ───────────────────────────────────────── -->
-  <div id="ciDrawer">
-    <!-- Header -->
-    <div class="ci-header">
-      <i data-lucide="message-square" style="width:18px;height:18px;color:var(--primary);flex-shrink:0"></i>
-      <div class="ci-header-info">
-        <div class="ci-header-title" id="ciEscNome">Chat do Escritório</div>
-        <div class="ci-header-sub">
-          <span id="ciOnlineLabel">Carregando...</span>
-          <span id="ciOnlineAvatares" style="display:inline-flex;gap:3px"></span>
-        </div>
-      </div>
-      <button class="ci-fechar" onclick="fecharChatInterno()" title="Fechar">
-        <i data-lucide="x" style="width:16px;height:16px"></i>
-      </button>
-    </div>
-
-    <!-- Mensagens -->
-    <div id="ciCorpo">
-      <p class="ci-vazio">Abrindo chat...</p>
-    </div>
-
-    <!-- Indicador digitando -->
-    <div id="ciDigitando"></div>
-
-    <!-- Rodapé -->
-    <div class="ci-rodape">
-      <div class="ci-rodape-actions">
-        <button class="ci-action-btn" onclick="ciAbrirUpload()" title="Enviar imagem / print">
-          <i data-lucide="image" style="width:15px;height:15px"></i>
-        </button>
-      </div>
-      <textarea id="ciInput" placeholder="Mensagem… (Enter envia, Shift+Enter quebra linha)" rows="1"
-        onkeydown="ciKeyDown(event)"></textarea>
-      <button class="ci-send" onclick="ciEnviar()" title="Enviar">
-        <i data-lucide="send" style="width:15px;height:15px"></i>
-      </button>
-    </div>
-
-    <!-- Input de arquivo oculto -->
-    <input type="file" id="ciFileInput" accept="image/*" style="display:none" onchange="ciHandleFile(this)">
-  </div>
-
-
-  <!-- ══════════════════════════════════════════════════════════
-       MÓDULO CONTÁBIL: PLANO DE CONTAS
-  ══════════════════════════════════════════════════════════ -->
+  <!-- MÓDULO: PLANO DE CONTAS -->
   <div id="pcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
        onclick="if(event.target===this)closePlanoConta()">
     <div class="dp-modal" style="max-width:780px;width:100%">
-
       <div class="dp-modal-hd">
         <div style="display:flex;align-items:center;gap:8px">
           <i data-lucide="book-open" style="width:16px;height:16px"></i>
           <span style="font-weight:700;font-size:14px">Plano de Contas</span>
           <span style="font-size:12px;color:var(--text-light);background:var(--sidebar-hover);padding:2px 8px;border-radius:8px" id="pcEmpresaBadge"></span>
         </div>
-        <button onclick="closePlanoConta()" class="dp-close-btn">
-          <i data-lucide="x" style="width:16px;height:16px"></i>
-        </button>
+        <button onclick="closePlanoConta()" class="dp-close-btn"><i data-lucide="x" style="width:16px;height:16px"></i></button>
       </div>
-
       <div class="dp-body">
-
-        <!-- KPIs -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
           <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
             <div style="font-size:22px;font-weight:700;color:var(--accent)" id="pcKpiTotal">0</div>
@@ -2686,8 +2149,6 @@
             <div style="font-size:11px;color:var(--text-light);margin-top:2px">Sintéticas</div>
           </div>
         </div>
-
-        <!-- Barra de ações -->
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
           <input id="pcFiltro" type="text" placeholder="Filtrar por código ou descrição..."
             oninput="pcFiltrar(this.value)"
@@ -2699,18 +2160,13 @@
             <i data-lucide="download" style="width:13px;height:13px"></i> Importar Padrão
           </button>
           <button class="dp-btn-sec" onclick="pcExportarCSV()" style="white-space:nowrap">
-            <i data-lucide="file-spreadsheet" style="width:13px;height:13px"></i> Exportar CSV
+            <i data-lucide="file-spreadsheet" style="width:13px;height:13px"></i> CSV
           </button>
         </div>
-
-        <!-- Lista -->
         <div id="pcLista" style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:10px"></div>
-
-        <!-- Formulário de conta -->
         <div id="pcFormPanel" style="display:none;margin-top:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
           <div style="font-size:13px;font-weight:700;margin-bottom:14px" id="pcFormTitulo">Nova Conta</div>
           <input type="hidden" id="pcFormId">
-
           <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;margin-bottom:10px">
             <div>
               <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Código *</label>
@@ -2723,7 +2179,6 @@
                 style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
             </div>
           </div>
-
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
             <div>
               <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Tipo</label>
@@ -2754,24 +2209,21 @@
               </select>
             </div>
           </div>
-
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
             <input type="checkbox" id="pcFormAtivo" checked style="width:15px;height:15px">
             <label for="pcFormAtivo" style="font-size:13px;cursor:pointer">Conta ativa</label>
           </div>
-
           <div style="display:flex;gap:8px">
             <button id="pcSalvarBtn" class="dp-btn-pri" onclick="pcSalvar()">Salvar</button>
             <button class="dp-btn-sec" onclick="pcFecharForm()">Cancelar</button>
           </div>
         </div>
-
       </div>
     </div>
   </div>
   <!-- /pcModal -->
 
-  <script src="assets/js/chat_interno.js?v=4"></script>
   <script src="assets/js/plano_contas.js?v=1"></script>
+
 </body>
 </html>
