@@ -20,6 +20,14 @@
     "api/face-auth.js": {
       "memory": 512,
       "maxDuration": 30
+    },
+    "api/recaptcha-verify.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/indicadores.js": {
+      "memory": 128,
+      "maxDuration": 15
     }
   },
   "crons": [
@@ -46,7 +54,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.luxand.cloud https://*.supabase.co wss://*.supabase.co https://api.groq.com https://brasilapi.com.br https://viacep.com.br https://receitaws.com.br https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co; frame-ancestors 'none'; media-src blob: mediastream:"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.google.com/recaptcha https://www.gstatic.com/recaptcha; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.luxand.cloud https://*.supabase.co wss://*.supabase.co https://api.groq.com https://brasilapi.com.br https://viacep.com.br https://receitaws.com.br https://api.bcb.gov.br https://www.google.com https://www.gstatic.com https://api.anthropic.com https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://*.supabase.co; frame-ancestors 'none'; frame-src https://www.google.com/recaptcha https://recaptcha.google.com; media-src blob: mediastream:"
         }
       ]
     },
