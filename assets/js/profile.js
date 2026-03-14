@@ -232,11 +232,11 @@ async function uploadAvatar(input) {
 
   // Validar tipo e tamanho (máx 2MB)
   if (!file.type.startsWith('image/')) {
-    alert('Selecione uma imagem válida (JPG, PNG, WebP).');
+    showToast('Selecione uma imagem válida (JPG, PNG, WebP).', 'warn');
     return;
   }
   if (file.size > 2 * 1024 * 1024) {
-    alert('A imagem deve ter no máximo 2MB.');
+    showToast('A imagem deve ter no máximo 2MB.', 'warn');
     return;
   }
 
@@ -268,7 +268,7 @@ async function uploadAvatar(input) {
 
   } catch(e) {
     avatarEl.textContent = (perfilCache?.nome || currentUser?.email || '?')[0]?.toUpperCase();
-    alert('Erro ao enviar imagem. Verifique se o bucket "avatars" existe no Supabase Storage.');
+    showToast('Erro ao enviar imagem. Verifique se o bucket "avatars" existe no Supabase Storage.', 'error');
   }
 
   input.value = ''; // resetar input
