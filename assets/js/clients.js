@@ -835,3 +835,78 @@ async function excluirArquivoPortal(uid, btn) {
     showToast('Erro ao excluir: ' + e.message, 'error');
   }
 }
+
+// ============================================================
+// carregarUploadsRecebidos — aba Recebidos no modal Documentos
+// ============================================================
+async function carregarUploadsRecebidos() {
+  const el = document.getElementById('uploadsRecebidosLista');
+  if (!el) return;
+  if (!currentCliente?.id || !currentUser?.id) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Selecione uma empresa para ver os arquivos recebidos.</p>';
+    return;
+  }
+
+  el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
+
+  try {
+    const { data, error } = await sb
+      .from('portal_uploads')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('cliente_id', currentCliente.id)
+      .order('criado_em', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    if (!data?.length) {
+      el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Nenhum arquivo recebido deste cliente ainda.</p>';
+      return;
+    }
+
+    // Guardar no cache global para baixarArquivoPortal e excluirArquivoPortal
+    window._uploadsPortal = window._uploadsPortal || {};
+    data.forEach(u => { window._uploadsPortal[u.id] = u; });
+
+    const iconeMap = { pdf:'file-text', nfe:'scan-line', planilha:'table', imagem:'image', guia:'receipt', extrato:'landmark', outro:'file' };
+    const corMap   = { pdf:'#dc2626', nfe:'#2563eb', planilha:'#16a34a', imagem:'#7c3aed', guia:'#ea580c', extrato:'#0891b2', outro:'#64748b' };
+
+    // Atualizar badge
+    const novos = data.filter(u => !u.lido).length;
+    const badge = document.getElementById('badgeRecebidos');
+    if (badge) { badge.textContent = novos; badge.style.display = novos ? 'inline' : 'none'; }
+
+    el.innerHTML = data.map(u => {
+      const tipo  = u.tipo_arquivo || 'outro';
+      const icone = iconeMap[tipo] || 'file';
+      const cor   = corMap[tipo]  || '#64748b';
+      const fmt   = new Date(u.criado_em).toLocaleDateString('pt-BR');
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="width:30px;height:30px;border-radius:8px;background:var(--sidebar-hover);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i data-lucide="${icone}" style="width:15px;height:15px;color:${cor}"></i>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:${u.lido?'400':'600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(u.nome_arquivo||'')}</div>
+            <div style="font-size:11px;color:var(--text-light)">${u.tamanho_kb ? u.tamanho_kb+' KB · ' : ''}${fmt}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            ${!u.lido ? '<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px">Novo</span>' : ''}
+            <button data-uid="${u.id}" onclick="baixarArquivoPortal(this.dataset.uid)"
+              style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);cursor:pointer;color:var(--text)">
+              <i data-lucide="download" style="width:11px;height:11px"></i>
+            </button>
+            <button data-uid="${u.id}" onclick="excluirArquivoPortal(this.dataset.uid, this)"
+              style="font-size:11px;padding:4px 8px;border:1px solid #fca5a5;border-radius:6px;background:var(--bg);cursor:pointer;color:#dc2626">
+              <i data-lucide="trash-2" style="width:11px;height:11px"></i>
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch(e) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--error);text-align:center;padding:20px">Erro: ${escapeHtml(e.message)}</p>`;
+  }
+}
