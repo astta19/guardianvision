@@ -903,6 +903,10 @@
                 <i data-lucide="receipt"></i>
                 <span>Honorários</span>
               </button>
+              <button class="tool-card" data-perm="contabilidade" onclick="openPlanoConta(); closeDropdowns()" style="display:none">
+                <i data-lucide="book-open"></i>
+                <span>Contabilidade</span>
+              </button>
               <button class="tool-card" data-perm="perfil_empresa" onclick="openEmpresaPerfil(); closeDropdowns()" id="btnPerfilEmpresaCard" style="display:none">
                 <i data-lucide="building-2" style="width:20px;height:20px"></i>
                 <span>Perfil Empresa</span>
@@ -2646,6 +2650,128 @@
     <input type="file" id="ciFileInput" accept="image/*" style="display:none" onchange="ciHandleFile(this)">
   </div>
 
+
+  <!-- ══════════════════════════════════════════════════════════
+       MÓDULO CONTÁBIL: PLANO DE CONTAS
+  ══════════════════════════════════════════════════════════ -->
+  <div id="pcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
+       onclick="if(event.target===this)closePlanoConta()">
+    <div class="dp-modal" style="max-width:780px;width:100%">
+
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i data-lucide="book-open" style="width:16px;height:16px"></i>
+          <span style="font-weight:700;font-size:14px">Plano de Contas</span>
+          <span style="font-size:12px;color:var(--text-light);background:var(--sidebar-hover);padding:2px 8px;border-radius:8px" id="pcEmpresaBadge"></span>
+        </div>
+        <button onclick="closePlanoConta()" class="dp-close-btn">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <div class="dp-body">
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:22px;font-weight:700;color:var(--accent)" id="pcKpiTotal">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Total de contas</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:22px;font-weight:700;color:#16a34a" id="pcKpiAnalitica">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Analíticas</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:22px;font-weight:700;color:#64748b" id="pcKpiSintetica">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Sintéticas</div>
+          </div>
+        </div>
+
+        <!-- Barra de ações -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <input id="pcFiltro" type="text" placeholder="Filtrar por código ou descrição..."
+            oninput="pcFiltrar(this.value)"
+            style="flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          <button class="dp-btn-sec" onclick="pcNovoForm()" style="white-space:nowrap">
+            <i data-lucide="plus" style="width:13px;height:13px"></i> Nova Conta
+          </button>
+          <button class="dp-btn-sec" id="pcBtnImportar" onclick="pcImportarPadrao()" style="white-space:nowrap">
+            <i data-lucide="download" style="width:13px;height:13px"></i> Importar Padrão
+          </button>
+          <button class="dp-btn-sec" onclick="pcExportarCSV()" style="white-space:nowrap">
+            <i data-lucide="file-spreadsheet" style="width:13px;height:13px"></i> Exportar CSV
+          </button>
+        </div>
+
+        <!-- Lista -->
+        <div id="pcLista" style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:10px"></div>
+
+        <!-- Formulário de conta -->
+        <div id="pcFormPanel" style="display:none;margin-top:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px" id="pcFormTitulo">Nova Conta</div>
+          <input type="hidden" id="pcFormId">
+
+          <div style="display:grid;grid-template-columns:140px 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Código *</label>
+              <input id="pcFormCodigo" type="text" placeholder="ex: 1.1.01.001"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-family:monospace;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Descrição *</label>
+              <input id="pcFormDescricao" type="text" placeholder="Nome da conta"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Tipo</label>
+              <select id="pcFormTipo" onchange="pcAtualizarNatureza()"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="ativo">Ativo</option>
+                <option value="passivo">Passivo</option>
+                <option value="pl">Patrimônio Líquido</option>
+                <option value="receita">Receita</option>
+                <option value="custo">Custo</option>
+                <option value="despesa">Despesa</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Natureza</label>
+              <select id="pcFormNatureza"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="devedora">Devedora</option>
+                <option value="credora">Credora</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Grau</label>
+              <select id="pcFormGrau"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="analitica">Analítica (recebe lançamentos)</option>
+                <option value="sintetica">Sintética (agrupamento)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+            <input type="checkbox" id="pcFormAtivo" checked style="width:15px;height:15px">
+            <label for="pcFormAtivo" style="font-size:13px;cursor:pointer">Conta ativa</label>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button id="pcSalvarBtn" class="dp-btn-pri" onclick="pcSalvar()">Salvar</button>
+            <button class="dp-btn-sec" onclick="pcFecharForm()">Cancelar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- /pcModal -->
+
   <script src="assets/js/chat_interno.js?v=4"></script>
+  <script src="assets/js/plano_contas.js?v=1"></script>
 </body>
 </html>
