@@ -106,6 +106,8 @@ async function setCurrentCliente(cliente) {
   // Atualizar badge de empresa em módulos contábeis
   const pcBadge = document.getElementById('pcEmpresaBadge');
   if (pcBadge) pcBadge.textContent = displayName;
+  const lcBadge = document.getElementById('lcEmpresaBadge');
+  if (lcBadge) lcBadge.textContent = displayName;
 
   // Se honorários estiver aberto, recarregar para a nova empresa
   if (document.getElementById('honModal')?.style.display !== 'none' && typeof honCarregar === 'function') {
