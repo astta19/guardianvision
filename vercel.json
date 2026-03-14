@@ -9,6 +9,10 @@
       "memory": 256,
       "maxDuration": 30
     },
+    "api/chat-anthropic.js": {
+      "memory": 256,
+      "maxDuration": 30
+    },
     "api/supabase-proxy.js": {
       "memory": 256,
       "maxDuration": 15
@@ -20,6 +24,10 @@
     "api/face-auth.js": {
       "memory": 512,
       "maxDuration": 30
+    },
+    "api/portal.js": {
+      "memory": 256,
+      "maxDuration": 15
     },
     "api/recaptcha-verify.js": {
       "memory": 128,
@@ -78,7 +86,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|.*\\.js$|.*\\.css$|.*\\.html$).*)",
+      "source": "/((?!api/|assets/|portal\\.html$).*)",
       "destination": "/index.html"
     }
   ]
