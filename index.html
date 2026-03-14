@@ -23,6 +23,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+  <!-- reCAPTCHA v3 — invisível, sem fricção para o usuário -->
+  <script src="https://www.google.com/recaptcha/api.js?render=RECAPTCHA_SITE_KEY_HERE" async defer></script>
+  <script>window.RECAPTCHA_SITE_KEY = 'RECAPTCHA_SITE_KEY_HERE';</script>
 
   <!-- Estilos -->
   <link rel="stylesheet" href="assets/css/app.css?v=6">
@@ -184,6 +187,11 @@
             onkeypress="if(event.key==='Enter') doLogin()">
         </div>
         <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
+        <div style="font-size:10px;color:var(--text-light);text-align:center;margin-top:6px;line-height:1.5">
+          Protegido por reCAPTCHA —
+          <a href="https://policies.google.com/privacy" target="_blank" style="color:inherit">Privacidade</a> ·
+          <a href="https://policies.google.com/terms" target="_blank" style="color:inherit">Termos</a>
+        </div>
 
         <div class="auth-divider"><span>ou</span></div>
 
