@@ -691,10 +691,11 @@ async function vincularUsuarioManual() {
 }
 
 async function _removerMembro(escritorioId, userId) {
-  if (!confirm('Remover este membro do escritório?')) return;
+  const ok = await showConfirm('Remover este membro do escritório?');
+  if (!ok) return;
   const { error } = await sb
     .from('escritorio_usuarios').delete()
     .eq('escritorio_id', escritorioId).eq('user_id', userId);
   if (!error) await _carregarMembros();
-  else alert('Erro ao remover: ' + error.message);
+  else showToast('Erro ao remover: ' + error.message, 'error');
 }
