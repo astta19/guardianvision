@@ -794,7 +794,8 @@ async function baixarArquivoPortal(uid) {
 async function excluirArquivoPortal(uid, btn) {
   const u = (window._uploadsPortal || {})[uid];
   if (!u) return;
-  if (!confirm('Excluir o arquivo "' + (u.nome_arquivo || 'arquivo') + '" permanentemente?')) return;
+  const ok = await showConfirm(`Excluir o arquivo "${u.nome_arquivo || 'arquivo'}" permanentemente?`);
+  if (!ok) return;
 
   btn.disabled = true;
   btn.textContent = '...';
