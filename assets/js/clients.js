@@ -574,7 +574,7 @@ const PERMS_LIST = [
   { id: 'compartilhar',  label: 'Compartilhar Chat',  icon: 'share-2' },
   { id: 'arquivos',      label: 'Anexar Arquivos',    icon: 'paperclip' },
   { id: 'gerar_doc',     label: 'Gerar Documentos',   icon: 'file-plus' },
-  { id: 'contabilidade', label: 'Contabilidade',       icon: 'book-open' },
+  { id: 'contabilidade', label: 'Contabilidade (Plano, Lançamentos, Balancete)', icon: 'book-open' },
 ];
 
 async function abrirGerenciarPermissoes() {
