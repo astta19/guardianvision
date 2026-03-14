@@ -85,18 +85,50 @@ async function agendaCarregar() {
 }
 
 // ── Gerar tarefas automáticas por cliente e regime ───────────
-// Feriados nacionais fixos Brasil (MM-DD)
-const FERIADOS_NACIONAIS = new Set([
+// Feriados nacionais fixos Brasil (MM-DD) — fallback se API falhar
+const FERIADOS_NACIONAIS_FIXOS = new Set([
   '01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','12-25'
 ]);
 
+// Cache de feriados por ano — carregado via BrasilAPI
+let _feriadosCache = {};  // { 'YYYY': Set(['MM-DD', ...]) }
+
+async function _carregarFeriados(ano) {
+  if (_feriadosCache[ano]) return _feriadosCache[ano];
+  try {
+    const res = await fetch(`https://brasilapi.com.br/api/feriados/v1/${ano}`);
+    if (!res.ok) throw new Error('API indisponível');
+    const data = await res.json();
+    const set = new Set(data.map(f => f.date.slice(5))); // 'MM-DD'
+    _feriadosCache[ano] = set;
+    return set;
+  } catch {
+    // Fallback para lista fixa se BrasilAPI falhar
+    _feriadosCache[ano] = FERIADOS_NACIONAIS_FIXOS;
+    return FERIADOS_NACIONAIS_FIXOS;
+  }
+}
+
+// Inicializar feriados do ano atual e próximo em background
+(async () => {
+  const ano = new Date().getFullYear();
+  await _carregarFeriados(ano);
+  await _carregarFeriados(ano + 1);
+})();
+
+function _eFeriado(d, feriados) {
+  const mmdd = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return feriados.has(mmdd);
+}
+
 function proximoDiaUtil(data) {
   const d = new Date(data);
-  // eslint-disable-next-line no-constant-condition
+  const ano = d.getFullYear();
+  // Usar cache do ano — se ainda não carregado, usar fixos como fallback
+  const feriados = _feriadosCache[ano] || FERIADOS_NACIONAIS_FIXOS;
   while (true) {
     const dow = d.getDay();
-    const mmdd = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    if (dow !== 0 && dow !== 6 && !FERIADOS_NACIONAIS.has(mmdd)) break;
+    if (dow !== 0 && dow !== 6 && !_eFeriado(d, feriados)) break;
     d.setDate(d.getDate() + 1);
   }
   return d;
