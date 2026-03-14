@@ -621,6 +621,7 @@ document.addEventListener('keydown', e => {
     () => { const m = document.getElementById('folhaModal');        if (m?.style.display !== 'none' && typeof closeFolha === 'function') closeFolha(); },
     () => { const m = document.getElementById('pcModal');          if (m?.style.display !== 'none' && typeof closePlanoConta === 'function') closePlanoConta(); },
     () => { const m = document.getElementById('lcModal');          if (m?.style.display !== 'none' && typeof closeLancamentosContabeis === 'function') closeLancamentosContabeis(); },
+    () => { const m = document.getElementById('balModal');         if (m?.style.display !== 'none' && typeof closeBalancete === 'function') closeBalancete(); },
     () => { const m = document.getElementById('honPagoModal');       if (m?.style.display !== 'none' && typeof honPagoFechar === 'function') honPagoFechar(); },
     () => { const m = document.getElementById('honModal');          if (m?.style.display !== 'none' && typeof closeHonorarios === 'function') closeHonorarios(); },
     () => { const m = document.getElementById('portalAdminModal');  if (m?.style.display !== 'none' && typeof fecharPortalAdmin === 'function') fecharPortalAdmin(); },
