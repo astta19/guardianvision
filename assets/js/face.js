@@ -253,7 +253,8 @@ function _cSetBorder(c) {
 // ════════════════════════════════════════════════════════════
 
 async function removerFace() {
-  if (!confirm('Remover login facial?')) return;
+  const ok = await showConfirm('Remover login facial?');
+  if (!ok) return;
   try {
     const { data } = await sb
       .from('perfis_usuarios').select('face_descriptor')
