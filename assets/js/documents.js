@@ -136,7 +136,7 @@ async function getResumoChatTexto() {
 // ----------------------------------------------------------
 async function gerarRelatorioFiscal() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório.', 'warn'); return; }
   try {
 
   const { jsPDF } = window.jspdf;
@@ -265,7 +265,7 @@ async function gerarRelatorioFiscal() {
   doc.save(`relatorio-fiscal-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.pdf`);
   } catch(e) {
     console.error('Erro ao gerar PDF:', e);
-    alert('Erro ao gerar o relatório. Verifique se a página carregou completamente e tente novamente.');
+    showToast('Erro ao gerar o relatório. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -274,8 +274,8 @@ async function gerarRelatorioFiscal() {
 // ----------------------------------------------------------
 async function gerarParecer() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o parecer.'); return; }
-  if (typeof docx === 'undefined') { alert('Biblioteca DOCX não carregada. Recarregue a página.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o parecer.', 'warn'); return; }
+  if (typeof docx === 'undefined') { showToast('Biblioteca DOCX não carregada. Recarregue a página.', 'error'); return; }
 
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
           Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType } = docx;
@@ -388,7 +388,7 @@ async function gerarParecer() {
   URL.revokeObjectURL(url);
   } catch(e) {
     console.error('Erro ao gerar DOCX:', e);
-    alert('Erro ao gerar o parecer. Verifique se a página carregou completamente e tente novamente.');
+    showToast('Erro ao gerar o parecer. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -397,7 +397,7 @@ async function gerarParecer() {
 // ----------------------------------------------------------
 function gerarPlanilha() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar a planilha.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar a planilha.', 'warn'); return; }
   try {
 
   const empresa = currentCliente;
@@ -487,7 +487,7 @@ function gerarPlanilha() {
   XLSX.writeFile(wb, `apuracao-${empresa.cnpj?.replace(/\D/g,'') || 'empresa'}-${new Date().toISOString().slice(0,7)}.xlsx`);
   } catch(e) {
     console.error('Erro ao gerar Excel:', e);
-    alert('Erro ao gerar a planilha. Verifique se a página carregou completamente e tente novamente.');
+    showToast('Erro ao gerar a planilha. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -496,11 +496,11 @@ function gerarPlanilha() {
 // ----------------------------------------------------------
 async function gerarDasnSimei() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa MEI antes de gerar a DASN-SIMEI.', 'warn'); return; }
 
   const regime = currentCliente.regime_tributario || '';
   if (!/mei/i.test(regime)) {
-    alert('A DASN-SIMEI é exclusiva para Microempreendedores Individuais (MEI).\n\nEsta empresa está cadastrada como: ' + (regime || 'regime não informado'));
+    showToast('DASN-SIMEI é exclusiva para MEI. Esta empresa está como: ' + (regime || 'regime não informado'), 'warn');
     return;
   }
 
@@ -650,7 +650,7 @@ async function gerarDasnSimei() {
 
   } catch(e) {
     console.error('Erro ao gerar DASN-SIMEI:', e);
-    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
+    showToast('Erro ao gerar o documento. Recarregue a página e tente novamente.', 'error');
   }
 }
 
@@ -659,7 +659,7 @@ async function gerarDasnSimei() {
 // ----------------------------------------------------------
 async function gerarDctfWeb() {
   document.getElementById('docGenMenu').style.display = 'none';
-  if (!currentCliente) { alert('Selecione uma empresa antes de gerar o relatório DCTFWeb.'); return; }
+  if (!currentCliente) { showToast('Selecione uma empresa antes de gerar o relatório DCTFWeb.', 'warn'); return; }
 
   try {
     const { jsPDF } = window.jspdf;
@@ -858,7 +858,7 @@ async function gerarDctfWeb() {
 
   } catch(e) {
     console.error('Erro ao gerar DCTFWeb:', e);
-    alert('Erro ao gerar o documento. Verifique se a página carregou completamente.');
+    showToast('Erro ao gerar o documento. Recarregue a página e tente novamente.', 'error');
   }
 }
 
