@@ -913,7 +913,11 @@
               </button>
               <button class="tool-card" data-perm="contabilidade" onclick="openPlanoConta(); closeDropdowns()" style="display:none">
                 <i data-lucide="book-open"></i>
-                <span>Contabilidade</span>
+                <span>Plano Contas</span>
+              </button>
+              <button class="tool-card" data-perm="contabilidade" onclick="openLancamentosContabeis(); closeDropdowns()" style="display:none">
+                <i data-lucide="pen-line"></i>
+                <span>Lançamentos</span>
               </button>
             </div>
 
@@ -2746,6 +2750,111 @@
   <!-- /pcModal -->
 
   <script src="assets/js/plano_contas.js?v=1"></script>
+  <script src="assets/js/lancamentos_contabeis.js?v=1"></script>
+
+  <!-- MÓDULO: LANÇAMENTOS CONTÁBEIS -->
+  <div id="lcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
+       onclick="if(event.target===this)closeLancamentosContabeis()">
+    <div class="dp-modal" style="max-width:900px;width:100%">
+
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i data-lucide="pen-line" style="width:16px;height:16px"></i>
+          <span style="font-weight:700;font-size:14px">Lançamentos Contábeis</span>
+          <span style="font-size:12px;color:var(--text-light);background:var(--sidebar-hover);padding:2px 8px;border-radius:8px" id="lcEmpresaBadge"></span>
+        </div>
+        <button onclick="closeLancamentosContabeis()" class="dp-close-btn">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <div class="dp-body">
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:22px;font-weight:700;color:var(--accent)" id="lcKpiLancamentos">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Lançamentos</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:14px;font-weight:700;color:#2563eb" id="lcKpiDebitos">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Total Débitos</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:14px;font-weight:700;color:#16a34a" id="lcKpiCreditos">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Total Créditos</div>
+          </div>
+        </div>
+
+        <!-- Navegação de mês + ações -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <button onclick="lcNavMes(-1)" class="dp-btn-sec" style="padding:5px 10px">‹</button>
+          <span id="lcMesLabel" style="font-weight:600;font-size:14px;min-width:140px;text-align:center"></span>
+          <button onclick="lcNavMes(1)" class="dp-btn-sec" style="padding:5px 10px">›</button>
+          <div style="flex:1"></div>
+          <button class="dp-btn-sec" onclick="lcExportarCSV()" style="white-space:nowrap">
+            <i data-lucide="file-spreadsheet" style="width:13px;height:13px"></i> CSV
+          </button>
+          <button class="dp-btn-pri" onclick="lcNovoForm()" style="white-space:nowrap">
+            <i data-lucide="plus" style="width:13px;height:13px"></i> Novo Lançamento
+          </button>
+        </div>
+
+        <!-- Lista de lançamentos -->
+        <div id="lcLista" style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:12px"></div>
+
+        <!-- Formulário -->
+        <div id="lcFormPanel" style="display:none;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:14px" id="lcFormTitulo">Novo Lançamento</div>
+          <input type="hidden" id="lcFormId">
+
+          <div style="display:grid;grid-template-columns:160px 1fr 140px;gap:10px;margin-bottom:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Data *</label>
+              <input id="lcFormData" type="date"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Histórico *</label>
+              <input id="lcFormHistorico" type="text" placeholder="Descrição do lançamento"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Valor (R$) *</label>
+              <input id="lcFormValor" type="number" step="0.01" min="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:#2563eb;display:block;margin-bottom:4px">
+                <i data-lucide="arrow-right" style="width:11px;height:11px;vertical-align:middle"></i> Conta Débito *
+              </label>
+              <select id="lcFormDebito"
+                style="width:100%;padding:7px 10px;border:1px solid #bfdbfe;border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;font-family:monospace">
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:#16a34a;display:block;margin-bottom:4px">
+                <i data-lucide="arrow-left" style="width:11px;height:11px;vertical-align:middle"></i> Conta Crédito *
+              </label>
+              <select id="lcFormCredito"
+                style="width:100%;padding:7px 10px;border:1px solid #bbf7d0;border-radius:8px;background:var(--bg);color:var(--text);font-size:12px;font-family:monospace">
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button id="lcSalvarBtn" class="dp-btn-pri" onclick="lcSalvar()">Salvar</button>
+            <button class="dp-btn-sec" onclick="lcFecharForm()">Cancelar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- /lcModal -->
 
 </body>
 </html>
