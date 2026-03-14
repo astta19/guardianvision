@@ -16,7 +16,7 @@ const TIPOS_PERMITIDOS = [
 
 async function validarToken(token) {
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/portal_tokens?token=eq.${encodeURIComponent(token)}&select=id,user_id,cliente_id,expira_em,revogado&limit=1`,
+    `${SUPABASE_URL}/rest/v1/portal_tokens?token=eq.${encodeURIComponent(token)}&select=id,user_id,cliente_id,escritorio_id,expira_em,revogado&limit=1`,
     { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
   );
   if (!res.ok) return null;
@@ -24,7 +24,21 @@ async function validarToken(token) {
   if (!rows?.length) return null;
   const tk = rows[0];
   if (tk.revogado || new Date(tk.expira_em) < new Date()) return null;
-  return { user_id: tk.user_id, cliente_id: tk.cliente_id, token_id: tk.id };
+
+  // Se o token não tem escritorio_id (registros antigos), buscar pelo user_id
+  let escritorioId = tk.escritorio_id || null;
+  if (!escritorioId && tk.user_id) {
+    const escRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/escritorios?owner_id=eq.${tk.user_id}&select=id&limit=1`,
+      { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
+    );
+    if (escRes.ok) {
+      const escRows = await escRes.json();
+      escritorioId = escRows?.[0]?.id || null;
+    }
+  }
+
+  return { user_id: tk.user_id, cliente_id: tk.cliente_id, token_id: tk.id, escritorio_id: escritorioId };
 }
 
 module.exports = async function handler(req, res) {
@@ -102,14 +116,15 @@ module.exports = async function handler(req, res) {
         Prefer: 'return=representation',
       },
       body: JSON.stringify({
-        user_id:      ctx.user_id,
-        cliente_id:   ctx.cliente_id,
-        token_id:     ctx.token_id,
-        nome_arquivo: nome_arquivo || 'arquivo',
-        tipo_arquivo: tipo,
-        tamanho_kb:   tamanho_kb   || null,
+        user_id:       ctx.user_id,
+        cliente_id:    ctx.cliente_id,
+        escritorio_id: ctx.escritorio_id || null,
+        token_id:      ctx.token_id,
+        nome_arquivo:  nome_arquivo || 'arquivo',
+        tipo_arquivo:  tipo,
+        tamanho_kb:    tamanho_kb   || null,
         storage_path,
-        descricao:    descricao    || null,
+        descricao:     descricao    || null,
       }),
     });
 
