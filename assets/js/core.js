@@ -386,6 +386,7 @@ function showAuthScreen() {
   _pollingUploadUltimoCount = -1;
   if (typeof ciReset === 'function') ciReset();
   if (typeof escritorioReset === 'function') escritorioReset();
+  if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
   const hList = document.getElementById('hList');
   if (hList) hList.innerHTML = '';
   const msgs = document.getElementById('msgs');
