@@ -284,7 +284,30 @@ async function doLogin() {
   const pass  = document.getElementById('loginPassword')?.value;
   if (!email || !pass) { setAuthMsg('Preencha e-mail e senha.', true, 'login'); return; }
   const btn = document.getElementById('loginBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+
+  // reCAPTCHA v3 — invisível, sem fricção
+  try {
+    if (typeof grecaptcha !== 'undefined' && window.RECAPTCHA_SITE_KEY) {
+      const token = await grecaptcha.execute(window.RECAPTCHA_SITE_KEY, { action: 'login' });
+      const r = await fetch('/api/recaptcha-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await r.json();
+      if (!data.ok) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+        setAuthMsg('Verificação de segurança falhou. Tente novamente.', true, 'login');
+        return;
+      }
+    }
+  } catch (e) {
+    // reCAPTCHA indisponível — não bloquear o login
+    console.warn('reCAPTCHA check skipped:', e.message);
+  }
+
+  if (btn) btn.textContent = 'Entrando...';
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
   if (error) setAuthMsg(error.message || 'Erro ao fazer login.', true, 'login');
