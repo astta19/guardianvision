@@ -158,7 +158,8 @@ async function spedAbrirPeriodo(id) {
 }
 
 async function spedExcluirPeriodo(id) {
-  if (!confirm('Excluir este período e todos os dados? Esta ação não pode ser desfeita.')) return;
+  const ok = await showConfirm('Excluir este período e todos os dados? Esta ação não pode ser desfeita.');
+  if (!ok) return;
   await sb.from('sped_periodos').delete().eq('id', id);
   if (spedPeriodo?.id === id) spedPeriodo = null;
   await spedCarregarPeriodos();
