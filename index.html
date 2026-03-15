@@ -931,6 +931,10 @@
                 <i data-lucide="git-compare"></i>
                 <span>Conciliação</span>
               </button>
+              <button class="tool-card" data-perm="contabilidade" onclick="openApuracao(); closeDropdowns()" style="display:none">
+                <i data-lucide="calculator"></i>
+                <span>Apuração</span>
+              </button>
             </div>
 
             <!-- Admin -->
@@ -2766,6 +2770,7 @@
   <script src="assets/js/balancete.js?v=1"></script>
   <script src="assets/js/dre.js?v=1"></script>
   <script src="assets/js/conciliacao.js?v=1"></script>
+  <script src="assets/js/apuracao.js?v=1"></script>
 
   <!-- MÓDULO: LANÇAMENTOS CONTÁBEIS -->
   <div id="lcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
@@ -3115,6 +3120,150 @@
     </div>
   </div>
   <!-- /concModal -->
+
+  <!-- MÓDULO: APURAÇÃO DE IMPOSTOS -->
+  <div id="apurModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
+       onclick="if(event.target===this)closeApuracao()">
+    <div class="dp-modal" style="max-width:780px;width:100%">
+
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i data-lucide="calculator" style="width:16px;height:16px"></i>
+          <span style="font-weight:700;font-size:14px">Apuração de Impostos</span>
+          <span style="font-size:12px;color:var(--text-light);background:var(--sidebar-hover);padding:2px 8px;border-radius:8px" id="apurEmpresaBadge"></span>
+        </div>
+        <button onclick="closeApuracao()" class="dp-close-btn">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <div class="dp-body">
+
+        <!-- Controles principais -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <select id="apurRegime" onchange="apurAlterarRegime()"
+            style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-weight:600">
+            <option value="simples">Simples Nacional</option>
+            <option value="mei">MEI</option>
+            <option value="presumido">Lucro Presumido</option>
+            <option value="real">Lucro Real</option>
+          </select>
+          <button onclick="apurNavMes(-1)" class="dp-btn-sec" style="padding:5px 10px">‹</button>
+          <span id="apurMesLabel" style="font-weight:600;font-size:14px;min-width:80px;text-align:center"></span>
+          <button onclick="apurNavMes(1)" class="dp-btn-sec" style="padding:5px 10px">›</button>
+        </div>
+
+        <!-- Campos por regime -->
+
+        <!-- MEI -->
+        <div id="apurCamposMEI" style="display:none;background:var(--sidebar-hover);border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px">TIPO DE ATIVIDADE MEI</div>
+          <select id="apurTipoMEI"
+            style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+            <option value="comercio">Comércio (DAS R$ 80,90)</option>
+            <option value="servicos">Serviços (DAS R$ 80,90)</option>
+            <option value="ambos">Comércio + Serviços (DAS R$ 85,90)</option>
+          </select>
+        </div>
+
+        <!-- Simples Nacional -->
+        <div id="apurCamposSimples" style="background:var(--sidebar-hover);border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px">SIMPLES NACIONAL</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Faturamento do mês (R$)</label>
+              <input id="apurFatSimples" type="number" step="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">RBT12 (Receita 12 meses)</label>
+              <input id="apurRBT12" type="number" step="0.01" placeholder="Deixe vazio = mês × 12"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Folha 12 meses (Fator R)</label>
+              <input id="apurFolhaSimples" type="number" step="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Atividade principal</label>
+            <select id="apurAtivSimples"
+              style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+              <option value="comercio">Comércio (Anexo I)</option>
+              <option value="servico">Serviços (Anexo III/V por Fator R)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lucro Presumido -->
+        <div id="apurCamposPresumido" style="display:none;background:var(--sidebar-hover);border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px">LUCRO PRESUMIDO</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Faturamento do mês (R$)</label>
+              <input id="apurFatPresumido" type="number" step="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Atividade (percentual de presunção)</label>
+              <select id="apurAtivPresumido"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+                <option value="comercio">Comércio/Indústria (8% IRPJ / 12% CSLL)</option>
+                <option value="servicos">Serviços em geral (32% IRPJ / 32% CSLL)</option>
+                <option value="transportes">Transportes (16% IRPJ / 12% CSLL)</option>
+                <option value="construcao">Construção civil (8% IRPJ / 12% CSLL)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lucro Real -->
+        <div id="apurCamposReal" style="display:none;background:var(--sidebar-hover);border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px">LUCRO REAL (ESTIMATIVA MENSAL)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Faturamento (R$)</label>
+              <input id="apurFatReal" type="number" step="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Custos (R$)</label>
+              <input id="apurCustosReal" type="number" step="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Despesas (R$)</label>
+              <input id="apurDespesasReal" type="number" step="0.01" placeholder="0,00"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+        </div>
+
+        <!-- Botão calcular + vencimento -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <button class="dp-btn-pri" onclick="apurCalcular()" style="padding:10px 24px;font-size:14px">
+            <i data-lucide="calculator" style="width:14px;height:14px"></i> Calcular e Salvar
+          </button>
+          <span id="apurVencLabel" style="font-size:12px;color:var(--text-light)"></span>
+        </div>
+
+        <!-- Resultado -->
+        <div id="apurResultado"></div>
+
+        <!-- Histórico -->
+        <div style="margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.4px">Histórico de Apurações</span>
+            <button class="dp-btn-sec" onclick="apurCarregarHistorico()" style="font-size:12px;padding:4px 10px">Carregar</button>
+          </div>
+          <div id="apurHistorico"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- /apurModal -->
 
 </body>
 </html>
