@@ -82,64 +82,9 @@
     .hon-btn-del         { border-color: #fca5a5; color: #dc2626; }
     .hon-btn-del:hover   { background: #fef2f2; }
 
-    /* ── Chat Interno ────────────────────────────────────── */
-    #ciBtnHeader { display:none;position:relative;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--text-light);transition:all .15s;flex-shrink:0 }
-    #ciBtnHeader:hover { background:var(--sidebar-hover);color:var(--text) }
-    #ciBadge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:#dc2626;color:#fff;border-radius:99px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg);pointer-events:none }
-    #ciDrawer { display:none;position:fixed;top:0;right:0;width:340px;max-width:95vw;height:100vh;background:var(--card);border-left:1px solid var(--border);box-shadow:-4px 0 24px rgba(0,0,0,.12);z-index:8800;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1) }
-    #ciDrawer.ci-open { transform:translateX(0) }
-    .ci-header { display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0 }
-    .ci-header-info { flex:1;min-width:0 }
-    .ci-header-title { font-size:14px;font-weight:700;color:var(--text) }
-    .ci-header-sub { font-size:11px;color:var(--text-light);margin-top:1px;display:flex;align-items:center;gap:6px }
-    .ci-fechar { background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;border-radius:6px;display:flex;align-items:center }
-    .ci-fechar:hover { background:var(--sidebar-hover);color:var(--text) }
-    #ciCorpo { flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:2px }
-    .ci-vazio { text-align:center;color:var(--text-light);font-size:13px;padding:40px 16px;line-height:1.7;margin:auto }
-    .ci-sep-dia { display:flex;align-items:center;gap:8px;padding:10px 0 6px;color:var(--text-light);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px }
-    .ci-sep-dia::before,.ci-sep-dia::after { content:'';flex:1;height:1px;background:var(--border) }
-    .ci-load-mais { text-align:center;padding:4px 0 10px }
-    .ci-load-mais button { background:none;border:1px solid var(--border);border-radius:20px;padding:4px 14px;font-size:11px;cursor:pointer;color:var(--text-light) }
-    .ci-load-mais button:hover { background:var(--sidebar-hover);color:var(--text) }
-    /* mensagem */
-    .ci-msg-wrap { display:flex;flex-direction:column;position:relative }
-    .ci-msg-wrap:hover .ci-r-trigger { opacity:1 }
-    .ci-prp-wrap { align-items:flex-end }
-    .ci-msg { display:flex;align-items:flex-end;gap:8px;max-width:88% }
-    .ci-prp { flex-direction:row-reverse;align-self:flex-end }
-    .ci-out { align-self:flex-start }
-    .ci-mbody { display:flex;flex-direction:column;gap:3px;min-width:0 }
-    .ci-nome { font-size:11px;font-weight:600;color:var(--text-light);padding-left:4px }
-    .ci-bubble { background:var(--sidebar-hover);border-radius:14px 14px 14px 4px;padding:8px 12px;font-size:13px;color:var(--text);line-height:1.55;word-break:break-word;max-width:230px;position:relative }
-    .ci-prp .ci-bubble { background:var(--primary);color:#fff;border-radius:14px 14px 4px 14px }
-    .ci-hora { display:block;font-size:10px;opacity:.5;margin-top:4px;text-align:right }
-    /* imagem */
-    .ci-img-preview { max-width:200px;max-height:200px;border-radius:10px;cursor:pointer;display:block;margin-top:4px }
-    /* menção */
-    .ci-mencao { background:rgba(124,58,237,.15);color:#7c3aed;border-radius:4px;padding:0 3px;font-weight:600 }
-    .ci-prp .ci-mencao { background:rgba(255,255,255,.25);color:#fff }
-    /* reações */
-    .ci-reacoes { display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding-left:36px }
-    .ci-prp-wrap .ci-reacoes { padding-left:0;justify-content:flex-end }
-    .ci-r-btn { background:var(--sidebar-hover);border:1px solid var(--border);border-radius:20px;padding:2px 7px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:3px }
-    .ci-r-btn.ci-r-proprio { border-color:var(--primary);background:rgba(124,58,237,.08) }
-    .ci-r-count { font-size:11px;font-weight:600;color:var(--text-light) }
-    .ci-r-trigger { position:absolute;right:-28px;top:50%;transform:translateY(-50%);background:var(--card);border:1px solid var(--border);border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;padding:0 }
-    .ci-prp-wrap .ci-r-trigger { right:auto;left:-28px }
-    .ci-reacao-picker { position:absolute;bottom:110%;right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px 8px;display:flex;gap:4px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100 }
-    .ci-reacao-picker button { background:none;border:none;font-size:18px;cursor:pointer;padding:2px 4px;border-radius:6px;line-height:1 }
-    .ci-reacao-picker button:hover { background:var(--sidebar-hover) }
-    /* digitando */
-    #ciDigitando { display:none;font-size:11px;color:var(--text-light);padding:4px 14px;font-style:italic;flex-shrink:0 }
-    /* rodapé */
-    .ci-rodape { padding:8px 10px;border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:6px;flex-shrink:0 }
-    .ci-rodape-actions { display:flex;gap:4px;align-items:flex-end }
-    .ci-action-btn { width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--text-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s }
-    .ci-action-btn:hover { background:var(--sidebar-hover);color:var(--text) }
-    #ciInput { flex:1;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;min-height:36px;max-height:120px;line-height:1.5;overflow-y:auto }
-    #ciInput:focus { border-color:var(--primary) }
-    .ci-send { width:34px;height:34px;border-radius:10px;background:var(--primary);border:none;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s }
-    .ci-send:hover { opacity:.85 }
+    #msnBtnHeader { display:none;position:relative;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--text-light);transition:all .15s;flex-shrink:0 }
+    #msnBtnHeader:hover { background:var(--sidebar-hover);color:var(--text) }
+    #msnBadge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:#dc2626;color:#fff;border-radius:99px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg);pointer-events:none }
     .hon-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; color: var(--text-light); text-align: center; gap: 8px; }
     .hon-empty p { font-size: 13px; }
     .hon-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: hon-spin .7s linear infinite; }
@@ -985,10 +930,6 @@
     <i data-lucide="message-circle" style="width:20px;height:20px"></i>
     <span id="msnBadge" style="display:none;position:absolute;top:2px;right:2px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;padding:0 3px;align-items:center;justify-content:center;line-height:1"></span>
   </button>
-  <button id="ciBtnHeader" onclick="abrirChatInterno()" title="Chat do Escritório" aria-label="Chat">
-          <i data-lucide="message-square" style="width:15px;height:15px"></i>
-          <span id="ciBadge"></span>
-        </button>
 
         <div class="toolbar-sep"></div>
 
@@ -2624,50 +2565,6 @@
   </div>
   <script src="assets/js/honorarios.js?v=1"></script>
 
-  <!-- ── Chat Interno ───────────────────────────────────────── -->
-  <div id="ciDrawer">
-    <!-- Header -->
-    <div class="ci-header">
-      <i data-lucide="message-square" style="width:18px;height:18px;color:var(--primary);flex-shrink:0"></i>
-      <div class="ci-header-info">
-        <div class="ci-header-title" id="ciEscNome">Chat do Escritório</div>
-        <div class="ci-header-sub">
-          <span id="ciOnlineLabel">Carregando...</span>
-          <span id="ciOnlineAvatares" style="display:inline-flex;gap:3px"></span>
-        </div>
-      </div>
-      <button class="ci-fechar" onclick="fecharChatInterno()" title="Fechar">
-        <i data-lucide="x" style="width:16px;height:16px"></i>
-      </button>
-    </div>
-
-    <!-- Mensagens -->
-    <div id="ciCorpo">
-      <p class="ci-vazio">Abrindo chat...</p>
-    </div>
-
-    <!-- Indicador digitando -->
-    <div id="ciDigitando"></div>
-
-    <!-- Rodapé -->
-    <div class="ci-rodape">
-      <div class="ci-rodape-actions">
-        <button class="ci-action-btn" onclick="ciAbrirUpload()" title="Enviar imagem / print">
-          <i data-lucide="image" style="width:15px;height:15px"></i>
-        </button>
-      </div>
-      <textarea id="ciInput" placeholder="Mensagem… (Enter envia, Shift+Enter quebra linha)" rows="1"
-        onkeydown="ciKeyDown(event)"></textarea>
-      <button class="ci-send" onclick="ciEnviar()" title="Enviar">
-        <i data-lucide="send" style="width:15px;height:15px"></i>
-      </button>
-    </div>
-
-    <!-- Input de arquivo oculto -->
-    <input type="file" id="ciFileInput" accept="image/*" style="display:none" onchange="ciHandleFile(this)">
-  </div>
-
-  <script src="assets/js/chat_interno.js?v=4"></script>
   <script src="assets/js/messenger.js?v=1"></script>
 
   <!-- MÓDULO: PLANO DE CONTAS -->
