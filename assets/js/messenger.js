@@ -114,10 +114,14 @@ function _msnSubscribe() {
   // pg_changes: garantia de entrega mesmo se broadcast falhar
   _msnPgCanal = sb.channel(`msn_pg_${_msnEscId}`)
     .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'messenger_mensagens',
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messenger_mensagens',
       filter: `receiver_id=eq.${currentUser.id}`,
     }, (payload) => _msnReceberMsgPg(payload.new))
-    .subscribe();
+    .subscribe((status) => {
+      if (status !== 'SUBSCRIBED') console.warn('[msn pg_changes]', status);
+    });
 
   // Presence: status online
   _msnPrCanal = sb.channel(`msn_pr_${_msnEscId}`, {
@@ -244,7 +248,7 @@ function _msnRenderPainel() {
 
 // ── Lista de contatos ─────────────────────────────────────────
 function _msnRenderContatos() {
-  if (_msnPeerAtivo) return; // não re-renderizar se conversa aberta
+  if (_msnPeerAtivo) return; // lista não visível durante conversa aberta
   const corpo = document.getElementById('msnCorpo');
   if (!corpo) return;
 
@@ -310,13 +314,26 @@ async function msnAbrirConversa(peerId) {
 }
 
 async function _msnCarregarHistorico(peerId) {
-  const { data } = await sb.from('messenger_mensagens')
-    .select('*')
-    .eq('escritorio_id', _msnEscId)
-    .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${currentUser.id})`)
-    .order('criado_em', { ascending: true })
-    .limit(80);
-  _msnMensagens[peerId] = data || [];
+  // Duas queries separadas + merge — evita problema com .or() composto no Supabase JS v2
+  const [{ data: enviadas }, { data: recebidas }] = await Promise.all([
+    sb.from('messenger_mensagens')
+      .select('*')
+      .eq('escritorio_id', _msnEscId)
+      .eq('sender_id', currentUser.id)
+      .eq('receiver_id', peerId)
+      .order('criado_em', { ascending: true })
+      .limit(80),
+    sb.from('messenger_mensagens')
+      .select('*')
+      .eq('escritorio_id', _msnEscId)
+      .eq('sender_id', peerId)
+      .eq('receiver_id', currentUser.id)
+      .order('criado_em', { ascending: true })
+      .limit(80),
+  ]);
+  const todas = [...(enviadas || []), ...(recebidas || [])];
+  todas.sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+  _msnMensagens[peerId] = todas.slice(-80);
 }
 
 // ── Render conversa ───────────────────────────────────────────
@@ -392,7 +409,7 @@ function _msnRenderMensagens(peerId) {
 
     let separador = '';
     if (dataMsg !== dataAnterior) {
-      separador = `<div style="text-align:center;font-size:10px;color:var(--text-light);margin:8px 0;padding:4px 10px;background:var(--sidebar-hover);border-radius:10px;width:fit-content;margin-left:auto;margin-right:auto">${dataMsg}</div>`;
+      separador = `<div style="text-align:center;font-size:10px;color:var(--text-light);margin:8px auto;padding:4px 10px;background:var(--sidebar-hover);border-radius:10px;width:fit-content;display:block">${dataMsg}</div>`;
       dataAnterior = dataMsg;
     }
 
@@ -468,11 +485,16 @@ async function msnEnviar() {
     criado_em:    new Date().toISOString(),
   };
 
-  // Render local imediato
+  // Render local imediato — garantir que o painel de mensagens existe
   _msnFp.add(msg.id);
   if (!_msnMensagens[_msnPeerAtivo]) _msnMensagens[_msnPeerAtivo] = [];
   _msnMensagens[_msnPeerAtivo].push(msg);
-  _msnAppendMsg(msg);
+  // Se msnMsgs não existe ainda, re-renderizar a conversa completa
+  if (!document.getElementById('msnMsgs')) {
+    _msnRenderConversa(_msnPeerAtivo);
+  } else {
+    _msnAppendMsg(msg);
+  }
 
   // Broadcast para entrega instantânea
   _msnBcCanal?.send({ type: 'broadcast', event: 'msn_msg', payload: msg });
@@ -656,8 +678,9 @@ function msnVoltarLista() {
   const header = document.getElementById('msnHeaderTitle');
   if (header) header.innerHTML = 'Messenger';
   if (window.lucide) lucide.createIcons();
-  _msnRenderContatos();
-  document.getElementById('msnCorpo').innerHTML = '';
+  // Limpar corpo ANTES de renderizar para evitar dupla chamada
+  const corpo = document.getElementById('msnCorpo');
+  if (corpo) corpo.innerHTML = '';
   _msnRenderContatos();
 }
 
