@@ -407,7 +407,8 @@ function showAuthScreen() {
   if (typeof learningService !== 'undefined') learningService = null;
   if (_pollingUploadTimer) { clearInterval(_pollingUploadTimer); _pollingUploadTimer = null; }
   _pollingUploadUltimoCount = -1;
-  if (typeof ciReset === 'function') ciReset();
+  if (typeof ciReset  === 'function') ciReset();
+  if (typeof msnReset === 'function') msnReset();
   if (typeof escritorioReset === 'function') escritorioReset();
   if (typeof EmpresaContext !== 'undefined') EmpresaContext.invalidar();
   const hList = document.getElementById('hList');
@@ -450,6 +451,7 @@ async function showApp() {
   }
   // Chat interno: inicializar para admin e contadores com permissão
   if (typeof ciInit === 'function') ciInit();
+  if (typeof msnInit === 'function') msnInit();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
