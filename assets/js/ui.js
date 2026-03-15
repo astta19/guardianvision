@@ -860,16 +860,26 @@ async function chatDirGerar() {
       ? `[Contexto: ${clienteInfo.razao_social} (CNPJ: ${clienteInfo.cnpj}) — ${clienteInfo.regime_tributario}]\n\n${mensagem}`
       : mensagem;
 
-    // Salvar em shared_chats com metadados extras
-    const { error } = await sb.from('shared_chats').insert({
+    // Salvar em shared_chats — colunas directed_to e cliente_id adicionadas via chat_dm_setup.sql
+    // Tentar com as novas colunas; se falhar (SQL não executado ainda), salvar sem elas
+    const payload = {
       token,
-      title:        mensagem.substring(0, 60) + (mensagem.length > 60 ? '...' : ''),
-      messages:     [{ role: 'user', content: contextMsg }],
-      created_by:   currentUser.id,
-      directed_to:  userId,
-      cliente_id:   clienteId || null,
-      expires_at:   expires,
+      title:      mensagem.substring(0, 60) + (mensagem.length > 60 ? '...' : ''),
+      messages:   [{ role: 'user', content: contextMsg }],
+      created_by: currentUser.id,
+      expires_at: expires,
+    };
+
+    let { error } = await sb.from('shared_chats').insert({
+      ...payload,
+      directed_to: userId,
+      cliente_id:  clienteId || null,
     });
+
+    // Fallback: inserir sem as colunas novas se ainda não existem no banco
+    if (error?.message?.includes('column') || error?.code === '42703') {
+      ({ error } = await sb.from('shared_chats').insert(payload));
+    }
 
     if (error) throw new Error(error.message);
 
