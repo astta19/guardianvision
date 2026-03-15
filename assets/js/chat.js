@@ -129,22 +129,20 @@ class FiscalLearningService {
 
   async registrarInteracao(chatId, pergunta, resposta, tokens, modelo) {
     try {
-      if (!pergunta || !resposta) {
-        return null;
-      }
+      if (!pergunta || !resposta) return null;
 
       const tags = this.extrairTags(pergunta);
-      
+
       const dadosInsercao = {
-        chat_id: chatId || null,
-        pergunta: pergunta,
-        resposta: resposta,
-        tags_pergunta: tags.length > 0 ? tags : null,
+        chat_id:           chatId || null,
+        pergunta,
+        resposta,
+        tags_pergunta:     tags.length > 0 ? tags : null,
         tokens_utilizados: tokens || null,
-        modelo_utilizado: modelo || null,
-        user_id: currentUser?.id || null,
-        cliente_id: currentCliente?.id || null,
-        data_interacao: new Date().toISOString()
+        modelo_utilizado:  modelo || null,
+        user_id:           currentUser?.id || null,
+        cliente_id:        currentCliente?.id || null,
+        data_interacao:    new Date().toISOString(),
       };
 
       const { data, error } = await this.supabase
@@ -153,15 +151,34 @@ class FiscalLearningService {
         .select()
         .single();
 
-      if (error) {
-        return null;
+      if (error) return null;
+
+      // Gerar embedding em background — não bloqueia a resposta ao usuário
+      if (data?.id) {
+        this._gerarEmbeddingAsync('interacoes_chat', data.id, pergunta).catch(() => {});
       }
 
       return data.id;
 
-    } catch (error) {
+    } catch {
       return null;
     }
+  }
+
+  // Gera embedding via Voyage AI e salva na tabela (background)
+  async _gerarEmbeddingAsync(tabela, id, texto) {
+    try {
+      const res = await fetch('/api/embeddings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts: [texto] }),
+      });
+      if (!res.ok) return;
+      const { embeddings } = await res.json();
+      const emb = embeddings?.[0];
+      if (!emb?.length) return;
+      await this.supabase.from(tabela).update({ embedding: emb }).eq('id', id);
+    } catch { /* silencioso */ }
   }
 
   async registrarFeedback(interacaoId, nota) {
@@ -258,10 +275,38 @@ class FiscalLearningService {
 
   async buscarContextoRAG(pergunta) {
     try {
-      const tags = this.extrairTags(pergunta);
       const clienteId = currentCliente?.id || null;
 
-      // RAG filtrado por cliente e usuário — isolamento completo
+      // ── Tentar RAG semântico (pgvector + Voyage AI) ───────
+      const embRes = await fetch('/api/embeddings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts: [pergunta] }),
+      }).catch(() => null);
+
+      if (embRes?.ok) {
+        const { embeddings } = await embRes.json();
+        const emb = embeddings?.[0];
+        if (emb?.length) {
+          const { data: semResults } = await this.supabase
+            .rpc('buscar_rag_semantico', {
+              p_embedding:  emb,
+              p_user_id:    currentUser.id,
+              p_cliente_id: clienteId,
+              p_limit:      3,
+            });
+
+          if (semResults?.length) {
+            return semResults
+              .map(r => `P: ${r.pergunta}\nR: ${r.resposta.substring(0, 1500)}`)
+              .join('\n\n---\n\n');
+          }
+        }
+      }
+
+      // ── Fallback: busca por palavras (sem pgvector) ────────
+      const tags = this.extrairTags(pergunta);
+
       let qInteracoes = this.supabase
         .from('interacoes_chat')
         .select('pergunta, resposta, feedback_usuario, tags_pergunta')
@@ -270,7 +315,6 @@ class FiscalLearningService {
         .order('feedback_usuario', { ascending: false })
         .limit(10);
       if (clienteId) qInteracoes = qInteracoes.eq('cliente_id', clienteId);
-      // Contador só vê RAG do próprio usuário; admin vê tudo
       if (!isAdmin() && currentUser?.id) qInteracoes = qInteracoes.eq('user_id', currentUser.id);
 
       let qTreinamento = this.supabase
@@ -283,31 +327,26 @@ class FiscalLearningService {
       if (currentUser?.id) qTreinamento = qTreinamento.eq('user_id', currentUser.id);
 
       const [{ data: interacoes }, { data: treinamento }] = await Promise.all([
-        qInteracoes, qTreinamento
+        qInteracoes, qTreinamento,
       ]);
 
       const candidatos = [
         ...(interacoes || []).map(i => ({
-          pergunta: i.pergunta,
-          resposta: i.resposta,
-          tags: i.tags_pergunta || [],
-          peso: i.feedback_usuario || 0
+          pergunta: i.pergunta, resposta: i.resposta,
+          tags: i.tags_pergunta || [], peso: i.feedback_usuario || 0,
         })),
         ...(treinamento || []).map(t => ({
-          pergunta: t.pergunta,
-          resposta: t.resposta,
-          tags: [],
-          peso: t.qualidade || 0
-        }))
+          pergunta: t.pergunta, resposta: t.resposta,
+          tags: [], peso: t.qualidade || 0,
+        })),
       ];
 
-      if (candidatos.length === 0) return null;
+      if (!candidatos.length) return null;
 
       const palavras = pergunta.toLowerCase().split(/\s+/).filter(p => p.length >= 2);
-
       const pontuados = candidatos.map(c => {
         const texto = (c.pergunta + ' ' + c.tags.join(' ')).toLowerCase();
-        const matches = palavras.filter(p => texto.includes(p)).length;
+        const matches    = palavras.filter(p => texto.includes(p)).length;
         const tagMatches = tags.filter(t => c.tags.includes(t)).length;
         return { ...c, score: matches * 3 + tagMatches * 4 + (c.peso > 3 ? 1 : 0) };
       });
@@ -317,13 +356,12 @@ class FiscalLearningService {
         .sort((a, b) => b.score - a.score)
         .slice(0, 2);
 
-      if (relevantes.length === 0) return null;
+      if (!relevantes.length) return null;
+      return relevantes
+        .map(c => `P: ${c.pergunta}\nR: ${c.resposta.substring(0, 1500)}`)
+        .join('\n\n---\n\n');
 
-      return relevantes.map(c =>
-        `P: ${c.pergunta}\nR: ${c.resposta.substring(0, 1500)}`
-      ).join('\n\n---\n\n');
-
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -1473,19 +1511,49 @@ POSTURA PROFISSIONAL:
 
 `.trim();
 
-    // Resumo automático: se conversa longa, comprimir mensagens antigas em um bloco
+    // Resumo automático: se conversa longa, comprimir mensagens antigas via haiku
     let historicoBase = currentChat.messages;
     if (historicoBase.length > 20 && !historicoBase[0]?._resumo) {
-      const antigas = historicoBase.slice(0, -10);
-      const resumoTexto = antigas.map(m =>
-        `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${(m.content || '').substring(0, 200)}`
-      ).join('\n');
-      const blocoResumo = {
-        role: 'user',
-        content: `[Resumo do histórico anterior desta conversa:]\n${resumoTexto}`,
-        _resumo: true,
-      };
-      historicoBase = [blocoResumo, ...historicoBase.slice(-10)];
+      const antigas   = historicoBase.slice(0, -10);
+      const recentes  = historicoBase.slice(-10);
+
+      // Tentar gerar resumo via haiku (assíncrono mas awaited aqui — necessário antes do envio)
+      let resumoTexto = null;
+      try {
+        const blocoParaResumir = antigas.map(m =>
+          `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${(m.content || '').substring(0, 600)}`
+        ).join('\n');
+
+        const rRes = await fetch('/api/chat-anthropic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
+          body: JSON.stringify({
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 400,
+            stream:     false,
+            messages: [{
+              role:    'user',
+              content: `Faça um resumo conciso (máx 350 palavras) dos pontos fiscais/tributários discutidos nesta conversa. Preserve valores, datas, cálculos e decisões importantes:\n\n${blocoParaResumir}`,
+            }],
+          }),
+        });
+        if (rRes.ok) {
+          const rData = await rRes.json();
+          resumoTexto = rData?.content?.[0]?.text?.trim() || null;
+        }
+      } catch { /* usa fallback */ }
+
+      // Fallback se haiku falhou
+      if (!resumoTexto) {
+        resumoTexto = antigas.map(m =>
+          `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${(m.content || '').substring(0, 400)}`
+        ).join('\n');
+      }
+
+      historicoBase = [
+        { role: 'user', content: `[Resumo do histórico anterior desta conversa:]\n${resumoTexto}`, _resumo: true },
+        ...recentes,
+      ];
     }
 
     // Preparar mensagens (últimas 10 + possível resumo)
@@ -1913,63 +1981,72 @@ function _renderContadorMensagens(count) {
   el.title        = `${restante} mensagem(ns) restante(s) hoje`;
 }
 
-function mostrarSugestoes(textoResposta) {
-  // Remover sugestões anteriores
+async function mostrarSugestoes(textoResposta) {
   document.getElementById('sugestoes-wrap')?.remove();
+  if (!textoResposta || textoResposta.length < 50) return;
 
-  if (!textoResposta) return;
-  const t = textoResposta.toLowerCase();
+  try {
+    const res = await fetch('/api/chat-anthropic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 120, stream: false,
+        messages: [{ role: 'user',
+          content: `Com base nesta resposta fiscal, gere exatamente 3 perguntas de follow-up curtas e relevantes. Responda APENAS as 3 perguntas, uma por linha, sem numeração.
 
-  // Banco de sugestões por tema detectado na resposta
-  const mapa = [
-    { termos: ['simples nacional', 'das ', 'pgdas', 'anexo'],
-      perguntas: ['Qual a alíquota efetiva do Simples este mês?', 'Como calcular o Fator R?', 'Quando vence o DAS?'] },
-    { termos: ['icms', 'st ', 'substituição tributária', 'difal'],
-      perguntas: ['Como apurar o ICMS-ST?', 'Quais CFOPs usar para operações interestaduais?', 'O que é DIFAL e quando se aplica?'] },
-    { termos: ['irpj', 'csll', 'lucro presumido', 'lucro real'],
-      perguntas: ['Qual a diferença entre Lucro Real e Presumido?', 'Como calcular o adicional de IRPJ?', 'Quando é obrigatório o Lucro Real?'] },
-    { termos: ['darf', 'vencimento', 'multa', 'juros'],
-      perguntas: ['Como emitir o DARF no portal?', 'Como calcular juros e multa por atraso?', 'Posso parcelar este débito?'] },
-    { termos: ['sped', 'efd', 'ecd', 'ecf', 'spede'],
-      perguntas: ['Quais registros do SPED devo validar?', 'Como corrigir um SPED após entrega?', 'Qual o prazo para retificação?'] },
-    { termos: ['nf-e', 'nota fiscal', 'cfop', 'cst'],
-      perguntas: ['Qual CFOP usar para devolução?', 'Como cancelar uma NF-e emitida?', 'O que é CST e CSOSN?'] },
-    { termos: ['folha', 'rescisão', 'inss', 'fgts', 'pro-labore'],
-      perguntas: ['Como calcular a rescisão sem justa causa?', 'Qual a alíquota de INSS sobre pró-labore?', 'Como calcular férias proporcionais?'] },
-    { termos: ['reforma tributária', 'cbs', 'ibs', 'ibs/cbs', '2026'],
-      perguntas: ['Quando começa a cobrança efetiva do IBS/CBS?', 'Preciso destacar CBS na NF-e agora?', 'Como a Reforma impacta o Simples Nacional?'] },
-  ];
-
-  let sugestoes = [];
-  for (const { termos, perguntas } of mapa) {
-    if (termos.some(term => t.includes(term))) {
-      sugestoes = perguntas;
-      break;
-    }
+Resposta: ${textoResposta.substring(0, 500)}` }],
+      }),
+    });
+    if (!res.ok) throw new Error('haiku falhou');
+    const data     = await res.json();
+    const textoRaw = data?.content?.[0]?.text?.trim() || '';
+    const sugestoes = textoRaw.split('\n').map(s => s.trim()).filter(s => s.length > 8).slice(0, 3);
+    if (!sugestoes.length) throw new Error('sem sugestões');
+    _renderSugestoes(sugestoes);
+  } catch {
+    _renderSugestoesFallback(textoResposta);
   }
+}
 
-  // Fallback genérico
-  if (!sugestoes.length) {
-    sugestoes = [
-      'Pode detalhar mais sobre este assunto?',
-      'Quais são as multas por descumprimento?',
-      'Como isso se aplica ao meu regime tributário?',
-    ];
-  }
-
+function _renderSugestoes(sugestoes) {
+  document.getElementById('sugestoes-wrap')?.remove();
   const wrap = document.createElement('div');
   wrap.id = 'sugestoes-wrap';
   wrap.style.cssText = 'padding:8px 16px 4px;display:flex;flex-wrap:wrap;gap:6px;';
   wrap.innerHTML = sugestoes.map(s => `
     <button onclick="useTemplate('${s.replace(/'/g, "\'")}');document.getElementById('sugestoes-wrap')?.remove()"
-      style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:16px;background:var(--sidebar-hover);color:var(--text);cursor:pointer;transition:.15s"
+      style="padding:6px 12px;font-size:12px;border:1px solid var(--border);border-radius:16px;background:var(--sidebar-hover);color:var(--text);cursor:pointer;transition:.15s;text-align:left"
       onmouseover="this.style.background='var(--accent)';this.style.color='#fff';this.style.borderColor='var(--accent)'"
       onmouseout="this.style.background='var(--sidebar-hover)';this.style.color='var(--text)';this.style.borderColor='var(--border)'">
-      ${s}
+      ${escapeHtml(s)}
     </button>`).join('');
-
   document.getElementById('msgs').appendChild(wrap);
   document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
+}
+
+function _renderSugestoesFallback(textoResposta) {
+  const t = textoResposta.toLowerCase();
+  const mapa = [
+    { termos: ['simples nacional','das ','pgdas','anexo'],
+      perguntas: ['Qual a alíquota efetiva do Simples este mês?','Como calcular o Fator R?','Quando vence o DAS?'] },
+    { termos: ['icms','substituição tributária','difal'],
+      perguntas: ['Como apurar o ICMS-ST?','Quais CFOPs usar para operações interestaduais?','O que é DIFAL?'] },
+    { termos: ['irpj','csll','lucro presumido','lucro real'],
+      perguntas: ['Qual a diferença entre Lucro Real e Presumido?','Como calcular o adicional de IRPJ?','Quando é obrigatório o Lucro Real?'] },
+    { termos: ['darf','vencimento','multa'],
+      perguntas: ['Como emitir o DARF no portal?','Como calcular juros e multa por atraso?','Posso parcelar este débito?'] },
+    { termos: ['sped','efd','ecd','ecf'],
+      perguntas: ['Quais registros do SPED devo validar?','Como corrigir um SPED após entrega?','Qual o prazo para retificação?'] },
+    { termos: ['folha','rescisão','inss','fgts'],
+      perguntas: ['Como calcular a rescisão sem justa causa?','Qual a alíquota de INSS sobre pró-labore?','Como calcular férias proporcionais?'] },
+    { termos: ['reforma tributária','cbs','ibs'],
+      perguntas: ['Quando começa a cobrança efetiva do IBS/CBS?','Preciso destacar CBS na NF-e agora?','Como a Reforma impacta o Simples Nacional?'] },
+  ];
+  let sugestoes = ['Pode detalhar mais?','Quais são as multas por descumprimento?','Como isso se aplica ao meu regime?'];
+  for (const { termos, perguntas } of mapa) {
+    if (termos.some(term => t.includes(term))) { sugestoes = perguntas; break; }
+  }
+  _renderSugestoes(sugestoes);
 }
 
 async function handleMultipleFiles(event) {
