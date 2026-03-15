@@ -575,7 +575,7 @@ const PERMS_LIST = [
   { id: 'portal',        label: 'Portal do Cliente',  icon: 'link' },
   { id: 'calculadora',   label: 'Calculadora',        icon: 'calculator' },
   { id: 'honorarios',    label: 'Honorários',         icon: 'receipt'  },
-  { id: 'chat_interno',  label: 'Chat do Escritório', icon: 'message-square' },
+  { id: 'chat_interno',  label: 'Messenger (Chat)',   icon: 'message-circle' },
   { id: 'exportar',      label: 'Exportar Conversa',  icon: 'download' },
   { id: 'compartilhar',  label: 'Compartilhar Chat',  icon: 'share-2' },
   { id: 'arquivos',      label: 'Anexar Arquivos',    icon: 'paperclip' },
