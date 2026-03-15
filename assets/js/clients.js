@@ -114,6 +114,8 @@ async function setCurrentCliente(cliente) {
   if (dreBadge) dreBadge.textContent = displayName;
   const concBadge = document.getElementById('concEmpresaBadge');
   if (concBadge) concBadge.textContent = displayName;
+  const apurBadge = document.getElementById('apurEmpresaBadge');
+  if (apurBadge) apurBadge.textContent = displayName;
 
   // Se honorários estiver aberto, recarregar para a nova empresa
   if (document.getElementById('honModal')?.style.display !== 'none' && typeof honCarregar === 'function') {
@@ -578,7 +580,7 @@ const PERMS_LIST = [
   { id: 'compartilhar',  label: 'Compartilhar Chat',  icon: 'share-2' },
   { id: 'arquivos',      label: 'Anexar Arquivos',    icon: 'paperclip' },
   { id: 'gerar_doc',     label: 'Gerar Documentos',   icon: 'file-plus' },
-  { id: 'contabilidade', label: 'Contabilidade (Plano, Lançamentos, Balancete)', icon: 'book-open' },
+  { id: 'contabilidade', label: 'Contabilidade (Plano, Lançamentos, Balancete, DRE, Conciliação, Apuração)', icon: 'book-open' },
 ];
 
 async function abrirGerenciarPermissoes() {
