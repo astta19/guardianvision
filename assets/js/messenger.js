@@ -68,12 +68,16 @@ async function msnInit() {
 }
 
 function msnReset() {
-  [_msnBcCanal, _msnPgCanal, _msnPrCanal].forEach(c => { try { if (c) sb.removeChannel(c); } catch {} });
+  // Cancelar timer de digitando pendente antes de fechar canais
+  if (_msnDigTimer) { clearTimeout(_msnDigTimer); _msnDigTimer = null; }
+  Object.values(_msnDigitando).forEach(t => clearTimeout(t));
+  [_msnBcCanal, _msnPgCanal, _msnPrCanal].forEach(ch => { try { if (ch) sb.removeChannel(ch); } catch {} });
   _msnBcCanal = _msnPgCanal = _msnPrCanal = null;
   _msnEscId = null; _msnPeerAtivo = null;
   _msnMensagens = {}; _msnNaoLidas = {}; _msnOnline = new Set();
   _msnDigitando = {}; _msnFp = new Set(); _msnAberto = false;
-  document.getElementById('msnBtnHeader')?.style?.setProperty('display', 'none');
+  const btn = document.getElementById('msnBtnHeader');
+  if (btn) btn.style.display = 'none';
   document.getElementById('msnPanel')?.remove();
 }
 
