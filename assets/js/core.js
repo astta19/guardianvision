@@ -623,6 +623,7 @@ document.addEventListener('keydown', e => {
     () => { const m = document.getElementById('lcModal');          if (m?.style.display !== 'none' && typeof closeLancamentosContabeis === 'function') closeLancamentosContabeis(); },
     () => { const m = document.getElementById('balModal');         if (m?.style.display !== 'none' && typeof closeBalancete === 'function') closeBalancete(); },
     () => { const m = document.getElementById('dreModal');         if (m?.style.display !== 'none' && typeof closeDRE === 'function') closeDRE(); },
+    () => { const m = document.getElementById('concModal');        if (m?.style.display !== 'none' && typeof closeConciliacao === 'function') closeConciliacao(); },
     () => { const m = document.getElementById('honPagoModal');       if (m?.style.display !== 'none' && typeof honPagoFechar === 'function') honPagoFechar(); },
     () => { const m = document.getElementById('honModal');          if (m?.style.display !== 'none' && typeof closeHonorarios === 'function') closeHonorarios(); },
     () => { const m = document.getElementById('portalAdminModal');  if (m?.style.display !== 'none' && typeof fecharPortalAdmin === 'function') fecharPortalAdmin(); },
