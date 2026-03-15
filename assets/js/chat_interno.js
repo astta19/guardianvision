@@ -654,3 +654,177 @@ function _ciToastMsg(msg) {
     : (msg.conteudo || '').slice(0, 60) + ((msg.conteudo || '').length > 60 ? '…' : '');
   showToast(`💬 ${nome}: ${preview}`, 'info', 4500);
 }
+
+// ============================================================
+// DMs — Mensagens Diretas entre contadores
+// Canal: ci_dm_{min(idA,idB)}_{max(idA,idB)} (Supabase Broadcast)
+// ============================================================
+
+let _dmCanais      = {};   // { peerId: channel }
+let _dmHistorico   = {};   // { peerId: [msgs] }
+let _dmPeerAtivo   = null; // userId do contador na conversa aberta
+let _dmNaoLidas    = {};   // { peerId: count }
+
+// ── Abrir DM com um usuário ───────────────────────────────────
+async function ciAbrirDM(peerId) {
+  if (!peerId || peerId === currentUser.id) return;
+  _dmPeerAtivo = peerId;
+
+  // Criar canal DM se ainda não existe
+  if (!_dmCanais[peerId]) {
+    const ids  = [currentUser.id, peerId].sort();
+    const nome = `ci_dm_${ids[0]}_${ids[1]}`;
+    const canal = sb.channel(nome, { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'dm' }, ({ payload }) => _dmReceberMsg(payload));
+    await canal.subscribe();
+    _dmCanais[peerId] = canal;
+  }
+
+  // Carregar histórico do banco
+  if (!_dmHistorico[peerId]) {
+    const ids = [currentUser.id, peerId].sort();
+    const { data } = await sb.from('chat_dm_mensagens')
+      .select('*')
+      .or(`and(sender_id.eq.${ids[0]},receiver_id.eq.${ids[1]}),and(sender_id.eq.${ids[1]},receiver_id.eq.${ids[0]})`)
+      .order('criado_em', { ascending: true })
+      .limit(100);
+    _dmHistorico[peerId] = data || [];
+  }
+
+  // Marcar como lidas
+  _dmNaoLidas[peerId] = 0;
+  _dmRenderBadgeTotal();
+
+  _dmRenderModal();
+}
+
+// ── Enviar mensagem DM ────────────────────────────────────────
+async function ciEnviarDM() {
+  const input = document.getElementById('dmInput');
+  const texto = input?.value.trim();
+  if (!texto || !_dmPeerAtivo) return;
+  input.value = '';
+
+  const msg = {
+    id:          crypto.randomUUID?.() || Date.now().toString(36),
+    sender_id:   currentUser.id,
+    receiver_id: _dmPeerAtivo,
+    conteudo:    texto,
+    criado_em:   new Date().toISOString(),
+    nome_sender: _ciNome(currentUser.id),
+  };
+
+  // Render local imediato
+  if (!_dmHistorico[_dmPeerAtivo]) _dmHistorico[_dmPeerAtivo] = [];
+  _dmHistorico[_dmPeerAtivo].push(msg);
+  _dmAppendMsg(msg);
+
+  // Broadcast para o peer
+  _dmCanais[_dmPeerAtivo]?.send({ type: 'broadcast', event: 'dm', payload: msg });
+
+  // Persistir
+  await sb.from('chat_dm_mensagens').insert({
+    sender_id:   currentUser.id,
+    receiver_id: _dmPeerAtivo,
+    conteudo:    texto,
+    nome_sender: msg.nome_sender,
+  }).catch(e => console.error('dm insert:', e));
+}
+
+// ── Receber mensagem DM ───────────────────────────────────────
+function _dmReceberMsg(msg) {
+  if (!msg?.sender_id) return;
+  const peer = msg.sender_id;
+
+  if (!_dmHistorico[peer]) _dmHistorico[peer] = [];
+  _dmHistorico[peer].push(msg);
+
+  // Se DM com este peer está aberto, renderizar
+  if (_dmPeerAtivo === peer) {
+    _dmAppendMsg(msg);
+  } else {
+    // Incrementar badge de não lidas
+    _dmNaoLidas[peer] = (_dmNaoLidas[peer] || 0) + 1;
+    _dmRenderBadgeTotal();
+    _ciSom();
+    showToast(`💬 DM de ${msg.nome_sender || _ciNome(peer)}: ${msg.conteudo.substring(0, 60)}`, 'info', 4000);
+  }
+}
+
+// ── Render modal DM ───────────────────────────────────────────
+function _dmRenderModal() {
+  let modal = document.getElementById('dmModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'dmModal';
+    modal.style.cssText = 'position:fixed;bottom:80px;right:24px;width:340px;height:460px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:8500;display:flex;flex-direction:column;overflow:hidden';
+    document.body.appendChild(modal);
+  }
+
+  const nome  = _ciNome(_dmPeerAtivo);
+  const avatar = _ciPerfis[_dmPeerAtivo]?.avatar_url || '';
+  const msgs  = (_dmHistorico[_dmPeerAtivo] || []);
+
+  modal.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card)">
+      ${_ciAvatarEl(_dmPeerAtivo, avatar, nome, 28).outerHTML}
+      <div style="flex:1;font-size:13px;font-weight:600">${escapeHtml(nome)}</div>
+      <button onclick="ciFecharDM()" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light)">
+        <i data-lucide="x" style="width:15px;height:15px"></i>
+      </button>
+    </div>
+    <div id="dmMsgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px">
+      ${msgs.map(m => _dmRenderMsgHtml(m)).join('')}
+    </div>
+    <div style="padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <input id="dmInput" type="text" placeholder="Mensagem direta..."
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ciEnviarDM()}"
+        style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:13px;outline:none">
+      <button onclick="ciEnviarDM()"
+        style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600">
+        <i data-lucide="send" style="width:14px;height:14px"></i>
+      </button>
+    </div>`;
+
+  if (window.lucide) lucide.createIcons();
+
+  // Scroll ao final
+  const msgsEl = document.getElementById('dmMsgs');
+  if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+  setTimeout(() => document.getElementById('dmInput')?.focus(), 100);
+}
+
+function _dmRenderMsgHtml(msg) {
+  const proprio = msg.sender_id === currentUser.id;
+  const hora    = new Date(msg.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `
+    <div style="display:flex;flex-direction:column;align-items:${proprio ? 'flex-end' : 'flex-start'}">
+      <div style="max-width:80%;padding:8px 12px;border-radius:${proprio ? '12px 12px 2px 12px' : '12px 12px 12px 2px'};
+        background:${proprio ? 'var(--accent)' : 'var(--sidebar-hover)'};
+        color:${proprio ? '#fff' : 'var(--text)'};font-size:13px;line-height:1.4">
+        ${escapeHtml(msg.conteudo)}
+      </div>
+      <span style="font-size:10px;color:var(--text-light);margin-top:2px">${hora}</span>
+    </div>`;
+}
+
+function _dmAppendMsg(msg) {
+  const el = document.getElementById('dmMsgs');
+  if (!el) return;
+  el.insertAdjacentHTML('beforeend', _dmRenderMsgHtml(msg));
+  el.scrollTop = el.scrollHeight;
+}
+
+function ciFecharDM() {
+  document.getElementById('dmModal')?.remove();
+  _dmPeerAtivo = null;
+}
+
+function _dmRenderBadgeTotal() {
+  const total = Object.values(_dmNaoLidas).reduce((s, n) => s + n, 0);
+  const badge = document.getElementById('dmBadgeTotal');
+  if (badge) {
+    badge.textContent   = total > 9 ? '9+' : String(total);
+    badge.style.display = total > 0 ? 'flex' : 'none';
+  }
+}
