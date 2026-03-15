@@ -1,5 +1,5 @@
 // ============================================================
-// MESSENGER.JS v3 - CORRIGIDO
+// MESSENGER.JS v3 - CORRIGIDO E COMPLETO
 // ============================================================
 
 let _msnEscId    = null;
@@ -16,7 +16,7 @@ let _msnOnline   = new Set();
 let _msnDigTimer = null;
 let _msnDigMap   = {};
 let _msnFp       = new Set();
-let _msnRenderizando = false; // 🔹 Novo: controle de renderização
+let _msnRenderizando = false;
 
 // ── Áudio ─────────────────────────────────────────────────────
 let _msnAudio = null;
@@ -66,7 +66,7 @@ function msnReset() {
   _msnCache = {}; _msnNaoLidas = {}; _msnOnline = new Set();
   _msnPerfis = {}; _msnContatos = [];
   _msnDigTimer = null; _msnDigMap = {}; _msnFp = new Set(); _msnAberto = false;
-  _msnRenderizando = false; // 🔹 Reset do controle
+  _msnRenderizando = false;
   const btn = document.getElementById('msnBtnHeader');
   if (btn) btn.style.display = 'none';
   document.getElementById('msnPanel')?.remove();
@@ -153,7 +153,6 @@ function _msnSyncPresence() {
   const estado = Object.values(_msnPr.presenceState()).flat();
   _msnOnline = new Set(estado.map(p => p.user_id).filter(id => id !== currentUser.id));
   
-  // 🔹 Otimizado: só atualiza se o painel estiver aberto
   if (_msnAberto && !_msnPeer) {
     _msnRenderLista();
   }
@@ -257,7 +256,6 @@ function _msnMontarPainel() {
 
 // ── Lista de contatos ─────────────────────────────────────────
 function _msnRenderLista(filtro) {
-  // 🔹 Previne renderização recursiva
   if (_msnRenderizando) return;
   _msnRenderizando = true;
   
@@ -284,7 +282,6 @@ function _msnRenderLista(filtro) {
     return;
   }
 
-  // 🔹 Usa DocumentFragment para melhor performance
   const container = document.createElement('div');
   container.style.cssText = 'overflow-y:auto;flex:1;padding:8px 4px';
   
@@ -314,11 +311,9 @@ function _msnRenderLista(filtro) {
   body.innerHTML = '';
   body.appendChild(container);
   
-  // 🔹 Libera o lock após renderizar
   setTimeout(() => { _msnRenderizando = false; }, 50);
 }
 
-// 🔹 Versão otimizada do avatar sem loops
 function _msnAvatar(uid, size) {
   const p = _msnPerfis[uid] || {};
   const s = size || 36;
@@ -335,4 +330,450 @@ function _msnAvatar(uid, size) {
   return `<div style="width:${s}px;height:${s}px;border-radius:50%;background:${cor};display:flex;align-items:center;justify-content:center;font-size:${Math.round(s*0.38)}px;font-weight:700;color:#fff;flex-shrink:0">${ini}</div>`;
 }
 
-// ... (restante do código permanece igual até o final)
+// ── Abrir conversa ────────────────────────────────────────────
+async function msnAbrirConversa(peerId) {
+  _msnPeer = peerId;
+  _msnNaoLidas[peerId] = 0;
+  _msnRenderBadge();
+
+  const hdInfo = document.getElementById('msnHdInfo');
+  if (hdInfo) {
+    const p  = _msnPerfis[peerId] || {};
+    const on = _msnOnline.has(peerId);
+    hdInfo.innerHTML = `
+      <button onclick="msnVoltarLista()" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--text-light);display:flex;align-items:center;border-radius:7px;flex-shrink:0">
+        <i data-lucide="arrow-left" style="width:16px;height:16px"></i>
+      </button>
+      <div style="position:relative;flex-shrink:0">
+        ${_msnAvatar(peerId, 32)}
+        <span id="msnHdDot" style="width:9px;height:9px;border-radius:50%;border:2px solid var(--card);position:absolute;bottom:0;right:0;background:${on ? '#16a34a' : '#94a3b8'}"></span>
+      </div>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.nome || peerId.slice(0,8))}</div>
+        <div id="msnHdSub" style="font-size:10px;color:${on ? '#16a34a' : 'var(--text-light)'}">${on ? 'Online agora' : 'Offline'}</div>
+      </div>`;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  const body = document.getElementById('msnBody');
+  if (!body) return;
+  body.innerHTML = `
+    <div id="msnMsgs" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-height:0"></div>
+    <div id="msnTypBar" style="min-height:18px;padding:0 14px 2px;font-size:11px;color:var(--text-light);display:flex;align-items:center;gap:5px;flex-shrink:0"></div>
+    <div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
+      <button onclick="msnPickImg()" style="background:none;border:none;cursor:pointer;padding:6px;color:var(--text-light);flex-shrink:0;display:flex;align-items:center;border-radius:8px" title="Imagem">
+        <i data-lucide="image" style="width:17px;height:17px"></i>
+      </button>
+      <textarea id="msnInput" rows="1" placeholder="Mensagem..."
+        oninput="msnOnInput(this)" onkeydown="msnOnKey(event)"
+        style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:20px;background:var(--bg);color:var(--text);font-size:13px;resize:none;outline:none;max-height:90px;font-family:inherit;line-height:1.4;min-height:36px"></textarea>
+      <button onclick="msnEnviar()" style="background:var(--accent);color:#fff;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s" title="Enviar">
+        <i data-lucide="send" style="width:14px;height:14px"></i>
+      </button>
+    </div>
+    <input type="file" id="msnImgFile" accept="image/*" style="display:none" onchange="msnEnviarImagem(event)">`;
+
+  if (window.lucide) lucide.createIcons();
+
+  sb.from('messenger_mensagens')
+    .update({ lida: true, lida_em: new Date().toISOString() })
+    .eq('receiver_id', currentUser.id).eq('sender_id', peerId).eq('lida', false)
+    .then(() => {
+      _msnBc?.send({ type: 'broadcast', event: 'msn_read',
+        payload: { reader_id: currentUser.id, sender_id: peerId } });
+    });
+
+  await _msnCarregarHistorico(peerId);
+  _msnRenderMsgs(peerId);
+  setTimeout(() => document.getElementById('msnInput')?.focus(), 80);
+}
+
+// ── Voltar à lista ────────────────────────────────────────────
+function msnVoltarLista() {
+  _msnPeer = null;
+  const hdInfo = document.getElementById('msnHdInfo');
+  if (hdInfo) hdInfo.innerHTML = `<span style="font-size:14px;font-weight:700">Messenger</span>`;
+  const body = document.getElementById('msnBody');
+  if (body) body.innerHTML = '';
+  _msnRenderLista();
+}
+
+// ── Histórico ─────────────────────────────────────────────────
+async function _msnCarregarHistorico(peerId) {
+  try {
+    const [{ data: env, error: e1 }, { data: rec, error: e2 }] = await Promise.all([
+      sb.from('messenger_mensagens').select('*')
+        .eq('escritorio_id', _msnEscId)
+        .eq('sender_id',   currentUser.id).eq('receiver_id', peerId)
+        .order('criado_em', { ascending: true }).limit(80),
+      sb.from('messenger_mensagens').select('*')
+        .eq('escritorio_id', _msnEscId)
+        .eq('sender_id',   peerId).eq('receiver_id', currentUser.id)
+        .order('criado_em', { ascending: true }).limit(80),
+    ]);
+    if (e1) console.error('[msn] hist env:', e1.message);
+    if (e2) console.error('[msn] hist rec:', e2.message);
+    const todas = [...(env || []), ...(rec || [])];
+    todas.sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em));
+    _msnCache[peerId] = todas.slice(-80);
+  } catch (e) {
+    console.error('[msn] histórico:', e.message);
+    _msnCache[peerId] = [];
+  }
+}
+
+// ── Render mensagens ──────────────────────────────────────────
+function _msnRenderMsgs(peerId) {
+  const el = document.getElementById('msnMsgs');
+  if (!el) return;
+  const msgs = _msnCache[peerId || _msnPeer] || [];
+
+  if (!msgs.length) {
+    el.innerHTML = `<div style="margin:auto;text-align:center;color:var(--text-light);font-size:12px;padding:20px">Nenhuma mensagem. Diga olá! 👋</div>`;
+    return;
+  }
+
+  let diaAnt = '';
+  el.innerHTML = '';
+  msgs.forEach((m, i) => {
+    const dia = new Date(m.criado_em).toLocaleDateString('pt-BR');
+    if (dia !== diaAnt) {
+      const sep = document.createElement('span');
+      sep.className = 'mssep'; sep.textContent = dia;
+      el.appendChild(sep);
+      diaAnt = dia;
+    }
+    el.appendChild(_msnMontarMsgEl(m, i === msgs.length - 1));
+  });
+  el.scrollTop = el.scrollHeight;
+}
+
+function _msnMontarMsgEl(m, ehUlt) {
+  const proprio = m.sender_id === currentUser.id;
+  const hora    = new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const row = document.createElement('div');
+  row.className = 'msgrow';
+  row.setAttribute('data-msg-id', m.id);
+  row.style.alignItems = proprio ? 'flex-end' : 'flex-start';
+
+  if (m.deletada) {
+    row.innerHTML = `<span class="msdel">🚫 Mensagem apagada</span>`;
+    return row;
+  }
+
+  const actions = `<div class="msactions ${proprio ? 'msactions-out' : 'msactions-in'}">
+    <button class="msabtn" onclick="_msnReagir('${m.id}','👍')">👍</button>
+    <button class="msabtn" onclick="_msnReagir('${m.id}','❤️')">❤️</button>
+    <button class="msabtn" onclick="_msnReagir('${m.id}','😂')">😂</button>
+    <button class="msabtn" onclick="_msnCopiar('${escapeHtml((m.conteudo||'').replace(/'/g,'\\x27'))}')">
+      <i data-lucide="copy" style="width:11px;height:11px"></i> Copiar
+    </button>
+    ${proprio ? `<button class="msabtn del" onclick="_msnApagar('${m.id}')">
+      <i data-lucide="trash-2" style="width:11px;height:11px"></i> Apagar
+    </button>` : ''}
+  </div>`;
+
+  let corpo = '';
+  if (m.tipo === 'imagem' && m.imagem_url) {
+    corpo = `<img src="${escapeHtml(m.imagem_url)}" class="msimg" onclick="window.open('${escapeHtml(m.imagem_url)}','_blank')" alt="img">`;
+  } else {
+    corpo = escapeHtml(m.conteudo || '');
+  }
+
+  const leitura = proprio && ehUlt
+    ? `<div class="msread" style="text-align:right">${m.lida ? '✓✓' : '✓'}</div>` : '';
+
+  const reacoes = m.reacoes?.length
+    ? `<div style="font-size:13px;margin-top:2px">${m.reacoes.join('')}</div>` : '';
+
+  row.innerHTML = `
+    ${actions}
+    <div class="msbub ${proprio ? 'msbub-out' : 'msbub-in'}">${corpo}</div>
+    ${reacoes}
+    <div class="mstime">${hora}</div>
+    ${leitura}`;
+
+  if (window.lucide) setTimeout(() => lucide.createIcons(), 0);
+  return row;
+}
+
+// ── Append nova msg ───────────────────────────────────────────
+function _msnAppend(msg) {
+  const el = document.getElementById('msnMsgs');
+  if (!el) return;
+  const proprio = msg.sender_id === currentUser.id;
+  if (proprio) el.querySelectorAll('.msread').forEach(r => r.remove());
+
+  const ehUlt = true;
+  const hoje  = new Date(msg.criado_em).toLocaleDateString('pt-BR');
+  const ultSep = el.querySelector('.mssep:last-of-type');
+  if (!ultSep || ultSep.textContent !== hoje) {
+    const sep = document.createElement('span');
+    sep.className = 'mssep'; sep.textContent = hoje;
+    el.appendChild(sep);
+  }
+
+  el.appendChild(_msnMontarMsgEl(msg, ehUlt));
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Enviar texto ──────────────────────────────────────────────
+async function msnEnviar() {
+  if (!_msnPeer) return;
+  const inp = document.getElementById('msnInput');
+  const txt = inp?.value.trim();
+  if (!txt) return;
+  inp.value = ''; inp.style.height = 'auto';
+
+  const id  = crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const msg = {
+    id, escritorio_id: _msnEscId,
+    sender_id: currentUser.id, receiver_id: _msnPeer,
+    conteudo: txt, tipo: 'texto',
+    lida: false, deletada: false,
+    criado_em: new Date().toISOString(),
+  };
+
+  _msnFp.add(id);
+  if (!_msnCache[_msnPeer]) _msnCache[_msnPeer] = [];
+  _msnCache[_msnPeer].push(msg);
+  _msnAppend(msg);
+
+  _msnBc?.send({ type: 'broadcast', event: 'msn_msg', payload: msg });
+
+  const { error } = await sb.from('messenger_mensagens').insert({
+    escritorio_id: _msnEscId,
+    sender_id: currentUser.id, receiver_id: _msnPeer,
+    conteudo: txt, tipo: 'texto',
+  });
+  if (error) console.error('[msn] insert:', error.message);
+}
+
+// ── Enviar imagem ─────────────────────────────────────────────
+function msnPickImg() { document.getElementById('msnImgFile')?.click(); }
+
+async function msnEnviarImagem(e) {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file || !_msnPeer) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Máx 5MB por imagem', 'warn'); return; }
+  showToast('Enviando imagem...', 'info', 1500);
+  try {
+    const ext  = file.name.split('.').pop() || 'jpg';
+    const path = `${currentUser.id}/${Date.now()}.${ext}`;
+    const { error: eu } = await sb.storage.from('messenger-images').upload(path, file);
+    if (eu) throw new Error(eu.message);
+    const { data: { publicUrl } } = sb.storage.from('messenger-images').getPublicUrl(path);
+
+    const id  = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36);
+    const msg = {
+      id, escritorio_id: _msnEscId,
+      sender_id: currentUser.id, receiver_id: _msnPeer,
+      conteudo: null, tipo: 'imagem', imagem_url: publicUrl,
+      lida: false, deletada: false, criado_em: new Date().toISOString(),
+    };
+    _msnFp.add(id);
+    if (!_msnCache[_msnPeer]) _msnCache[_msnPeer] = [];
+    _msnCache[_msnPeer].push(msg);
+    _msnAppend(msg);
+    _msnBc?.send({ type: 'broadcast', event: 'msn_msg', payload: msg });
+    await sb.from('messenger_mensagens').insert({
+      escritorio_id: _msnEscId,
+      sender_id: currentUser.id, receiver_id: _msnPeer,
+      tipo: 'imagem', imagem_url: publicUrl,
+    });
+  } catch (err) { showToast('Erro ao enviar imagem: ' + err.message, 'error'); }
+}
+
+// ── Apagar mensagem ───────────────────────────────────────────
+async function _msnApagar(msgId) {
+  if (!await showConfirm('Apagar esta mensagem para todos?')) return;
+  const peer = _msnPeer;
+
+  const { error } = await sb.from('messenger_mensagens')
+    .update({ deletada: true, conteudo: null, imagem_url: null })
+    .eq('id', msgId).eq('sender_id', currentUser.id);
+
+  if (error) { showToast('Erro ao apagar: ' + error.message, 'error'); return; }
+
+  const arr = _msnCache[peer] || [];
+  const m = arr.find(x => x.id === msgId);
+  if (m) m.deletada = true;
+  const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+  if (el) { el.innerHTML = `<span class="msdel">🚫 Mensagem apagada</span>`; el.style.alignItems = 'flex-end'; }
+
+  _msnBc?.send({ type: 'broadcast', event: 'msn_del',
+    payload: { id: msgId, peer_id: peer } });
+}
+
+// ── Copiar ────────────────────────────────────────────────────
+function _msnCopiar(txt) {
+  navigator.clipboard?.writeText(txt)
+    .then(() => showToast('Copiado!', 'success', 1500))
+    .catch(() => showToast('Não foi possível copiar', 'warn'));
+}
+
+// ── Reação rápida ─────────────────────────────────────────────
+function _msnReagir(msgId, emoji) {
+  const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+  if (el) {
+    let r = el.querySelector('.msn-react');
+    if (!r) { r = document.createElement('div'); r.className = 'msn-react'; r.style.cssText = 'font-size:14px;margin-top:2px'; el.appendChild(r); }
+    if (!r.textContent.includes(emoji)) r.textContent += emoji;
+  }
+}
+
+// ── Digitando ─────────────────────────────────────────────────
+function msnOnInput(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+  if (_msnDigTimer) clearTimeout(_msnDigTimer);
+  _msnBc?.send({ type: 'broadcast', event: 'msn_typing',
+    payload: { user_id: currentUser.id, peer_id: _msnPeer, on: true } });
+  _msnDigTimer = setTimeout(() => {
+    _msnBc?.send({ type: 'broadcast', event: 'msn_typing',
+      payload: { user_id: currentUser.id, peer_id: _msnPeer, on: false } });
+  }, 2000);
+}
+
+function msnOnKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); msnEnviar(); }
+}
+
+// ── Receber eventos Realtime ──────────────────────────────────
+function _msnOnMsg(msg) {
+  if (!msg?.id || !msg.sender_id) return;
+  if (_msnFp.has(msg.id)) return;
+  _msnFp.add(msg.id);
+
+  const peer = msg.sender_id === currentUser.id ? msg.receiver_id : msg.sender_id;
+  if (!_msnCache[peer]) _msnCache[peer] = [];
+  _msnCache[peer].push(msg);
+
+  if (_msnPeer === peer) {
+    _msnAppend(msg);
+    if (msg.sender_id !== currentUser.id) {
+      sb.from('messenger_mensagens')
+        .update({ lida: true, lida_em: new Date().toISOString() })
+        .eq('id', msg.id)
+        .then(() => _msnBc?.send({ type: 'broadcast', event: 'msn_read',
+          payload: { reader_id: currentUser.id, sender_id: peer } }));
+    }
+  } else if (msg.sender_id !== currentUser.id) {
+    _msnNaoLidas[peer] = (_msnNaoLidas[peer] || 0) + 1;
+    _msnRenderBadge();
+    if (!_msnPeer) _msnRenderLista();
+    _msnBeep();
+    showToast(`💬 ${_msnPerfis[peer]?.nome || 'Nova mensagem'}: ${(msg.conteudo || '📷').substring(0, 50)}`, 'info', 4500);
+  }
+}
+
+function _msnOnTyping({ user_id, peer_id, on }) {
+  if (user_id === currentUser.id || _msnPeer !== user_id || peer_id !== currentUser.id) return;
+  const bar = document.getElementById('msnTypBar');
+  if (!bar) return;
+  if (on) {
+    const nome = (_msnPerfis[user_id]?.nome || '').split(' ')[0];
+    bar.innerHTML = `<span class="tdot"></span><span class="tdot"></span><span class="tdot"></span><span style="margin-left:4px">${escapeHtml(nome)} está digitando...</span>`;
+    clearTimeout(_msnDigMap[user_id]);
+    _msnDigMap[user_id] = setTimeout(() => { bar.innerHTML = ''; }, 3500);
+  } else {
+    bar.innerHTML = '';
+    clearTimeout(_msnDigMap[user_id]);
+  }
+}
+
+function _msnOnRead({ reader_id, sender_id }) {
+  if (sender_id !== currentUser.id || _msnPeer !== reader_id) return;
+  document.querySelectorAll('#msnMsgs .msread').forEach(el => { el.textContent = '✓✓'; });
+  (_msnCache[reader_id] || []).forEach(m => { if (m.sender_id === currentUser.id) m.lida = true; });
+}
+
+function _msnOnDel({ id, peer_id }) {
+  const peer = peer_id || _msnPeer;
+  if (!peer) return;
+  const m = (_msnCache[peer] || []).find(x => x.id === id);
+  if (m) { m.deletada = true; m.conteudo = null; }
+  if (_msnPeer === peer) {
+    const el = document.querySelector(`[data-msg-id="${id}"]`);
+    if (el) { el.innerHTML = `<span class="msdel">🚫 Mensagem apagada</span>`; el.style.alignItems = 'flex-start'; }
+  }
+}
+
+// ── Busca ─────────────────────────────────────────────────────
+function _msnToggleSrch() {
+  const inp = document.getElementById('msnSrch');
+  if (!inp) return;
+  const vis = inp.style.display !== 'none';
+  inp.style.display = vis ? 'none' : 'block';
+  if (!vis) inp.focus(); else { inp.value = ''; _msnFiltrar(''); }
+}
+
+function _msnFiltrar(q) {
+  if (_msnPeer) {
+    document.querySelectorAll('#msnMsgs .msgrow').forEach(div => {
+      div.style.display = q && !div.textContent.toLowerCase().includes(q.toLowerCase()) ? 'none' : '';
+    });
+  } else {
+    _msnRenderLista(q);
+  }
+}
+
+// ============================================================
+// FUNÇÃO DE ESCAPE (necessária para segurança)
+// ============================================================
+function escapeHtml(unsafe) {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ============================================================
+// EXPOR FUNÇÕES GLOBALMENTE (ESSENCIAL PARA ONCLICK FUNCIONAR)
+// ============================================================
+(function() {
+  const funcoesGlobais = [
+    'msnInit', 'msnReset', 'msnAbrirConversa', 'msnVoltarLista',
+    'msnEnviar', 'msnPickImg', 'msnEnviarImagem', 'msnOnInput',
+    'msnOnKey', 'abrirMessenger', 'fecharMessenger',
+    '_msnToggleSrch', '_msnFiltrar', '_msnApagar', '_msnCopiar', '_msnReagir'
+  ];
+  
+  funcoesGlobais.forEach(nomeFuncao => {
+    try {
+      if (typeof window[nomeFuncao] === 'undefined' && typeof eval(nomeFuncao) === 'function') {
+        window[nomeFuncao] = eval(nomeFuncao);
+      }
+    } catch (e) {
+      console.warn(`[msn] Não foi possível expor ${nomeFuncao}:`, e);
+    }
+  });
+  
+  console.log('✅ Messenger: funções expostas globalmente');
+})();
+
+// Inicialização automática quando a página carregar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      if (typeof msnInit === 'function') {
+        msnInit();
+      } else {
+        console.warn('[msn] msnInit não disponível no DOMContentLoaded');
+      }
+    }, 800);
+  });
+} else {
+  setTimeout(function() {
+    if (typeof msnInit === 'function') {
+      msnInit();
+    } else {
+      console.warn('[msn] msnInit não disponível');
+    }
+  }, 800);
+}
