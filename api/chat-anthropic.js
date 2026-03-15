@@ -1,25 +1,45 @@
-// api/chat-anthropic.js — com streaming SSE
+// api/chat-anthropic.js — SSE proxy com rate limit persistente no Supabase
 const MAX_PER_DAY = 50;
-const counts = new Map();
+const SB_URL      = process.env.SUPABASE_URL;
+const SB_SERVICE  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Rate limit persistente — funciona entre instâncias serverless e deploys
+async function checkRateLimit(uid) {
+  if (!SB_URL || !SB_SERVICE) return { allowed: true, count: 0 };
+
+  const today   = new Date().toISOString().slice(0, 10);
+  const headers = {
+    'apikey':        SB_SERVICE,
+    'Authorization': `Bearer ${SB_SERVICE}`,
+    'Content-Type':  'application/json',
+  };
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/incrementar_uso_diario`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ p_user_id: uid, p_data: today }),
+    });
+    if (!res.ok) return { allowed: true, count: 0 };
+    const count = await res.json();
+    return { allowed: count <= MAX_PER_DAY, count };
+  } catch {
+    return { allowed: true, count: 0 };
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const uid   = req.headers['x-user-id'] || req.headers['x-forwarded-for']?.split(',')[0] || 'anon';
-  const today = new Date().toISOString().slice(0, 10);
-  const rk    = `${uid}:${today}`;
-  const n     = (counts.get(rk) || 0) + 1;
-  counts.set(rk, n);
+  const uid = req.headers['x-user-id'] || req.headers['x-forwarded-for']?.split(',')[0] || 'anon';
 
-  if (n > MAX_PER_DAY) {
-    return res.status(429).json({ error: 'limite_diario', limite: MAX_PER_DAY });
+  const { allowed, count } = await checkRateLimit(uid);
+  if (!allowed) {
+    return res.status(429).json({ error: 'limite_diario', limite: MAX_PER_DAY, count });
   }
 
   try {
-    const body = { ...req.body };
-
-    // Se o cliente pediu stream, fazer proxy SSE
-    // Senão (ex: tools), retornar JSON normal
+    const body       = { ...req.body };
     const wantStream = body.stream === true;
 
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
@@ -33,18 +53,18 @@ export default async function handler(req, res) {
       body: JSON.stringify(body),
     });
 
-    // ── JSON (sem streaming) ──────────────────────────────
     if (!wantStream) {
       const data = await upstream.json();
-      res.setHeader('X-Requests-Today', n);
+      res.setHeader('X-Requests-Today', count);
+      res.setHeader('X-Requests-Max',   MAX_PER_DAY);
       return res.status(upstream.status).json(data);
     }
 
-    // ── SSE proxy ─────────────────────────────────────────
     res.setHeader('Content-Type',      'text/event-stream');
     res.setHeader('Cache-Control',     'no-cache');
     res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('X-Requests-Today',  n);
+    res.setHeader('X-Requests-Today',  count);
+    res.setHeader('X-Requests-Max',    MAX_PER_DAY);
 
     if (!upstream.ok) {
       const err = await upstream.json().catch(() => ({}));
