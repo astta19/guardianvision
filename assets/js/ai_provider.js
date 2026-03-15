@@ -197,7 +197,7 @@ const AI_PROVIDER = {
 
       const body = {
         model,
-        max_tokens:  useThinking ? 16000 : 4096,
+        max_tokens:  useThinking ? 32000 : 16000,
         system:      systemPayload,
         messages:    msgs,
         tools:       toolsNorm,
