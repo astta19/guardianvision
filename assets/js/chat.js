@@ -1188,10 +1188,16 @@ async function send() {
     currentChat.messages.push(userMessage);
 
     if (currentChat.messages.length === 1) {
+      // Título provisório imediato — será substituído pelo haiku em background
       currentChat.title = (text || 'Análise de arquivos fiscais').substring(0, 50) +
         ((text || '').length > 50 ? '...' : '');
       await saveChat();
+      // Gerar título descritivo via haiku em background (não bloqueia o envio)
+      _gerarTituloChat(text || 'Análise de arquivos fiscais').catch(() => {});
     }
+
+    // Atualizar contador de mensagens do dia no header
+    _atualizarContadorMensagens();
 
     // CRIAR CONTEXTO DOS ARQUIVOS (TODOS OS ARQUIVOS DA CONVERSA)
     const fileContext = createFileContext();
@@ -1843,6 +1849,70 @@ POSTURA PROFISSIONAL:
 }
 
 // ── Sugestões contextuais após resposta ──────────────────────
+// ── Título automático via claude-haiku ───────────────────────
+async function _gerarTituloChat(primeiraPergunta) {
+  if (!currentChat.id) return;
+  try {
+    const res = await fetch('/api/chat-anthropic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser?.id || '' },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 30,
+        stream: false,
+        messages: [{
+          role: 'user',
+          content: `Gere um título de até 6 palavras em português para esta conversa fiscal. Responda APENAS o título, sem pontuação final.\n\nPergunta: ${primeiraPergunta.substring(0, 300)}`
+        }]
+      }),
+    });
+    if (!res.ok) return;
+    const data  = await res.json();
+    const titulo = data?.content?.[0]?.text?.trim();
+    if (!titulo || titulo.length < 3) return;
+
+    currentChat.title = titulo.substring(0, 60);
+    await sb.from('chats').update({ title: currentChat.title }).eq('id', currentChat.id);
+
+    // Atualizar na sidebar sem re-query
+    const item = allChats.find(c => c.id === currentChat.id);
+    if (item) { item.title = currentChat.title; renderHistoryList(allChats, false); }
+  } catch { /* silencioso — título provisório permanece */ }
+}
+
+// ── Contador de mensagens do dia no header ────────────────────
+let _usoDiarioCached = 0;
+
+async function _atualizarContadorMensagens() {
+  try {
+    const res = await fetch('/api/chat-anthropic', {
+      method: 'HEAD',
+      headers: { 'x-user-id': currentUser?.id || '' },
+    }).catch(() => null);
+
+    // O header X-Requests-Today é retornado na última chamada real
+    // Incrementar otimisticamente no contador local
+    _usoDiarioCached = Math.min(_usoDiarioCached + 1, 50);
+    _renderContadorMensagens(_usoDiarioCached);
+  } catch { /* silencioso */ }
+}
+
+function _renderContadorMensagens(count) {
+  let el = document.getElementById('msgCounterBadge');
+  if (!el) {
+    const header = document.querySelector('.chat-input-area') || document.getElementById('inputArea');
+    if (!header) return;
+    el = document.createElement('span');
+    el.id = 'msgCounterBadge';
+    el.style.cssText = 'font-size:11px;color:var(--text-light);padding:2px 6px;border-radius:8px;background:var(--sidebar-hover);margin-left:8px;white-space:nowrap';
+    header.appendChild(el);
+  }
+  const restante = Math.max(0, 50 - count);
+  el.textContent  = `${count}/50 hoje`;
+  el.style.color  = restante <= 5 ? '#dc2626' : restante <= 15 ? '#d97706' : 'var(--text-light)';
+  el.title        = `${restante} mensagem(ns) restante(s) hoje`;
+}
+
 function mostrarSugestoes(textoResposta) {
   // Remover sugestões anteriores
   document.getElementById('sugestoes-wrap')?.remove();
@@ -1904,7 +1974,7 @@ function mostrarSugestoes(textoResposta) {
 
 async function handleMultipleFiles(event) {
   const files = Array.from(event.target.files);
-  const MAX_SIZE = 10 * 1024 * 1024;
+  const MAX_SIZE = 20 * 1024 * 1024; // 20MB
 
   for (const file of files) {
     if (file.size > MAX_SIZE) {
