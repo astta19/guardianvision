@@ -927,6 +927,10 @@
                 <i data-lucide="trending-up"></i>
                 <span>DRE</span>
               </button>
+              <button class="tool-card" data-perm="contabilidade" onclick="openConciliacao(); closeDropdowns()" style="display:none">
+                <i data-lucide="git-compare"></i>
+                <span>Conciliação</span>
+              </button>
             </div>
 
             <!-- Admin -->
@@ -2761,6 +2765,7 @@
   <script src="assets/js/lancamentos_contabeis.js?v=1"></script>
   <script src="assets/js/balancete.js?v=1"></script>
   <script src="assets/js/dre.js?v=1"></script>
+  <script src="assets/js/conciliacao.js?v=1"></script>
 
   <!-- MÓDULO: LANÇAMENTOS CONTÁBEIS -->
   <div id="lcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
@@ -2997,6 +3002,119 @@
     </div>
   </div>
   <!-- /dreModal -->
+
+  <!-- MÓDULO: CONCILIAÇÃO BANCÁRIA -->
+  <input type="file" id="concImportInput" accept=".csv,.txt" style="display:none" onchange="concImportarCSV(event)">
+  <div id="concModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5600;align-items:center;justify-content:center;padding:16px;overflow-y:auto"
+       onclick="if(event.target===this)closeConciliacao()">
+    <div class="dp-modal" style="max-width:960px;width:100%">
+
+      <div class="dp-modal-hd">
+        <div style="display:flex;align-items:center;gap:8px">
+          <i data-lucide="git-compare" style="width:16px;height:16px"></i>
+          <span style="font-weight:700;font-size:14px">Conciliação Bancária</span>
+          <span style="font-size:12px;color:var(--text-light);background:var(--sidebar-hover);padding:2px 8px;border-radius:8px" id="concEmpresaBadge"></span>
+        </div>
+        <button onclick="closeConciliacao()" class="dp-close-btn">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <div class="dp-body">
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:700;color:var(--accent)" id="concKpiExtrato">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Linhas extrato</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:700;color:#16a34a" id="concKpiConciliado">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Conciliados</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:700;color:#f59e0b" id="concKpiPendente">0</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Pendentes</div>
+          </div>
+          <div style="background:var(--sidebar-hover);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:13px;font-weight:700" id="concKpiSaldo">R$ 0,00</div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:2px">Saldo extrato</div>
+          </div>
+        </div>
+
+        <!-- Barra de controles -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <select id="concSelConta" onchange="concSelecionarConta()"
+            style="flex:1;min-width:220px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          </select>
+          <button id="concBtnNovaConta" class="dp-btn-sec" onclick="concAbrirFormConta()" style="white-space:nowrap;display:none">
+            <i data-lucide="plus" style="width:13px;height:13px"></i> Nova Conta
+          </button>
+          <button class="dp-btn-sec" onclick="concAbrirFormConta()" style="white-space:nowrap">
+            <i data-lucide="plus" style="width:13px;height:13px"></i> Conta
+          </button>
+          <button onclick="concNavMes(-1)" class="dp-btn-sec" style="padding:5px 10px">‹</button>
+          <span id="concMesLabel" style="font-weight:600;font-size:14px;min-width:80px;text-align:center"></span>
+          <button onclick="concNavMes(1)" class="dp-btn-sec" style="padding:5px 10px">›</button>
+          <button class="dp-btn-pri" onclick="concAbrirImport()" style="white-space:nowrap">
+            <i data-lucide="upload" style="width:13px;height:13px"></i> Importar CSV
+          </button>
+        </div>
+
+        <!-- Form nova conta -->
+        <div id="concFormContaPanel" style="display:none;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Nova Conta Bancária</div>
+          <div style="display:grid;grid-template-columns:1fr 120px 160px 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px">Banco *</label>
+              <input id="concFcBanco" type="text" placeholder="Bradesco, Itaú..."
+                style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px">Agência</label>
+              <input id="concFcAgencia" type="text" placeholder="0001"
+                style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px">Conta *</label>
+              <input id="concFcConta" type="text" placeholder="12345-6"
+                style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px">Apelido</label>
+              <input id="concFcDescricao" type="text" placeholder="Ex: Conta Principal"
+                style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="concFcTipo"
+              style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px">
+              <option value="corrente">Conta Corrente</option>
+              <option value="poupanca">Poupança</option>
+              <option value="investimento">Investimento</option>
+              <option value="caixa">Caixa</option>
+            </select>
+            <button class="dp-btn-pri" onclick="concSalvarConta()">Salvar</button>
+            <button class="dp-btn-sec" onclick="concFecharFormConta()">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Resultado -->
+        <div id="concResultado" style="border:1px solid var(--border);border-radius:10px;padding:12px;min-height:120px">
+          <div class="dp-empty" style="padding:24px 0">
+            <p>Selecione uma conta bancária para iniciar.</p>
+          </div>
+        </div>
+
+        <!-- Dica de importação -->
+        <div style="margin-top:10px;padding:10px 12px;background:var(--sidebar-hover);border-radius:8px;font-size:11px;color:var(--text-light);line-height:1.6">
+          <strong>Formato CSV esperado:</strong> data | descrição | valor (separado por ; ou ,) · Datas: DD/MM/YYYY ou YYYY-MM-DD · Valores negativos = débito
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- /concModal -->
 
 </body>
 </html>
