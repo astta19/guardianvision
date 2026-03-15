@@ -374,6 +374,7 @@ async function loadChats(reset = true) {
     const from = chatsPage * CHATS_PER_PAGE;
     let query = sb.from('chats')
       .select('id, title, created_at, updated_at, cliente_id')
+      .eq('user_id', currentUser.id)
       .order('updated_at', { ascending: false })
       .range(from, from + CHATS_PER_PAGE - 1);
 
@@ -467,6 +468,14 @@ async function saveChat() {
         if (error.status === 401 || error.message?.includes('JWT')) { handleSessionExpired(); return; }
         throw error;
       }
+      // Atualizar título na sidebar sem re-query
+      const item = allChats.find(c => c.id === currentChat.id);
+      if (item) {
+        item.title      = chatData.title;
+        item.updated_at = chatData.updated_at;
+        allChats.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        renderHistoryList(allChats, false);
+      }
 
     } else {
       const { data, error } = await sb
@@ -485,9 +494,9 @@ async function saveChat() {
       if (error) throw error;
 
       currentChat.id = data.id;
+      // Só no primeiro save (insert) recarregar a sidebar completa
+      await loadChats();
     }
-
-    await loadChats();
 
   } catch (e) {
   }
