@@ -699,3 +699,199 @@ async function _removerMembro(escritorioId, userId) {
   if (!error) await _carregarMembros();
   else showToast('Erro ao remover: ' + error.message, 'error');
 }
+
+// ============================================================
+// CHAT DIRECIONADO — Admin abre conversa pré-configurada
+// para um contador específico com contexto de cliente
+// ============================================================
+
+async function abrirChatDirecionado() {
+  if (!isAdmin()) return;
+
+  // Buscar membros do escritório
+  const escId = await getEscritorioIdAtual().catch(() => null);
+  if (!escId) { showToast('Escritório não encontrado.', 'warn'); return; }
+
+  const { data: membros } = await sb
+    .from('escritorio_usuarios')
+    .select('user_id')
+    .eq('escritorio_id', escId);
+
+  const ids = (membros || []).map(m => m.user_id);
+  if (!ids.length) { showToast('Nenhum membro no escritório.', 'warn'); return; }
+
+  // Buscar perfis dos membros via proxy
+  let usuarios = [];
+  try {
+    const res = await supabaseProxy('listar_usuarios', {});
+    usuarios = (res?.usuarios || []).filter(u =>
+      ids.includes(u.id) && u.id !== currentUser.id
+    );
+  } catch { showToast('Erro ao buscar membros.', 'error'); return; }
+
+  if (!usuarios.length) { showToast('Nenhum contador disponível.', 'warn'); return; }
+
+  // Buscar clientes disponíveis
+  const { data: clientes } = await sb
+    .from('clientes')
+    .select('id, razao_social, cnpj, regime_tributario')
+    .eq('user_id', currentUser.id)
+    .order('razao_social')
+    .limit(100);
+
+  _chatDirExibirModal(usuarios, clientes || []);
+}
+
+function _chatDirExibirModal(usuarios, clientes) {
+  // Remover modal anterior se existir
+  document.getElementById('chatDirModal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'chatDirModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9200;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--card);border-radius:16px;padding:24px;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:15px;font-weight:700">Chat Direcionado</div>
+          <div style="font-size:12px;color:var(--text-light);margin-top:2px">Abrir conversa pré-configurada para um contador</div>
+        </div>
+        <button onclick="document.getElementById('chatDirModal').remove()"
+          style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text-light)">
+          <i data-lucide="x" style="width:16px;height:16px"></i>
+        </button>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:6px">CONTADOR DESTINATÁRIO *</label>
+        <select id="chatDirUsuario"
+          style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          <option value="">Selecione um contador...</option>
+          ${usuarios.map(u => `<option value="${u.id}">${escapeHtml(u.email)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:6px">EMPRESA (opcional)</label>
+        <select id="chatDirCliente"
+          style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          <option value="">Sem empresa específica</option>
+          ${clientes.map(c => `<option value="${c.id}">${escapeHtml(c.razao_social)} — ${c.cnpj}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:6px">MENSAGEM INICIAL *</label>
+        <textarea id="chatDirMensagem" rows="3" placeholder="Ex: Por favor, verifique a apuração do DAS de fevereiro/2026 para esta empresa..."
+          style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:6px">VALIDADE DO LINK</label>
+        <select id="chatDirValidade"
+          style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+          <option value="1">1 dia</option>
+          <option value="3">3 dias</option>
+          <option value="7" selected>7 dias</option>
+          <option value="30">30 dias</option>
+        </select>
+      </div>
+
+      <div id="chatDirMsg" style="font-size:12px;margin-bottom:10px;min-height:16px"></div>
+
+      <div style="display:flex;gap:8px">
+        <button onclick="document.getElementById('chatDirModal').remove()"
+          style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;font-size:13px;color:var(--text)">
+          Cancelar
+        </button>
+        <button onclick="chatDirGerar()" id="chatDirBtn"
+          style="flex:1;padding:10px;border:none;border-radius:8px;background:var(--accent);cursor:pointer;font-size:13px;color:#fff;font-weight:600">
+          Gerar Link
+        </button>
+      </div>
+
+      <div id="chatDirLinkBox" style="display:none;margin-top:14px;padding:12px;background:var(--sidebar-hover);border-radius:10px">
+        <div style="font-size:11px;font-weight:600;color:var(--text-light);margin-bottom:6px">LINK GERADO — compartilhe com o contador:</div>
+        <div style="display:flex;gap:6px">
+          <input id="chatDirLink" readonly
+            style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:monospace">
+          <button onclick="chatDirCopiar()"
+            style="padding:7px 12px;border:none;border-radius:7px;background:var(--accent);color:#fff;cursor:pointer;font-size:12px;white-space:nowrap">
+            Copiar
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  if (window.lucide) lucide.createIcons();
+  document.getElementById('chatDirMensagem')?.focus();
+}
+
+async function chatDirGerar() {
+  const userId    = document.getElementById('chatDirUsuario').value;
+  const clienteId = document.getElementById('chatDirCliente').value || null;
+  const mensagem  = document.getElementById('chatDirMensagem').value.trim();
+  const validade  = parseInt(document.getElementById('chatDirValidade').value) || 7;
+  const msgEl     = document.getElementById('chatDirMsg');
+  const btn       = document.getElementById('chatDirBtn');
+
+  if (!userId)   { msgEl.style.color = '#dc2626'; msgEl.textContent = 'Selecione o contador destinatário.'; return; }
+  if (!mensagem) { msgEl.style.color = '#dc2626'; msgEl.textContent = 'Informe a mensagem inicial.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Gerando...';
+  msgEl.textContent = '';
+
+  try {
+    const token    = crypto.randomUUID?.().replace(/-/g, '') || Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const expires  = new Date(Date.now() + validade * 86400000).toISOString();
+
+    // Buscar info do cliente se selecionado
+    let clienteInfo = null;
+    if (clienteId) {
+      const { data: cl } = await sb.from('clientes')
+        .select('razao_social, cnpj, regime_tributario')
+        .eq('id', clienteId).single();
+      clienteInfo = cl;
+    }
+
+    // Montar contexto inicial da conversa
+    const contextMsg = clienteInfo
+      ? `[Contexto: ${clienteInfo.razao_social} (CNPJ: ${clienteInfo.cnpj}) — ${clienteInfo.regime_tributario}]\n\n${mensagem}`
+      : mensagem;
+
+    // Salvar em shared_chats com metadados extras
+    const { error } = await sb.from('shared_chats').insert({
+      token,
+      title:        mensagem.substring(0, 60) + (mensagem.length > 60 ? '...' : ''),
+      messages:     [{ role: 'user', content: contextMsg }],
+      created_by:   currentUser.id,
+      directed_to:  userId,
+      cliente_id:   clienteId || null,
+      expires_at:   expires,
+    });
+
+    if (error) throw new Error(error.message);
+
+    const link = `${window.location.origin}?shared=${token}`;
+    document.getElementById('chatDirLink').value = link;
+    document.getElementById('chatDirLinkBox').style.display = '';
+
+    msgEl.style.color = '#16a34a';
+    msgEl.textContent = '✓ Link gerado com sucesso!';
+
+  } catch (e) {
+    msgEl.style.color = '#dc2626';
+    msgEl.textContent = 'Erro: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Gerar Link';
+  }
+}
+
+function chatDirCopiar() {
+  const input = document.getElementById('chatDirLink');
+  if (!input) return;
+  navigator.clipboard.writeText(input.value)
+    .then(() => showToast('Link copiado!', 'success'))
+    .catch(() => { input.select(); document.execCommand('copy'); showToast('Link copiado!', 'success'); });
+}
