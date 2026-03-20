@@ -28,8 +28,9 @@ async function openLancamentosContabeis() {
 function closeLancamentosContabeis() {
   document.getElementById('lcModal').style.display = 'none';
   document.body.style.overflow = '';
-  _lcLancamentos = [];
-  _lcContasCache = [];
+  _lcLancamentos = []; _lcContasCache = [];
+  const tbl = document.getElementById('lcTbody');
+  if (tbl) tbl.innerHTML = '';
 }
 
 // ── Carregar plano de contas (para os selects) ────────────────
@@ -37,6 +38,7 @@ async function _lcCarregarContas() {
   const { data } = await sb
     .from('plano_contas')
     .select('id, codigo, descricao, tipo, natureza, grau')
+    .eq('user_id', currentUser.id)
     .eq('cliente_id', currentCliente.id)
     .eq('ativo', true)
     .order('codigo');
