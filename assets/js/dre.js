@@ -38,6 +38,8 @@ async function openDRE() {
 function closeDRE() {
   document.getElementById('dreModal').style.display = 'none';
   document.body.style.overflow = '';
+  const corpo = document.getElementById('dreCorpo');
+  if (corpo) corpo.innerHTML = '';
 }
 
 // ── Selects de período ────────────────────────────────────────
@@ -80,6 +82,7 @@ async function dreGerar() {
   const { data: contas, error: ePC } = await sb
     .from('plano_contas')
     .select('id, codigo, descricao, tipo, natureza, grau')
+    .eq('user_id', currentUser.id)
     .eq('cliente_id', currentCliente.id)
     .eq('ativo', true)
     .eq('grau', 'analitica')
