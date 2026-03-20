@@ -113,6 +113,8 @@ function closePlanoConta() {
   document.getElementById('pcModal').style.display = 'none';
   document.body.style.overflow = '';
   _pcContas = [];
+  const tbl = document.getElementById('pcTbody');
+  if (tbl) tbl.innerHTML = '';
 }
 
 // ── Carregar ──────────────────────────────────────────────────
@@ -121,6 +123,7 @@ async function pcCarregar() {
   const { data, error } = await sb
     .from('plano_contas')
     .select('*')
+    .eq('user_id', currentUser.id)
     .eq('cliente_id', currentCliente.id)
     .order('codigo');
 
