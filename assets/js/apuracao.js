@@ -191,7 +191,7 @@ async function apurCalcular() {
         vencimento:    _apurVencimento(regime, _apurMes, _apurAno),
         codigo_receita: t.codigo,
         dados_calculo:  t,
-      }, { onConflict: 'cliente_id,competencia,tipo_tributo' });
+      }, { onConflict: 'user_id,cliente_id,competencia,tipo_tributo' });
     }
     showToast('Apuração salva.', 'success');
 
