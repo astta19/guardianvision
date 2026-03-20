@@ -160,7 +160,8 @@ async function spedAbrirPeriodo(id) {
 async function spedExcluirPeriodo(id) {
   const ok = await showConfirm('Excluir este período e todos os dados? Esta ação não pode ser desfeita.');
   if (!ok) return;
-  await sb.from('sped_periodos').delete().eq('id', id);
+  await sb.from('sped_periodos').delete().eq('id', id)
+    .eq('user_id', currentUser.id);
   if (spedPeriodo?.id === id) spedPeriodo = null;
   await spedCarregarPeriodos();
 }
@@ -244,6 +245,8 @@ async function spedAdicionarDoc() {
 
   const { error } = await sb.from('sped_documentos').insert({
     periodo_id: spedPeriodo.id,
+    user_id: currentUser.id,
+    cliente_id: currentCliente.id,
     ind_oper: oper, ind_emit: '0', cod_mod: '55', cod_sit: '00',
     cod_part: codPart, num_doc: numDoc, ser, chv_nfe: chvNfe,
     dt_doc: dtDoc, dt_e_s: dtDoc,
@@ -270,7 +273,8 @@ async function spedAdicionarDoc() {
 }
 
 async function spedExcluirDoc(id) {
-  await sb.from('sped_documentos').delete().eq('id', id);
+  await sb.from('sped_documentos').delete().eq('id', id)
+    .eq('user_id', currentUser.id);
   spedDocs = spedDocs.filter(d => d.id !== id);
   spedRenderDocs();
   await spedRecalcularApuracao();
@@ -326,7 +330,10 @@ async function spedAdicionarParticipante() {
   }
 
   const { error } = await sb.from('sped_participantes').insert({
-    periodo_id: spedPeriodo.id, cod_part: cod, nome, cnpj, ie, cod_mun: mun
+    periodo_id: spedPeriodo.id,
+    user_id: currentUser.id,
+    cliente_id: currentCliente.id,
+    cod_part: cod, nome, cnpj, ie, cod_mun: mun
   });
 
   if (error) {
@@ -342,7 +349,8 @@ async function spedAdicionarParticipante() {
 }
 
 async function spedExcluirPart(id) {
-  await sb.from('sped_participantes').delete().eq('id', id);
+  await sb.from('sped_participantes').delete().eq('id', id)
+    .eq('user_id', currentUser.id);
   spedParts = spedParts.filter(p => p.id !== id);
   spedRenderParticipantes();
 }
@@ -400,7 +408,10 @@ async function spedAdicionarProduto() {
   }
 
   const { error } = await sb.from('sped_produtos').insert({
-    periodo_id: spedPeriodo.id, cod_item: cod, descr_item: descr,
+    periodo_id: spedPeriodo.id,
+    user_id: currentUser.id,
+    cliente_id: currentCliente.id,
+    cod_item: cod, descr_item: descr,
     cod_ncm: ncm, unid_inv: unid, tipo_item: tipo, aliq_icms: aliq
   });
 
@@ -417,7 +428,8 @@ async function spedAdicionarProduto() {
 }
 
 async function spedExcluirProd(id) {
-  await sb.from('sped_produtos').delete().eq('id', id);
+  await sb.from('sped_produtos').delete().eq('id', id)
+    .eq('user_id', currentUser.id);
   spedProds = spedProds.filter(p => p.id !== id);
   spedRenderProdutos();
 }
@@ -515,12 +527,18 @@ async function spedRecalcularApuracao() {
   };
 
   const { data: existing } = await sb.from('sped_apuracao_icms')
-    .select('id').eq('periodo_id', spedPeriodo.id).maybeSingle();
+    .select('id').eq('periodo_id', spedPeriodo.id)
+    .eq('user_id', currentUser.id).maybeSingle();
 
   if (existing?.id) {
-    await sb.from('sped_apuracao_icms').update(payload).eq('id', existing.id);
+    await sb.from('sped_apuracao_icms').update(payload)
+      .eq('id', existing.id).eq('user_id', currentUser.id);
   } else {
-    await sb.from('sped_apuracao_icms').insert(payload);
+    await sb.from('sped_apuracao_icms').insert({
+      ...payload,
+      user_id: currentUser.id,
+      cliente_id: currentCliente.id,
+    });
   }
 
   await spedCarregarApuracao();
@@ -697,7 +715,8 @@ async function spedGerarTxt(periodoId) {
     URL.revokeObjectURL(url);
 
     // Atualizar status do período
-    await sb.from('sped_periodos').update({ status: 'gerado', updated_at: new Date().toISOString() }).eq('id', pid);
+    await sb.from('sped_periodos').update({ status: 'gerado', updated_at: new Date().toISOString() })
+      .eq('id', pid).eq('user_id', currentUser.id);
     await spedCarregarPeriodos();
 
     showToast(`✅ Arquivo SPED gerado com ${linhas.length} registros. Importe no PVA da RFB, assine e transmita.`, 'success', 7000);
