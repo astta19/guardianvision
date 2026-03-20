@@ -28,9 +28,9 @@ async function openConciliacao() {
 function closeConciliacao() {
   document.getElementById('concModal').style.display = 'none';
   document.body.style.overflow = '';
-  _concExtrato = [];
-  _concLancamentos = [];
-  _concContaId = null;
+  _concExtrato = []; _concLancamentos = []; _concContaId = null;
+  const res = document.getElementById('concResultado');
+  if (res) res.innerHTML = '';
 }
 
 // ── Contas bancárias ──────────────────────────────────────────
@@ -226,7 +226,9 @@ function _concRenderResultado() {
 async function concConciliar(extratoId) {
   const { error } = await sb.from('extratos_bancarios')
     .update({ conciliado: true })
-    .eq('id', extratoId);
+    .eq('id', extratoId)
+    .eq('user_id', currentUser.id)
+    .eq('cliente_id', currentCliente.id);
   if (error) { showToast('Erro: ' + error.message, 'error'); return; }
   const item = _concExtrato.find(e => e.id === extratoId);
   if (item) item.conciliado = true;
