@@ -28,6 +28,10 @@ function closeBalancete() {
   document.getElementById('balModal').style.display = 'none';
   document.body.style.overflow = '';
   _balDados = [];
+  const tbl = document.getElementById('balTbody');
+  if (tbl) tbl.innerHTML = '';
+  const kpis = document.getElementById('balKpis');
+  if (kpis) kpis.innerHTML = '';
 }
 
 // ── Labels de período ─────────────────────────────────────────
@@ -81,6 +85,7 @@ async function balGerar() {
   const { data: contas, error: ePC } = await sb
     .from('plano_contas')
     .select('id, codigo, descricao, tipo, natureza, grau, conta_pai_id')
+    .eq('user_id', currentUser.id)
     .eq('cliente_id', currentCliente.id)
     .eq('ativo', true)
     .order('codigo');
