@@ -49,14 +49,22 @@ function formatarDadosCNPJ(d) {
 
 // ====== FUNÇÕES DE CLIENTES ======
 async function loadClientes() {
-  // Admin busca todos; outros buscam via vínculo clientes_usuarios
   let data, error;
-  if (isAdmin()) {
+  if (isMaster()) {
+    // Master vê todos os clientes (suporte/administração global)
     ({ data, error } = await sb
       .from('clientes')
       .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
       .order('razao_social'));
+  } else if (isAdmin()) {
+    // Admin (dono do escritório) vê apenas seus próprios clientes
+    ({ data, error } = await sb
+      .from('clientes')
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+      .eq('user_id', currentUser.id)
+      .order('razao_social'));
   } else {
+    // Contador vê apenas clientes vinculados a ele
     ({ data, error } = await sb
       .from('clientes_usuarios')
       .select('clientes(id, razao_social, cnpj, regime_tributario, nome_fantasia)')
@@ -141,12 +149,17 @@ async function renderClientList() {
   const el = document.getElementById('clientList');
   el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando...</p>';
 
-  // Admin busca todos; outros buscam via vínculo clientes_usuarios
   let data, error;
-  if (isAdmin()) {
+  if (isMaster()) {
     ({ data, error } = await sb
       .from('clientes')
       .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+      .order('razao_social'));
+  } else if (isAdmin()) {
+    ({ data, error } = await sb
+      .from('clientes')
+      .select('id, razao_social, cnpj, regime_tributario, nome_fantasia')
+      .eq('user_id', currentUser.id)
       .order('razao_social'));
   } else {
     ({ data, error } = await sb
