@@ -520,6 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
+      if (typeof logInit === 'function') logInit(currentUser);
       showApp();
       // Processar convite na URL se existir
       if (typeof verificarConviteURL === 'function') verificarConviteURL();
@@ -533,7 +534,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sessão existente (carregamento inicial)
   sb.auth.getSession().then(({ data: { session } }) => {
-    if (session) { currentUser = session.user; showApp(); }
+    if (session) {
+      currentUser = session.user;
+      if (typeof logInit === 'function') logInit(currentUser);
+      showApp();
+    }
     else { hideLoading(); showAuthScreen(); }
   }).catch(() => { hideLoading(); showAuthScreen(); });
 
