@@ -1496,6 +1496,7 @@
   <script src="assets/js/empresa_perfil.js?v=1"></script>
   <script src="assets/js/ai_provider.js?v=1"></script>
   <script src="assets/js/chat_tools.js?v=1"></script>
+  <script src="assets/js/error_logger.js?v=1"></script>
   <script src="assets/js/core.js?v=12"></script>
   <script src="assets/js/ui.js?v=8"></script>
   <script src="assets/js/clients.js?v=9"></script>
@@ -3102,22 +3103,30 @@
         <!-- Lucro Presumido -->
         <div id="apurCamposPresumido" style="display:none;background:var(--sidebar-hover);border-radius:10px;padding:14px;margin-bottom:12px">
           <div style="font-size:12px;font-weight:600;color:var(--text-light);margin-bottom:10px">LUCRO PRESUMIDO</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#92400e">
+            ⚠ IRPJ e CSLL são apurados <strong>trimestralmente</strong> no LP. Informe o faturamento acumulado do trimestre para cálculo correto do adicional de 10%.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div>
               <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Faturamento do mês (R$)</label>
               <input id="apurFatPresumido" type="number" step="0.01" placeholder="0,00"
                 style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Atividade (percentual de presunção)</label>
-              <select id="apurAtivPresumido"
-                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
-                <option value="comercio">Comércio/Indústria (8% IRPJ / 12% CSLL)</option>
-                <option value="servicos">Serviços em geral (32% IRPJ / 32% CSLL)</option>
-                <option value="transportes">Transportes (16% IRPJ / 12% CSLL)</option>
-                <option value="construcao">Construção civil (8% IRPJ / 12% CSLL)</option>
-              </select>
+              <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Fat. acumulado no trimestre (R$)</label>
+              <input id="apurFatAcumPresumido" type="number" step="0.01" placeholder="Soma dos 3 meses"
+                style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;box-sizing:border-box">
             </div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px">Atividade (percentual de presunção)</label>
+            <select id="apurAtivPresumido"
+              style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px">
+              <option value="comercio">Comércio/Indústria (8% IRPJ / 12% CSLL)</option>
+              <option value="servicos">Serviços em geral (32% IRPJ / 32% CSLL)</option>
+              <option value="transportes">Transportes (16% IRPJ / 12% CSLL)</option>
+              <option value="construcao">Construção civil (8% IRPJ / 12% CSLL)</option>
+            </select>
           </div>
         </div>
 
