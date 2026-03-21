@@ -36,10 +36,6 @@
     "api/indicadores.js": {
       "memory": 128,
       "maxDuration": 15
-    },
-    "api/backup.js": {
-      "memory": 512,
-      "maxDuration": 60
     }
   },
   "crons": [
