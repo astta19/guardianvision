@@ -246,23 +246,43 @@ function _apurCalcularPresumido() {
   const ativ    = document.getElementById('apurAtivPresumido').value;
   if (!fat || fat <= 0) { showToast('Informe o faturamento do mês.', 'warn'); return []; }
 
+  // Faturamento acumulado no trimestre — base correta para adicional IRPJ
+  // LP apura IRPJ/CSLL trimestralmente (art. 1º Lei 9.430/96)
+  const fatAcum = parseFloat(document.getElementById('apurFatAcumPresumido')?.value?.replace(',', '.')) || fat;
+
   const perc    = APUR_PRESUNCAO[ativ] || APUR_PRESUNCAO.servicos;
-  const bcIRPJ  = fat * perc.irpj;
-  const bcCSLL  = fat * perc.csll;
-  const irpj    = bcIRPJ * 0.15 + Math.max(0, bcIRPJ - 20000) * 0.10; // adicional 10% acima de R$20k/mês
-  const csll    = bcCSLL * 0.09;
+
+  // Base de cálculo mensal (PIS/COFINS são mensais)
+  const bcIRPJMes  = fat * perc.irpj;
+  const bcCSLLMes  = fat * perc.csll;
+
+  // Base trimestral para IRPJ/CSLL e adicional
+  const bcIRPJTri  = fatAcum * perc.irpj;
+  const bcCSLLTri  = fatAcum * perc.csll;
+
+  // IRPJ: 15% sobre base trimestral + adicional 10% sobre base > R$60.000/trimestre
+  const irpjTri    = bcIRPJTri * 0.15 + Math.max(0, bcIRPJTri - 60000) * 0.10;
+  const csllTri    = bcCSLLTri * 0.09;
+
+  // PIS e COFINS são mensais e cumulativos no LP
   const pis     = fat * 0.0065;
   const cofins  = fat * 0.03;
 
+  // Mes é 1/3 do trimestre para fins de DARF mensal
+  const mes = _apurMes % 3; // 0 = 1º mês do tri, 1 = 2º, 2 = 3º (último)
+  const irpjMes  = mes === 2 ? irpjTri  : irpjTri  / 3; // pagar tudo no último mês ou 1/3 por mês
+  const csllMes  = mes === 2 ? csllTri  : csllTri  / 3;
+
+  const obsIRPJ = fatAcum !== fat
+    ? `BC trimestral R$${_apurFmt(bcIRPJTri)} (presunção ${(perc.irpj*100).toFixed(0)}%)${bcIRPJTri > 60000 ? ' + adicional 10%' : ''}`
+    : `BC mensal estimada R$${_apurFmt(bcIRPJMes)} × 15% — informe fat. trimestral para cálculo preciso`;
+
   return [
-    { desc: 'IRPJ',   codigo: '2089', valor: irpj,   base: bcIRPJ, aliquota: 15,
-      obs: `BC R$${_apurFmt(bcIRPJ)} × 15% (presunção ${(perc.irpj*100).toFixed(0)}%)` },
-    { desc: 'CSLL',   codigo: '2372', valor: csll,   base: bcCSLL, aliquota: 9,
-      obs: `BC R$${_apurFmt(bcCSLL)} × 9%` },
-    { desc: 'PIS',    codigo: '8109', valor: pis,    base: fat,    aliquota: 0.65,
-      obs: `Fat × 0,65% (cumulativo)` },
-    { desc: 'COFINS', codigo: '2172', valor: cofins, base: fat,    aliquota: 3,
-      obs: `Fat × 3% (cumulativo)` },
+    { desc: 'IRPJ',   codigo: '2089', valor: irpjMes,  base: bcIRPJTri, aliquota: 15, obs: obsIRPJ },
+    { desc: 'CSLL',   codigo: '2372', valor: csllMes,  base: bcCSLLTri, aliquota: 9,
+      obs: `BC trimestral R$${_apurFmt(bcCSLLTri)} × 9%` },
+    { desc: 'PIS',    codigo: '8109', valor: pis,    base: fat, aliquota: 0.65, obs: `Fat mensal × 0,65% (cumulativo)` },
+    { desc: 'COFINS', codigo: '2172', valor: cofins, base: fat, aliquota: 3,   obs: `Fat mensal × 3% (cumulativo)` },
   ];
 }
 
