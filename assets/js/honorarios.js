@@ -434,7 +434,7 @@ async function honExcluir(id) {
   if (!ok) return;
   const { error } = await sb.from('honorarios').delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
-  showToast('Honorário excluído.', 'success');
+  if (typeof showToastComAcao === 'function') { showToastComAcao('Honorário excluído.', 'success'); } else { showToast('Honorário excluído.', 'success'); }
   await honCarregar();
 }
 
