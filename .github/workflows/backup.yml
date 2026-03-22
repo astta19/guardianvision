@@ -11,6 +11,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Instalar cliente PostgreSQL
         run: sudo apt-get install -y postgresql-client
 
@@ -20,8 +25,10 @@ jobs:
         run: |
           DATA=$(date +%Y-%m-%d)
           HORA=$(date +%H%M)
-          ARQUIVO="backup_${DATA}_${HORA}.sql.gz"
-          
+          ARQUIVO="backups/backup_${DATA}_${HORA}.sql.gz"
+
+          mkdir -p backups
+
           pg_dump "$DATABASE_URL" \
             --no-password \
             --format=plain \
@@ -29,29 +36,16 @@ jobs:
             --no-acl \
             --exclude-table=usage_diario \
             | gzip > "$ARQUIVO"
-          
-          echo "ARQUIVO=$ARQUIVO" >> $GITHUB_ENV
+
           echo "Backup gerado: $ARQUIVO ($(du -sh $ARQUIVO | cut -f1))"
 
-      - name: Fazer checkout do repositório de backup
-        uses: actions/checkout@v4
-        with:
-          repository: astta19/fiscal365-backups
-          token: ${{ secrets.BACKUP_REPO_TOKEN }}
-          path: backup-repo
+      - name: Remover backups com mais de 90 dias
+        run: find backups/ -name "*.sql.gz" -mtime +90 -delete
 
-      - name: Mover backup e commitar
+      - name: Commitar backup
         run: |
-          mkdir -p backup-repo/backups
-          mv "$ARQUIVO" backup-repo/backups/
-
-          cd backup-repo
-
-          # Remover backups com mais de 90 dias
-          find backups/ -name "*.sql.gz" -mtime +90 -delete
-
           git config user.name  "Fiscal365 Backup Bot"
           git config user.email "backup@fiscal365.com"
           git add backups/
-          git commit -m "backup: $ARQUIVO"
+          git diff --staged --quiet || git commit -m "backup: $(date +%Y-%m-%d)"
           git push
