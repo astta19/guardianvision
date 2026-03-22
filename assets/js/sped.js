@@ -90,6 +90,7 @@ function formatarPeriodo(periodo) {
 }
 
 async function spedCriarPeriodo() {
+  if (!currentUser?.id) return;
   const mes   = document.getElementById('spedMes')?.value;
   const ano   = document.getElementById('spedAno')?.value;
   const uf    = document.getElementById('spedUF')?.value?.trim().toUpperCase();
@@ -158,6 +159,7 @@ async function spedAbrirPeriodo(id) {
 }
 
 async function spedExcluirPeriodo(id) {
+  if (!currentUser?.id) return;
   const ok = await showConfirm('Excluir este período e todos os dados? Esta ação não pode ser desfeita.');
   if (!ok) return;
   await sb.from('sped_periodos').delete().eq('id', id)
@@ -222,6 +224,7 @@ async function spedRenderDocs() {
 }
 
 async function spedAdicionarDoc() {
+  if (!currentUser?.id) return;
   if (!spedPeriodo) { showToast('Abra um período primeiro.', 'warn'); return; }
 
   const oper    = document.getElementById('docOper')?.value;
@@ -273,6 +276,7 @@ async function spedAdicionarDoc() {
 }
 
 async function spedExcluirDoc(id) {
+  if (!currentUser?.id) return;
   await sb.from('sped_documentos').delete().eq('id', id)
     .eq('user_id', currentUser.id);
   spedDocs = spedDocs.filter(d => d.id !== id);
@@ -316,6 +320,7 @@ async function spedRenderParticipantes() {
 }
 
 async function spedAdicionarParticipante() {
+  if (!currentUser?.id) return;
   if (!spedPeriodo) { showToast('Abra um período primeiro.', 'warn'); return; }
   const cod  = document.getElementById('partCod')?.value?.trim();
   const nome = document.getElementById('partNome')?.value?.trim();
@@ -349,6 +354,7 @@ async function spedAdicionarParticipante() {
 }
 
 async function spedExcluirPart(id) {
+  if (!currentUser?.id) return;
   await sb.from('sped_participantes').delete().eq('id', id)
     .eq('user_id', currentUser.id);
   spedParts = spedParts.filter(p => p.id !== id);
@@ -393,6 +399,7 @@ async function spedRenderProdutos() {
 }
 
 async function spedAdicionarProduto() {
+  if (!currentUser?.id) return;
   if (!spedPeriodo) { showToast('Abra um período primeiro.', 'warn'); return; }
   const cod   = document.getElementById('prodCod')?.value?.trim();
   const descr = document.getElementById('prodDescr')?.value?.trim();
@@ -428,6 +435,7 @@ async function spedAdicionarProduto() {
 }
 
 async function spedExcluirProd(id) {
+  if (!currentUser?.id) return;
   await sb.from('sped_produtos').delete().eq('id', id)
     .eq('user_id', currentUser.id);
   spedProds = spedProds.filter(p => p.id !== id);
@@ -483,6 +491,7 @@ async function spedRenderApuracao() {
 }
 
 async function spedRecalcularApuracao() {
+  if (!currentUser?.id) return;
   if (!spedPeriodo) return;
 
   // Recarregar docs do banco para ter valores atualizados
@@ -549,6 +558,7 @@ async function spedRecalcularApuracao() {
 // ============================================================
 
 async function spedGerarTxt(periodoId) {
+  if (!currentUser?.id) return;
   const pid = periodoId || spedPeriodo?.id;
   if (!pid) { showToast('Abra um período antes de gerar.', 'warn'); return; }
 
@@ -719,6 +729,7 @@ async function spedGerarTxt(periodoId) {
       .eq('id', pid).eq('user_id', currentUser.id);
     await spedCarregarPeriodos();
 
+    registrarAuditLog('SPED_GERADO', 'sped_periodos', pid, { periodo: per.periodo, registros: linhas.length });
     showToast(`✅ Arquivo SPED gerado com ${linhas.length} registros. Importe no PVA da RFB, assine e transmita.`, 'success', 7000);
 
   } catch(e) {
