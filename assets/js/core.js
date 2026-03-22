@@ -253,7 +253,38 @@ function setAuthMsg(msg, isError, formState) {
 // --- Auth: ações ---
 // HTML usa: loginEmail, loginPassword, loginBtn
 
+
+// ── Validação de aceite dos termos ────────────────────────────
+function _termosVerificar() {
+  const check = document.getElementById('termosCheck');
+  const erro  = document.getElementById('termosErro');
+  // Se checkbox não existe (usuário já logado antes), liberar
+  if (!check) return true;
+  if (check.checked) {
+    if (erro) erro.style.display = 'none';
+    return true;
+  }
+  if (erro) erro.style.display = 'block';
+  check.closest('label')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  check.focus();
+  return false;
+}
+
+// Salvar aceite no banco após login bem-sucedido
+async function _termosRegistrarAceite() {
+  if (!currentUser) return;
+  try {
+    await sb.from('perfis_usuarios').upsert({
+      user_id: currentUser.id,
+      termos_aceito_em: new Date().toISOString(),
+      termos_versao: '2026-01',
+      atualizado_em: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch(e) { /* silencioso — não bloquear o acesso */ }
+}
+
 async function doGoogleLogin() {
+  if (!_termosVerificar()) return;
   const btn = document.querySelector('.google-btn');
   const msg = document.getElementById('loginMsg');
   if (btn) {
@@ -284,6 +315,7 @@ async function doGoogleLogin() {
 }
 
 async function doLogin() {
+  if (!_termosVerificar()) return;
   const email = document.getElementById('loginEmail')?.value.trim();
   const pass  = document.getElementById('loginPassword')?.value;
   if (!email || !pass) { setAuthMsg('Preencha e-mail e senha.', true, 'login'); return; }
@@ -603,6 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
       if (typeof logInit === 'function') logInit(currentUser);
+      _termosRegistrarAceite();
       showApp();
       // Processar convite na URL se existir
       if (typeof verificarConviteURL === 'function') verificarConviteURL();
