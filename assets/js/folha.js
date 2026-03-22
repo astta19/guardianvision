@@ -366,6 +366,7 @@ function dpFotoRemover() {
 }
 
 async function dpExcluirFunc(id) {
+  if (!currentUser?.id) return;
   const f = dpFuncionarios.find(x => x.id === id);
   if (!f) return;
   showConfirm(`Excluir "${f.nome}"? Holerites vinculados são mantidos.`, async () => {
@@ -566,6 +567,7 @@ function renderFolhaResult(r) {
 }
 
 async function dpSalvarHolerite() {
+  if (!currentUser?.id) return;
   const d = window._folhaData;
   if (!d) { showToast('Calcule a folha primeiro.', 'warn'); return; }
   if (!d.funcId) { showToast('Selecione um funcionário cadastrado para salvar.', 'warn'); return; }
@@ -1395,9 +1397,10 @@ function limparFolha() {
 
 // ── Exportar relatório de folha em PDF ────────────────────
 async function dpExportarRelatorioPDF() {
+  if (!currentUser?.id || !currentCliente?.id) return;
   if (!currentCliente) { showToast('Selecione uma empresa.', 'warn'); return; }
   if (!window.jspdf) { showToast('jsPDF não carregado.', 'error'); return; }
-
+  try {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210, M = 14, perfil = perfilCache || {};
@@ -1489,4 +1492,5 @@ async function dpExportarRelatorioPDF() {
 
   doc.save('relatorio-folha-' + (empresa.cnpj||'empresa').replace(/\D/g,'') + '-' + new Date().toISOString().slice(0,7) + '.pdf');
   showToast('PDF da folha gerado.', 'success');
+  } catch(e) { showToast('Erro ao gerar PDF: ' + (e.message || ''), 'error'); logErro(e, {modulo:'folha'}); }
 }
