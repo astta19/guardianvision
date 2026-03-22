@@ -63,6 +63,7 @@ function closeFinanceiro() {
 
 // ── Carregar do banco ─────────────────────────────────────────
 async function finCarregar() {
+  if (!currentUser?.id) return;
   finRenderLoading();
   const ano = lancFiltroAno;
   const { data, error } = await sb
@@ -277,6 +278,7 @@ function finEditar(id) {
 }
 
 async function finSalvar() {
+  if (!currentUser?.id) return;
   const descricao = document.getElementById('lancDescricao').value.trim();
   const valor     = parseFloat(document.getElementById('lancValor').value);
   const data_venc = document.getElementById('lancVenc').value;
@@ -324,6 +326,7 @@ async function finSalvar() {
 }
 
 async function finMarcarPago(id) {
+  if (!currentUser?.id) return;
   const { error } = await sb.from('lancamentos').update({
     status: 'pago',
     data_pgto: new Date().toISOString().slice(0,10),
@@ -335,6 +338,7 @@ async function finMarcarPago(id) {
 }
 
 async function finExcluir(id) {
+  if (!currentUser?.id) return;
   const ok = await showConfirm('Excluir este lançamento?');
   if (!ok) return;
   const { error } = await sb.from('lancamentos').delete().eq('id', id).eq('user_id', currentUser.id);
