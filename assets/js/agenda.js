@@ -227,7 +227,7 @@ function agendaMesLabel() {
 // ── Render ───────────────────────────────────────────────────
 function agendaRenderLoading() {
   const el = document.getElementById('agendaLista');
-  if (el) el.innerHTML = '<p style="text-align:center;color:var(--text-light);padding:32px;font-size:13px">Carregando...</p>';
+  if (el) el.innerHTML = "<div style=\"padding:8px\"><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div>";
 }
 
 function agendaRender() {
