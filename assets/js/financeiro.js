@@ -81,8 +81,8 @@ async function finCarregar() {
 
 // ── Renderização ─────────────────────────────────────────────
 function finRenderLoading() {
-  document.getElementById('finLista').innerHTML =
-    '<div class="dp-loading"><div class="dp-spin"></div> Carregando...</div>';
+  const el = document.getElementById('finLista');
+  if (el) el.innerHTML = "<div style=\"padding:0\"><div class=\"sk-row sk-row-4\"><div class=\"sk sk-line w-full\"></div><div class=\"sk sk-line w-80\"></div><div class=\"sk sk-line w-60\"></div></div><div class=\"sk-row sk-row-4\"><div class=\"sk sk-line w-full\"></div><div class=\"sk sk-line w-80\"></div><div class=\"sk sk-line w-60\"></div></div><div class=\"sk-row sk-row-4\"><div class=\"sk sk-line w-full\"></div><div class=\"sk sk-line w-80\"></div><div class=\"sk sk-line w-60\"></div></div><div class=\"sk-row sk-row-4\"><div class=\"sk sk-line w-full\"></div><div class=\"sk sk-line w-80\"></div><div class=\"sk sk-line w-60\"></div></div><div class=\"sk-row sk-row-4\"><div class=\"sk sk-line w-full\"></div><div class=\"sk sk-line w-80\"></div><div class=\"sk sk-line w-60\"></div></div></div>";
 }
 
 function finRenderTudo() {
