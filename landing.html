@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiscal365 — Gestão Contábil Inteligente para Escritórios</title>
+  <meta name="description" content="Plataforma completa de gestão contábil com IA para escritórios de contabilidade. Apuração de impostos, folha de pagamento, SPED, DRE e muito mais.">
+  <meta name="keywords" content="software contabil, gestao contabil, escritorio contabilidade, apuracao impostos, folha pagamento, fiscal365">
+  <meta property="og:title" content="Fiscal365 — Gestão Contábil Inteligente">
+  <meta property="og:description" content="Plataforma completa para escritórios de contabilidade com inteligência artificial.">
+  <meta property="og:type" content="website">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --bg2:       #111111;
+      --bg3:       #1a1a1a;
+      --card:      #141414;
+      --border:    #242424;
+      --border2:   #2e2e2e;
+      --text:      #f2f2f2;
+      --text-2:    #999999;
+      --text-3:    #555555;
+      --accent:    #f2f2f2;
+      --accent-2:  #cccccc;
+      --accent-dim:rgba(242,242,242,.06);
+      --red:       #ff4d4d;
+      --gold:      #d4b483;
+      --radius:    14px;
+      --radius-sm: 8px;
+      --transition: .2s cubic-bezier(.4,0,.2,1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Instrument Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── TIPOGRAFIA ─────────────────────────────────────── */
+    .font-display { font-family: 'Playfair Display', Georgia, serif; }
+
+    h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; line-height: 1.12; letter-spacing: -.01em; font-weight: 700; }
+
+    .section-label {
+      font-family: 'Instrument Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::before {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 2px;
+      background: var(--text-3);
+      border-radius: 2px;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────────── */
+    .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    .container-sm { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+
+    section { padding: 96px 0; }
+    section:first-of-type { padding-top: 0; }
+
+    /* ── NAVBAR ─────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(10,10,10,.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: border-color var(--transition);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-logo-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--text);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-logo-mark svg { width: 18px; height: 18px; color: #0a0a0a; }
+    .nav-logo-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 600;
+      font-size: 19px;
+      letter-spacing: -.01em;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text-2);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+    .nav-links a:hover { color: var(--text); opacity: .85; }
+    .nav-cta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: all var(--transition); border: none; font-family: 'Instrument Sans', sans-serif; }
+    .btn-ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border2); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--text-3); }
+    .btn-primary { background: var(--accent); color: #0a0a0a; font-weight: 600; letter-spacing: .01em; }
+    .btn-primary:hover { background: var(--accent-2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,255,255,.12); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border2); }
+    .btn-outline:hover { border-color: var(--text); color: var(--text); }
+    .btn-lg { padding: 14px 28px; font-size: 15px; border-radius: var(--radius-sm); }
+    .nav-mobile-btn { display: none; background: none; border: none; color: var(--text); cursor: pointer; padding: 8px; }
+
+    /* ── HERO ───────────────────────────────────────────── */
+    #hero {
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      padding-top: 64px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-glow {
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 100px;
+      padding: 5px 14px 5px 8px;
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .hero-eyebrow-dot {
+      width: 6px; height: 6px;
+      background: var(--text);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.6; transform:scale(1.3); } }
+
+    .hero-title {
+      font-size: clamp(38px, 5vw, 58px);
+      font-weight: 700;
+      line-height: 1.08;
+      margin-bottom: 20px;
+      letter-spacing: -.01em;
+    }
+    .hero-title .accent { color: var(--text); }
+    .hero-title .line-through { position: relative; }
+    .hero-title .line-through::after {
+      content: '';
+      position: absolute;
+      bottom: 6px;
+      left: 0; right: 0;
+      height: 3px;
+      background: var(--text-3);
+      border-radius: 2px;
+    }
+    .hero-sub {
+      font-size: 17px;
+      color: var(--text-2);
+      line-height: 1.65;
+      margin-bottom: 36px;
+      max-width: 480px;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .hero-trust {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-3);
+    }
+    .hero-trust-avatars {
+      display: flex;
+    }
+    .hero-trust-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      background: var(--bg3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      margin-left: -8px;
+    }
+    .hero-trust-avatar:first-child { margin-left: 0; }
+
+    /* App mockup */
+    .hero-visual {
+      position: relative;
+    }
+    .hero-mockup {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.04);
+      transform: perspective(1000px) rotateY(-8deg) rotateX(2deg);
+      transition: transform .4s ease;
+    }
+    .hero-mockup:hover {
+      transform: perspective(1000px) rotateY(-4deg) rotateX(1deg);
+    }
+    .mockup-bar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mockup-dot.r { background: #ff5f57; }
+    .mockup-dot.y { background: #febc2e; }
+    .mockup-dot.g { background: #28c840; }
+    .mockup-url {
+      flex: 1;
+      background: var(--bg3);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: center;
+    }
+    .mockup-body {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 12px;
+      min-height: 320px;
+    }
+    .mockup-sidebar {
+      background: var(--bg2);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mockup-side-item {
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mockup-side-item.active {
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+    }
+    .mockup-side-icon {
+      width: 14px; height: 14px;
+      background: currentColor;
+      border-radius: 3px;
+      opacity: .7;
+      flex-shrink: 0;
+    }
+    .mockup-main {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .mockup-chat-msg {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      max-width: 90%;
+    }
+    .mockup-chat-msg.user {
+      background: var(--accent);
+      color: #0a0a0a;
+      align-self: flex-end;
+    }
+    .mockup-chat-msg.ai {
+      background: var(--bg3);
+      color: var(--text-2);
+    }
+    .mockup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .hero-float-card {
+      position: absolute;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      animation: float 4s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .hero-float-card.card1 { bottom: -20px; left: -30px; animation-delay: 0s; }
+    .hero-float-card.card2 { top: 20px; right: -20px; animation-delay: 2s; }
+    .float-card-label { color: var(--text-3); font-size: 10px; margin-bottom: 2px; }
+    .float-card-value { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 18px; }
+    .float-card-value.green { color: var(--text); }
+    .float-card-value.white { color: var(--text); }
+
+    /* ── STATS ──────────────────────────────────────────── */
+    #stats {
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 32px 24px;
+      position: relative;
+    }
+    .stat-item + .stat-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 20%; bottom: 20%;
+      width: 1px;
+      background: var(--border);
+    }
+    .stat-number {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #ffffff 0%, #888888 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 13px; color: var(--text-3); }
+
+    /* ── FEATURES ───────────────────────────────────────── */
+    #features { background: var(--bg); }
+    .features-header { text-align: center; margin-bottom: 64px; }
+    .features-title { font-size: clamp(32px, 4vw, 48px); font-weight: 800; margin-bottom: 16px; }
+    .features-sub { font-size: 17px; color: var(--text-2); max-width: 560px; margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .feature-card {
+      background: var(--card);
+      padding: 32px 28px;
+      transition: background var(--transition);
+      cursor: default;
+    }
+    .feature-card:hover { background: var(--bg3); }
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(255,255,255,.06);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+    .feature-icon svg { width: 22px; height: 22px; color: var(--text); }
+    .feature-name { font-family: 'Playfair Display', Georgia, serif; font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+    .feature-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+    .feature-tag {
+      font-size: 11px;
+      color: var(--text-3);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 2px 8px;
+    }
+
+    /* ── HOW IT WORKS ───────────────────────────────────── */
+    #how {
+      background: var(--bg2);
+      position: relative;
+      overflow: hidden;
+    }
+    .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; position: relative; }
+    .how-grid::before {
+      content: '';
+      position: absolute;
+      top: 28px;
+      left: calc(16.66% + 20px);
+      right: calc(16.66% + 20px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+    }
+    .how-step { text-align: center; }
+    .how-number {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--text);
+      color: #0a0a0a;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 800;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .how-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .how-desc { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+
+    /* ── PLANOS ─────────────────────────────────────────── */
+    #planos { background: var(--bg); }
+    .planos-header { text-align: center; margin-bottom: 16px; }
+    .planos-title { font-size: clamp(32px, 4vw, 48px); font-weight: 800; margin-bottom: 16px; }
+    .planos-sub { font-size: 17px; color: var(--text-2); max-width: 560px; margin: 0 auto 48px; }
+
+    .planos-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+    .plano-card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      position: relative;
+      transition: border-color var(--transition), transform var(--transition);
+    }
+    .plano-card:hover { border-color: var(--border2); transform: translateY(-4px); }
+    .plano-card.featured {
+      border-color: var(--text);
+      background: linear-gradient(135deg, rgba(255,255,255,.03) 0%, var(--card) 60%);
+      transform: scale(1.04);
+    }
+    .plano-card.featured:hover { transform: scale(1.04) translateY(-4px); }
+    .plano-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text);
+      color: #0a0a0a;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 14px;
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+    .plano-name { font-family: 'Playfair Display', Georgia, serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 12px; }
+    .plano-price {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .plano-price sup { font-size: 20px; vertical-align: super; }
+    .plano-price .period { font-size: 14px; font-weight: 400; color: var(--text-3); }
+    .plano-desc { font-size: 13px; color: var(--text-3); margin-bottom: 24px; min-height: 40px; }
+    .plano-divider { height: 1px; background: var(--border); margin-bottom: 24px; }
+    .plano-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .plano-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+    .plano-feature-icon { flex-shrink: 0; margin-top: 2px; }
+    .plano-feature-icon.check { color: var(--text); }
+    .plano-feature-icon.x { color: var(--text-3); }
+    .plano-cta { width: 100%; text-align: center; justify-content: center; }
+
+    /* ── DEPOIMENTOS ────────────────────────────────────── */
+    #depoimentos { background: var(--bg2); }
+    .dep-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .dep-card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color var(--transition);
+    }
+    .dep-card:hover { border-color: var(--text-3); }
+    .dep-stars { display: flex; gap: 3px; margin-bottom: 16px; }
+    .dep-star { color: var(--gold); font-size: 14px; }
+    .dep-text { font-size: 14px; color: var(--text-2); line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+    .dep-author { display: flex; align-items: center; gap: 12px; }
+    .dep-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+    .dep-name { font-weight: 600; font-size: 14px; }
+    .dep-role { font-size: 12px; color: var(--text-3); }
+
+    /* ── FAQ ────────────────────────────────────────────── */
+    #faq { background: var(--bg); }
+    .faq-list { display: flex; flex-direction: column; gap: 2px; }
+    .faq-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .faq-question {
+      width: 100%;
+      padding: 20px 24px;
+      background: none;
+      border: none;
+      text-align: left;
+      font-family: 'Instrument Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      transition: color var(--transition);
+    }
+    .faq-question:hover { color: var(--text); }
+    .faq-chevron {
+      width: 20px; height: 20px;
+      flex-shrink: 0;
+      transition: transform .25s ease;
+      color: var(--text-3);
+    }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); color: var(--text); }
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .3s ease, padding .3s ease;
+      padding: 0 24px;
+    }
+    .faq-answer-inner { padding-bottom: 20px; font-size: 14px; color: var(--text-2); line-height: 1.7; }
+    .faq-item.open .faq-answer { max-height: 300px; }
+
+    /* ── CTA FINAL ──────────────────────────────────────── */
+    #cta-final {
+      background: var(--bg2);
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+    .cta-glow {
+      position: absolute;
+      bottom: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,.03) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-title { font-size: clamp(32px, 5vw, 52px); font-weight: 800; margin-bottom: 16px; }
+    .cta-sub { font-size: 17px; color: var(--text-2); margin-bottom: 36px; }
+    .cta-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+    .cta-note { font-size: 13px; color: var(--text-3); }
+
+    /* ── FOOTER ─────────────────────────────────────────── */
+    footer {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 56px 0 32px;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 48px;
+    }
+    .footer-brand p { font-size: 13px; color: var(--text-3); line-height: 1.7; margin-top: 12px; max-width: 280px; }
+    .footer-col-title { font-family: 'Playfair Display', Georgia, serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: 16px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { font-size: 14px; color: var(--text-3); text-decoration: none; transition: color var(--transition); }
+    .footer-links a:hover { color: var(--text); }
+    .footer-bottom {
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-bottom p { font-size: 13px; color: var(--text-3); }
+    .footer-bottom-links { display: flex; gap: 20px; }
+    .footer-bottom-links a { font-size: 13px; color: var(--text-3); text-decoration: none; }
+    .footer-bottom-links a:hover { color: var(--text); }
+
+    /* ── COOKIES BANNER ─────────────────────────────────── */
+    #cookieBanner {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 9999;
+      background: var(--card);
+      border-top: 1px solid var(--border2);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      box-shadow: 0 -8px 32px rgba(0,0,0,.4);
+      transform: translateY(100%);
+      transition: transform .4s cubic-bezier(.4,0,.2,1);
+    }
+    #cookieBanner.visible { transform: translateY(0); }
+    .cookie-text { font-size: 13px; color: var(--text-2); max-width: 600px; line-height: 1.6; flex: 1; }
+    .cookie-text a { color: var(--text); text-decoration: none; }
+    .cookie-actions { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+    .btn-cookie-config { background: transparent; color: var(--text-3); border: 1px solid var(--border2); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all var(--transition); }
+    .btn-cookie-config:hover { border-color: var(--text-3); color: var(--text); }
+    .btn-cookie-reject { background: transparent; color: var(--text-3); border: 1px solid var(--border2); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all var(--transition); }
+    .btn-cookie-reject:hover { border-color: var(--red); color: var(--red); }
+    .btn-cookie-accept { background: var(--text); color: #0a0a0a; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all var(--transition); }
+    .btn-cookie-accept:hover { background: #e0e0e0; }
+
+    /* Modal de configuração de cookies */
+    #cookieModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0,0,0,.7);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #cookieModal.open { display: flex; }
+    .cookie-modal-box {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 520px;
+      width: 100%;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+    .cookie-modal-title { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .cookie-modal-desc { font-size: 13px; color: var(--text-2); margin-bottom: 24px; line-height: 1.6; }
+    .cookie-category { margin-bottom: 20px; }
+    .cookie-cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .cookie-cat-name { font-size: 14px; font-weight: 600; }
+    .cookie-cat-desc { font-size: 12px; color: var(--text-3); line-height: 1.5; }
+    .cookie-toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+    .cookie-toggle input { opacity: 0; width: 0; height: 0; }
+    .cookie-toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--bg3);
+      border-radius: 100px;
+      cursor: pointer;
+      transition: background .2s;
+      border: 1px solid var(--border2);
+    }
+    .cookie-toggle-slider::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--text-3);
+      top: 2px; left: 2px;
+      transition: transform .2s, background .2s;
+    }
+    .cookie-toggle input:checked + .cookie-toggle-slider { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); }
+    .cookie-toggle input:checked + .cookie-toggle-slider::after { transform: translateX(18px); background: var(--text); }
+    .cookie-toggle input:disabled + .cookie-toggle-slider { opacity: .5; cursor: not-allowed; }
+    .cookie-modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .cookie-modal-actions button { flex: 1; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: all var(--transition); }
+    .btn-save-prefs { background: var(--text); color: #0a0a0a; border: none; font-weight: 600; }
+    .btn-save-prefs:hover { background: var(--accent-2); }
+    .btn-cancel-prefs { background: transparent; color: var(--text-2); border: 1px solid var(--border2); }
+    .btn-cancel-prefs:hover { border-color: var(--text-3); }
+
+    /* ── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+      .hero-visual { display: none; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-item + .stat-item::before { display: none; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .planos-grid { grid-template-columns: 1fr; }
+      .plano-card.featured { transform: none; }
+      .dep-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .how-grid { grid-template-columns: 1fr; }
+      .how-grid::before { display: none; }
+    }
+    @media (max-width: 600px) {
+      section { padding: 64px 0; }
+      .nav-links { display: none; }
+      .nav-mobile-btn { display: flex; }
+      .features-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .cookie-actions { width: 100%; }
+      .btn-cookie-config, .btn-cookie-reject, .btn-cookie-accept { flex: 1; text-align: center; }
+    }
+
+    /* ── ANIMAÇÕES DE ENTRADA ───────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: .1s; }
+    .reveal-delay-2 { transition-delay: .2s; }
+    .reveal-delay-3 { transition-delay: .3s; }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR ─────────────────────────────────────────────── -->
+<nav id="navbar">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <span class="nav-logo-name">Fiscal365</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#features">Funcionalidades</a></li>
+    <li><a href="#planos">Planos</a></li>
+    <li><a href="#depoimentos">Depoimentos</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+
+  <div class="nav-cta">
+    <a href="/app" class="btn btn-ghost">Entrar</a>
+    <a href="#planos" class="btn btn-primary">Começar grátis</a>
+  </div>
+
+  <button class="nav-mobile-btn" onclick="toggleMobileNav()" aria-label="Menu">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+</nav>
+
+<!-- ── HERO ───────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-eyebrow">
+          <div class="hero-eyebrow-dot"></div>
+          Plataforma contábil com IA
+        </div>
+        <h1 class="hero-title">
+          Gestão contábil<br>
+          <span class="accent">inteligente</span><br>
+          para o contador
+        </h1>
+        <p class="hero-sub">
+          Tudo que seu escritório precisa em um único lugar. Apuração de impostos, folha de pagamento, SPED, DRE, honorários e muito mais — com inteligência artificial integrada.
+        </p>
+        <div class="hero-actions">
+          <a href="#planos" class="btn btn-primary btn-lg">
+            Começar gratuitamente
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <a href="#features" class="btn btn-outline btn-lg">Ver funcionalidades</a>
+        </div>
+        <div class="hero-trust">
+          <div class="hero-trust-avatars">
+            <div class="hero-trust-avatar">CR</div>
+            <div class="hero-trust-avatar">AS</div>
+            <div class="hero-trust-avatar">MF</div>
+            <div class="hero-trust-avatar">PL</div>
+          </div>
+          <span>+200 contadores já usam o Fiscal365</span>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="hero-mockup">
+          <div class="mockup-bar">
+            <div class="mockup-dot r"></div>
+            <div class="mockup-dot y"></div>
+            <div class="mockup-dot g"></div>
+            <div class="mockup-url">fiscal365.com.br/app</div>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-sidebar">
+              <div class="mockup-side-item active">
+                <div class="mockup-side-icon"></div>
+                Chat Fiscal
+              </div>
+              <div class="mockup-side-item">
+                <div class="mockup-side-icon"></div>
+                Apuração
+              </div>
+              <div class="mockup-side-item">
+                <div class="mockup-side-icon"></div>
+                Folha DP
+              </div>
+              <div class="mockup-side-item">
+                <div class="mockup-side-icon"></div>
+                Honorários
+              </div>
+              <div class="mockup-side-item">
+                <div class="mockup-side-icon"></div>
+                SPED
+              </div>
+              <div class="mockup-side-item">
+                <div class="mockup-side-icon"></div>
+                Agenda
+              </div>
+            </div>
+            <div class="mockup-main">
+              <div class="mockup-chat-msg ai">
+                Analisando Empresa X — Simples Nacional, Anexo III. Fator R atual: 31,2%.
+                <div class="mockup-badge" style="background:rgba(255,255,255,.08);color:#ccc">✓ IA Fiscal</div>
+              </div>
+              <div class="mockup-chat-msg user">
+                Qual o DAS de novembro com faturamento de R$ 45.000?
+              </div>
+              <div class="mockup-chat-msg ai">
+                DAS = R$ 2.700,00. Alíquota efetiva 6% — Anexo III, 1ª faixa. Vencimento: 20/12.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-float-card card1">
+          <div class="float-card-label">Clientes ativos</div>
+          <div class="float-card-value white">148</div>
+        </div>
+        <div class="hero-float-card card2">
+          <div class="float-card-label">Economia mensal</div>
+          <div class="float-card-value white">R$ 3.200</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ───────────────────────────────────────────────── -->
+<section id="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item reveal">
+        <div class="stat-number">200+</div>
+        <div class="stat-label">Escritórios ativos</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-1">
+        <div class="stat-number">15k+</div>
+        <div class="stat-label">Clientes gerenciados</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-2">
+        <div class="stat-number">98%</div>
+        <div class="stat-label">Satisfação dos usuários</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-3">
+        <div class="stat-number">6h</div>
+        <div class="stat-label">Economizadas por semana</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ───────────────────────────────────────────── -->
+<section id="features">
+  <div class="container">
+    <div class="features-header reveal">
+      <div class="section-label" style="justify-content:center">Funcionalidades</div>
+      <h2 class="features-title">Tudo que seu escritório precisa</h2>
+      <p class="features-sub">Módulos integrados que cobrem todo o ciclo contábil, do cadastro ao fechamento.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M9 7V4a2 2 0 012-2h6l4 4v6a2 2 0 01-2 2h-3M9 7h6"/></svg>
+        </div>
+        <div class="feature-name">Chat IA Fiscal</div>
+        <div class="feature-desc">Assistente especializado em tributação brasileira. Responde dúvidas sobre CFOP, regimes tributários, prazos e legislação em tempo real.</div>
+        <div class="feature-tags">
+          <span class="feature-tag">Claude AI</span>
+          <span class="feature-tag">RAG semântico</span>
+          <span class="feature-tag">Contexto da empresa</span>
+        </div>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <div class="feature-name">Apuração de Impostos</div>
+        <div class="feature-desc">MEI, Simples Nacional, Lucro Presumido e Real. Cálculo automático com tabelas oficiais 2025 e geração de DARF.</div>
+        <div class="feature-tags">
+          <span class="feature-tag">Simples Nacional</span>
+          <span class="feature-tag">Lucro Presumido</span>
+          <span class="feature-tag">Lucro Real</span>
+        </div>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="feature-name">Folha de Pagamento</div>
+        <div class="feature-desc">Holerite completo para CLT, RPA, PJ e estágio. INSS progressivo e IRRF com tabelas Portaria MF 1.191/2025.</div>
+        <div class="feature-tags">
+          <span class="feature-tag">INSS 2025</span>
+          <span class="feature-tag">IRRF</span>
+          <span class="feature-tag">Férias e 13º</span>
+        </div>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="feature-name">Contabilidade Completa</div>
+        <div class="feature-desc">Plano de contas, lançamentos, balancete, DRE e conciliação bancária. Módulos integrados com o chat IA.</div>
+        <div class="feature-tags">
+          <span class="feature-tag">Balancete</span>
+          <span class="feature-tag">DRE</span>
+          <span class="feature-tag">Conciliação</span>
+        </div>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="feature-name">Agenda Fiscal</div>
+        <div class="feature-desc">Prazos automáticos por regime tributário com alertas antecipados. DAS, DCTFWeb, ECD, ECF e todas as obrigações.</div>
+        <div class="feature-tags">
+          <span class="feature-tag">Alertas automáticos</span>
+          <span class="feature-tag">WhatsApp</span>
+          <span class="feature-tag">E-mail</span>
+        </div>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div class="feature-name">Portal do Cliente</div>
+        <div class="feature-desc">Link seguro para o cliente enviar documentos, visualizar relatórios e acompanhar obrigações. Sem precisar criar conta.</div>
+        <div class="feature-tags">
+          <span class="feature-tag">Link seguro</span>
+          <span class="feature-tag">Upload de docs</span>
+          <span class="feature-tag">LGPD</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────────── -->
+<section id="how">
+  <div class="container">
+    <div class="features-header reveal">
+      <div class="section-label" style="justify-content:center">Como funciona</div>
+      <h2 class="features-title">Três passos para começar</h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-step reveal">
+        <div class="how-number">1</div>
+        <div class="how-title">Crie sua conta</div>
+        <div class="how-desc">Cadastre seu escritório em menos de 2 minutos. Sem cartão de crédito para começar.</div>
+      </div>
+      <div class="how-step reveal reveal-delay-1">
+        <div class="how-number">2</div>
+        <div class="how-title">Cadastre seus clientes</div>
+        <div class="how-desc">Importe via CSV ou cadastre manualmente. O sistema busca os dados do CNPJ automaticamente.</div>
+      </div>
+      <div class="how-step reveal reveal-delay-2">
+        <div class="how-number">3</div>
+        <div class="how-title">Comece a usar</div>
+        <div class="how-desc">Todos os módulos prontos imediatamente. Suporte dedicado para implantação nos planos Professional e Enterprise.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PLANOS ──────────────────────────────────────────────── -->
+<section id="planos">
+  <div class="container">
+    <div class="planos-header reveal">
+      <div class="section-label" style="justify-content:center">Planos e Preços</div>
+      <h2 class="planos-title">Escolha o plano ideal</h2>
+      <p class="planos-sub">Investimento transparente, sem surpresas. Cancele quando quiser.</p>
+    </div>
+    <div class="planos-grid">
+
+      <!-- Starter -->
+      <div class="plano-card reveal">
+        <div class="plano-name">Starter</div>
+        <div class="plano-price"><sup>R$</sup>97<span class="period">/mês</span></div>
+        <div class="plano-desc">Para contadores autônomos e escritórios pequenos que estão começando.</div>
+        <div class="plano-divider"></div>
+        <ul class="plano-features">
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>1 contador</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Até 20 clientes</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Chat IA (50 msgs/dia)</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Apuração de impostos</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Agenda fiscal</li>
+          <li class="plano-feature"><svg class="plano-feature-icon x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Folha de pagamento</li>
+          <li class="plano-feature"><svg class="plano-feature-icon x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>SPED e módulos contábeis</li>
+          <li class="plano-feature"><svg class="plano-feature-icon x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Suporte prioritário</li>
+        </ul>
+        <a href="/app" class="btn btn-outline plano-cta">Começar grátis 14 dias</a>
+      </div>
+
+      <!-- Professional -->
+      <div class="plano-card featured reveal reveal-delay-1">
+        <div class="plano-badge">Mais popular</div>
+        <div class="plano-name">Professional</div>
+        <div class="plano-price"><sup>R$</sup>197<span class="period">/mês</span></div>
+        <div class="plano-desc">Para escritórios em crescimento que precisam de tudo sem limitações.</div>
+        <div class="plano-divider"></div>
+        <ul class="plano-features">
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Até 5 contadores</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Clientes ilimitados</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Chat IA ilimitado + Thinking</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Todos os módulos fiscais</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Folha de pagamento completa</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>SPED e módulos contábeis</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Portal do cliente</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Suporte por WhatsApp</li>
+        </ul>
+        <a href="/app" class="btn btn-primary plano-cta">Começar grátis 14 dias</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="plano-card reveal reveal-delay-2">
+        <div class="plano-name">Enterprise</div>
+        <div class="plano-price" style="font-size:28px;padding-top:7px;">Sob consulta</div>
+        <div class="plano-desc">Implantação individual com treinamento presencial ou remoto para toda a equipe.</div>
+        <div class="plano-divider"></div>
+        <ul class="plano-features">
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Contadores ilimitados</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Tudo do Professional</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Implantação individual</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Treinamento da equipe</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>SLA garantido</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Customizações sob demanda</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Gerente de conta dedicado</li>
+          <li class="plano-feature"><svg class="plano-feature-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Suporte 24/7</li>
+        </ul>
+        <a href="https://wa.me/5516999999999?text=Olá!%20Tenho%20interesse%20no%20plano%20Enterprise%20do%20Fiscal365" target="_blank" class="btn btn-outline plano-cta">Falar com especialista</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DEPOIMENTOS ─────────────────────────────────────────── -->
+<section id="depoimentos">
+  <div class="container">
+    <div class="features-header reveal" style="text-align:center;margin-bottom:48px">
+      <div class="section-label" style="justify-content:center">Depoimentos</div>
+      <h2 class="features-title">O que dizem os contadores</h2>
+    </div>
+    <div class="dep-grid">
+      <div class="dep-card reveal">
+        <div class="dep-stars">
+          <span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span>
+        </div>
+        <p class="dep-text">"O chat com IA mudou completamente como atendo meus clientes. Antes levava 20 minutos para explicar o Simples Nacional, agora faço em 5 minutos com o suporte da plataforma."</p>
+        <div class="dep-author">
+          <div class="dep-avatar">CR</div>
+          <div>
+            <div class="dep-name">Carlos Ribeiro</div>
+            <div class="dep-role">Contador — Ribeirão Preto, SP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dep-card reveal reveal-delay-1">
+        <div class="dep-stars">
+          <span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span>
+        </div>
+        <p class="dep-text">"A apuração automatizada reduziu o tempo de fechamento do meu escritório em 60%. Hoje tenho 45 clientes e processo tudo em 2 dias. Antes levava uma semana."</p>
+        <div class="dep-author">
+          <div class="dep-avatar">AS</div>
+          <div>
+            <div class="dep-name">Ana Silva</div>
+            <div class="dep-role">Contadora — São Paulo, SP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dep-card reveal reveal-delay-2">
+        <div class="dep-stars">
+          <span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span><span class="dep-star">★</span>
+        </div>
+        <p class="dep-text">"O portal do cliente profissionalizou demais o relacionamento com meus clientes. Eles enviam documentos direto pelo link, sem precisar de WhatsApp ou e-mail."</p>
+        <div class="dep-author">
+          <div class="dep-avatar">MF</div>
+          <div>
+            <div class="dep-name">Marcos Ferreira</div>
+            <div class="dep-role">Diretor — Escritório MF Contábil</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ────────────────────────────────────────────────── -->
+<section id="faq">
+  <div class="container-sm">
+    <div class="features-header reveal" style="text-align:center;margin-bottom:48px">
+      <div class="section-label" style="justify-content:center">FAQ</div>
+      <h2 class="features-title">Perguntas frequentes</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item reveal">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Preciso de conhecimento técnico para usar o Fiscal365?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">Não. O sistema foi desenvolvido por e para contadores, com linguagem acessível e fluxos intuitivos. Você não precisa de nenhum conhecimento de tecnologia. Nos planos Professional e Enterprise, oferecemos treinamento completo da sua equipe.</div></div>
+      </div>
+
+      <div class="faq-item reveal reveal-delay-1">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Os cálculos tributários estão atualizados para 2025/2026?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">Sim. As tabelas de INSS (Portaria MF 1.191/2025), IRRF (Portaria MF 1.206/2025), DAS Simples Nacional e todos os percentuais de presunção estão atualizados. Atualizamos as tabelas a cada portaria publicada.</div></div>
+      </div>
+
+      <div class="faq-item reveal reveal-delay-2">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Meus dados e os dos meus clientes estão seguros?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">Sim. O Fiscal365 utiliza o Supabase como banco de dados com Row Level Security (RLS) — cada escritório acessa apenas seus próprios dados. Toda comunicação é criptografada com TLS. Backups automáticos diários e conformidade com a LGPD (Lei 13.709/2018).</div></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Posso cancelar a qualquer momento?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">Sim, sem fidelidade ou multa. Você pode cancelar sua assinatura a qualquer momento pelo próprio sistema. Seus dados ficam disponíveis para exportação por 90 dias após o cancelamento.</div></div>
+      </div>
+
+      <div class="faq-item reveal reveal-delay-1">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          O que está incluso na implantação Enterprise?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">A implantação Enterprise inclui: migração dos dados do sistema anterior, configuração personalizada do ambiente, treinamento presencial ou remoto de toda a equipe (até 3 sessões), gerente de conta dedicado por 3 meses, SLA de resposta em até 2 horas e customizações específicas para o workflow do seu escritório.</div></div>
+      </div>
+
+      <div class="faq-item reveal reveal-delay-2">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          O sistema funciona no celular?
+          <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="faq-answer"><div class="faq-answer-inner">Sim. O Fiscal365 é totalmente responsivo e funciona em qualquer dispositivo. A versão mobile prioriza as funcionalidades mais usadas no dia a dia: chat IA, agenda fiscal, consulta de clientes e honorários. Uma versão para Android está em desenvolvimento.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA FINAL ───────────────────────────────────────────── -->
+<section id="cta-final">
+  <div class="cta-glow"></div>
+  <div class="container-sm" style="position:relative;z-index:1;text-align:center">
+    <div class="section-label reveal" style="justify-content:center">Comece hoje</div>
+    <h2 class="cta-title reveal">Modernize seu escritório agora</h2>
+    <p class="cta-sub reveal">14 dias grátis. Sem cartão de crédito. Cancele quando quiser.</p>
+    <div class="cta-actions reveal">
+      <a href="/app" class="btn btn-primary btn-lg">
+        Criar conta gratuita
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="https://wa.me/5516999999999?text=Gostaria%20de%20conhecer%20o%20Fiscal365" target="_blank" class="btn btn-outline btn-lg">
+        Falar com especialista
+      </a>
+    </div>
+    <p class="cta-note reveal">+200 escritórios já confiam no Fiscal365</p>
+  </div>
+</section>
+
+<!-- ── FOOTER ──────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="/" class="nav-logo" style="margin-bottom:12px;display:inline-flex">
+          <div class="nav-logo-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <span class="nav-logo-name">Fiscal365</span>
+        </a>
+        <p>Plataforma de gestão contábil inteligente para escritórios de contabilidade brasileiros.</p>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Produto</div>
+        <ul class="footer-links">
+          <li><a href="#features">Funcionalidades</a></li>
+          <li><a href="#planos">Planos</a></li>
+          <li><a href="/app">Entrar no sistema</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <ul class="footer-links">
+          <li><a href="#" onclick="abrirTermosLanding()">Termos de Uso</a></li>
+          <li><a href="#" onclick="abrirPrivacidadeLanding()">Política de Privacidade</a></li>
+          <li><a href="#" onclick="abrirCookieLanding()">Política de Cookies</a></li>
+          <li><a href="#" onclick="openCookieModal()">Configurar cookies</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Contato</div>
+        <ul class="footer-links">
+          <li><a href="https://wa.me/5516999999999" target="_blank">WhatsApp</a></li>
+          <li><a href="/cdn-cgi/l/email-protection#690a06071d081d06290f001a0a08055a5f5c470a0604470b1b">E-mail</a></li>
+          <li><a href="#" onclick="openCookieModal()">Suporte</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© 2026 Fiscal365. Todos os direitos reservados. CNPJ: 00.000.000/0001-00</p>
+      <div class="footer-bottom-links">
+        <a href="#" onclick="abrirTermosLanding()">Termos</a>
+        <a href="#" onclick="abrirPrivacidadeLanding()">Privacidade</a>
+        <a href="#" onclick="openCookieModal()">Cookies</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ── COOKIE BANNER ───────────────────────────────────────── -->
+<div id="cookieBanner" role="dialog" aria-label="Aviso de cookies">
+  <p class="cookie-text">
+    Utilizamos cookies para melhorar sua experiência, analisar o tráfego e personalizar conteúdo. Ao clicar em "Aceitar todos", você concorda com o uso de todos os cookies. Consulte nossa <a href="#" onclick="abrirCookieLanding()">Política de Cookies</a>.
+  </p>
+  <div class="cookie-actions">
+    <button class="btn-cookie-config" onclick="openCookieModal()">Configurar</button>
+    <button class="btn-cookie-reject" onclick="rejeitarCookies()">Recusar</button>
+    <button class="btn-cookie-accept" onclick="aceitarCookies()">Aceitar todos</button>
+  </div>
+</div>
+
+<!-- ── COOKIE MODAL ────────────────────────────────────────── -->
+<div id="cookieModal" role="dialog" aria-modal="true" aria-label="Configurações de cookies">
+  <div class="cookie-modal-box">
+    <div class="cookie-modal-title">Configurações de cookies</div>
+    <div class="cookie-modal-desc">Gerencie suas preferências de cookies. Cookies essenciais são necessários para o funcionamento do site e não podem ser desativados.</div>
+
+    <div class="cookie-category">
+      <div class="cookie-cat-header">
+        <div class="cookie-cat-name">Essenciais</div>
+        <label class="cookie-toggle">
+          <input type="checkbox" checked disabled>
+          <span class="cookie-toggle-slider"></span>
+        </label>
+      </div>
+      <div class="cookie-cat-desc">Necessários para o funcionamento básico do site. Incluem autenticação e segurança. Não podem ser desativados.</div>
+    </div>
+
+    <div class="cookie-category">
+      <div class="cookie-cat-header">
+        <div class="cookie-cat-name">Analíticos</div>
+        <label class="cookie-toggle">
+          <input type="checkbox" id="cookieAnalytics" checked>
+          <span class="cookie-toggle-slider"></span>
+        </label>
+      </div>
+      <div class="cookie-cat-desc">Nos ajudam a entender como os visitantes interagem com o site, permitindo melhorias contínuas na experiência.</div>
+    </div>
+
+    <div class="cookie-category">
+      <div class="cookie-cat-header">
+        <div class="cookie-cat-name">Marketing</div>
+        <label class="cookie-toggle">
+          <input type="checkbox" id="cookieMarketing">
+          <span class="cookie-toggle-slider"></span>
+        </label>
+      </div>
+      <div class="cookie-cat-desc">Utilizados para exibir anúncios relevantes e medir a eficácia de campanhas. O Fiscal365 não vende seus dados a terceiros.</div>
+    </div>
+
+    <div class="cookie-modal-actions">
+      <button class="btn-cancel-prefs" onclick="closeCookieModal()">Cancelar</button>
+      <button class="btn-save-prefs" onclick="salvarPreferencias()">Salvar preferências</button>
+    </div>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ── CONFIG SUPABASE ────────────────────────────────────────
+const _SB_URL = 'https://myezzedahfyrelqcgsad.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15ZXp6ZWRhaGZ5cmVscWNnc2FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMDQ2NDUsImV4cCI6MjA4Njg4MDY0NX0.Cm1bvNbjpPAc7U_NOWPceTw62dSR_Yhv1d38lc1ScDI';
+
+// Gerar session_id único por visita (não persiste — sem localStorage)
+// Combinação de timestamp + entropia aleatória — identifica a sessão atual
+const _sessionId = [
+  Date.now().toString(36),
+  Math.random().toString(36).slice(2, 9),
+  (navigator.language || '').replace(/[^a-z]/gi, ''),
+  screen.width + 'x' + screen.height
+].join('-');
+
+let _cookieConsentSalvo = null; // cache em memória da sessão
+
+// ── SALVAR CONSENTIMENTO NO BANCO ─────────────────────────
+async function _salvarConsentimentoBanco(analytics, marketing) {
+  try {
+    const payload = {
+      session_id:   _sessionId,
+      essential:    true,
+      analytics:    analytics,
+      marketing:    marketing,
+      versao:       '2026-01',
+      user_agent:   navigator.userAgent.slice(0, 200),
+      atualizado_em: new Date().toISOString(),
+    };
+
+    // Upsert pelo session_id (cria ou atualiza)
+    const res = await fetch(`${_SB_URL}/rest/v1/cookie_consentimentos`, {
+      method: 'POST',
+      headers: {
+        'apikey':        _SB_KEY,
+        'Authorization': `Bearer ${_SB_KEY}`,
+        'Content-Type':  'application/json',
+        'Prefer':        'resolution=merge-duplicates',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      _cookieConsentSalvo = payload;
+    }
+  } catch(e) {
+    // Silencioso — falha de rede não deve bloquear o visitante
+    console.warn('[cookies] Falha ao salvar consentimento:', e.message);
+  }
+}
+
+// ── VERIFICAR CONSENTIMENTO EXISTENTE ─────────────────────
+async function _verificarConsentimentoBanco() {
+  try {
+    const res = await fetch(
+      `${_SB_URL}/rest/v1/cookie_consentimentos?session_id=eq.${encodeURIComponent(_sessionId)}&select=analytics,marketing&limit=1`,
+      {
+        headers: {
+          'apikey':        _SB_KEY,
+          'Authorization': `Bearer ${_SB_KEY}`,
+        }
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+// ── INIT COOKIES ───────────────────────────────────────────
+async function initCookies() {
+  // Verificar se já existe consentimento para esta sessão
+  const existente = await _verificarConsentimentoBanco();
+  if (existente) {
+    _cookieConsentSalvo = existente;
+    // Atualizar toggles do modal com valores salvos
+    const el_a = document.getElementById('cookieAnalytics');
+    const el_m = document.getElementById('cookieMarketing');
+    if (el_a) el_a.checked = existente.analytics;
+    if (el_m) el_m.checked = existente.marketing;
+    return; // já aceitou nesta sessão — não mostrar banner
+  }
+  // Mostrar banner após 1,5s
+  setTimeout(() => {
+    document.getElementById('cookieBanner').classList.add('visible');
+  }, 1500);
+}
+
+function aceitarCookies() {
+  _salvarConsentimentoBanco(true, true);
+  document.getElementById('cookieAnalytics').checked = true;
+  document.getElementById('cookieMarketing').checked = true;
+  fecharBanner();
+}
+
+function rejeitarCookies() {
+  _salvarConsentimentoBanco(false, false);
+  document.getElementById('cookieAnalytics').checked = false;
+  document.getElementById('cookieMarketing').checked = false;
+  fecharBanner();
+}
+
+function fecharBanner() {
+  const banner = document.getElementById('cookieBanner');
+  banner.style.transform = 'translateY(100%)';
+  setTimeout(() => banner.style.display = 'none', 400);
+}
+
+function openCookieModal() {
+  // Preencher com valores do cache em memória
+  if (_cookieConsentSalvo) {
+    const el_a = document.getElementById('cookieAnalytics');
+    const el_m = document.getElementById('cookieMarketing');
+    if (el_a) el_a.checked = _cookieConsentSalvo.analytics ?? true;
+    if (el_m) el_m.checked = _cookieConsentSalvo.marketing ?? false;
+  }
+  document.getElementById('cookieModal').classList.add('open');
+  document.getElementById('cookieBanner').style.display = 'none';
+}
+
+function closeCookieModal() {
+  document.getElementById('cookieModal').classList.remove('open');
+  if (!_cookieConsentSalvo) document.getElementById('cookieBanner').style.display = '';
+}
+
+function salvarPreferencias() {
+  const analytics = document.getElementById('cookieAnalytics').checked;
+  const marketing = document.getElementById('cookieMarketing').checked;
+  _salvarConsentimentoBanco(analytics, marketing);
+  document.getElementById('cookieModal').classList.remove('open');
+  fecharBanner();
+}
+
+// Fechar modal ao clicar fora
+document.getElementById('cookieModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCookieModal();
+});
+
+// ── FAQ ────────────────────────────────────────────────────
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+
+// ── SCROLL REVEAL ──────────────────────────────────────────
+function initReveal() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+// ── NAVBAR SCROLL ──────────────────────────────────────────
+function initNavbar() {
+  const nav = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    nav.style.borderBottomColor = window.scrollY > 10 ? 'var(--border2)' : 'var(--border)';
+  }, { passive: true });
+}
+
+// ── MOBILE NAV ─────────────────────────────────────────────
+function toggleMobileNav() {
+  const links = document.querySelector('.nav-links');
+  const isOpen = links.style.display === 'flex';
+  links.style.cssText = isOpen ? '' : 'display:flex;flex-direction:column;position:fixed;top:64px;left:0;right:0;background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 24px;gap:16px;z-index:99';
+}
+
+// ── STUBS LEGAIS ───────────────────────────────────────────
+function abrirTermosLanding() {
+  alert('Termos de Uso — Em breve disponível na versão completa.');
+}
+function abrirPrivacidadeLanding() {
+  alert('Política de Privacidade — Em breve disponível na versão completa.');
+}
+function abrirCookieLanding() {
+  openCookieModal();
+}
+
+// ── INIT ────────────────────────────────────────────�
