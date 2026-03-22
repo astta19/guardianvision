@@ -25,6 +25,7 @@ function closeEmpresaPerfil() {
 
 // ── Carregar dados do banco ───────────────────────────────
 async function carregarPerfilEmpresa() {
+  if (!currentUser?.id) return;
   const { data, error } = await sb
     .from('clientes')
     .select('*')
@@ -345,7 +346,7 @@ async function salvarPerfilEmpresa() {
   const btn = document.getElementById('epBtnSalvar');
   btn.disabled = true; btn.textContent = 'Salvando...';
 
-  const { error } = await sb.from('clientes').update(payload).eq('id', currentCliente.id).eq('user_id', currentUser.id);
+  const { error } = await sb.from('clientes').update(payload).eq('id', currentCliente?.id).eq('user_id', currentUser?.id);
 
   btn.disabled = false; btn.textContent = 'Salvar';
 
