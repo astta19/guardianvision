@@ -49,6 +49,7 @@ function formatarDadosCNPJ(d) {
 
 // ====== FUNÇÕES DE CLIENTES ======
 async function loadClientes() {
+  if (!currentUser?.id) return;
   let data, error;
   if (isMaster()) {
     // Master vê todos os clientes (suporte/administração global)
@@ -146,6 +147,7 @@ async function closeClientModal() {
 }
 
 async function renderClientList() {
+  if (!currentUser?.id) return;
   const el = document.getElementById('clientList');
   el.innerHTML = "<div style=\"padding:8px\"><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div></div>";
 
