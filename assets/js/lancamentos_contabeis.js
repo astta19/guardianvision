@@ -335,8 +335,16 @@ async function lcExcluir(id) {
   const { error } = await sb.from('lancamentos_contabeis')
     .delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
-  showToast('Lançamento excluído.', 'success');
-  await lcCarregar();
+  _lcLancamentos = _lcLancamentos.filter(x => x.id !== id);
+  lcRender();
+  if (typeof showToastComAcao === 'function') {
+    showToastComAcao('Lançamento excluído.', 'success', 'Desfazer', async () => {
+      if (!l) return;
+      const { error: eRest } = await sb.from('lancamentos_contabeis').insert(l);
+      if (!eRest) { await lcCarregar(); showToast('Lançamento restaurado.', 'success'); }
+      else showToast('Não foi possível desfazer.', 'error');
+    });
+  } else { showToast('Lançamento excluído.', 'success'); }
 }
 
 // ── Exportar CSV ──────────────────────────────────────────────
