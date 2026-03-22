@@ -79,6 +79,7 @@ function _honAtualizarToggle() {
 
 // ── Carregar dados ───────────────────────────────────────────
 async function honCarregar() {
+  if (!currentUser?.id) return;
   _honAtualizarToggle();
   honRenderLoading();
   const compStr = `${String(honMes + 1).padStart(2,'0')}/${honAno}`;
@@ -240,6 +241,7 @@ async function honNavMes(delta) {
 
 // ── Gerar honorários para todos os clientes do mês ───────────
 async function honGerarCompetencia() {
+  if (!currentUser?.id) return;
   const btn = event?.target?.closest('button');
   if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
 
@@ -307,6 +309,7 @@ function honPagoFechar() {
 }
 
 async function honPagoConfirmar() {
+  if (!currentUser?.id) return;
   if (!_honPagoId) return;
   const dataPgto = document.getElementById('honPagoData').value;
   if (!dataPgto) { showToast('Informe a data do recebimento.', 'warn'); return; }
@@ -371,6 +374,7 @@ function honFecharForm() {
 
 // ── Salvar ───────────────────────────────────────────────────
 async function honSalvar() {
+  if (!currentUser?.id) return;
   const id    = document.getElementById('honFormId').value;
   const valor = parseFloat(document.getElementById('honFormValor').value);
   const dia   = parseInt(document.getElementById('honFormDia').value);
@@ -424,6 +428,7 @@ async function honSalvar() {
 
 // ── Excluir ──────────────────────────────────────────────────
 async function honExcluir(id) {
+  if (!currentUser?.id) return;
   const h = honLista.find(x => x.id === id);
   const ok = await showConfirm(`Excluir honorário de ${h?.clientes?.razao_social || 'cliente'}?`);
   if (!ok) return;
@@ -435,6 +440,7 @@ async function honExcluir(id) {
 
 // ── Relatório de inadimplência ────────────────────────────────
 async function honRelatorioInadimplencia() {
+  if (!currentUser?.id) return;
   // Montar as 3 competências de uma vez e buscar em query única
   const hoje = new Date();
   const comps = Array.from({ length: 3 }, (_, i) => {
