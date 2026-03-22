@@ -147,7 +147,7 @@ async function closeClientModal() {
 
 async function renderClientList() {
   const el = document.getElementById('clientList');
-  el.innerHTML = '<p style="text-align:center;color:var(--text-light);font-size:13px;padding:8px">Carregando...</p>';
+  el.innerHTML = "<div style=\"padding:8px\"><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div><div class=\"sk-card\"><div class=\"sk-card-row\"><div class=\"sk sk-avatar\"></div><div style=\"flex:1\"><div class=\"sk sk-line w-80\" style=\"height:13px;margin-bottom:6px\"></div><div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div></div></div>";
 
   let data, error;
   if (isMaster()) {
