@@ -109,8 +109,8 @@ async function honCarregar() {
 
 // ── Render principal ─────────────────────────────────────────
 function honRenderLoading() {
-  document.getElementById('honCorpo').innerHTML =
-    `<div class="hon-empty"><div class="hon-spinner"></div><p style="margin-top:12px">Carregando...</p></div>`;
+  const el = document.getElementById('honCorpo');
+  if (el) el.innerHTML = "<div style=\"padding:8px\"><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div>";
 }
 
 function honRender() {
