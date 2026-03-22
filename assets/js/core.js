@@ -488,7 +488,7 @@ async function showApp() {
   if (typeof msnInit === 'function') msnInit();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
-  carregarKPIs();
+  carregarKPIs(); // intencional sem await — não bloqueia o render do app
   iniciarPollingUploads();
   _idleStart();
   if (isMaster()) carregarDashboardMaster();
@@ -613,6 +613,42 @@ async function supabaseProxy(action, payload) {
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
   setTheme(localStorage.getItem('theme') || 'light');
+
+
+  // ── ESC fecha qualquer modal aberto ──────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const closers = [
+      { id: 'apurModal',        fn: () => typeof closeApuracao          === 'function' && closeApuracao() },
+      { id: 'balModal',         fn: () => typeof closeBalancete         === 'function' && closeBalancete() },
+      { id: 'dreModal',         fn: () => typeof closeDRE               === 'function' && closeDRE() },
+      { id: 'concModal',        fn: () => typeof closeConciliacao       === 'function' && closeConciliacao() },
+      { id: 'lcModal',          fn: () => typeof closeLancamentosContabeis === 'function' && closeLancamentosContabeis() },
+      { id: 'pcModal',          fn: () => typeof closePlanoConta        === 'function' && closePlanoConta() },
+      { id: 'folhaModal',       fn: () => typeof closeFolha             === 'function' && closeFolha() },
+      { id: 'honModal',         fn: () => typeof closeHonorarios        === 'function' && closeHonorarios() },
+      { id: 'finModal',         fn: () => typeof closeFinanceiro        === 'function' && closeFinanceiro() },
+      { id: 'agendaModal',      fn: () => typeof closeAgenda            === 'function' && closeAgenda() },
+      { id: 'spedModal',        fn: () => typeof closeSped              === 'function' && closeSped() },
+      { id: 'docModal',         fn: () => typeof closeDocumentos        === 'function' && closeDocumentos() },
+      { id: 'profileModal',     fn: () => typeof closeProfile           === 'function' && closeProfile() },
+      { id: 'empresaPerfilModal',fn: () => typeof closeEmpresaPerfil   === 'function' && closeEmpresaPerfil() },
+      { id: 'calcModal',        fn: () => typeof closeCalculator        === 'function' && closeCalculator() },
+      { id: 'statsModal',       fn: () => typeof closeStats             === 'function' && closeStats() },
+      { id: 'learningStatsModal',fn: () => typeof closeLearningStats   === 'function' && closeLearningStats() },
+      { id: 'shareModal',       fn: () => typeof closeShareModal        === 'function' && closeShareModal() },
+      { id: 'clientModal',      fn: () => typeof closeClientModal       === 'function' && closeClientModal() },
+      { id: 'termosModal',      fn: () => { const m = document.getElementById('termosModal'); if (m) m.style.display = 'none'; } },
+    ];
+    for (const { id, fn } of closers) {
+      const el = document.getElementById(id);
+      if (el && (el.style.display === 'flex' || el.style.display === 'block') && !el.classList.contains('hidden')) {
+        fn();
+        e.preventDefault();
+        return; // fecha só o mais recente
+      }
+    }
+  });
 
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#docGenBtn') && !e.target.closest('#docGenMenu')) {
