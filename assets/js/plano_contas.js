@@ -134,8 +134,8 @@ async function pcCarregar() {
 
 // ── Render ────────────────────────────────────────────────────
 function pcRenderLoading() {
-  document.getElementById('pcLista').innerHTML =
-    '<div class="dp-loading"><div class="dp-spin"></div> Carregando...</div>';
+  const el = document.getElementById('pcLista');
+  if (el) el.innerHTML = "<div style=\"padding:8px\"><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div><div class=\"sk-card\">  <div class=\"sk-card-row\">    <div class=\"sk sk-line w-80\" style=\"height:14px\"></div>    <div class=\"sk sk-line w-40\" style=\"height:12px\"></div>  </div>  <div class=\"sk sk-line w-60\" style=\"height:11px\"></div></div></div>";
 }
 
 function pcRender() {
@@ -341,6 +341,7 @@ async function pcExcluir(id) {
   const { error } = await sb.from('plano_contas').delete()
     .eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
+  registrarAuditLog('CONTA_EXCLUIDA', 'plano_contas', id, { codigo: c?.codigo, descricao: c?.descricao, cliente_id: currentCliente?.id });
   showToast('Conta excluída.', 'success');
   await pcCarregar();
 }
