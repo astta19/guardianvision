@@ -72,6 +72,7 @@ function dreAtualizarFiltro() {
 
 // ── Gerar DRE ─────────────────────────────────────────────────
 async function dreGerar() {
+  if (!currentUser?.id) return;
   const el = document.getElementById('dreConteudo');
   if (el) el.innerHTML = '<div class="dp-loading"><div class="dp-spin"></div> Calculando...</div>';
 
