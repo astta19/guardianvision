@@ -341,11 +341,19 @@ async function pcExcluir(id) {
   const ok = await showConfirm(`Excluir a conta ${c?.codigo} — ${c?.descricao}?`);
   if (!ok) return;
 
+  const contaExcluida = _pcContas.find(x => x.id === id);
   const { error } = await sb.from('plano_contas').delete()
     .eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
   registrarAuditLog('CONTA_EXCLUIDA', 'plano_contas', id, { codigo: c?.codigo, descricao: c?.descricao, cliente_id: currentCliente?.id });
-  showToast('Conta excluída.', 'success');
+  if (typeof showToastComAcao === 'function') {
+    showToastComAcao('Conta excluída.', 'success', 'Desfazer', async () => {
+      if (!contaExcluida) return;
+      const { error: eRest } = await sb.from('plano_contas').insert(contaExcluida);
+      if (!eRest) { await pcCarregar(); showToast('Conta restaurada.', 'success'); }
+      else showToast('Não foi possível desfazer.', 'error');
+    });
+  } else { showToast('Conta excluída.', 'success'); }
   await pcCarregar();
 }
 
