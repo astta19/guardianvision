@@ -75,6 +75,7 @@ function balAtualizarFiltro() {
 
 // ── Gerar balancete ───────────────────────────────────────────
 async function balGerar() {
+  if (!currentUser?.id) return;
   const el = document.getElementById('balConteudo');
   if (el) el.innerHTML = '<div class="dp-loading"><div class="dp-spin"></div> Calculando...</div>';
 
