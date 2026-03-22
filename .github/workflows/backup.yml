@@ -1,0 +1,57 @@
+name: Backup Diário — Fiscal365
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 03:00 BRT (06:00 UTC) todo dia
+  workflow_dispatch:       # permite rodar manualmente pelo GitHub
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Executar pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          DATA=$(date +%Y-%m-%d)
+          HORA=$(date +%H%M)
+          ARQUIVO="backup_${DATA}_${HORA}.sql.gz"
+          
+          pg_dump "$DATABASE_URL" \
+            --no-password \
+            --format=plain \
+            --no-owner \
+            --no-acl \
+            --exclude-table=usage_diario \
+            | gzip > "$ARQUIVO"
+          
+          echo "ARQUIVO=$ARQUIVO" >> $GITHUB_ENV
+          echo "Backup gerado: $ARQUIVO ($(du -sh $ARQUIVO | cut -f1))"
+
+      - name: Fazer checkout do repositório de backup
+        uses: actions/checkout@v4
+        with:
+          repository: astta19/fiscal365-backups
+          token: ${{ secrets.BACKUP_REPO_TOKEN }}
+          path: backup-repo
+
+      - name: Mover backup e commitar
+        run: |
+          mkdir -p backup-repo/backups
+          mv "$ARQUIVO" backup-repo/backups/
+
+          cd backup-repo
+
+          # Remover backups com mais de 90 dias
+          find backups/ -name "*.sql.gz" -mtime +90 -delete
+
+          git config user.name  "Fiscal365 Backup Bot"
+          git config user.email "backup@fiscal365.com"
+          git add backups/
+          git commit -m "backup: $ARQUIVO"
+          git push
