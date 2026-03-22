@@ -3232,3 +3232,337 @@
   /* Margem de impressão */
   @page { margin: 15mm 12mm; }
 }
+
+/* ============================================================
+   UI PRO — Command Palette, Toast com Ação, Módulo Ativo
+   ============================================================ */
+
+/* ── Command Palette overlay ─────────────────────────────── */
+#cmdOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+  padding: 80px 16px 16px;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+#cmdOverlay.cmd-visible { opacity: 1; }
+
+#cmdBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
+  overflow: hidden;
+  transform: translateY(-12px) scale(.98);
+  transition: transform .18s cubic-bezier(.4,0,.2,1);
+  max-height: calc(100dvh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+#cmdOverlay.cmd-visible #cmdBox {
+  transform: translateY(0) scale(1);
+}
+
+#cmdInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#cmdSearchIcon { color: var(--text-light); flex-shrink: 0; }
+
+#cmdInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text);
+  caret-color: var(--accent);
+  font-family: inherit;
+}
+#cmdInput::placeholder { color: var(--text-light); }
+
+#cmdEscHint {
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: var(--text-light);
+  font-family: monospace;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+#cmdList {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px;
+}
+#cmdList::-webkit-scrollbar { width: 4px; }
+#cmdList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.cmd-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-light);
+  padding: 8px 10px 4px;
+}
+
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background .1s;
+}
+.cmd-item:hover,
+.cmd-item-active {
+  background: var(--sidebar-hover);
+}
+.cmd-item-icon {
+  width: 16px; height: 16px;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+.cmd-item-label {
+  flex: 1;
+  color: var(--text);
+}
+.cmd-item-label mark {
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+.cmd-item-group {
+  font-size: 11px;
+  color: var(--text-light);
+  flex-shrink: 0;
+}
+
+#cmdEmpty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-light);
+}
+#cmdEmpty strong { color: var(--text); }
+
+#cmdFooter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-light);
+}
+#cmdFooter kbd {
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+/* ── Atalhos modal ───────────────────────────────────────── */
+#atalhoModal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity .18s;
+}
+#atalhoModal.cmd-visible { opacity: 1; }
+
+#atalhoBox {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.3);
+}
+
+/* ── Toast com ação ──────────────────────────────────────── */
+#toastContainer {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  align-items: center;
+}
+
+.toast-pro {
+  pointer-events: all;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.25);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(12px) scale(.96);
+  transition: opacity .22s ease, transform .22s cubic-bezier(.4,0,.2,1);
+  min-width: 280px;
+  max-width: min(440px, calc(100vw - 32px));
+}
+.toast-pro-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.toast-pro-out {
+  opacity: 0;
+  transform: translateY(8px) scale(.97);
+}
+
+.toast-pro-bar {
+  height: 3px;
+  background: var(--toast-color, var(--accent));
+  border-radius: 0;
+}
+
+.toast-pro-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+.toast-pro-msg {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.toast-pro-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.toast-pro-btn:hover { background: var(--sidebar-hover); }
+
+.toast-pro-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-light);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.toast-pro-close:hover { color: var(--text); }
+
+/* ── Indicador de módulo ativo no header ─────────────────── */
+#moduloAtivoBadge {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-light);
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  transition: all .2s;
+}
+#moduloAtivoBadge i { opacity: .7; }
+
+/* Botão Ctrl+K no header */
+#cmdKbdBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  color: var(--text-light);
+  font-size: 12px;
+  font-family: inherit;
+  transition: border-color .15s, color .15s;
+  white-space: nowrap;
+}
+#cmdKbdBtn:hover {
+  border-color: var(--text-light);
+  color: var(--text);
+}
+#cmdKbdBtn kbd {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: monospace;
+}
+
+/* ── Mobile: esconder kbd hint, manter funcional ─────────── */
+@media (max-width: 600px) {
+  #cmdOverlay { padding: 12px 8px 8px; align-items: flex-end; }
+  #cmdBox {
+    max-height: 80dvh;
+    border-radius: 16px 16px 0 0;
+    transform: translateY(24px);
+  }
+  #cmdOverlay.cmd-visible #cmdBox { transform: translateY(0); }
+  #cmdFooter { display: none; }
+  #cmdEscHint { display: none; }
+  #cmdKbdBtn kbd { display: none; }
+  #cmdKbdBtn span { display: none; }
+  #moduloAtivoBadge { display: none !important; }
+  #toastContainer { bottom: 80px; }
+}
