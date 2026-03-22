@@ -146,6 +146,7 @@ async function _apurPreencherFaturamento() {
 
 // ── Calcular ──────────────────────────────────────────────────
 async function apurCalcular() {
+  if (!currentUser?.id) return;
   const regime  = document.getElementById('apurRegime').value;
   const comp    = `${MESES_APUR[_apurMes]}/${_apurAno}`;
   const compISO = `${_apurAno}-${String(_apurMes + 1).padStart(2, '0')}`;
@@ -353,6 +354,7 @@ function _apurRenderResultado(tributos, comp, resumo) {
 
 // ── Histórico de apurações ─────────────────────────────────────
 async function apurCarregarHistorico() {
+  if (!currentUser?.id) return;
   const el = document.getElementById('apurHistorico');
   if (!el) return;
   el.innerHTML = '<div class="dp-loading"><div class="dp-spin"></div></div>';
