@@ -108,6 +108,10 @@ function setConnectionStatus(text, icon, color) {
   if (!el) return;
   el.innerHTML = '<i data-lucide="' + icon + '" style="width:13px;height:13px"></i> <span>' + text + '</span>';
   el.style.color = color;
+  // Classes para mobile (bolinha colorida via CSS ::after)
+  el.classList.remove('offline', 'connecting');
+  if (icon === 'cloud-off') el.classList.add('offline');
+  if (icon === 'loader')    el.classList.add('connecting');
   if (window.lucide) lucide.createIcons();
 }
 
