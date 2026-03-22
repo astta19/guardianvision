@@ -150,6 +150,14 @@
         </button>
 
         <div class="auth-msg" id="loginMsg"></div>
+
+        <!-- Termos e Privacidade -->
+        <p style="font-size:11px;color:var(--text-light);text-align:center;margin-top:16px;line-height:1.6">
+          Ao entrar, você concorda com os
+          <a href="#" onclick="abrirTermos();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Termos de Uso</a>
+          e a
+          <a href="#" onclick="abrirPrivacidade();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Política de Privacidade</a>
+        </p>
       </div>
 
       <!-- DEFINIR SENHA (convite / primeiro acesso) -->
@@ -1497,6 +1505,7 @@
   <script src="assets/js/ai_provider.js?v=1"></script>
   <script src="assets/js/chat_tools.js?v=1"></script>
   <script>window.__SENTRY_DSN__ = "https://85417bd0778f5b37072db613063485a4@o4511079688503296.ingest.us.sentry.io/4511079705214976";</script>
+  <script src="assets/js/termos.js?v=1"></script>
   <script src="assets/js/error_logger.js?v=1"></script>
   <script src="assets/js/core.js?v=12"></script>
   <script src="assets/js/ui.js?v=8"></script>
