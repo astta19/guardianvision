@@ -3119,7 +3119,7 @@
    ============================================================ */
 #suporteBtnFloat {
   position: fixed;
-  bottom: 24px;
+  bottom: 90px;
   right: 24px;
   z-index: 4000;
   background: #25d366;
@@ -3145,7 +3145,7 @@
 
 @media (max-width: 600px) {
   #suporteBtnFloat {
-    bottom: 16px;
+    bottom: 86px;
     right: 16px;
     padding: 12px;
     border-radius: 50%;
