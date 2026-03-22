@@ -82,6 +82,7 @@ function concFecharFormConta() {
 }
 
 async function concSalvarConta() {
+  if (!currentUser?.id) return;
   const banco     = document.getElementById('concFcBanco').value.trim();
   const agencia   = document.getElementById('concFcAgencia').value.trim();
   const conta     = document.getElementById('concFcConta').value.trim();
@@ -111,6 +112,7 @@ async function concSalvarConta() {
 
 // ── Carregar extrato e lançamentos do mês ────────────────────
 async function concCarregar() {
+  if (!currentUser?.id) return;
   if (!_concContaId) return;
 
   const elRes = document.getElementById('concResultado');
@@ -224,6 +226,7 @@ function _concRenderResultado() {
 
 // ── Conciliar item ────────────────────────────────────────────
 async function concConciliar(extratoId) {
+  if (!currentUser?.id) return;
   const { error } = await sb.from('extratos_bancarios')
     .update({ conciliado: true })
     .eq('id', extratoId)
@@ -241,6 +244,7 @@ function concAbrirImport() {
 }
 
 async function concImportarCSV(event) {
+  if (!currentUser?.id) return;
   if (!_concContaId) { showToast('Selecione uma conta bancária primeiro.', 'warn'); return; }
   const file = event.target.files[0];
   if (!file) return;
