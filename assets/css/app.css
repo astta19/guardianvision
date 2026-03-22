@@ -3051,3 +3051,165 @@
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+@keyframes sk-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.sk {
+  background: linear-gradient(
+    90deg,
+    var(--sidebar-hover) 25%,
+    var(--border)        50%,
+    var(--sidebar-hover) 75%
+  );
+  background-size: 800px 100%;
+  animation: sk-shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+
+/* Linha de texto genérica */
+.sk-line  { height: 13px; margin-bottom: 8px; }
+.sk-line.w-full  { width: 100%; }
+.sk-line.w-80    { width: 80%; }
+.sk-line.w-60    { width: 60%; }
+.sk-line.w-40    { width: 40%; }
+
+/* Card (cliente, tarefa, lançamento) */
+.sk-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.sk-card-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+/* Linha de tabela */
+.sk-row {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sk-row-3 { grid-template-columns: 2fr 1fr 1fr; }
+.sk-row-4 { grid-template-columns: 2fr 1fr 1fr 80px; }
+
+/* Avatar / ícone circular */
+.sk-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* KPI card */
+.sk-kpi {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+/* ============================================================
+   SUPORTE — botão flutuante
+   ============================================================ */
+#suporteBtnFloat {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 4000;
+  background: #25d366;
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(37,211,102,.35);
+  transition: transform .15s, box-shadow .15s;
+}
+#suporteBtnFloat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37,211,102,.45);
+}
+#suporteBtnFloat svg { width: 18px; height: 18px; flex-shrink: 0; }
+#suporteBtnFloat .suporte-label { white-space: nowrap; }
+
+@media (max-width: 600px) {
+  #suporteBtnFloat {
+    bottom: 16px;
+    right: 16px;
+    padding: 12px;
+    border-radius: 50%;
+  }
+  #suporteBtnFloat .suporte-label { display: none; }
+}
+
+/* ============================================================
+   @MEDIA PRINT — Relatórios e documentos
+   ============================================================ */
+@media print {
+  /* Ocultar elementos de navegação */
+  header, .sidebar, #suporteBtnFloat, #idleWarn,
+  .tb-btn, .toolbar-sep, .tpl, #deadlineAlerts,
+  .dp-modal-hd button, .dp-form-actions,
+  .dp-btn-pri, .dp-btn-sec,
+  #footerBar, .c-left button, .c-right { display: none !important; }
+
+  /* Modais impressos ocupam a página toda */
+  .dp-modal {
+    max-width: 100% !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  /* Fundo branco, texto preto */
+  body, .dp-modal, .dp-body, [data-theme="dark"] {
+    background: #fff !important;
+    color: #000 !important;
+    --bg: #fff;
+    --card: #fff;
+    --text: #000;
+    --text-light: #555;
+    --border: #ddd;
+  }
+
+  /* Tabelas quebram entre páginas corretamente */
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 10pt; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+
+  /* Cabeçalho de página */
+  .dp-modal-hd {
+    border-bottom: 2px solid #000 !important;
+    padding: 8px 0 !important;
+    margin-bottom: 12px;
+  }
+
+  /* Balancete / DRE: fonte menor para caber */
+  #balModal .dp-body,
+  #dreModal .dp-body {
+    font-size: 9pt !important;
+  }
+
+  /* Apuração: remover cores de fundo */
+  #apurModal [style*="background"],
+  #balModal  [style*="background"],
+  #dreModal  [style*="background"] {
+    background: none !important;
+  }
+
+  /* Margem de impressão */
+  @page { margin: 15mm 12mm; }
+}
