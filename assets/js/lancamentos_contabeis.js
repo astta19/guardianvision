@@ -59,6 +59,7 @@ async function _lcCarregarContas() {
 
 // ── Carregar lançamentos do mês ───────────────────────────────
 async function lcCarregar() {
+  if (!currentUser?.id) return;
   lcRenderLoading();
   _lcAtualizarMesLabel();
 
@@ -237,6 +238,7 @@ function lcEditar(id) {
 
 // ── Salvar ────────────────────────────────────────────────────
 async function lcSalvar() {
+  if (!currentUser?.id) return;
   const data_lanc  = document.getElementById('lcFormData').value;
   const historico  = document.getElementById('lcFormHistorico').value.trim();
   const valor      = parseFloat(document.getElementById('lcFormValor').value);
@@ -288,6 +290,7 @@ async function lcSalvar() {
 
 // ── Estornar ──────────────────────────────────────────────────
 async function lcEstornar(id) {
+  if (!currentUser?.id) return;
   const l = _lcLancamentos.find(x => x.id === id);
   if (!l) return;
   const ok = await showConfirm(
@@ -325,6 +328,7 @@ async function lcEstornar(id) {
 
 // ── Excluir ───────────────────────────────────────────────────
 async function lcExcluir(id) {
+  if (!currentUser?.id) return;
   const l = _lcLancamentos.find(x => x.id === id);
   const ok = await showConfirm(`Excluir o lançamento "${l?.historico || ''}"?`);
   if (!ok) return;
