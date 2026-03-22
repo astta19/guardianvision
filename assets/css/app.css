@@ -399,8 +399,39 @@
     @media (max-width: 480px) {
       .tb-tools-label { display: none; }
       .tb-tools-btn { padding: 0 8px; }
-      .tools-dropdown { width: calc(100vw - 32px); right: 0; left: auto; }
-      .tools-grid { grid-template-columns: repeat(4, 1fr); }
+
+      /* Tools dropdown: ocupa a tela toda, scroll interno */
+      .tools-dropdown {
+        width: 100vw !important;
+        left: 0 !important;
+        right: 0 !important;
+        border-radius: 0 0 16px 16px !important;
+        max-height: 70dvh !important;
+        overflow-y: auto !important;
+        padding: 12px 10px !important;
+        position: fixed !important;
+        top: 52px !important;
+      }
+
+      /* Grid 4 colunas no mobile para ferramentas */
+      .tools-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; }
+      .tool-card { padding: 8px 2px !important; font-size: 10px !important; }
+
+      /* .conn: esconde texto e ícone, mostra só bolinha colorida */
+      .conn { padding: 0 !important; border: none !important; background: transparent !important; gap: 0 !important; }
+      .conn span { display: none !important; }
+      .conn i { display: none !important; }
+      .conn::after {
+        content: '';
+        display: block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #22c55e;
+        flex-shrink: 0;
+      }
+      .conn.offline::after { background: #ef4444 !important; }
+      .conn.connecting::after { background: #f59e0b !important; }
     }
 
     /* Badge de contador no botão da agenda */
