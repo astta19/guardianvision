@@ -27,6 +27,7 @@ function fecharPortalAdmin() {
 
 // ── Carregar links existentes ────────────────────────────────
 async function portalCarregarLinks() {
+  if (!currentUser?.id) return;
   const el = document.getElementById('portalLinksList');
   el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
 
@@ -85,6 +86,7 @@ async function portalCarregarLinks() {
 
 // ── Gerar novo link ──────────────────────────────────────────
 async function portalGerarLink() {
+  if (!currentUser?.id) return;
   const btn = document.getElementById('btnPortalGerar');
   btn.disabled = true;
   btn.textContent = 'Gerando...';
@@ -141,14 +143,20 @@ async function portalCopiarLink(link, btn) {
       btn.style.background = '';
     }, 2000);
   } catch {
-    prompt('Copie o link abaixo:', link);
+    // Fallback: selecionar o input readonly mais próximo para o usuário copiar manualmente
+    const input = btn.closest('div')?.querySelector('input[readonly]');
+    if (input) { input.select(); input.setSelectionRange(0, 99999); }
+    showToast('Não foi possível copiar automaticamente. Selecione o link e use Ctrl+C.', 'info', 5000);
   }
 }
 
 // ── Revogar link ─────────────────────────────────────────────
 function portalRevogarLink(tokenId) {
+  if (!currentUser?.id) return;
   showConfirm('Revogar este link? O cliente perderá o acesso imediatamente.', async () => {
-    const { error } = await sb.from('portal_tokens').delete().eq('id', tokenId);
+    const { error } = await sb.from('portal_tokens').delete()
+      .eq('id', tokenId)
+      .eq('user_id', currentUser.id);
     if (error) { showToast('Erro ao revogar o link. Tente novamente.', 'error'); return; }
     await portalCarregarLinks();
     portalShowMsg('Link revogado.', 'info');
