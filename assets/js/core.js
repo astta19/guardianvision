@@ -458,11 +458,89 @@ async function showApp() {
   if (typeof checkDeadlines === 'function') checkDeadlines();
   carregarKPIs();
   iniciarPollingUploads();
+  _idleStart();
   if (isMaster()) carregarDashboardMaster();
   if (window.lucide) lucide.createIcons();
   // Carregar chat compartilhado via link (?shared=TOKEN)
   const _sharedToken = new URLSearchParams(window.location.search).get('shared');
   if (_sharedToken) carregarChatCompartilhado(_sharedToken);
+}
+
+
+// ── Expiração de sessão por inatividade ──────────────────────
+// Desloga após 30min sem interação. Avisa com 2min de antecedência.
+const IDLE_TIMEOUT_MS  = 30 * 60 * 1000; // 30 minutos
+const IDLE_WARNING_MS  = 28 * 60 * 1000; // avisa aos 28 min
+const IDLE_EVENTS      = ['mousedown','mousemove','keydown','touchstart','scroll','click'];
+
+let _idleTimer        = null;
+let _idleWarnTimer    = null;
+let _idleWarnEl       = null;
+let _idleActive       = false;
+
+function _idleReset() {
+  if (!_idleActive) return;
+  clearTimeout(_idleTimer);
+  clearTimeout(_idleWarnTimer);
+  _idleWarnHide();
+  _idleWarnTimer = setTimeout(_idleWarn,    IDLE_WARNING_MS);
+  _idleTimer     = setTimeout(_idleLogout,  IDLE_TIMEOUT_MS);
+}
+
+function _idleWarn() {
+  if (!_idleActive) return;
+  if (_idleWarnEl) return; // já mostrando
+
+  _idleWarnEl = document.createElement('div');
+  _idleWarnEl.id = 'idleWarn';
+  _idleWarnEl.innerHTML = `
+    <div style="
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:var(--card);border:1px solid var(--border);
+      border-radius:14px;padding:16px 22px;
+      box-shadow:0 8px 32px rgba(0,0,0,.18);
+      display:flex;align-items:center;gap:14px;
+      z-index:99999;min-width:320px;max-width:90vw;
+      animation:slideUp .25s ease">
+      <i data-lucide="clock" style="width:22px;height:22px;color:#f59e0b;flex-shrink:0"></i>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">Sessão expirando</div>
+        <div style="font-size:12px;color:var(--text-light);margin-top:2px">Você será deslogado em 2 minutos por inatividade.</div>
+      </div>
+      <button onclick="_idleReset()" style="
+        background:var(--accent);color:#fff;border:none;border-radius:8px;
+        padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">
+        Continuar
+      </button>
+    </div>`;
+  document.body.appendChild(_idleWarnEl);
+  if (window.lucide) lucide.createIcons();
+}
+
+function _idleWarnHide() {
+  if (_idleWarnEl) { _idleWarnEl.remove(); _idleWarnEl = null; }
+}
+
+async function _idleLogout() {
+  if (!_idleActive) return;
+  _idleStop();
+  showToast('Sessão encerrada por inatividade.', 'warn');
+  await sb.auth.signOut();
+}
+
+function _idleStart() {
+  if (_idleActive) return;
+  _idleActive = true;
+  IDLE_EVENTS.forEach(ev => document.addEventListener(ev, _idleReset, { passive: true }));
+  _idleReset();
+}
+
+function _idleStop() {
+  _idleActive = false;
+  clearTimeout(_idleTimer);
+  clearTimeout(_idleWarnTimer);
+  _idleWarnHide();
+  IDLE_EVENTS.forEach(ev => document.removeEventListener(ev, _idleReset));
 }
 
 // --- Audit log ---
@@ -532,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (session) currentUser = session.user;
     } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
       currentUser = null;
+      _idleStop();
       showAuthScreen();
     }
   });
