@@ -119,6 +119,7 @@ function closePlanoConta() {
 
 // ── Carregar ──────────────────────────────────────────────────
 async function pcCarregar() {
+  if (!currentUser?.id) return;
   pcRenderLoading();
   const { data, error } = await sb
     .from('plano_contas')
@@ -274,6 +275,7 @@ function pcFecharForm() {
 
 // ── Salvar ────────────────────────────────────────────────────
 async function pcSalvar() {
+  if (!currentUser?.id) return;
   const codigo    = document.getElementById('pcFormCodigo').value.trim();
   const descricao = document.getElementById('pcFormDescricao').value.trim();
   const tipo      = document.getElementById('pcFormTipo').value;
@@ -328,6 +330,7 @@ async function pcSalvar() {
 
 // ── Excluir ───────────────────────────────────────────────────
 async function pcExcluir(id) {
+  if (!currentUser?.id) return;
   const c = _pcContas.find(x => x.id === id);
   // Verificar se tem filhos
   const temFilhos = _pcContas.some(x => x.conta_pai_id === id);
@@ -354,6 +357,7 @@ function pcFiltrar(valor) {
 
 // ── Importar Plano Padrão ─────────────────────────────────────
 async function pcImportarPadrao() {
+  if (!currentUser?.id) return;
   if (_pcContas.length > 0) {
     const ok = await showConfirm('Já existem contas cadastradas. Importar o plano padrão irá adicionar as contas que ainda não existem. Continuar?');
     if (!ok) return;
