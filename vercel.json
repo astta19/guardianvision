@@ -86,7 +86,19 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|portal\\.html$).*)",
+      "source": "/app",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/app/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/",
+      "destination": "/landing.html"
+    },
+    {
+      "source": "/((?!api/|assets/|landing\\.html$|index\\.html$|portal\\.html$).*)",
       "destination": "/index.html"
     }
   ]
