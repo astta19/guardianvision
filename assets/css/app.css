@@ -4301,6 +4301,11 @@ input[type="checkbox"], input[type="radio"] {
     display: none !important;
   }
 
+  /* Ferramentas no header: esconder em mobile (está na bottom nav como Módulos) */
+  #toolsDropWrap {
+    display: none !important;
+  }
+
   /* Sidebar ocupa a tela toda em mobile */
   #sidebar {
     position: fixed !important;
