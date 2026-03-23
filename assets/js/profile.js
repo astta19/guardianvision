@@ -93,6 +93,7 @@ async function atualizarNomeHeader() {
 async function openProfile() {
   const modal = document.getElementById('profileModal');
   modal.style.display = 'flex';
+  if (window.innerWidth <= 600) modal.classList.add('modal-app-open');
   document.body.style.overflow = 'hidden'; // prevenir scroll do body
 
   // Resetar para aba Conta
