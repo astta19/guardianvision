@@ -4559,3 +4559,220 @@ input[type="checkbox"], input[type="radio"] {
     cursor: default;
   }
 }
+
+/* ============================================================
+   APP NATIVO — Tela cheia + slide para modais ricos
+   Apenas mobile (max-width: 600px)
+   Desktop: sem alteração
+   ============================================================ */
+
+/* ── Animação de slide da direita (entrada nativa) ─────────── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: .6; }
+  to   { transform: translateX(0);    opacity: 1;  }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0);    opacity: 1;  }
+  to   { transform: translateX(100%); opacity: 0;  }
+}
+
+/* ── Modais ricos = tela cheia em mobile ───────────────────── */
+@media (max-width: 600px) {
+
+  /* OVERLAY: transparente — a tela se torna a página */
+  #folhaModal,
+  #honModal,
+  #finModal,
+  #agendaModal,
+  #spedModal,
+  #pcModal,
+  #lcModal,
+  #balModal,
+  #dreModal,
+  #concModal,
+  #apurModal,
+  #clientModal,
+  #profileModal,
+  #docModal,
+  #empresaPerfilModal {
+    background: var(--bg) !important;
+    padding: 0 !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    overflow: hidden !important;
+  }
+
+  /* INNER: ocupa 100% da tela */
+  #folhaModal   .dp-modal,
+  #honModal     .dp-modal,
+  #finModal     .dp-modal,
+  #agendaModal  > div,
+  #spedModal    .sped-modal-box,
+  #pcModal      .dp-modal,
+  #lcModal      .dp-modal,
+  #balModal     .dp-modal,
+  #dreModal     .dp-modal,
+  #concModal    .dp-modal,
+  #apurModal    .dp-modal,
+  #docModal     > div,
+  #empresaPerfilModal > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* clientModal e profileModal têm estrutura diferente */
+  #clientModal .client-modal-box,
+  #profileModal > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* ANIMAÇÃO: slide da direita ao abrir */
+  #folhaModal.modal-app-open   .dp-modal,
+  #honModal.modal-app-open     .dp-modal,
+  #finModal.modal-app-open     .dp-modal,
+  #agendaModal.modal-app-open  > div,
+  #spedModal.modal-app-open    .sped-modal-box,
+  #pcModal.modal-app-open      .dp-modal,
+  #lcModal.modal-app-open      .dp-modal,
+  #balModal.modal-app-open     .dp-modal,
+  #dreModal.modal-app-open     .dp-modal,
+  #concModal.modal-app-open    .dp-modal,
+  #apurModal.modal-app-open    .dp-modal,
+  #clientModal.modal-app-open  .client-modal-box,
+  #profileModal.modal-app-open > div,
+  #docModal.modal-app-open     > div,
+  #empresaPerfilModal.modal-app-open > div {
+    animation: slideInRight .28s cubic-bezier(.4,0,.2,1) forwards;
+  }
+
+  /* Drag handle: remover dos modais tela cheia (não faz sentido) */
+  #folhaModal   .dp-modal::before,
+  #honModal     .dp-modal::before,
+  #finModal     .dp-modal::before,
+  #agendaModal  > div::before,
+  #spedModal    .sped-modal-box::before,
+  #pcModal      .dp-modal::before,
+  #lcModal      .dp-modal::before,
+  #balModal     .dp-modal::before,
+  #dreModal     .dp-modal::before,
+  #concModal    .dp-modal::before,
+  #apurModal    .dp-modal::before,
+  #clientModal  .client-modal-box::before,
+  #profileModal > div::before,
+  #docModal     > div::before,
+  #empresaPerfilModal > div::before {
+    display: none !important;
+  }
+
+  /* HEADER dos modais tela cheia: virar app bar nativa */
+  #folhaModal   .dp-modal-hd,
+  #honModal     .dp-modal-hd,
+  #finModal     .dp-modal-hd,
+  #spedModal    .sped-modal-hd,
+  #pcModal      .dp-modal-hd,
+  #lcModal      .dp-modal-hd,
+  #balModal     .dp-modal-hd,
+  #dreModal     .dp-modal-hd,
+  #concModal    .dp-modal-hd,
+  #apurModal    .dp-modal-hd,
+  #docModal     .dp-modal-hd {
+    padding: max(14px, env(safe-area-inset-top)) 14px 14px !important;
+    min-height: 56px;
+    background: var(--card);
+  }
+
+  /* BOTÃO FECHAR: virar seta de voltar em mobile */
+  #folhaModal   .dp-close-btn,
+  #honModal     .dp-close-btn,
+  #finModal     .dp-close-btn,
+  #spedModal    .dp-close-btn,
+  #pcModal      .dp-close-btn,
+  #lcModal      .dp-close-btn,
+  #balModal     .dp-close-btn,
+  #dreModal     .dp-close-btn,
+  #concModal    .dp-close-btn,
+  #apurModal    .dp-close-btn,
+  #docModal     .dp-close-btn {
+    order: -1; /* mover para a esquerda */
+    margin-right: 4px;
+  }
+
+  /* Ícone X vira seta ← via CSS */
+  #folhaModal   .dp-close-btn::before,
+  #honModal     .dp-close-btn::before,
+  #finModal     .dp-close-btn::before,
+  #spedModal    .dp-close-btn::before,
+  #pcModal      .dp-close-btn::before,
+  #lcModal      .dp-close-btn::before,
+  #balModal     .dp-close-btn::before,
+  #dreModal     .dp-close-btn::before,
+  #concModal    .dp-close-btn::before,
+  #apurModal    .dp-close-btn::before,
+  #docModal     .dp-close-btn::before {
+    content: '←';
+    font-size: 20px;
+    line-height: 1;
+    margin-right: 2px;
+  }
+
+  /* Ocultar o ícone SVG dentro do close btn (substitído pelo ← acima) */
+  #folhaModal   .dp-close-btn i[data-lucide="x"],
+  #honModal     .dp-close-btn i[data-lucide="x"],
+  #finModal     .dp-close-btn i[data-lucide="x"],
+  #spedModal    .dp-close-btn i[data-lucide="x"],
+  #pcModal      .dp-close-btn i[data-lucide="x"],
+  #lcModal      .dp-close-btn i[data-lucide="x"],
+  #balModal     .dp-close-btn i[data-lucide="x"],
+  #dreModal     .dp-close-btn i[data-lucide="x"],
+  #concModal    .dp-close-btn i[data-lucide="x"],
+  #apurModal    .dp-close-btn i[data-lucide="x"],
+  #docModal     .dp-close-btn i[data-lucide="x"] {
+    display: none;
+  }
+
+  /* overscroll-behavior: conteúdo não arrasta a página */
+  .dp-body,
+  .dp-modal [style*="overflow-y"],
+  .dp-modal [style*="overflow-y: auto"] {
+    overscroll-behavior-y: contain;
+  }
+
+  /* Tela cheia não tem padding no overlay (safe area via header) */
+  #clientModal,
+  #profileModal {
+    padding: 0 !important;
+  }
+
+  /* profileModal header com safe area */
+  #profileModal > div > div:first-child {
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+}
+
+/* ── Scroll behavior global mobile ─────────────────────────── */
+@media (max-width: 600px) {
+  /* Evitar rubber-band/bounce no body que confunde com pull-to-refresh */
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  /* Scroll suave em containers */
+  .dp-body,
+  #hList,
+  #bnModulosBox {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+}
