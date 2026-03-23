@@ -3895,3 +3895,112 @@
   .imp-actions-row { flex-direction: column; }
   .imp-btn-template, .imp-btn-upload { justify-content: center; }
 }
+
+/* ============================================================
+   PERFIL — Abas e layout corrigido
+   ============================================================ */
+
+/* Container das abas — segmented control */
+.profile-tabs {
+  display: flex;
+  gap: 3px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  margin-top: 14px;
+}
+
+.profile-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-light);
+  background: transparent;
+  font-family: inherit;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+
+.profile-tab:hover {
+  color: var(--text);
+}
+
+.profile-tab.active {
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 0 0 1px var(--border);
+}
+
+/* Painel de notificações — corrigir overflow do toggle */
+#profileTabNotif .notif-item {
+  padding: 12px 0;
+  gap: 16px;
+}
+
+#profileTabNotif .notif-toggle {
+  flex-shrink: 0;
+  margin-right: 2px; /* evitar corte pela borda do scroll */
+}
+
+/* Garantir que o scroll do perfil não corte os toggles */
+#profileModal [style*="overflow-y:auto"],
+#profileModal [style*="overflow-y: auto"] {
+  padding-right: 20px;
+  padding-left: 20px;
+}
+
+/* Título de seção no perfil */
+#profileModal h4 {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 0 0 12px;
+}
+
+/* Separador de seção */
+#profileModal .prof-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* Item de notificação — título e descrição sem overflow */
+.notif-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-item-desc {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mobile — perfil full-height */
+@media (max-width: 600px) {
+  #profileModal > div {
+    max-height: 95dvh !important;
+    border-radius: 16px 16px 0 0 !important;
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100% !important;
+  }
+  .profile-tab { font-size: 12px; padding: 7px 8px; }
+}
