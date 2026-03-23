@@ -372,6 +372,7 @@ async function dpExcluirFunc(id) {
   showConfirm(`Excluir "${f.nome}"? Holerites vinculados são mantidos.`, async () => {
     const { error } = await sb.from('dp_funcionarios').delete().eq('id', id).eq('user_id', currentUser.id);
     if (error) { showToast('Erro ao excluir.', 'error'); return; }
+    registrarAuditLog('FUNCIONARIO_EXCLUIDO', 'dp_funcionarios', id, { nome: f?.nome, cliente_id: currentCliente?.id });
     showToast('Funcionário removido.', 'success');
     await dpCarregarFuncionarios();
   });
