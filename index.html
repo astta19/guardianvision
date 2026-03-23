@@ -1513,6 +1513,7 @@
   <script src="assets/js/termos.js?v=1"></script>
   <script src="assets/js/ui_pro.js?v=1"></script>
   <script src="assets/js/importacao.js?v=1"></script>
+  <script src="assets/js/mobile.js?v=1"></script>
   <script src="assets/js/error_logger.js?v=1"></script>
   <script src="assets/js/core.js?v=12"></script>
   <script src="assets/js/ui.js?v=8"></script>
@@ -3115,6 +3116,36 @@
   </div>
   <!-- /apurModal -->
 
+
+
+  <!-- ── BOTTOM NAV (mobile only) ──────────────────────────── -->
+  <div id="bottomNav" role="navigation" aria-label="Navegação principal">
+    <button class="bn-item active" id="bnChat"
+      onclick="bnSelectTab('chat')" aria-label="Chat">
+      <i data-lucide="message-square"></i>
+      <span>Chat</span>
+    </button>
+    <button class="bn-item" id="bnAgenda"
+      onclick="bnSelectTab('agenda')" aria-label="Agenda">
+      <i data-lucide="calendar-clock"></i>
+      <span>Agenda</span>
+      <span class="bn-badge" id="bnAgendaBadge" style="display:none"></span>
+    </button>
+    <button class="bn-item" id="bnFerramentas"
+      onclick="bnSelectTab('ferramentas')" aria-label="Ferramentas">
+      <i data-lucide="grid-2x2"></i>
+      <span>Módulos</span>
+      <span class="bn-badge" id="bnToolsBadge" style="display:none"></span>
+    </button>
+    <button class="bn-item" id="bnPerfil"
+      onclick="bnSelectTab('perfil')" aria-label="Perfil">
+      <i data-lucide="user"></i>
+      <span>Perfil</span>
+    </button>
+  </div>
+
+  <!-- ── SWIPE ZONE (mobile) ────────────────────────────────── -->
+  <div id="swipeZone" aria-hidden="true"></div>
 
 </body>
 </html>
