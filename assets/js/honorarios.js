@@ -42,6 +42,7 @@ const MESES_HON = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 async function openHonorarios() {
   closeDropdowns();
   document.getElementById('honModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('honModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   honTodos = true;
   _honAtualizarToggle();
