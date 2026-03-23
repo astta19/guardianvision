@@ -43,6 +43,24 @@
       --link-hover: #88ccff;
     }
 
+/* ============================================================
+   MOBILE FIX 1 — iOS zoom prevention
+   font-size >= 16px em todos os campos de formulário
+   ============================================================ */
+input, input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], input[type="tel"], input[type="search"],
+input[type="date"], input[type="time"], input[type="month"],
+textarea, select {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Exceção: labels e helpers menores ficam OK pois não são focáveis */
+input[type="checkbox"], input[type="radio"] {
+  font-size: inherit !important;
+}
+
+
     html {
       -webkit-font-smoothing: antialiased;
     }
@@ -3939,13 +3957,13 @@
 
 /* Painel de notificações — corrigir overflow do toggle */
 #profileTabNotif .notif-item {
-  padding: 12px 0;
-  gap: 16px;
+  padding: 11px 0;
+  gap: 14px;
 }
 
 #profileTabNotif .notif-toggle {
   flex-shrink: 0;
-  margin-right: 2px; /* evitar corte pela borda do scroll */
+  margin-right: 2px;
 }
 
 /* Garantir que o scroll do perfil não corte os toggles */
@@ -4003,4 +4021,482 @@
     max-width: 100% !important;
   }
   .profile-tab { font-size: 12px; padding: 7px 8px; }
+}
+
+/* Notif — lista com respiro lateral */
+#notifObrigacoesList {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#notifObrigacoesList .notif-item {
+  padding: 12px 14px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+#notifObrigacoesList .notif-item:last-child {
+  border-bottom: none;
+}
+
+#notifObrigacoesList .notif-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+#notifObrigacoesList .notif-item-desc {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   MOBILE FIX 2 — hover states apenas em dispositivos com mouse
+   Em touch, :hover fica grudado após toque
+   ============================================================ */
+@media (hover: none) and (pointer: coarse) {
+  /* Desativar hover visual em dispositivos touch */
+  .tool-card:hover,
+  .menu-item:hover,
+  .sb-item:hover,
+  .btn-new:hover,
+  .tb-btn:hover,
+  .icon-btn:hover,
+  .user-chip:hover,
+  .client-selector:hover,
+  .cmd-item:hover,
+  .imp-btn-template:hover,
+  .imp-btn-upload:hover,
+  .plano-feature:hover,
+  .dep-card:hover,
+  .feature-card:hover {
+    background: initial;
+    opacity: 1;
+    transform: none;
+    box-shadow: initial;
+  }
+
+  /* Manter :active para feedback tátil imediato */
+  .tool-card:active { background: var(--sidebar-hover); }
+  .menu-item:active { background: var(--sidebar-hover); }
+  .tb-btn:active    { background: var(--sidebar-hover); }
+  .icon-btn:active  { background: var(--sidebar-hover); }
+  .btn-new:active   { opacity: .85; }
+}
+
+
+/* ============================================================
+   MOBILE FIX 3 — safe-area-inset (notch, dynamic island, home bar)
+   ============================================================ */
+@supports (padding: env(safe-area-inset-bottom)) {
+  /* Bottom nav (inserida depois) */
+  #bottomNav {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(56px + env(safe-area-inset-bottom));
+  }
+
+  /* Modais que abrem da base da tela */
+  @media (max-width: 600px) {
+    .dp-modal,
+    #profileModal > div,
+    #clientModal .client-modal-box,
+    #spedModal .sped-modal-box,
+    .imp-modal,
+    #docModal > div,
+    #calcModal > div,
+    #agendaModal > div,
+    #folhaModal > div,
+    #honModal > div,
+    #finModal > div,
+    #apurModal > div,
+    #balModal > div,
+    #dreModal > div,
+    #lcModal > div,
+    #pcModal > div,
+    #concModal > div {
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
+    /* Input do chat — acima da home bar */
+    .inp-area {
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+
+/* ============================================================
+   MOBILE FIX 4 — modais como bottom sheets em mobile
+   ============================================================ */
+@media (max-width: 600px) {
+  /* Todos os modais .dp-modal viram bottom sheet */
+  .dp-modal {
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    transform: translateY(0);
+  }
+
+  /* Overlay dos modais alinha ao bottom */
+  #folhaModal, #honModal, #finModal, #agendaModal,
+  #apurModal, #balModal, #dreModal, #lcModal,
+  #pcModal, #concModal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  /* Drag handle visual nos bottom sheets */
+  .dp-modal::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto -2px;
+    flex-shrink: 0;
+  }
+
+  /* dp-modal-hd menor em mobile */
+  .dp-modal-hd {
+    padding: 12px 16px !important;
+  }
+
+  /* dp-body com padding adequado */
+  .dp-body {
+    padding: 12px 14px !important;
+  }
+
+  /* Modais de perfil, cliente, documentos, importação */
+  #profileModal, #clientModal,
+  #docModal, #shareModal, #calcModal,
+  #statsModal, #learningStatsModal,
+  #spedModal, #importacaoModal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  #profileModal > div,
+  #docModal > div,
+  #calcModal > div,
+  #shareModal > div,
+  #statsModal > div,
+  #learningStatsModal > div {
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92dvh !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  #clientModal .client-modal-box,
+  #spedModal .sped-modal-box,
+  .imp-modal {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92dvh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Command palette vira bottom sheet */
+  #cmdBox {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 85dvh !important;
+  }
+}
+
+/* ============================================================
+   MOBILE FIX 5 — bottom navigation bar
+   ============================================================ */
+#bottomNav {
+  display: none; /* hidden desktop */
+}
+
+@media (max-width: 600px) {
+  /* Espaço para o bottom nav */
+  #chat {
+    padding-bottom: 56px;
+  }
+
+  #bottomNav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 900;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    height: 56px;
+    align-items: stretch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bn-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 10px;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 6px 4px;
+    transition: color .15s;
+    position: relative;
+    min-height: 44px; /* touch target */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bn-item.active {
+    color: var(--accent);
+  }
+
+  .bn-item i {
+    width: 22px;
+    height: 22px;
+  }
+
+  .bn-item:active {
+    background: var(--sidebar-hover);
+    border-radius: 8px;
+  }
+
+  .bn-badge {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 18px);
+    background: #dc2626;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  /* Ocultar header buttons desnecessários em mobile
+     (ficam na bottom nav) */
+  #cmdKbdBtn {
+    display: none !important;
+  }
+
+  /* Sidebar ocupa a tela toda em mobile */
+  #sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 56px !important; /* acima do bottom nav */
+    left: 0 !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    border-right: none !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,.15);
+  }
+
+  #sidebar.on {
+    transform: translateX(0);
+  }
+
+  /* Tools dropdown em mobile — não precisa mais do dropdown, 
+     ferramentas ficam na bottom nav */
+  .toolbar-sep { display: none; }
+}
+
+/* ============================================================
+   MOBILE FIX 6 — touch targets mínimos 44px
+   ============================================================ */
+@media (max-width: 600px) {
+  /* Garantir touch target em todos os botões interativos */
+  .tb-btn,
+  .icon-btn,
+  .btn-new,
+  .sb-item,
+  .tool-card {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Input de busca da sidebar */
+  .sb-search input {
+    min-height: 40px;
+    font-size: 16px !important; /* iOS zoom fix explícito */
+  }
+
+  /* Botões de ação nos cards */
+  .dp-btn-pri,
+  .dp-btn-sec {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+}
+
+/* ============================================================
+   MOBILE FIX 7 — swipe sidebar (JS cuida da lógica,
+   CSS garante a área de toque)
+   ============================================================ */
+@media (max-width: 600px) {
+  /* Área invisível de swipe na borda esquerda */
+  #swipeZone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 100%;
+    z-index: 500;
+    touch-action: pan-y;
+  }
+}
+
+/* ============================================================
+   MOBILE — Sheet de módulos (bottom nav "Módulos")
+   ============================================================ */
+#bnModulosSheet {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+#bnModulosSheet.bn-sheet-open { display: block; }
+
+#bnModulosOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(3px);
+}
+
+#bnModulosBox {
+  position: absolute;
+  bottom: 56px; /* acima do bottom nav */
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border);
+  padding: 0 16px 20px;
+  max-height: 75dvh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+#bnModulosSheet.bn-sheet-open #bnModulosBox {
+  transform: translateY(0);
+}
+
+.bn-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 10px auto 14px;
+}
+
+.bn-sheet-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 14px;
+}
+
+.bn-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.bn-sheet-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: inherit;
+  transition: background .12s;
+  min-height: 68px;
+  -webkit-tap-highlight-color: transparent;
+}
+.bn-sheet-item:active {
+  background: var(--border);
+}
+.bn-sheet-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--bg);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bn-sheet-icon i {
+  width: 18px;
+  height: 18px;
+  color: var(--text-light);
+}
+.bn-sheet-item span {
+  text-align: center;
+  line-height: 1.2;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   MOBILE FIX — modais inline sem regra de bottom sheet
+   ============================================================ */
+@media (max-width: 600px) {
+  /* Modais que não tinham regra mobile própria */
+  #empresaPerfilModal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  #empresaPerfilModal > div {
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92dvh !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* confirmModal — pequeno, centralizado mesmo em mobile */
+  #confirmModal > div {
+    max-width: calc(100vw - 32px) !important;
+    border-radius: 14px !important;
+  }
+
+  /* Garantir que o conteúdo não fique embaixo do bottom nav */
+  .dp-modal .dp-body,
+  .dp-modal .dp-form-actions {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
 }
