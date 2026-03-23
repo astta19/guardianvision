@@ -335,6 +335,7 @@ async function lcExcluir(id) {
   const { error } = await sb.from('lancamentos_contabeis')
     .delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { showToast('Erro ao excluir: ' + error.message, 'error'); return; }
+  registrarAuditLog('LANCAMENTO_EXCLUIDO', 'lancamentos_contabeis', id, { historico: l?.historico, valor: l?.valor, cliente_id: currentCliente?.id });
   _lcLancamentos = _lcLancamentos.filter(x => x.id !== id);
   lcRender();
   if (typeof showToastComAcao === 'function') {
