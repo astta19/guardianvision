@@ -16,7 +16,7 @@ async function openSped() {
   if (!modal) return;
   if (!currentCliente) { showToast('Selecione uma empresa antes de acessar o SPED.', 'warn'); return; }
   modal.style.display = 'flex';
-  await spedCarregarPeriodos();
+  if (window.innerWidth <= 600) modal.classList.add('modal-app-open');
   switchSpedTab('periodos');
   lucide.createIcons();
   setTimeout(() => document.getElementById('spedMes')?.focus(), 80);
