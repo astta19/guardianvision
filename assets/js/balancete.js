@@ -19,6 +19,7 @@ async function openBalancete() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   closeDropdowns();
   document.getElementById('balModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('balModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   _balAtualizarLabels();
   await balGerar();
