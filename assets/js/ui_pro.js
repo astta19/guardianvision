@@ -32,6 +32,7 @@ const CMD_ITEMS = [
   { id: 'tema',         label: 'Alternar Tema',           icon: 'moon',           fn: () => toggleTheme(),                perm: null,            group: 'Ações' },
   { id: 'fullscreen',   label: 'Tela Cheia',              icon: 'maximize-2',     fn: () => toggleFullscreen(),           perm: null,            group: 'Ações' },
   { id: 'atalhos',      label: 'Ver Atalhos de Teclado',  icon: 'keyboard',       fn: () => cmdMostrarAtalhos(),          perm: null,            group: 'Ações' },
+  { id: 'importar',     label: 'Importar Dados em Massa',    icon: 'file-up',        fn: () => typeof openImportacao === 'function' && openImportacao(), perm: null, group: 'Configurações' },
 ];
 
 let _cmdAberto = false;
