@@ -20,6 +20,7 @@ async function openConciliacao() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   closeDropdowns();
   document.getElementById('concModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('concModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   await _concCarregarContas();
   _concAtualizarLabels();
