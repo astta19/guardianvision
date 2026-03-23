@@ -30,6 +30,7 @@ async function openDRE() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   closeDropdowns();
   document.getElementById('dreModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('dreModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   _drePopularSelects();
   await dreGerar();
