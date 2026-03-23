@@ -138,6 +138,7 @@ async function setCurrentCliente(cliente) {
 async function openClientModal() {
   closeSidebar(); // fecha sidebar antes de abrir modal no mobile
   document.getElementById('clientModal').classList.remove('hidden');
+  if (window.innerWidth <= 600) document.getElementById('clientModal').classList.add('modal-app-open');
   renderClientList();
 }
 
