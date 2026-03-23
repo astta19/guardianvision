@@ -51,6 +51,7 @@ async function openFinanceiro() {
   lancFiltroMes = new Date().getMonth();
   lancFiltroAno = new Date().getFullYear();
   document.getElementById('finModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('finModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   lancNovoForm();
   await finCarregar();
