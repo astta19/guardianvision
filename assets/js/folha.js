@@ -125,6 +125,7 @@ async function openFolha() {
   closeDropdowns();
   if (!currentUser) { showToast('Faça login para acessar o DP.', 'warn'); return; }
   document.getElementById('folhaModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('folhaModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
 
   // Competência padrão
