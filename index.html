@@ -1303,9 +1303,9 @@
         <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
 
         <!-- ABAS -->
-        <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:0;">
-          <button class="doc-tab active" onclick="switchProfileTab('conta',this)" style="font-size:13px;padding:8px 14px;">Conta</button>
-          <button class="doc-tab" onclick="switchProfileTab('notif',this)" style="font-size:13px;padding:8px 14px;">Notificações</button>
+        <div class="profile-tabs">
+          <button class="profile-tab active" onclick="switchProfileTab('conta',this)">Conta</button>
+          <button class="profile-tab" onclick="switchProfileTab('notif',this)">Notificações</button>
         </div>
       </div>
 
