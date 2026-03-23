@@ -66,13 +66,18 @@ async function finCarregar() {
   if (!currentUser?.id) return;
   finRenderLoading();
   const ano = lancFiltroAno;
+  const mes = String(lancFiltroMes + 1).padStart(2, '0');
+  const dataIni = `${ano}-${mes}-01`;
+  // Último dia do mês selecionado
+  const ultimoDia = new Date(ano, lancFiltroMes + 1, 0).getDate();
+  const dataFim = `${ano}-${mes}-${ultimoDia}`;
   const { data, error } = await sb
     .from('lancamentos')
     .select('*')
     .eq('user_id', currentUser.id)
     .eq('cliente_id', currentCliente.id)
-    .gte('data_venc', `${ano}-01-01`)
-    .lte('data_venc', `${ano}-12-31`)
+    .gte('data_venc', dataIni)
+    .lte('data_venc', dataFim)
     .order('data_venc', { ascending: false });
 
   if (error) { showToast('Erro ao carregar lançamentos.','error'); return; }
