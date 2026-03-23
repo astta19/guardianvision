@@ -19,6 +19,7 @@ async function openLancamentosContabeis() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   closeDropdowns();
   document.getElementById('lcModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('lcModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   _lcEditandoId = null;
   await _lcCarregarContas();
