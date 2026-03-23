@@ -96,7 +96,7 @@ async function openProfile() {
   document.body.style.overflow = 'hidden'; // prevenir scroll do body
 
   // Resetar para aba Conta
-  switchProfileTab('conta', modal.querySelector('.doc-tab'));
+  switchProfileTab('conta', modal.querySelector('.profile-tab'));
 
   // Carregar perfil
   const perfil = await carregarPerfil();
@@ -355,7 +355,7 @@ async function salvarDocumentoFiscal(tipo, dados) {
       dados,
       criado_em: new Date().toISOString()
     });
-  } catch(e) {}
+  } catch (e) { logErro(e, {modulo: 'profile'}) }
 }
 
 // ====== FUNÇÕES DE AUTENTICAÇÃO ======
@@ -444,8 +444,7 @@ async function openChat(id) {
     renderMessages();
     renderHistoryList(allChats);
     closeSidebar();
-  } catch (e) {
-  }
+  } catch (e) { logErro(e, {modulo: 'profile'}) }
 }
 
 async function saveChat() {
@@ -462,7 +461,8 @@ async function saveChat() {
       const { error } = await sb
         .from('chats')
         .update(chatData)
-        .eq('id', currentChat.id);
+        .eq('id', currentChat.id)
+        .eq('user_id', currentUser.id);
 
       if (error) {
         if (error.status === 401 || error.message?.includes('JWT')) { handleSessionExpired(); return; }
@@ -498,18 +498,17 @@ async function saveChat() {
       await loadChats();
     }
 
-  } catch (e) {
-  }
+  } catch (e) { logErro(e, {modulo: 'profile'}) }
 }
 
 async function deleteChat(id) {
   showConfirm('Tem certeza que deseja excluir esta conversa?', async () => {
     try {
-      const { error } = await sb.from('chats').delete().eq('id', id);
+      const { error } = await sb.from('chats').delete().eq('id', id).eq('user_id', currentUser.id);
       if (error) throw error;
       if (currentChat.id === id) newChat();
       else await loadChats();
-    } catch (e) {}
+    } catch (e) { logErro(e, {modulo: 'profile'}) }
   });
 }
 
