@@ -460,8 +460,7 @@ async function impExecutar() {
 
   try {
     const _escId = await getEscritorioIdAtual();
-    let sucesso = 0, falha = 0;
-    const errosMsgs = [];
+    let sucesso = 0, falha = 0, errosMsgs = [];
 
     if (_impAba === 'empresas') {
       ({ sucesso, falha, errosMsgs } = await _impEmpresas(_impPreview, _escId));
