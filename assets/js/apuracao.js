@@ -53,6 +53,7 @@ async function openApuracao() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   closeDropdowns();
   document.getElementById('apurModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('apurModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
 
   // Pré-preencher regime pelo cadastro do cliente
