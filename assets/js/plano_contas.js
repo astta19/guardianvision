@@ -102,6 +102,7 @@ async function openPlanoConta() {
   if (!currentCliente?.id) { showToast('Selecione uma empresa primeiro.', 'warn'); return; }
   closeDropdowns();
   document.getElementById('pcModal').style.display = 'flex';
+  if (window.innerWidth <= 600) document.getElementById('pcModal').classList.add('modal-app-open');
   document.body.style.overflow = 'hidden';
   _pcEditandoId = null;
   _pcFiltro = '';
