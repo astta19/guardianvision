@@ -83,6 +83,31 @@
     .hon-btn-del         { border-color: #fca5a5; color: #dc2626; }
     .hon-btn-del:hover   { background: #fef2f2; }
 
+    /* Mobile: empilhar conteúdo e ações para não cortar */
+    @media (max-width: 600px) {
+      .hon-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 12px;
+      }
+      .hon-item-left { align-items: flex-start; }
+      .hon-item-right {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+      }
+      .hon-valor { font-size: 16px; }
+      .hon-acoes { gap: 6px; }
+      .hon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+      }
+    }
+
     #msnBtnHeader { display:none;position:relative;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--text-light);transition:all .15s;flex-shrink:0 }
     #msnBtnHeader:hover { background:var(--sidebar-hover);color:var(--text) }
     #msnBadge { position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:#dc2626;color:#fff;border-radius:99px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg);pointer-events:none }
