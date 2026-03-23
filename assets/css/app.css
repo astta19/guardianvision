@@ -4505,3 +4505,57 @@ input[type="checkbox"], input[type="radio"] {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
+
+/* ============================================================
+   GESTOS — Swipe-to-dismiss feedback visual
+   ============================================================ */
+@media (max-width: 600px) {
+  /* Transição suave ao abrir bottom sheets */
+  .dp-modal,
+  #profileModal > div,
+  #clientModal .client-modal-box,
+  #spedModal .sped-modal-box,
+  .imp-modal,
+  #docModal > div,
+  #calcModal > div,
+  #shareModal > div,
+  #statsModal > div,
+  #learningStatsModal > div,
+  #bnModulosBox,
+  #cmdBox {
+    will-change: transform;
+    transform-origin: bottom center;
+  }
+
+  /* Handle de arrastar — ampliar área de toque */
+  .dp-modal::before {
+    cursor: grab;
+    width: 48px; /* maior que os 36px do CSS anterior */
+  }
+
+  /* Indicação visual de que pode arrastar — cor do handle ativa ao tocar */
+  .dp-modal:active::before {
+    background: var(--text-light);
+  }
+
+  /* Overlay dos modais inline sem handler — garantir que tap fecha */
+  #agendaModal,
+  #clientModal,
+  #calcModal,
+  #statsModal,
+  #learningStatsModal,
+  #shareModal,
+  #portalAdminModal {
+    cursor: pointer; /* feedback que o overlay é clicável */
+  }
+
+  /* O conteúdo interno não propaga o cursor */
+  #agendaModal > *,
+  #clientModal > *,
+  #calcModal > *,
+  #statsModal > *,
+  #learningStatsModal > *,
+  #shareModal > * {
+    cursor: default;
+  }
+}
