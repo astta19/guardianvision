@@ -59,6 +59,28 @@ function _fecharModalAberto() {
   return false;
 }
 
+// ── Modais que são tela cheia (fecham com slide horizontal) ─────
+const MODAIS_TELA_CHEIA = new Set([
+  'folhaModal','honModal','finModal','agendaModal','spedModal',
+  'pcModal','lcModal','balModal','dreModal','concModal','apurModal',
+  'clientModal','profileModal','docModal','empresaPerfilModal'
+]);
+
+// Remover classe modal-app-open ao fechar (para reusar animação)
+function _limparClasseModal(id) {
+  document.getElementById(id)?.classList.remove('modal-app-open');
+}
+
+// Adicionar limpeza em todas as funções close via proxy
+const _origCloseMap = {};
+Object.entries(MODAL_CLOSE_MAP).forEach(([id, fn]) => {
+  _origCloseMap[id] = fn;
+  MODAL_CLOSE_MAP[id] = () => {
+    _limparClasseModal(id);
+    _origCloseMap[id]();
+  };
+});
+
 // ── 1. SWIPE DOWN PARA FECHAR (pull-to-dismiss) ───────────────
 function _initSwipeToClose() {
   let touchStartY   = 0;
@@ -138,10 +160,16 @@ function _initSwipeToClose() {
     const dy = e.changedTouches[0].clientY - touchStartY;
     const threshold = 80; // px para confirmar dismiss
 
+    // Verificar se é modal tela cheia (swipe horizontal) ou bottom sheet (swipe vertical)
+    const overlayEl = activeInner.closest('[id$="Modal"]');
+    const modalId   = overlayEl?.id;
+    const isTelaCheiaModal = modalId && MODAIS_TELA_CHEIA.has(modalId);
+
     if (dy > threshold) {
-      // Animar até sair da tela e fechar
+      // Direção correta — animar saída
+      const direction = isTelaCheiaModal ? 'translateX(100%)' : 'translateY(100%)';
       activeInner.style.transition = 'transform .25s ease';
-      activeInner.style.transform  = `translateY(100%)`;
+      activeInner.style.transform  = direction;
       setTimeout(() => {
         activeInner.style.transform  = '';
         activeInner.style.transition = '';
