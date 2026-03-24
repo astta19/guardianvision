@@ -15,6 +15,7 @@ const ALLOWED_ACTIONS = [
   'buscar_base_conhecimento',
   'excluir_treinamento',
   'buscar_usuario_por_email',
+  'salvar_acessos_cliente',
 ];
 
 export default async function handler(req, res) {
@@ -193,6 +194,58 @@ export default async function handler(req, res) {
           return new Date(b.last_sign_in_at) - new Date(a.last_sign_in_at);
         });
       return res.status(200).json({ logins });
+    }
+
+    // ── salvar_acessos_cliente ─────────────────────────────────────
+    // Usa service key para contornar RLS do INSERT em clientes_usuarios
+    if (action === 'salvar_acessos_cliente') {
+      if (userRole !== 'admin' && userRole !== 'master') {
+        return res.status(403).json({ error: 'Acesso restrito a administradores' });
+      }
+      const { clienteId, selecionados, desmarcados } = payload || {};
+      if (!clienteId) {
+        return res.status(400).json({ error: 'clienteId é obrigatório' });
+      }
+
+      // Verificar que o cliente pertence ao admin autenticado (proteção multi-tenant)
+      if (userRole !== 'master') {
+        const clRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/clientes?id=eq.${clienteId}&user_id=eq.${authUser.id}&select=id&limit=1`,
+          { headers: sbHeaders }
+        );
+        const clData = await clRes.json();
+        if (!clData?.length) {
+          return res.status(403).json({ error: 'Cliente não pertence ao seu escritório' });
+        }
+      }
+
+      // Remover vínculos desmarcados
+      if (Array.isArray(desmarcados) && desmarcados.length) {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/clientes_usuarios?cliente_id=eq.${clienteId}&user_id=in.(${desmarcados.join(',')})`,
+          { method: 'DELETE', headers: sbHeaders }
+        );
+      }
+
+      // Inserir novos vínculos via service key (ignora RLS)
+      if (Array.isArray(selecionados) && selecionados.length) {
+        const vinculos = selecionados.map(uid => ({
+          cliente_id: clienteId,
+          user_id: uid,
+          criado_por: authUser.id,
+        }));
+        const insRes = await fetch(`${SUPABASE_URL}/rest/v1/clientes_usuarios`, {
+          method: 'POST',
+          headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
+          body: JSON.stringify(vinculos),
+        });
+        if (!insRes.ok) {
+          const err = await insRes.json().catch(() => ({}));
+          return res.status(insRes.status).json({ error: err.message || 'Erro ao inserir vínculos' });
+        }
+      }
+
+      return res.status(200).json({ ok: true });
     }
 
     // ── definir_permissoes ──────────────────────────────────────────
