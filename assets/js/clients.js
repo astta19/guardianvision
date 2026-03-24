@@ -541,37 +541,31 @@ async function salvarAcessos(clienteId) {
   const msgEl = document.getElementById('acessosMsg');
   const checkboxes = document.querySelectorAll('#acessosList input[type=checkbox]');
   const selecionados = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
-  const desmarcados = Array.from(checkboxes).filter(cb => !cb.checked).map(cb => cb.value);
+  const desmarcados  = Array.from(checkboxes).filter(cb => !cb.checked).map(cb => cb.value);
 
   msgEl.textContent = 'Salvando...';
   msgEl.className = 'auth-msg';
 
   try {
-    // Remover vínculos desmarcados
-    if (desmarcados.length) {
-      await sb.from('clientes_usuarios')
-        .delete()
-        .eq('cliente_id', clienteId)
-        .in('user_id', desmarcados);
-    }
-
-    // Inserir novos vínculos (upsert evita duplicatas)
-    if (selecionados.length) {
-      const vinculos = selecionados.map(uid => ({
-        cliente_id: clienteId,
-        user_id: uid,
-        criado_por: currentUser.id
-      }));
-      await sb.from('clientes_usuarios').upsert(vinculos, { onConflict: 'cliente_id,user_id' });
-    }
+    // Usa proxy com service key para contornar RLS do INSERT em clientes_usuarios
+    const res = await supabaseProxy('salvar_acessos_cliente', {
+      clienteId,
+      selecionados,
+      desmarcados,
+    });
 
     registrarAuditLog('ACESSOS_ATUALIZADOS', 'clientes_usuarios', clienteId, {
       adicionados: selecionados.length, removidos: desmarcados.length
     });
-    msgEl.textContent = 'Acessos salvos com sucesso.';
+    msgEl.textContent = '✅ Acessos salvos com sucesso.';
     msgEl.className = 'auth-msg success';
+
+    // Recarregar lista de clientes dos contadores afetados
+    if (typeof renderClientList === 'function') renderClientList();
+
   } catch (e) {
-    msgEl.textContent = 'Erro ao salvar acessos.';
+    console.error('salvarAcessos:', e);
+    msgEl.textContent = '❌ Erro ao salvar: ' + (e.message || 'tente novamente');
     msgEl.className = 'auth-msg error';
   }
 }
