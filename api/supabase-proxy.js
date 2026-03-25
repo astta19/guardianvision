@@ -227,18 +227,21 @@ export default async function handler(req, res) {
         );
       }
 
-      // Inserir novos vínculos via service key (ignora RLS)
+      // Inserir novos vínculos via service key — ON CONFLICT DO NOTHING
       if (Array.isArray(selecionados) && selecionados.length) {
         const vinculos = selecionados.map(uid => ({
           cliente_id: clienteId,
-          user_id: uid,
+          user_id:    uid,
           criado_por: authUser.id,
         }));
-        const insRes = await fetch(`${SUPABASE_URL}/rest/v1/clientes_usuarios`, {
-          method: 'POST',
-          headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
-          body: JSON.stringify(vinculos),
-        });
+        const insRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/clientes_usuarios?on_conflict=cliente_id,user_id`,
+          {
+            method: 'POST',
+            headers: { ...sbHeaders, 'Prefer': 'resolution=ignore-duplicates,return=minimal' },
+            body: JSON.stringify(vinculos),
+          }
+        );
         if (!insRes.ok) {
           const err = await insRes.json().catch(() => ({}));
           return res.status(insRes.status).json({ error: err.message || 'Erro ao inserir vínculos' });
