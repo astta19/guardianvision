@@ -69,6 +69,12 @@ function _bnAbrirModulosSheet() {
     // Ações
     { label: 'Importar',   icon: 'file-up',         fn: 'openImportacao',           perm: null, adminOnly: true },
     { label: 'Calc.',      icon: 'calculator',      fn: 'openCalculator',           perm: 'calculadora' },
+    // Admin
+    { label: 'Permissões', icon: 'shield',          fn: 'abrirGerenciarPermissoes', perm: null, adminOnly: true },
+    { label: 'Escritório', icon: 'users',           fn: 'abrirConvites',            perm: null, adminOnly: true },
+    // Master
+    { label: 'Stats',      icon: 'bar-chart-2',     fn: 'showStats',                perm: null, masterOnly: true },
+    { label: 'Aprendizado',icon: 'brain',           fn: 'showLearningStats',        perm: null, masterOnly: true },
   ];
 
   const perms = typeof currentUser !== 'undefined'
@@ -77,7 +83,8 @@ function _bnAbrirModulosSheet() {
   const master = typeof isMaster === 'function' && isMaster();
 
   const itensVisiveis = modulos.filter(m => {
-    if (m.adminOnly && !admin && !master) return false;
+    if (m.masterOnly && !master) return false;
+    if (m.adminOnly  && !admin && !master) return false;
     if (!m.perm) return true;
     return admin || master || perms.includes(m.perm);
   });
