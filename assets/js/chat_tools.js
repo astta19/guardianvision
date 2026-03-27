@@ -1,3 +1,4 @@
+
 // ============================================================
 // CHAT_TOOLS.JS — Tool Use (Function Calling) via Groq/Llama
 // ============================================================
@@ -215,6 +216,98 @@ const CHAT_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'criar_funcionario',
+      description: 'Cadastra um novo funcionário no módulo de Folha. Use quando o usuário disser "adicione o funcionário X", "cadastre fulano", "novo colaborador".',
+      parameters: {
+        type: 'object',
+        properties: {
+          nome:          { type: 'string',  description: 'Nome completo do funcionário' },
+          cargo:         { type: 'string',  description: 'Cargo ou função (ex: Auxiliar Administrativo)' },
+          salario_base:  { type: 'number',  description: 'Salário base em R$' },
+          tipo_contrato: { type: 'string',  description: 'clt | autonomo_rpa | pj | estagio' },
+          admissao:      { type: 'string',  description: 'Data de admissão YYYY-MM-DD' },
+          cpf:           { type: 'string',  description: 'CPF do funcionário (opcional)' },
+          email:         { type: 'string',  description: 'E-mail do funcionário (opcional)' },
+        },
+        required: ['nome', 'salario_base', 'tipo_contrato'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_empresa',
+      description: 'Cadastra uma nova empresa (cliente) no sistema. Use quando o usuário disser "adicione a empresa X", "cadastre o CNPJ tal", "novo cliente".',
+      parameters: {
+        type: 'object',
+        properties: {
+          razao_social:       { type: 'string', description: 'Razão social da empresa' },
+          cnpj:               { type: 'string', description: 'CNPJ (apenas números ou formatado)' },
+          nome_fantasia:      { type: 'string', description: 'Nome fantasia (opcional)' },
+          regime_tributario:  { type: 'string', description: 'MEI | Simples Nacional | Lucro Presumido | Lucro Real' },
+          honorario_valor:    { type: 'number', description: 'Valor do honorário mensal em R$ (opcional)' },
+          honorario_dia_venc: { type: 'integer',description: 'Dia de vencimento do honorário (opcional)' },
+        },
+        required: ['razao_social'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_honorario',
+      description: 'Lança um honorário para a empresa selecionada. Use quando o usuário disser "lance o honorário de X", "cobre R$ X de honorário", "adicione honorário de competência MM/AAAA".',
+      parameters: {
+        type: 'object',
+        properties: {
+          competencia: { type: 'string', description: 'Competência MM/AAAA (ex: 03/2026)' },
+          valor:       { type: 'number', description: 'Valor em R$' },
+          descricao:   { type: 'string', description: 'Descrição (ex: Honorários contábeis março/2026)' },
+          dia_venc:    { type: 'integer',description: 'Dia de vencimento (padrão: 10)' },
+        },
+        required: ['competencia', 'valor'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_tarefa',
+      description: 'Cria uma tarefa ou prazo na agenda fiscal. Use quando o usuário disser "crie uma tarefa", "adicione um lembrete", "agende para dia X".',
+      parameters: {
+        type: 'object',
+        properties: {
+          titulo:      { type: 'string', description: 'Título da tarefa' },
+          descricao:   { type: 'string', description: 'Descrição detalhada (opcional)' },
+          data_prazo:  { type: 'string', description: 'Data do prazo YYYY-MM-DD' },
+          prioridade:  { type: 'string', description: 'baixa | media | alta' },
+        },
+        required: ['titulo', 'data_prazo'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_lancamento_contabil',
+      description: 'Cria um lançamento contábil (débito/crédito). Use quando o usuário disser "lance no plano de contas", "faça um lançamento contábil de X para Y".',
+      parameters: {
+        type: 'object',
+        properties: {
+          historico:     { type: 'string', description: 'Histórico/descrição do lançamento' },
+          valor:         { type: 'number', description: 'Valor em R$' },
+          data_lanc:     { type: 'string', description: 'Data do lançamento YYYY-MM-DD' },
+          codigo_debito: { type: 'string', description: 'Código da conta de débito no plano de contas' },
+          codigo_credito:{ type: 'string', description: 'Código da conta de crédito no plano de contas' },
+          competencia:   { type: 'string', description: 'Competência YYYY-MM' },
+        },
+        required: ['historico', 'valor', 'data_lanc'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'calcular_ferias',
       description: 'Calcula férias de um funcionário direto pelo chat com valores líquidos. Use quando o usuário perguntar sobre férias de um funcionário.',
       parameters: {
@@ -336,7 +429,7 @@ const TOOL_EXECUTORS = {
     return {
       ok: true,
       msg: rows.length === 1
-        ? `Lançamento criado: ${rows[0].tipo === 'receita' ? '+' : '-'} R$ ${rows[0].valor.toLocaleString('pt-BR',{minimumFractionDigits:2})} — ${rows[0].descricao} (venc. ${new Date(rows[0].data_venc+'T00:00').toLocaleDateString('pt-BR')}).`
+        ? `Lançamento criado: ${rows[0].tipo === 'receita' ? '+' : '-'} R$ ${rows[0].valor.toLocaleString('pt-BR',{minimumFractionDigits:2})} — ${rows[0].descricao} (venc. ${new Date(rows[0].data_venc+'T12:00').toLocaleDateString('pt-BR')}).`
         : `${rows.length} lançamentos criados. Total: R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}.`,
     };
   },
@@ -517,7 +610,7 @@ const TOOL_EXECUTORS = {
       ok: true,
       msg: [
         `📋 Rescisão — ${func.nome} (${func.cargo || 'sem cargo'})`,
-        `Motivo: ${args.motivo || 'sem_justa_causa'} | Desligamento: ${new Date(args.dt_desligamento+'T00:00').toLocaleDateString('pt-BR')}`,
+        `Motivo: ${args.motivo || 'sem_justa_causa'} | Desligamento: ${new Date(args.dt_desligamento+'T12:00').toLocaleDateString('pt-BR')}`,
         ``,
         `Saldo de salário (${saldoDias}d): R$ ${fmt(saldo)}`,
         aviso > 0 ? `Aviso prévio indenizado: R$ ${fmt(aviso)}` : '',
@@ -528,6 +621,170 @@ const TOOL_EXECUTORS = {
         multa > 0 ? `🏦 Encargos empresa — FGTS: R$ ${fmt(fgts)} + Multa 40%: R$ ${fmt(multa)}` : '',
       ].filter(Boolean).join('\n'),
     };
+  },
+
+  // ── CRIAR FUNCIONÁRIO ───────────────────────────────────────
+  criar_funcionario: async (args) => {
+    if (!currentUser?.id)     return { ok: false, msg: 'Faça login primeiro.' };
+    if (!currentCliente?.id)  return { ok: false, msg: 'Selecione uma empresa primeiro.' };
+    if (!args.nome)           return { ok: false, msg: 'Nome do funcionário é obrigatório.' };
+    if (!args.salario_base)   return { ok: false, msg: 'Salário base é obrigatório.' };
+
+    const _escId = typeof getEscritorioIdAtual === 'function' ? await getEscritorioIdAtual() : null;
+    const admissao = args.admissao || new Date().toISOString().slice(0,10);
+
+    const { data, error } = await sb.from('dp_funcionarios').insert({
+      user_id:       currentUser.id,
+      cliente_id:    currentCliente.id,
+      escritorio_id: _escId,
+      nome:          args.nome,
+      cargo:         args.cargo || null,
+      salario_base:  parseFloat(args.salario_base),
+      tipo_contrato: args.tipo_contrato || 'clt',
+      admissao,
+      cpf:           args.cpf ? args.cpf.replace(/\D/g,'') : null,
+      email:         args.email || null,
+      jornada_horas: 44,
+      dependentes:   0,
+      status:        'ativo',
+      atualizado_em: new Date().toISOString(),
+    }).select('id').single();
+
+    if (error) return { ok: false, msg: 'Erro ao cadastrar: ' + error.message };
+
+    registrarAuditLog('FUNCIONARIO_CRIADO_VIA_CHAT', 'dp_funcionarios', data.id, { nome: args.nome, cliente_id: currentCliente.id });
+    if (typeof openFolha === 'function') { await openFolha(); }
+    return { ok: true, msg: `✅ Funcionário **${args.nome}** cadastrado com sucesso!
+Cargo: ${args.cargo || '—'} | Salário: R$ ${(+args.salario_base).toLocaleString('pt-BR',{minimumFractionDigits:2})} | Contrato: ${args.tipo_contrato||'clt'}` };
+  },
+
+  // ── CRIAR EMPRESA ────────────────────────────────────────────
+  criar_empresa: async (args) => {
+    if (!currentUser?.id) return { ok: false, msg: 'Faça login primeiro.' };
+    if (!args.razao_social) return { ok: false, msg: 'Razão social é obrigatória.' };
+
+    const cnpjLimpo = args.cnpj ? args.cnpj.replace(/\D/g,'') : null;
+
+    // Verificar duplicata
+    if (cnpjLimpo) {
+      const { data: existe } = await sb.from('clientes').select('id')
+        .eq('cnpj', cnpjLimpo).eq('user_id', currentUser.id).maybeSingle();
+      if (existe) return { ok: false, msg: `Empresa com CNPJ ${args.cnpj} já cadastrada.` };
+    }
+
+    const { data, error } = await sb.from('clientes').insert({
+      user_id:           currentUser.id,
+      razao_social:      args.razao_social,
+      cnpj:              cnpjLimpo,
+      nome_fantasia:     args.nome_fantasia || null,
+      regime_tributario: args.regime_tributario || null,
+      honorario_valor:   args.honorario_valor ? parseFloat(args.honorario_valor) : null,
+      honorario_dia_venc:args.honorario_dia_venc ? parseInt(args.honorario_dia_venc) : 10,
+    }).select('id').single();
+
+    if (error) return { ok: false, msg: 'Erro ao cadastrar: ' + error.message };
+
+    if (typeof loadClientes === 'function') loadClientes();
+    registrarAuditLog('EMPRESA_CRIADA_VIA_CHAT', 'clientes', data.id, { razao_social: args.razao_social });
+    return { ok: true, msg: `✅ Empresa **${args.razao_social}** cadastrada com sucesso!
+CNPJ: ${args.cnpj||'—'} | Regime: ${args.regime_tributario||'—'}` };
+  },
+
+  // ── CRIAR HONORÁRIO ─────────────────────────────────────────
+  criar_honorario: async (args) => {
+    if (!currentUser?.id)    return { ok: false, msg: 'Faça login primeiro.' };
+    if (!currentCliente?.id) return { ok: false, msg: 'Selecione uma empresa primeiro.' };
+
+    const _escId = typeof getEscritorioIdAtual === 'function' ? await getEscritorioIdAtual() : null;
+    const [mm, aaaa] = (args.competencia || '').split('/');
+    const competencia = mm && aaaa ? `${aaaa}-${mm.padStart(2,'0')}` : new Date().toISOString().slice(0,7);
+
+    const { data, error } = await sb.from('honorarios').upsert({
+      user_id:        currentUser.id,
+      cliente_id:     currentCliente.id,
+      escritorio_id:  _escId,
+      competencia,
+      valor:          parseFloat(args.valor),
+      descricao:      args.descricao || `Honorários contábeis ${args.competencia}`,
+      dia_vencimento: args.dia_venc || 10,
+      status:         'pendente',
+      atualizado_em:  new Date().toISOString(),
+    }, { onConflict: 'user_id,cliente_id,competencia' }).select('id').single();
+
+    if (error) return { ok: false, msg: 'Erro ao lançar: ' + error.message };
+
+    if (typeof openHonorarios === 'function') openHonorarios();
+    return { ok: true, msg: `✅ Honorário de R$ ${(+args.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})} lançado para ${args.competencia}!` };
+  },
+
+  // ── CRIAR TAREFA ─────────────────────────────────────────────
+  criar_tarefa: async (args) => {
+    if (!currentUser?.id)    return { ok: false, msg: 'Faça login primeiro.' };
+    if (!currentCliente?.id) return { ok: false, msg: 'Selecione uma empresa primeiro.' };
+    if (!args.titulo)        return { ok: false, msg: 'Título da tarefa é obrigatório.' };
+    if (!args.data_prazo)    return { ok: false, msg: 'Data do prazo é obrigatória.' };
+
+    const _escId = typeof getEscritorioIdAtual === 'function' ? await getEscritorioIdAtual() : null;
+
+    const { data, error } = await sb.from('agenda_tarefas').insert({
+      user_id:       currentUser.id,
+      cliente_id:    currentCliente.id,
+      escritorio_id: _escId,
+      titulo:        args.titulo,
+      descricao:     args.descricao || null,
+      data_prazo:    args.data_prazo,
+      prioridade:    args.prioridade || 'media',
+      status:        'pendente',
+    }).select('id').single();
+
+    if (error) return { ok: false, msg: 'Erro ao criar tarefa: ' + error.message };
+
+    if (typeof openAgenda === 'function') openAgenda();
+    return { ok: true, msg: `✅ Tarefa **${args.titulo}** criada para ${new Date(args.data_prazo+'T12:00').toLocaleDateString('pt-BR')}!` };
+  },
+
+  // ── CRIAR LANÇAMENTO CONTÁBIL ────────────────────────────────
+  criar_lancamento_contabil: async (args) => {
+    if (!currentUser?.id)    return { ok: false, msg: 'Faça login primeiro.' };
+    if (!currentCliente?.id) return { ok: false, msg: 'Selecione uma empresa primeiro.' };
+
+    const _escId = typeof getEscritorioIdAtual === 'function' ? await getEscritorioIdAtual() : null;
+
+    // Buscar IDs das contas pelo código
+    let debitoId = null, creditoId = null;
+    if (args.codigo_debito) {
+      const { data } = await sb.from('plano_contas').select('id')
+        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .eq('codigo', args.codigo_debito).maybeSingle();
+      debitoId = data?.id;
+    }
+    if (args.codigo_credito) {
+      const { data } = await sb.from('plano_contas').select('id')
+        .eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id)
+        .eq('codigo', args.codigo_credito).maybeSingle();
+      creditoId = data?.id;
+    }
+
+    const competencia = args.competencia || args.data_lanc?.slice(0,7) || new Date().toISOString().slice(0,7);
+
+    const { data, error } = await sb.from('lancamentos_contabeis').insert({
+      user_id:       currentUser.id,
+      cliente_id:    currentCliente.id,
+      escritorio_id: _escId,
+      historico:     args.historico,
+      valor:         parseFloat(args.valor),
+      data_lanc:     args.data_lanc,
+      debito_id:     debitoId,
+      credito_id:    creditoId,
+      competencia,
+      origem:        'chat_ia',
+      estornado:     false,
+    }).select('id').single();
+
+    if (error) return { ok: false, msg: 'Erro ao lançar: ' + error.message };
+
+    if (typeof openLancamentosContabeis === 'function') openLancamentosContabeis();
+    return { ok: true, msg: `✅ Lançamento **${args.historico}** de R$ ${(+args.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})} criado!${!debitoId&&args.codigo_debito?' ⚠️ Conta débito não encontrada.':''}${!creditoId&&args.codigo_credito?' ⚠️ Conta crédito não encontrada.':''}` };
   },
 
   calcular_ferias: async (args) => {
@@ -570,7 +827,7 @@ const TOOL_EXECUTORS = {
     const liq = Math.round((bruto - inss - irrf) * 100) / 100;
     const fmt = v => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-    const admissao = func.admissao ? new Date(func.admissao + 'T00:00') : null;
+    const admissao = func.admissao ? new Date(func.admissao + 'T12:00') : null;
     const meses = admissao ? Math.floor((new Date() - admissao) / (30.44 * 86400000)) : null;
 
     return {
@@ -628,9 +885,14 @@ function renderToolCard(resultados) {
       gerar_documento_docx: 'file-type',
       gerar_planilha_excel: 'table-2',
       gerar_dctfweb_pdf:    'landmark',
-      buscar_cliente:       'search',
-      calcular_rescisao:    'user-x',
-      calcular_ferias:      'umbrella',
+      buscar_cliente:           'search',
+      calcular_rescisao:        'user-x',
+      calcular_ferias:          'umbrella',
+      criar_funcionario:        'user-plus',
+      criar_empresa:            'building-2',
+      criar_honorario:          'receipt',
+      criar_tarefa:             'calendar-plus',
+      criar_lancamento_contabil:'pen-line',
     }[r.tool] || 'zap';
     const cor = r.ok ? '#16a34a' : '#dc2626';
     return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--sidebar-hover);border:1px solid var(--border);border-left:3px solid ${cor};border-radius:8px;margin-bottom:6px;font-size:12px;">
