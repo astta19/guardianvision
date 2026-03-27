@@ -4727,19 +4727,30 @@ input[type="checkbox"], input[type="radio"] {
     margin-right: 2px;
   }
 
-  /* Ocultar o ícone SVG dentro do close btn (substitído pelo ← acima) */
-  #folhaModal   .dp-close-btn i[data-lucide="x"],
-  #honModal     .dp-close-btn i[data-lucide="x"],
-  #finModal     .dp-close-btn i[data-lucide="x"],
-  #spedModal    .dp-close-btn i[data-lucide="x"],
-  #pcModal      .dp-close-btn i[data-lucide="x"],
-  #lcModal      .dp-close-btn i[data-lucide="x"],
-  #balModal     .dp-close-btn i[data-lucide="x"],
-  #dreModal     .dp-close-btn i[data-lucide="x"],
-  #concModal    .dp-close-btn i[data-lucide="x"],
-  #apurModal    .dp-close-btn i[data-lucide="x"],
-  #docModal     .dp-close-btn i[data-lucide="x"] {
-    display: none;
+  /* Ocultar SVG e <i> do close btn — Lucide substitui <i> por <svg> */
+  #folhaModal   .dp-close-btn svg,
+  #folhaModal   .dp-close-btn i,
+  #honModal     .dp-close-btn svg,
+  #honModal     .dp-close-btn i,
+  #finModal     .dp-close-btn svg,
+  #finModal     .dp-close-btn i,
+  #spedModal    .dp-close-btn svg,
+  #spedModal    .dp-close-btn i,
+  #pcModal      .dp-close-btn svg,
+  #pcModal      .dp-close-btn i,
+  #lcModal      .dp-close-btn svg,
+  #lcModal      .dp-close-btn i,
+  #balModal     .dp-close-btn svg,
+  #balModal     .dp-close-btn i,
+  #dreModal     .dp-close-btn svg,
+  #dreModal     .dp-close-btn i,
+  #concModal    .dp-close-btn svg,
+  #concModal    .dp-close-btn i,
+  #apurModal    .dp-close-btn svg,
+  #apurModal    .dp-close-btn i,
+  #docModal     .dp-close-btn svg,
+  #docModal     .dp-close-btn i {
+    display: none !important;
   }
 
   /* overscroll-behavior: conteúdo não arrasta a página */
