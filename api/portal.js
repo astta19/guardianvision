@@ -45,15 +45,23 @@ module.exports = async function handler(req, res) {
 
   if (data?.erro) return res.status(404).json({ erro: data.erro });
 
-  // Buscar token_id para o upload (usando service key — sem RLS)
+  // Buscar token + verificar expiração (service key — sem RLS)
   try {
     const tkRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/portal_tokens?token=eq.${encodeURIComponent(token)}&select=id&limit=1`,
+      `${SUPABASE_URL}/rest/v1/portal_tokens?token=eq.${encodeURIComponent(token)}&select=id,expira_em,ativo&limit=1`,
       { headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` } }
     );
     const rows = await tkRes.json();
-    if (rows?.[0]?.id) data.token_id = rows[0].id;
-  } catch {}
+    const tk = rows?.[0];
+    if (!tk) return res.status(404).json({ erro: 'Link inválido ou revogado.' });
+    if (tk.ativo === false) return res.status(403).json({ erro: 'Este link foi revogado pelo contador.' });
+    if (tk.expira_em && new Date(tk.expira_em) < new Date()) {
+      return res.status(403).json({ erro: 'Este link de acesso expirou. Solicite um novo link ao seu contador.' });
+    }
+    data.token_id = tk.id;
+  } catch (err) {
+    console.error('portal token check error:', err);
+  }
 
   return res.status(200).json(data);
 };
