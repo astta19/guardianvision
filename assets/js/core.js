@@ -26,15 +26,21 @@ async function getEscritorioIdAtual() {
     const { data } = await sb.from('escritorios').select('id')
       .eq('owner_id', currentUser.id).limit(1);
     _escIdCache = data?.[0]?.id || null;
-    // Se não for owner, verificar se é membro
     if (!_escIdCache) {
       const { data: mem } = await sb.from('escritorio_usuarios').select('escritorio_id')
         .eq('user_id', currentUser.id).limit(1);
       _escIdCache = mem?.[0]?.escritorio_id || null;
     }
+    if (!_escIdCache) {
+      console.warn('[fiscal365] getEscritorioIdAtual: nenhum escritório encontrado para', currentUser?.email);
+    }
     return _escIdCache;
-  } catch { return null; }
+  } catch(e) {
+    console.error('[fiscal365] getEscritorioIdAtual error:', e);
+    return null;
+  }
 }
+
 let chatsPage      = 0;
 let nfeData        = [];
 let darfData = null;
@@ -48,21 +54,20 @@ const MODELS = [
 ];
 
 const fiscalDeadlines = {
-      // Mensais
-      'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true },
-      'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb'                                   },
-      'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf'                                 },
-      'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)'                            },
-      'efd_contrib': { day: 10, month: 'monthly', description: 'EFD-Contribuições',     naoSimples: true    },
-      'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal'                                },
-      'dctf':        { day: 15, month: 'monthly', description: 'DCTF'                                       },
-      // Anuais
-      'dasn_simei':  { day: 31, month: 5,         description: 'DASN-SIMEI (MEI)',      meiOnly: true       },
-      'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
-      'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
-      'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
-      'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
-    };
+  'das':         { day: 20, month: 'monthly', description: 'DAS Simples Nacional',  simplesOuMei: true },
+  'dctfweb':     { day: 28, month: 'monthly', description: 'DCTFWeb'                                   },
+  'efd_reinf':   { day: 15, month: 'monthly', description: 'EFD-Reinf'                                 },
+  'esocial':     { day: 15, month: 'monthly', description: 'eSocial (folha)'                            },
+  'efd_contrib': { day: 10, month: 'monthly', description: 'EFD-Contribuições',     naoSimples: true    },
+  'sped_fiscal': { day: 15, month: 'monthly', description: 'SPED Fiscal'                                },
+  'dctf':        { day: 15, month: 'monthly', description: 'DCTF'                                       },
+  'dasn_simei':  { day: 31, month: 5,         description: 'DASN-SIMEI (MEI)',      meiOnly: true       },
+  'defis':       { day: 31, month: 3,         description: 'DEFIS (Simples)',       simplesOuMei: true   },
+  'ecd':         { day: 30, month: 6,         description: 'ECD'                                        },
+  'ecf':         { day: 31, month: 7,         description: 'ECF'                                        },
+  'dirpf':       { day: 29, month: 5,         description: 'DIRPF (PF)'                                 },
+};
+
 let currentFiles = [];
 let isProcessingFile = false;
 let typingIndicator = null;
@@ -71,11 +76,11 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos
 let currentModelIndex = 0;
 let consecutiveErrors = 0;
 const badges = {
-      'primeira_pergunta': { name: 'Primeiros Passos', icon: '', condition: (s) => s.questions >= 1 },
-      'analista_10': { name: 'Analista Experiente', icon: '', condition: (s) => s.questions >= 10 },
-      'mestre_pdfs': { name: 'Mestre dos PDFs', icon: '', condition: (s) => s.filesAnalyzed >= 5 },
-      'fiscal_pro': { name: 'Fiscal Pro', icon: '', condition: (s) => s.correctAnswers >= 20 }
-    };
+  'primeira_pergunta': { name: 'Primeiros Passos', icon: '', condition: (s) => s.questions >= 1 },
+  'analista_10':       { name: 'Analista Experiente', icon: '', condition: (s) => s.questions >= 10 },
+  'mestre_pdfs':       { name: 'Mestre dos PDFs', icon: '', condition: (s) => s.filesAnalyzed >= 5 },
+  'fiscal_pro':        { name: 'Fiscal Pro', icon: '', condition: (s) => s.correctAnswers >= 20 }
+};
 
 // --- Utilitários ---
 function escapeHtml(str) {
@@ -93,7 +98,6 @@ function isMaster() {
 }
 
 function isAdmin() {
-  // master também é admin — tem todos os poderes
   return currentUser?.user_metadata?.role === 'admin'
       || currentUser?.user_metadata?.role === 'master';
 }
@@ -108,7 +112,6 @@ function setConnectionStatus(text, icon, color) {
   if (!el) return;
   el.innerHTML = '<i data-lucide="' + icon + '" style="width:13px;height:13px"></i> <span>' + text + '</span>';
   el.style.color = color;
-  // Classes para mobile (bolinha colorida via CSS ::after)
   el.classList.remove('offline', 'connecting');
   if (icon === 'cloud-off') el.classList.add('offline');
   if (icon === 'loader')    el.classList.add('connecting');
@@ -146,19 +149,15 @@ function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'light';
   const next = current === 'light' ? 'dark' : 'light';
   setTheme(next);
-  // Persistir no Supabase para sobreviver entre sessões
   if (currentUser) sb.auth.updateUser({ data: { theme: next } }).catch(() => {});
 }
 
-
 // ── Toast notifications ───────────────────────────────────────────
 function showToast(msg, type = 'info', duration = 3500) {
-  // Delegado para o sistema de toast profissional em ui_pro.js
   if (typeof showToastComAcao === 'function') {
     showToastComAcao(msg, type, null, null, duration);
     return;
   }
-  // Fallback caso ui_pro.js ainda não tenha carregado
   let container = document.getElementById('toastContainer');
   if (!container) {
     container = document.createElement('div');
@@ -178,32 +177,25 @@ function applyAdminUI() {
   const admin = isAdmin();
   const perms = currentUser?.user_metadata?.permissions || [];
 
-  // admin-only: para admins e master
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = admin ? '' : 'none';
   });
-  // master-only: apenas para o master da plataforma
   const master = isMaster();
   document.querySelectorAll('.master-only').forEach(el => {
     el.style.display = master ? '' : 'none';
   });
-  // toolsAdminSection: visível para admin e master
   const adminSection = document.getElementById('toolsAdminSection');
   if (adminSection) adminSection.style.display = admin ? '' : 'none';
 
-  // admin-menu-item: admin vê tudo; contador vê se tiver permissão
   document.querySelectorAll('.admin-menu-item').forEach(el => {
     el.style.display = admin ? '' : 'none';
   });
-
-  // data-perm: itens com permissão específica
   document.querySelectorAll('[data-perm]').forEach(el => {
     const perm = el.getAttribute('data-perm');
     el.style.display = (admin || perms.includes(perm)) ? '' : 'none';
   });
 }
 
-// Chamada pelo admin para definir permissões de um contador
 async function definirPermissoes(userId, permissions) {
   if (!isAdmin() && !isMaster()) return false;
   try {
@@ -214,7 +206,6 @@ async function definirPermissoes(userId, permissions) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'definir_permissoes', payload: { userId, permissions }, token })
     });
-    const data = await res.json().catch(() => ({}));
     return res.ok ? { ok: true } : false;
   } catch(e) {
     console.error('definirPermissoes:', e);
@@ -222,8 +213,6 @@ async function definirPermissoes(userId, permissions) {
   }
 }
 
-// --- Auth: mostrar formulários corretos ---
-// HTML usa: loginForm, resetForm, setPasswordForm, confirmSentForm
 function showAuthState(state) {
   ['loginForm','resetForm','setPasswordForm','confirmSentForm'].forEach(id => {
     const el = document.getElementById(id);
@@ -234,8 +223,6 @@ function showAuthState(state) {
   if (target) target.style.display = '';
 }
 
-// Mostrar mensagem no form correto
-// HTML usa: loginMsg, resetMsg, setPasswordMsg
 function setAuthMsg(msg, isError, formState) {
   isError = isError !== false;
   let elId = 'loginMsg';
@@ -252,15 +239,10 @@ function setAuthMsg(msg, isError, formState) {
   el.className = 'auth-msg ' + (isError ? 'error' : 'success');
 }
 
-// --- Auth: ações ---
-// HTML usa: loginEmail, loginPassword, loginBtn
-
-
 // ── Validação de aceite dos termos ────────────────────────────
 function _termosVerificar() {
   const check = document.getElementById('termosCheck');
   const erro  = document.getElementById('termosErro');
-  // Se checkbox não existe (usuário já logado antes), liberar
   if (!check) return true;
   if (check.checked) {
     if (erro) erro.style.display = 'none';
@@ -272,7 +254,6 @@ function _termosVerificar() {
   return false;
 }
 
-// Salvar aceite no banco após login bem-sucedido
 async function _termosRegistrarAceite() {
   if (!currentUser) return;
   try {
@@ -282,7 +263,7 @@ async function _termosRegistrarAceite() {
       termos_versao: '2026-01',
       atualizado_em: new Date().toISOString(),
     }, { onConflict: 'user_id' });
-  } catch(e) { /* silencioso — não bloquear o acesso */ }
+  } catch(e) { /* silencioso */ }
 }
 
 async function doGoogleLogin() {
@@ -313,7 +294,6 @@ async function doGoogleLogin() {
       btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.96 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continuar com Google';
     }
   }
-  // Se sem erro: Supabase redireciona para Google automaticamente
 }
 
 async function doLogin() {
@@ -333,12 +313,16 @@ async function doLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
-      const data = await r.json();
-      if (!data.ok) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
-        setAuthMsg('Verificação de segurança falhou. Tente novamente.', true, 'login');
-        return;
+      const ct = r.headers.get('content-type') || '';
+      if (r.ok && ct.includes('application/json')) {
+        const data = await r.json();
+        if (!data.ok) {
+          if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+          setAuthMsg('Verificação de segurança falhou. Tente novamente.', true, 'login');
+          return;
+        }
       }
+      // Se a rota não retornou JSON (rota ainda não deployada) — deixar passar silenciosamente
     }
   } catch (e) {
     // reCAPTCHA indisponível — não bloquear o login
@@ -351,7 +335,6 @@ async function doLogin() {
   if (error) setAuthMsg(error.message || 'Erro ao fazer login.', true, 'login');
 }
 
-// HTML usa: resetEmail
 async function doReset() {
   const email = document.getElementById('resetEmail')?.value.trim();
   if (!email) { setAuthMsg('Informe seu e-mail.', true, 'reset'); return; }
@@ -362,7 +345,6 @@ async function doReset() {
   else setAuthMsg('E-mail de recuperação enviado!', false, 'reset');
 }
 
-// HTML usa: newPassword, confirmPassword
 async function doSetPassword() {
   const pass  = document.getElementById('newPassword')?.value;
   const pass2 = document.getElementById('confirmPassword')?.value;
@@ -381,16 +363,13 @@ function doLogout() {
 }
 
 // --- Confirm dialog ---
-// HTML usa: confirmModal, confirmModalText, confirmModalCancel, confirmModalOk
 function showConfirm(msg, onConfirm, hideCancel) {
   const modal = document.getElementById('confirmModal');
   if (!modal) {
-    // Fallback sem modal: resolve via confirm() nativo e chama callback se existir
     const ok = window.confirm(msg);
     if (ok && typeof onConfirm === 'function') onConfirm();
     return Promise.resolve(ok);
   }
-
   const txt = document.getElementById('confirmModalText');
   if (txt) txt.textContent = msg;
   const cancelBtn = document.getElementById('confirmModalCancel');
@@ -398,25 +377,16 @@ function showConfirm(msg, onConfirm, hideCancel) {
   modal.style.display = 'flex';
 
   return new Promise(resolve => {
-    // Guardar resolve E callback para suportar ambos os padrões simultaneamente
-    window._confirmResolve   = resolve;
-    window._confirmCallback  = typeof onConfirm === 'function' ? onConfirm : null;
+    window._confirmResolve  = resolve;
+    window._confirmCallback = typeof onConfirm === 'function' ? onConfirm : null;
   });
 }
 
 function closeConfirm(confirmed) {
   const modal = document.getElementById('confirmModal');
   if (modal) modal.style.display = 'none';
-
-  // Resolver a Promise primeiro
-  if (typeof window._confirmResolve === 'function') {
-    window._confirmResolve(!!confirmed);
-  }
-  // Executar callback legado se existir e confirmado
-  if (confirmed && typeof window._confirmCallback === 'function') {
-    window._confirmCallback();
-  }
-
+  if (typeof window._confirmResolve === 'function') window._confirmResolve(!!confirmed);
+  if (confirmed && typeof window._confirmCallback === 'function') window._confirmCallback();
   window._confirmResolve  = null;
   window._confirmCallback = null;
 }
@@ -441,7 +411,6 @@ function showAuthScreen() {
   allChats = []; currentCliente = null; perfilCache = null; _escIdCache = null;
   currentChat = { id: null, title: 'Nova Conversa', messages: [] };
 
-  // Limpar estado de módulos que cacheiam dados do usuário
   if (typeof learningService !== 'undefined') learningService = null;
   if (_pollingUploadTimer) { clearInterval(_pollingUploadTimer); _pollingUploadTimer = null; }
   _pollingUploadUltimoCount = -1;
@@ -466,46 +435,38 @@ async function showApp() {
   document.querySelector('header')?.classList.remove('hidden');
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
-  // localStorage tem prioridade — é atualizado imediatamente ao trocar o tema
   setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
-  // Buscar permissões atualizadas da tabela (sem depender só do JWT)
   if (currentUser && !isAdmin()) {
     try {
       const r = await supabaseProxy('buscar_permissoes', { userId: currentUser.id });
       if (r?.permissions && Array.isArray(r.permissions)) {
-        // Mesclar no objeto currentUser para applyAdminUI usar
         if (!currentUser.user_metadata) currentUser.user_metadata = {};
         currentUser.user_metadata.permissions = r.permissions;
       }
-    } catch(e) {} // silencioso — fallback para user_metadata do JWT
+    } catch(e) {}
   }
   applyAdminUI();
   checkConnection();
-  // Carregar perfil ANTES dos módulos que dependem de perfilCache (nome, CRC, avatar)
   if (typeof carregarPerfil === 'function') {
     await carregarPerfil();
     if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
   }
-  // Chat interno: inicializar para admin e contadores com permissão
   if (typeof msnInit === 'function') msnInit();
   if (typeof loadClientes === 'function') loadClientes();
   if (typeof checkDeadlines === 'function') checkDeadlines();
-  carregarKPIs(); // intencional sem await — não bloqueia o render do app
+  carregarKPIs();
   iniciarPollingUploads();
   _idleStart();
   if (isMaster()) carregarDashboardMaster();
   if (window.lucide) lucide.createIcons();
-  // Carregar chat compartilhado via link (?shared=TOKEN)
   const _sharedToken = new URLSearchParams(window.location.search).get('shared');
   if (_sharedToken) carregarChatCompartilhado(_sharedToken);
 }
 
-
 // ── Expiração de sessão por inatividade ──────────────────────
-// Desloga após 30min sem interação. Avisa com 2min de antecedência.
-const IDLE_TIMEOUT_MS  = 30 * 60 * 1000; // 30 minutos
-const IDLE_WARNING_MS  = 28 * 60 * 1000; // avisa aos 28 min
-const IDLE_EVENTS      = ['mousedown','mousemove','keydown','touchstart','scroll','click'];
+const IDLE_TIMEOUT_MS  = 30 * 60 * 1000;
+const IDLE_WARNING_MS  = 28 * 60 * 1000;
+const IDLE_EVENTS      = ['mousedown','mousemove','keydown','keypress','touchstart','touchmove','scroll','click','input','focus'];
 
 let _idleTimer        = null;
 let _idleWarnTimer    = null;
@@ -523,27 +484,17 @@ function _idleReset() {
 
 function _idleWarn() {
   if (!_idleActive) return;
-  if (_idleWarnEl) return; // já mostrando
-
+  if (_idleWarnEl) return;
   _idleWarnEl = document.createElement('div');
   _idleWarnEl.id = 'idleWarn';
   _idleWarnEl.innerHTML = `
-    <div style="
-      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-      background:var(--card);border:1px solid var(--border);
-      border-radius:14px;padding:16px 22px;
-      box-shadow:0 8px 32px rgba(0,0,0,.18);
-      display:flex;align-items:center;gap:14px;
-      z-index:99999;min-width:320px;max-width:90vw;
-      animation:slideUp .25s ease">
+    <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 22px;box-shadow:0 8px 32px rgba(0,0,0,.18);display:flex;align-items:center;gap:14px;z-index:99999;min-width:320px;max-width:90vw;animation:slideUp .25s ease">
       <i data-lucide="clock" style="width:22px;height:22px;color:#f59e0b;flex-shrink:0"></i>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700;color:var(--text)">Sessão expirando</div>
         <div style="font-size:12px;color:var(--text-light);margin-top:2px">Você será deslogado em 2 minutos por inatividade.</div>
       </div>
-      <button onclick="_idleReset()" style="
-        background:var(--accent);color:#fff;border:none;border-radius:8px;
-        padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">
+      <button onclick="_idleReset()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">
         Continuar
       </button>
     </div>`;
@@ -579,7 +530,6 @@ function _idleStop() {
 
 // --- Audit log ---
 async function registrarAuditLog(acao, tabelaOuDetalhes, id, detalhes) {
-  // Aceita (acao, detalhes) ou (acao, tabela, id, detalhes)
   let tabela = null, dados = {};
   if (typeof tabelaOuDetalhes === 'string') {
     tabela = tabelaOuDetalhes;
@@ -616,38 +566,37 @@ async function supabaseProxy(action, payload) {
 document.addEventListener('DOMContentLoaded', () => {
   setTheme(localStorage.getItem('theme') || 'light');
 
-
   // ── ESC fecha qualquer modal aberto ──────────────────────────
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const closers = [
-      { id: 'apurModal',        fn: () => typeof closeApuracao          === 'function' && closeApuracao() },
-      { id: 'balModal',         fn: () => typeof closeBalancete         === 'function' && closeBalancete() },
-      { id: 'dreModal',         fn: () => typeof closeDRE               === 'function' && closeDRE() },
-      { id: 'concModal',        fn: () => typeof closeConciliacao       === 'function' && closeConciliacao() },
-      { id: 'lcModal',          fn: () => typeof closeLancamentosContabeis === 'function' && closeLancamentosContabeis() },
-      { id: 'pcModal',          fn: () => typeof closePlanoConta        === 'function' && closePlanoConta() },
-      { id: 'folhaModal',       fn: () => typeof closeFolha             === 'function' && closeFolha() },
-      { id: 'honModal',         fn: () => typeof closeHonorarios        === 'function' && closeHonorarios() },
-      { id: 'finModal',         fn: () => typeof closeFinanceiro        === 'function' && closeFinanceiro() },
-      { id: 'agendaModal',      fn: () => typeof closeAgenda            === 'function' && closeAgenda() },
-      { id: 'spedModal',        fn: () => typeof closeSped              === 'function' && closeSped() },
-      { id: 'docModal',         fn: () => typeof closeDocumentos        === 'function' && closeDocumentos() },
-      { id: 'profileModal',     fn: () => typeof closeProfile           === 'function' && closeProfile() },
-      { id: 'empresaPerfilModal',fn: () => typeof closeEmpresaPerfil   === 'function' && closeEmpresaPerfil() },
-      { id: 'calcModal',        fn: () => typeof closeCalculator        === 'function' && closeCalculator() },
-      { id: 'statsModal',       fn: () => typeof closeStats             === 'function' && closeStats() },
-      { id: 'learningStatsModal',fn: () => typeof closeLearningStats   === 'function' && closeLearningStats() },
-      { id: 'shareModal',       fn: () => typeof closeShareModal        === 'function' && closeShareModal() },
-      { id: 'clientModal',      fn: () => typeof closeClientModal       === 'function' && closeClientModal() },
-      { id: 'termosModal',      fn: () => { const m = document.getElementById('termosModal'); if (m) m.style.display = 'none'; } },
+      { id: 'apurModal',         fn: () => typeof closeApuracao             === 'function' && closeApuracao() },
+      { id: 'balModal',          fn: () => typeof closeBalancete            === 'function' && closeBalancete() },
+      { id: 'dreModal',          fn: () => typeof closeDRE                  === 'function' && closeDRE() },
+      { id: 'concModal',         fn: () => typeof closeConciliacao          === 'function' && closeConciliacao() },
+      { id: 'lcModal',           fn: () => typeof closeLancamentosContabeis === 'function' && closeLancamentosContabeis() },
+      { id: 'pcModal',           fn: () => typeof closePlanoConta           === 'function' && closePlanoConta() },
+      { id: 'folhaModal',        fn: () => typeof closeFolha                === 'function' && closeFolha() },
+      { id: 'honModal',          fn: () => typeof closeHonorarios           === 'function' && closeHonorarios() },
+      { id: 'finModal',          fn: () => typeof closeFinanceiro           === 'function' && closeFinanceiro() },
+      { id: 'agendaModal',       fn: () => typeof closeAgenda               === 'function' && closeAgenda() },
+      { id: 'spedModal',         fn: () => typeof closeSped                 === 'function' && closeSped() },
+      { id: 'docModal',          fn: () => typeof closeDocumentos           === 'function' && closeDocumentos() },
+      { id: 'profileModal',      fn: () => typeof closeProfile              === 'function' && closeProfile() },
+      { id: 'empresaPerfilModal',fn: () => typeof closeEmpresaPerfil        === 'function' && closeEmpresaPerfil() },
+      { id: 'calcModal',         fn: () => { const m = document.getElementById('calcModal'); if (m) m.style.display = 'none'; } },
+      { id: 'statsModal',        fn: () => { const m = document.getElementById('statsModal'); if (m) m.style.display = 'none'; } },
+      { id: 'learningStatsModal',fn: () => { const m = document.getElementById('learningStatsModal'); if (m) m.style.display = 'none'; } },
+      { id: 'shareModal',        fn: () => { const m = document.getElementById('shareModal'); if (m) m.style.display = 'none'; } },
+      { id: 'clientModal',       fn: () => typeof closeClientModal          === 'function' && closeClientModal() },
+      { id: 'termosModal',       fn: () => { const m = document.getElementById('termosModal'); if (m) m.style.display = 'none'; } },
     ];
     for (const { id, fn } of closers) {
       const el = document.getElementById(id);
       if (el && (el.style.display === 'flex' || el.style.display === 'block') && !el.classList.contains('hidden')) {
         fn();
         e.preventDefault();
-        return; // fecha só o mais recente
+        return;
       }
     }
   });
@@ -659,23 +608,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Eventos futuros de auth
   sb.auth.onAuthStateChange(async (event, session) => {
-    // PASSWORD_RECOVERY DEVE ser tratado ANTES de SIGNED_IN
-    // Supabase dispara SIGNED_IN junto com PASSWORD_RECOVERY — ignorar o SIGNED_IN nesses casos
     if (event === 'PASSWORD_RECOVERY') {
       currentUser = session?.user || null;
       hideLoading();
       showAuthState('setPassword');
-      return; // não chamar showApp()
+      return;
     }
-
     if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
       if (typeof logInit === 'function') logInit(currentUser);
       _termosRegistrarAceite();
       showApp();
-      // Processar convite na URL se existir
       if (typeof verificarConviteURL === 'function') verificarConviteURL();
     } else if (event === 'TOKEN_REFRESHED') {
       if (session) currentUser = session.user;
@@ -686,7 +630,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Sessão existente (carregamento inicial)
   sb.auth.getSession().then(({ data: { session } }) => {
     if (session) {
       currentUser = session.user;
@@ -707,7 +650,6 @@ async function carregarKPIs() {
   if (!currentUser) return;
   const dashboard = document.getElementById('kpiDashboard');
   if (!dashboard) return;
-
   try {
     const hoje = new Date();
     const semanaFim = new Date(hoje); semanaFim.setDate(hoje.getDate() + 7);
@@ -737,23 +679,18 @@ async function carregarKPIs() {
 
     dashboard.style.display = 'block';
     if (window.lucide) lucide.createIcons();
-
   } catch(e) {
     console.error('KPI error:', e);
   }
 }
 
-// Atualizar título da aba com o nome do chat
-// Stub: sistema de convites por URL foi substituído pelo modal de gestão de escritório
 function verificarConviteURL() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('convite');
   if (!token) return;
-  // Remover parâmetro da URL sem recarregar
   params.delete('convite');
   const novaUrl = [window.location.pathname, params.toString()].filter(Boolean).join('?');
   history.replaceState({}, '', novaUrl);
-  // Avisar que o fluxo de convite mudou
   showToast('Para entrar em um escritório, solicite ao administrador que te adicione diretamente.', 'info', 5000);
 }
 
@@ -761,12 +698,11 @@ function updateChatTitle(title) {
   document.title = title ? `${title} — Fiscal365` : 'Fiscal365';
 }
 
-// Fechar modais com ESC
+// Fechar modais com ESC (segundo listener — cobre modais não listados acima)
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const closers = [
-    // Dropdowns — fecham primeiro, antes de qualquer modal
-    () => { const m = document.getElementById('toolsMenu'); if (m?.style.display === 'block' && typeof closeDropdowns === 'function') closeDropdowns(); },
+    () => { const m = document.getElementById('toolsMenu');         if (m?.style.display === 'block' && typeof closeDropdowns === 'function') closeDropdowns(); },
     () => { const m = document.getElementById('confirmModal');      if (m?.style.display !== 'none') closeConfirm(false); },
     () => { const m = document.getElementById('clientModal');       if (!m?.classList.contains('hidden') && typeof closeClientModal === 'function') closeClientModal(); },
     () => { const m = document.getElementById('empresaPerfilModal');if (m?.style.display !== 'none' && typeof closeEmpresaPerfil === 'function') closeEmpresaPerfil(); },
@@ -778,13 +714,13 @@ document.addEventListener('keydown', e => {
     () => { const m = document.getElementById('agendaModal');       if (m?.style.display !== 'none' && typeof closeAgenda === 'function') closeAgenda(); },
     () => { const m = document.getElementById('finModal');          if (m?.style.display !== 'none' && typeof closeFinanceiro === 'function') closeFinanceiro(); },
     () => { const m = document.getElementById('folhaModal');        if (m?.style.display !== 'none' && typeof closeFolha === 'function') closeFolha(); },
-    () => { const m = document.getElementById('pcModal');          if (m?.style.display !== 'none' && typeof closePlanoConta === 'function') closePlanoConta(); },
-    () => { const m = document.getElementById('lcModal');          if (m?.style.display !== 'none' && typeof closeLancamentosContabeis === 'function') closeLancamentosContabeis(); },
-    () => { const m = document.getElementById('balModal');         if (m?.style.display !== 'none' && typeof closeBalancete === 'function') closeBalancete(); },
-    () => { const m = document.getElementById('dreModal');         if (m?.style.display !== 'none' && typeof closeDRE === 'function') closeDRE(); },
-    () => { const m = document.getElementById('concModal');        if (m?.style.display !== 'none' && typeof closeConciliacao === 'function') closeConciliacao(); },
-    () => { const m = document.getElementById('apurModal');        if (m?.style.display !== 'none' && typeof closeApuracao === 'function') closeApuracao(); },
-    () => { const m = document.getElementById('honPagoModal');       if (m?.style.display !== 'none' && typeof honPagoFechar === 'function') honPagoFechar(); },
+    () => { const m = document.getElementById('pcModal');           if (m?.style.display !== 'none' && typeof closePlanoConta === 'function') closePlanoConta(); },
+    () => { const m = document.getElementById('lcModal');           if (m?.style.display !== 'none' && typeof closeLancamentosContabeis === 'function') closeLancamentosContabeis(); },
+    () => { const m = document.getElementById('balModal');          if (m?.style.display !== 'none' && typeof closeBalancete === 'function') closeBalancete(); },
+    () => { const m = document.getElementById('dreModal');          if (m?.style.display !== 'none' && typeof closeDRE === 'function') closeDRE(); },
+    () => { const m = document.getElementById('concModal');         if (m?.style.display !== 'none' && typeof closeConciliacao === 'function') closeConciliacao(); },
+    () => { const m = document.getElementById('apurModal');         if (m?.style.display !== 'none' && typeof closeApuracao === 'function') closeApuracao(); },
+    () => { const m = document.getElementById('honPagoModal');      if (m?.style.display !== 'none' && typeof honPagoFechar === 'function') honPagoFechar(); },
     () => { const m = document.getElementById('honModal');          if (m?.style.display !== 'none' && typeof closeHonorarios === 'function') closeHonorarios(); },
     () => { const m = document.getElementById('portalAdminModal');  if (m?.style.display !== 'none' && typeof fecharPortalAdmin === 'function') fecharPortalAdmin(); },
     () => { const m = document.getElementById('calcModal');         if (m?.style.display !== 'none') m.style.display = 'none'; },
@@ -801,7 +737,6 @@ async function carregarDashboardMaster() {
   const el = document.getElementById('dashboardMaster');
   if (!el) return;
   el.style.display = 'block';
-  // Garantir que o container pai (kpiDashboard) também esteja visível
   const kpi = document.getElementById('kpiDashboard');
   if (kpi) kpi.style.display = 'block';
 
@@ -810,7 +745,6 @@ async function carregarDashboardMaster() {
     const mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
     const mesFim = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0).toISOString().slice(0,10);
 
-    // Buscar membros do escritório do master para isolar as queries
     const { data: escData } = await sb.from('escritorios').select('id')
       .eq('owner_id', currentUser.id).limit(1);
     const escId = escData?.[0]?.id || null;
@@ -829,45 +763,35 @@ async function carregarDashboardMaster() {
       { data: honorariosData },
       { data: clientesData },
     ] = await Promise.all([
-      // contadores via proxy
       supabaseProxy('listar_logins', {}).then(r => ({ data: r?.logins || [] })),
-      // uploads não lidos — apenas dos membros do escritório
       sb.from('portal_uploads').select('*', { count: 'exact', head: true })
         .in('user_id', membrosIds).eq('lido', false),
-      // funcionários ativos — apenas dos membros do escritório
       sb.from('dp_funcionarios').select('*', { count: 'exact', head: true })
         .in('user_id', membrosIds).eq('status', 'ativo'),
-      // honorários recebidos no mês — apenas dos membros do escritório
       sb.from('lancamentos').select('valor')
         .in('user_id', membrosIds)
         .eq('tipo', 'receita').eq('status', 'pago')
         .gte('data_pgto', mesIni).lte('data_pgto', mesFim),
-      // clientes por regime — apenas dos membros do escritório
       sb.from('clientes').select('regime_tributario')
         .in('user_id', membrosIds),
     ]);
 
-    // Contadores (exclui master)
     const contadores = (usuariosData || []).filter(u => u.role !== 'master');
     const elC = document.getElementById('dmContadores');
     if (elC) elC.textContent = contadores.length;
 
-    // Arquivos não lidos
     const elU = document.getElementById('dmUploadsNaoLidos');
     if (elU) elU.textContent = cUploads ?? '—';
 
-    // Funcionários ativos
     const elF = document.getElementById('dmFuncionarios');
     if (elF) elF.textContent = cFuncionarios ?? '—';
 
-    // Honorários do mês
     const totalHon = (honorariosData || []).reduce((s, l) => s + (+l.valor||0), 0);
     const elH = document.getElementById('dmHonorarios');
     if (elH) elH.textContent = totalHon > 0
       ? 'R$ ' + totalHon.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
       : 'R$ 0';
 
-    // Breakdown por regime
     const regimes = {};
     (clientesData || []).forEach(c => {
       const r = c.regime_tributario || 'Não definido';
@@ -883,11 +807,9 @@ async function carregarDashboardMaster() {
         .sort((a,b) => b[1]-a[1])
         .map(([r, n]) => {
           const cor = corRegime[r] || '#64748b';
-          return `<span style="font-size:11px;padding:3px 10px;border-radius:10px;
-            background:${cor}18;color:${cor};font-weight:600">${r}: ${n}</span>`;
+          return `<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${cor}18;color:${cor};font-weight:600">${r}: ${n}</span>`;
         }).join('');
     }
-
     if (window.lucide) lucide.createIcons();
   } catch(e) {
     console.error('dashboardMaster:', e);
@@ -899,9 +821,9 @@ let _pollingUploadTimer  = null;
 let _pollingUploadUltimoCount = -1;
 
 async function iniciarPollingUploads() {
-  if (_pollingUploadTimer) return; // já rodando
+  if (_pollingUploadTimer) return;
   await _checkUploadsNaoLidos();
-  _pollingUploadTimer = setInterval(_checkUploadsNaoLidos, 5 * 60 * 1000); // 5 min
+  _pollingUploadTimer = setInterval(_checkUploadsNaoLidos, 5 * 60 * 1000);
 }
 
 async function _checkUploadsNaoLidos() {
@@ -923,7 +845,6 @@ async function _checkUploadsNaoLidos() {
       }
     }
 
-    // Toast apenas quando o número aumenta (novo arquivo chegou)
     if (_pollingUploadUltimoCount >= 0 && count > _pollingUploadUltimoCount) {
       const novos = count - _pollingUploadUltimoCount;
       showToast(`📥 ${novos} novo${novos > 1 ? 's arquivos recebidos' : ' arquivo recebido'} no portal`, 'info');
