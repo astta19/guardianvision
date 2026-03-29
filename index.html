@@ -116,6 +116,25 @@
     .hon-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: hon-spin .7s linear infinite; }
     @keyframes hon-spin { to { transform: rotate(360deg); } }
     </style>
+
+  <script>
+    (async function initRecaptcha() {
+      try {
+        const r = await fetch('/api/recaptcha-config');
+        const ct = r.headers.get('content-type') || '';
+        if (!r.ok || !ct.includes('application/json')) return;
+        const { siteKey } = await r.json();
+        if (!siteKey) return;
+        window.RECAPTCHA_SITE_KEY = siteKey;
+        const s = document.createElement('script');
+        s.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+        s.async = true;
+        document.head.appendChild(s);
+      } catch (e) {
+        // Silencioso — login funciona normalmente sem reCAPTCHA
+      }
+    })();
+  </script>
 </head>
 <body>
 <!-- TELA DE LOADING -->
