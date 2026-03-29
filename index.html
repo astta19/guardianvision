@@ -117,6 +117,8 @@
     @keyframes hon-spin { to { transform: rotate(360deg); } }
     </style>
 
+  <!-- reCAPTCHA v3 — tag estática, coberta pelo script-src sem precisar de script-src-elem -->
+  <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
   <script>
     (async function initRecaptcha() {
       try {
@@ -126,12 +128,8 @@
         const { siteKey } = await r.json();
         if (!siteKey) return;
         window.RECAPTCHA_SITE_KEY = siteKey;
-        const s = document.createElement('script');
-        s.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
-        s.async = true;
-        document.head.appendChild(s);
       } catch (e) {
-        // Silencioso — login funciona normalmente sem reCAPTCHA
+        // silencioso — login funciona sem reCAPTCHA
       }
     })();
   </script>
