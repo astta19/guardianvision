@@ -29,9 +29,16 @@
       "memory": 128,
       "maxDuration": 10
     },
+    "api/recaptcha-config.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
     "api/indicadores.js": {
       "memory": 128,
       "maxDuration": 15
+    },
+    "api/backup.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
