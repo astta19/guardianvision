@@ -126,7 +126,7 @@
     .auth-panel-left-bg { position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 40% 40%,rgba(255,255,255,.05) 0%,transparent 70%),radial-gradient(ellipse 60% 80% at 70% 70%,rgba(255,255,255,.03) 0%,transparent 60%); }
     .auth-panel-left-grid { position:absolute; inset:0; background-image:radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px); background-size:36px 36px; mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%); }
     .auth-left-content { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:20px; padding:40px; }
-    .auth-logo-main { width:180px; height:180px; border-radius:50%; object-fit:cover; box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 80px rgba(255,255,255,.06),0 32px 64px rgba(0,0,0,.7); animation:auth-logo-float 7s ease-in-out infinite,auth-logo-in .8s cubic-bezier(.32,1,.4,1); }
+    .auth-logo-main { width:220px; height:220px; object-fit:contain; animation:auth-logo-float 7s ease-in-out infinite,auth-logo-in .8s cubic-bezier(.32,1,.4,1); filter:drop-shadow(0 0 40px rgba(255,255,255,.08)); }
     @keyframes auth-logo-in { from{transform:scale(.75) translateY(24px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
     @keyframes auth-logo-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
     .auth-brand-tags { display:flex; gap:8px; animation:auth-fade-up .5s .25s both; }
@@ -163,14 +163,14 @@
       .auth-split{flex-direction:column}
       .auth-split::after{display:none}
       .auth-panel-left{min-height:200px;flex:none}
-      .auth-logo-main{width:90px;height:90px;animation:auth-logo-in .6s cubic-bezier(.32,1,.4,1)}
+      .auth-logo-main{width:110px;height:110px;animation:auth-logo-in .6s cubic-bezier(.32,1,.4,1)}
       .auth-left-desc,.auth-brand-tags,.auth-left-footer,.auth-panel-left-grid{display:none}
       .auth-panel-right{width:100%;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:32px 24px calc(40px + env(safe-area-inset-bottom));background:#0f0f0f}
       #authSubtitle{font-size:26px!important}
     }
     @media(max-width:400px){
       .auth-panel-left{min-height:160px}
-      .auth-logo-main{width:72px;height:72px}
+      .auth-logo-main{width:90px;height:90px}
       .auth-panel-right{padding:24px 18px calc(40px + env(safe-area-inset-bottom))}
       #authSubtitle{font-size:22px!important}
     }
