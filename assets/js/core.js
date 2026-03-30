@@ -447,7 +447,22 @@ function showAuthScreen() {
   const hList = document.getElementById('hList');
   if (hList) hList.innerHTML = '';
   const msgs = document.getElementById('msgs');
-  if (msgs) msgs.innerHTML = '<div class="empty"><i data-lucide="message-circle"></i><h3>Olá! Sou seu especialista fiscal</h3><p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p></div>';
+  if (msgs) {
+    const nome = currentUser?.user_metadata?.nome || currentUser?.email?.split('@')[0] || '';
+    const saudacao = (() => {
+      const h = new Date().getHours();
+      if (h < 12) return 'Bom dia';
+      if (h < 18) return 'Boa tarde';
+      return 'Boa noite';
+    })();
+    msgs.innerHTML = `<div class="empty">
+      <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
+        style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin-bottom:4px;opacity:.9"
+        onerror="this.style.display='none'">
+      <h3>${saudacao}${nome ? ', ' + nome.split(' ')[0] : ''}!</h3>
+      <p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais.</p>
+    </div>`;
+  }
   if (window.lucide) lucide.createIcons();
 
   // Inicializar reCAPTCHA apenas quando a tela de login é exibida
@@ -462,7 +477,14 @@ async function showApp() {
     const el = document.getElementById(id);
     if (el) { el.classList.remove('hidden'); el.style.removeProperty('display'); }
   });
-  document.querySelector('header')?.classList.remove('hidden');
+
+  // Header: visível no desktop, escondido no mobile (bottom nav assume)
+  const header = document.querySelector('header');
+  if (header) {
+    if (window.innerWidth <= 600) header.classList.add('hidden');
+    else header.classList.remove('hidden');
+  }
+
   // Mostrar bottom nav apenas após autenticado
   const bn = document.getElementById('bottomNav');
   if (bn) bn.style.removeProperty('display');
