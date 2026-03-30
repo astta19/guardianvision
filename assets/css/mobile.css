@@ -3,11 +3,26 @@
    ============================================================ */
 
 
-/* reCAPTCHA badge — escondido; texto obrigatório inserido no HTML do login */
+/* reCAPTCHA badge — visível mas reposicionado para não sobrepor nada */
 .grecaptcha-badge {
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  bottom: 72px !important;
+  right: 6px !important;
+  transform: scale(0.6) !important;
+  transform-origin: bottom right !important;
+  opacity: 0.5 !important;
+  transition: opacity .2s !important;
+  z-index: 800 !important;
+}
+.grecaptcha-badge:hover {
+  opacity: 1 !important;
+}
+@media (min-width: 601px) {
+  .grecaptcha-badge {
+    bottom: 16px !important;
+    right: 6px !important;
+    transform: scale(0.65) !important;
+    transform-origin: bottom right !important;
+  }
 }
 
 @media (min-width: 601px) {
