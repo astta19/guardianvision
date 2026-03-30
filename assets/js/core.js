@@ -411,6 +411,10 @@ function showAuthScreen() {
   allChats = []; currentCliente = null; perfilCache = null; _escIdCache = null;
   currentChat = { id: null, title: 'Nova Conversa', messages: [] };
 
+  // Esconder bottom nav na tela de autenticação
+  const bn = document.getElementById('bottomNav');
+  if (bn) bn.style.display = 'none';
+
   if (typeof learningService !== 'undefined') learningService = null;
   if (_pollingUploadTimer) { clearInterval(_pollingUploadTimer); _pollingUploadTimer = null; }
   _pollingUploadUltimoCount = -1;
@@ -433,6 +437,9 @@ async function showApp() {
     if (el) { el.classList.remove('hidden'); el.style.removeProperty('display'); }
   });
   document.querySelector('header')?.classList.remove('hidden');
+  // Mostrar bottom nav apenas após autenticado
+  const bn = document.getElementById('bottomNav');
+  if (bn) bn.style.removeProperty('display');
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
   setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
