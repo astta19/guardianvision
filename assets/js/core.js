@@ -304,9 +304,20 @@ async function doLogin() {
   const btn = document.getElementById('loginBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
 
-  // reCAPTCHA v3 — invisível, sem fricção
+  // reCAPTCHA v3 — aguarda estar pronto se ainda carregando (max 5s)
   try {
-    if (typeof grecaptcha !== 'undefined' && window.RECAPTCHA_SITE_KEY) {
+    if (typeof grecaptcha !== 'undefined' || window._recaptchaLoading) {
+      // Aguardar RECAPTCHA_SITE_KEY estar disponível
+      if (!window.RECAPTCHA_SITE_KEY) {
+        await new Promise((resolve, reject) => {
+          const t = Date.now();
+          const check = setInterval(() => {
+            if (window.RECAPTCHA_SITE_KEY) { clearInterval(check); resolve(); }
+            else if (!window._recaptchaLoading && !window.RECAPTCHA_SITE_KEY) { clearInterval(check); reject(new Error('blocked')); }
+            else if (Date.now() - t > 5000) { clearInterval(check); reject(new Error('timeout')); }
+          }, 100);
+        });
+      }
       const token = await grecaptcha.execute(window.RECAPTCHA_SITE_KEY, { action: 'login' });
       const r = await fetch('/api/recaptcha-verify', {
         method: 'POST',
@@ -322,11 +333,11 @@ async function doLogin() {
           return;
         }
       }
-      // Se a rota não retornou JSON (rota ainda não deployada) — deixar passar silenciosamente
     }
   } catch (e) {
-    // reCAPTCHA indisponível — não bloquear o login
-    console.warn('reCAPTCHA check skipped:', e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+    setAuthMsg('Verificação de segurança indisponível. Recarregue a página e tente novamente.', true, 'login');
+    return;
   }
 
   if (btn) btn.textContent = 'Entrando...';
