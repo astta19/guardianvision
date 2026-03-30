@@ -102,9 +102,17 @@ function isAdmin() {
       || currentUser?.user_metadata?.role === 'master';
 }
 
+let _splashShownAt = Date.now();
+
 function hideLoading() {
   const el = document.getElementById('loadingScreen');
-  if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+  if (!el) return;
+  const elapsed = Date.now() - _splashShownAt;
+  const remaining = Math.max(0, 4000 - elapsed);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; el.classList.add('hidden'); }, 500);
+  }, remaining);
 }
 
 function setConnectionStatus(text, icon, color) {
@@ -747,11 +755,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }).catch(() => { hideLoading(); showAuthScreen(); });
 
-  // Failsafe 6s
+  // Failsafe 10s
   setTimeout(() => {
     const loading = document.getElementById('loadingScreen');
     if (loading && loading.style.display !== 'none') { hideLoading(); showAuthScreen(); }
-  }, 6000);
+  }, 10000);
 });
 
 async function carregarKPIs() {
