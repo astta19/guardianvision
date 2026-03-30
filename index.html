@@ -27,6 +27,7 @@
 
   <!-- Estilos -->
   <link rel="stylesheet" href="assets/css/app.css?v=6">
+  <link rel="stylesheet" href="assets/css/mobile.css?v=1">
 <style>
   /* Alertas de prazo — banner compacto */
   .deadline-alerts { border-bottom: 1px solid var(--border); }
@@ -117,7 +118,6 @@
     @keyframes hon-spin { to { transform: rotate(360deg); } }
     </style>
 
-  <!-- reCAPTCHA v3 — aguarda grecaptcha.ready antes de expor a site key -->
   <script>
     (async function initRecaptcha() {
       try {
@@ -126,7 +126,6 @@
         if (!r.ok || !ct.includes('application/json')) return;
         const { siteKey } = await r.json();
         if (!siteKey) return;
-        // Carregar script do Google dinamicamente com a site key correta
         await new Promise((resolve, reject) => {
           const s = document.createElement('script');
           s.src = 'https://www.google.com/recaptcha/api.js?render=' + siteKey;
@@ -135,12 +134,9 @@
           s.onerror = reject;
           document.head.appendChild(s);
         });
-        // Aguardar grecaptcha estar pronto antes de expor a key
         await new Promise(resolve => grecaptcha.ready(resolve));
         window.RECAPTCHA_SITE_KEY = siteKey;
-      } catch (e) {
-        // silencioso — login funciona sem reCAPTCHA
-      }
+      } catch (e) { /* silencioso */ }
     })();
   </script>
 </head>
