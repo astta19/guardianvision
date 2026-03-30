@@ -29,33 +29,260 @@
   <link rel="stylesheet" href="assets/css/app.css?v=6">
   <link rel="stylesheet" href="assets/css/mobile.css?v=2">
   <style>
-    /* ── Logo tela de login ─────────────────────────────── */
-    .auth-logo-img-wrap {
+    /* ══════════════════════════════════════════════════════
+       AUTH SPLIT — tela de login profissional
+       ══════════════════════════════════════════════════════ */
+    #authScreen {
+      padding: 0 !important;
+      background: #0a0a0a !important;
+    }
+
+    .auth-split {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+    }
+
+    /* ── PAINEL ESQUERDO ─────────────────────────────────── */
+    .auth-panel-left {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+
+    /* Gradiente radial de fundo */
+    .auth-panel-left-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 40% 40%, rgba(255,255,255,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 80% at 70% 70%, rgba(255,255,255,0.03) 0%, transparent 60%);
+    }
+
+    /* Grid de pontos de fundo */
+    .auth-panel-left-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    .auth-left-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding: 40px;
+    }
+
+    .auth-logo-main {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.1),
+        0 0 60px rgba(255,255,255,0.08),
+        0 24px 64px rgba(0,0,0,0.6);
+      animation: auth-logo-float 6s ease-in-out infinite, auth-logo-in .7s cubic-bezier(.32,1,.4,1);
+    }
+
+    @keyframes auth-logo-in {
+      from { transform: scale(.8) translateY(20px); opacity: 0; }
+      to   { transform: scale(1)  translateY(0);    opacity: 1; }
+    }
+
+    @keyframes auth-logo-float {
+      0%, 100% { transform: translateY(0);    }
+      50%       { transform: translateY(-8px); }
+    }
+
+    .auth-brand-tags {
+      display: flex;
+      gap: 8px;
+      animation: auth-fade-up .6s .2s cubic-bezier(.32,1,.4,1) both;
+    }
+
+    .auth-tag {
+      padding: 4px 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .auth-left-desc {
+      font-size: 14px;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.7;
+      animation: auth-fade-up .6s .35s cubic-bezier(.32,1,.4,1) both;
+    }
+
+    @keyframes auth-fade-up {
+      from { transform: translateY(12px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .auth-left-footer {
+      position: absolute;
+      bottom: 24px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.18);
+      letter-spacing: .3px;
+    }
+
+    /* Linha divisória */
+    .auth-split::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 10%;
+      height: 80%;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent);
+      pointer-events: none;
+    }
+
+    /* ── PAINEL DIREITO ──────────────────────────────────── */
+    .auth-panel-right {
+      width: 440px;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 4px;
+      background: #111;
+      padding: 40px 32px;
     }
-    .auth-logo-img {
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
-      object-fit: cover;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-      animation: auth-logo-in .5s cubic-bezier(.32,1,.4,1);
+
+    .auth-box {
+      width: 100%;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      max-width: 100% !important;
     }
-    @keyframes auth-logo-in {
-      from { transform: scale(.7); opacity: 0; }
-      to   { transform: scale(1);  opacity: 1; }
+
+    .auth-logo {
+      margin-bottom: 32px !important;
+      text-align: left !important;
     }
-    .dark .auth-logo-img {
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+
+    #authSubtitle {
+      font-size: 28px !important;
+      font-weight: 700 !important;
+      color: #fff !important;
+      line-height: 1.2;
+      margin: 0;
     }
-    .auth-logo h2 {
-      font-size: 24px !important;
-      font-weight: 800 !important;
-      letter-spacing: -.5px;
-      margin-top: 12px !important;
+
+    .auth-field label {
+      color: rgba(255,255,255,0.45) !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      letter-spacing: .4px !important;
+      text-transform: uppercase !important;
+    }
+
+    .auth-field input {
+      background: rgba(255,255,255,0.05) !important;
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      border-radius: 10px !important;
+      color: #fff !important;
+      font-size: 15px !important;
+      padding: 13px 16px !important;
+      transition: border-color .2s, background .2s !important;
+    }
+
+    .auth-field input::placeholder { color: rgba(255,255,255,0.25) !important; }
+    .auth-field input:focus {
+      border-color: rgba(255,255,255,0.35) !important;
+      background: rgba(255,255,255,0.08) !important;
+      outline: none !important;
+    }
+
+    .auth-btn {
+      background: #fff !important;
+      color: #0a0a0a !important;
+      border-radius: 10px !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      letter-spacing: .3px !important;
+      padding: 14px !important;
+      transition: opacity .2s, transform .1s !important;
+    }
+    .auth-btn:hover { opacity: .9 !important; }
+    .auth-btn:active { transform: scale(.99) !important; }
+    .auth-btn:disabled { opacity: .35 !important; }
+
+    /* Botão Google */
+    .google-btn {
+      background: rgba(255,255,255,0.06) !important;
+      border: 1px solid rgba(255,255,255,0.12) !important;
+      color: rgba(255,255,255,0.8) !important;
+      border-radius: 10px !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      transition: background .2s !important;
+    }
+    .google-btn:hover { background: rgba(255,255,255,0.1) !important; }
+
+    .auth-link-btn {
+      color: rgba(255,255,255,0.35) !important;
+      font-size: 13px !important;
+    }
+    .auth-link-btn:hover { color: rgba(255,255,255,0.7) !important; }
+
+    .auth-divider span {
+      color: rgba(255,255,255,0.2) !important;
+      background: #111 !important;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      background: rgba(255,255,255,0.08) !important;
+    }
+
+    /* Termos */
+    #termosAceiteLbl span { color: rgba(255,255,255,0.4) !important; }
+    #termosAceiteLbl a    { color: rgba(255,255,255,0.7) !important; }
+    #termosCheck { accent-color: #fff !important; }
+
+    .auth-msg.error   { background: rgba(239,68,68,.15) !important; color: #fca5a5 !important; }
+    .auth-msg.success { background: rgba(16,185,129,.15) !important; color: #6ee7b7 !important; }
+
+    /* ── MOBILE — voltar para layout simples ─────────────── */
+    @media (max-width: 768px) {
+      .auth-split { flex-direction: column; }
+      .auth-panel-left { min-height: 220px; flex: none; }
+      .auth-logo-main { width: 100px; height: 100px; }
+      @keyframes auth-logo-float { 0%, 100% { transform: none; } }
+      .auth-left-desc { display: none; }
+      .auth-brand-tags { display: none; }
+      .auth-left-footer { display: none; }
+      .auth-split::after { display: none; }
+      .auth-panel-right {
+        width: 100%;
+        flex: 1;
+        padding: 28px 20px;
+        background: #111;
+      }
+      #authSubtitle { font-size: 22px !important; }
+      .auth-panel-left-grid { display: none; }
     }
   </style>
 <style>
@@ -167,22 +394,38 @@
 
   <!-- TELA DE AUTENTICAÇÃO -->
     <div id="authScreen" class="hidden">
-    <div class="auth-box">
-      <div class="auth-logo">
-        <div class="auth-logo-img-wrap">
+    <div class="auth-split">
+
+      <!-- LADO ESQUERDO — Logo + branding -->
+      <div class="auth-panel-left">
+        <div class="auth-panel-left-bg"></div>
+        <div class="auth-panel-left-grid"></div>
+        <div class="auth-left-content">
           <img
             src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
             alt="Fiscal365"
-            class="auth-logo-img"
+            class="auth-logo-main"
             onerror="this.style.display='none';document.getElementById('authLogoFallback').style.display='flex'"
           >
-          <div id="authLogoFallback" style="display:none;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:var(--accent)">
-            <i data-lucide="shield-check" style="width:36px;height:36px;color:#fff"></i>
+          <div id="authLogoFallback" style="display:none;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.1);align-items:center;justify-content:center">
+            <i data-lucide="shield-check" style="width:64px;height:64px;color:#fff"></i>
           </div>
+          <div class="auth-brand-tags">
+            <span class="auth-tag">Fiscal</span>
+            <span class="auth-tag">Contábil</span>
+            <span class="auth-tag">IA</span>
+          </div>
+          <p class="auth-left-desc">Plataforma inteligente para gestão fiscal e contábil do seu escritório.</p>
         </div>
-        <h2>Fiscal365</h2>
-        <p id="authSubtitle">Acesso exclusivo para colaboradores</p>
+        <div class="auth-left-footer">© 2026 Fiscal365 — Todos os direitos reservados</div>
       </div>
+
+      <!-- LADO DIREITO — Formulário -->
+      <div class="auth-panel-right">
+        <div class="auth-box">
+          <div class="auth-logo">
+            <p id="authSubtitle">Bem-vindo de volta</p>
+          </div>
 
       <!-- LOGIN -->
       <div id="loginForm">
@@ -267,8 +510,10 @@
         </p>
         <button class="auth-link-btn" style="margin-top:16px" onclick="showAuthState('login')">← Voltar ao login</button>
       </div>
-    </div>
-  </div>
+    </div> <!-- fim auth-box -->
+      </div> <!-- fim auth-panel-right -->
+    </div> <!-- fim auth-split -->
+  </div> <!-- fim authScreen -->
 
   <!-- MODAL DE CLIENTES -->
   <div id="clientModal" class="hidden" onclick="if(event.target===this)closeClientModal()">
