@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="assets/css/app.css?v=6">
   <link rel="stylesheet" href="assets/css/mobile.css?v=2">
   <script>
+    window._recaptchaLoading = true;
     (async function initRecaptcha() {
       try {
         const r = await fetch('/api/recaptcha-config');
@@ -47,6 +48,7 @@
         await new Promise(resolve => grecaptcha.ready(resolve));
         window.RECAPTCHA_SITE_KEY = siteKey;
       } catch (e) { /* silencioso */ }
+      finally { window._recaptchaLoading = false; }
     })();
   </script>
 <style>
