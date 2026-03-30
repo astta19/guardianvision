@@ -308,30 +308,31 @@
       .auth-logo-main {
         width: 90px;
         height: 90px;
-        animation: auth-logo-in .6s cubic-bezier(.32,1,.4,1); /* sem float no mobile */
+        animation: auth-logo-in .6s cubic-bezier(.32,1,.4,1);
       }
       .auth-left-desc,
       .auth-brand-tags,
       .auth-left-footer,
       .auth-panel-left-grid { display: none; }
 
-      /* Painel direito ocupa o resto */
+      /* Painel direito — scroll livre */
       .auth-panel-right {
         width: 100%;
         flex: 1;
-        padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
-        background: #0f0f0f;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         align-items: flex-start;
+        padding: 32px 24px calc(40px + env(safe-area-inset-bottom));
+        background: #0f0f0f;
       }
       .auth-box { max-width: 100%; }
-
       #authSubtitle { font-size: 26px !important; }
     }
 
     @media (max-width: 400px) {
       .auth-panel-left { min-height: 160px; }
       .auth-logo-main  { width: 72px; height: 72px; }
-      .auth-panel-right { padding: 24px 18px calc(24px + env(safe-area-inset-bottom)); }
+      .auth-panel-right { padding: 24px 18px calc(40px + env(safe-area-inset-bottom)); }
       #authSubtitle { font-size: 22px !important; }
     }
   </style>
