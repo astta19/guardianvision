@@ -28,314 +28,7 @@
   <!-- Estilos -->
   <link rel="stylesheet" href="assets/css/app.css?v=6">
   <link rel="stylesheet" href="assets/css/mobile.css?v=2">
-  <!-- Fonte premium para a tela de login -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
-  <style>
-    /* ══════════════════════════════════════════════════════
-       AUTH SPLIT — tela de login profissional
-       ══════════════════════════════════════════════════════ */
-    #authScreen {
-      padding: 0 !important;
-      background: #0a0a0a !important;
-      font-family: 'DM Sans', sans-serif !important;
-    }
-
-    .auth-split {
-      display: flex;
-      width: 100%;
-      min-height: 100dvh;
-    }
-
-    /* ── PAINEL ESQUERDO ─────────────────────────────────── */
-    .auth-panel-left {
-      position: relative;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #0a0a0a;
-      overflow: hidden;
-    }
-
-    .auth-panel-left-bg {
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 40% 40%, rgba(255,255,255,0.05) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 80% at 70% 70%, rgba(255,255,255,0.03) 0%, transparent 60%);
-    }
-
-    .auth-panel-left-grid {
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
-      background-size: 36px 36px;
-      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
-    }
-
-    .auth-left-content {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      padding: 40px;
-    }
-
-    .auth-logo-main {
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      object-fit: cover;
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.08),
-        0 0 80px rgba(255,255,255,0.06),
-        0 32px 64px rgba(0,0,0,0.7);
-      animation: auth-logo-float 7s ease-in-out infinite, auth-logo-in .8s cubic-bezier(.32,1,.4,1);
-    }
-
-    @keyframes auth-logo-in {
-      from { transform: scale(.75) translateY(24px); opacity: 0; }
-      to   { transform: scale(1)   translateY(0);    opacity: 1; }
-    }
-    @keyframes auth-logo-float {
-      0%, 100% { transform: translateY(0);    }
-      50%       { transform: translateY(-9px); }
-    }
-
-    .auth-brand-tags {
-      display: flex;
-      gap: 8px;
-      animation: auth-fade-up .5s .25s both;
-    }
-    .auth-tag {
-      padding: 4px 13px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 99px;
-      font-size: 10px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.4);
-      letter-spacing: .8px;
-      text-transform: uppercase;
-      font-family: 'DM Sans', sans-serif;
-    }
-
-    .auth-left-desc {
-      font-size: 13px;
-      color: rgba(255,255,255,0.3);
-      text-align: center;
-      max-width: 260px;
-      line-height: 1.8;
-      animation: auth-fade-up .5s .4s both;
-      font-family: 'DM Sans', sans-serif;
-    }
-
-    @keyframes auth-fade-up {
-      from { transform: translateY(10px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-
-    .auth-left-footer {
-      position: absolute;
-      bottom: 20px;
-      font-size: 10px;
-      color: rgba(255,255,255,0.15);
-      letter-spacing: .4px;
-      font-family: 'DM Sans', sans-serif;
-    }
-
-    /* Divisória vertical */
-    .auth-split::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 8%;
-      height: 84%;
-      width: 1px;
-      background: linear-gradient(to bottom,
-        transparent,
-        rgba(255,255,255,0.07) 25%,
-        rgba(255,255,255,0.07) 75%,
-        transparent);
-      pointer-events: none;
-    }
-
-    /* ── PAINEL DIREITO ──────────────────────────────────── */
-    .auth-panel-right {
-      width: 460px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #0f0f0f;
-      padding: 48px 44px;
-    }
-
-    .auth-box {
-      width: 100%;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      max-width: 100% !important;
-    }
-
-    /* Título "Bem-vindo de volta" */
-    .auth-logo {
-      margin-bottom: 36px !important;
-      text-align: center !important;
-    }
-    #authSubtitle {
-      font-family: 'DM Serif Display', serif !important;
-      font-size: 32px !important;
-      font-weight: 400 !important;
-      color: #fff !important;
-      line-height: 1.15 !important;
-      margin: 0 !important;
-      letter-spacing: -.3px !important;
-    }
-
-    /* Labels */
-    .auth-field { margin-bottom: 16px !important; }
-    .auth-field label {
-      display: block;
-      font-family: 'DM Sans', sans-serif !important;
-      font-size: 11px !important;
-      font-weight: 600 !important;
-      color: rgba(255,255,255,0.38) !important;
-      letter-spacing: .7px !important;
-      text-transform: uppercase !important;
-      margin-bottom: 8px !important;
-    }
-
-    /* Inputs */
-    .auth-field input {
-      font-family: 'DM Sans', sans-serif !important;
-      background: rgba(255,255,255,0.04) !important;
-      border: 1px solid rgba(255,255,255,0.09) !important;
-      border-radius: 10px !important;
-      color: #fff !important;
-      font-size: 15px !important;
-      padding: 13px 16px !important;
-      transition: border-color .2s, background .2s !important;
-      width: 100% !important;
-    }
-    .auth-field input::placeholder { color: rgba(255,255,255,0.2) !important; }
-    .auth-field input:focus {
-      border-color: rgba(255,255,255,0.3) !important;
-      background: rgba(255,255,255,0.07) !important;
-      outline: none !important;
-    }
-
-    /* Botão Entrar */
-    .auth-btn {
-      font-family: 'DM Sans', sans-serif !important;
-      background: #fff !important;
-      color: #0a0a0a !important;
-      border-radius: 10px !important;
-      font-size: 14px !important;
-      font-weight: 700 !important;
-      letter-spacing: .2px !important;
-      padding: 14px !important;
-      margin-top: 6px !important;
-      transition: opacity .2s, transform .1s !important;
-    }
-    .auth-btn:hover   { opacity: .88 !important; }
-    .auth-btn:active  { transform: scale(.99) !important; }
-    .auth-btn:disabled { opacity: .3 !important; }
-
-    /* Botão Google */
-    .google-btn {
-      font-family: 'DM Sans', sans-serif !important;
-      background: rgba(255,255,255,0.05) !important;
-      border: 1px solid rgba(255,255,255,0.1) !important;
-      color: rgba(255,255,255,0.75) !important;
-      border-radius: 10px !important;
-      font-size: 14px !important;
-      font-weight: 500 !important;
-      transition: background .2s !important;
-    }
-    .google-btn:hover { background: rgba(255,255,255,0.09) !important; }
-
-    /* Links */
-    .auth-link-btn {
-      font-family: 'DM Sans', sans-serif !important;
-      color: rgba(255,255,255,0.3) !important;
-      font-size: 13px !important;
-      text-decoration: none !important;
-    }
-    .auth-link-btn:hover { color: rgba(255,255,255,0.65) !important; }
-
-    /* Divisor "ou" */
-    .auth-divider span {
-      font-family: 'DM Sans', sans-serif !important;
-      color: rgba(255,255,255,0.18) !important;
-      background: #0f0f0f !important;
-    }
-    .auth-divider::before,
-    .auth-divider::after { background: rgba(255,255,255,0.07) !important; }
-
-    /* Termos */
-    #termosAceiteLbl span {
-      font-family: 'DM Sans', sans-serif !important;
-      color: rgba(255,255,255,0.35) !important;
-    }
-    #termosAceiteLbl a    { color: rgba(255,255,255,0.65) !important; }
-    #termosCheck          { accent-color: #fff !important; }
-    #termosErro           { color: #fca5a5 !important; }
-
-    /* Mensagens */
-    .auth-msg {
-      font-family: 'DM Sans', sans-serif !important;
-      border-radius: 10px !important;
-    }
-    .auth-msg.error   { background: rgba(239,68,68,.12) !important; color: #fca5a5 !important; border: 1px solid rgba(239,68,68,.2) !important; }
-    .auth-msg.success { background: rgba(16,185,129,.12) !important; color: #6ee7b7 !important; border: 1px solid rgba(16,185,129,.2) !important; }
-
-    /* ── MOBILE ──────────────────────────────────────────── */
-    @media (max-width: 768px) {
-      .auth-split { flex-direction: column; }
-      .auth-split::after { display: none; }
-
-      /* Painel esquerdo vira topo compacto */
-      .auth-panel-left {
-        min-height: 200px;
-        flex: none;
-        justify-content: center;
-      }
-      .auth-logo-main {
-        width: 90px;
-        height: 90px;
-        animation: auth-logo-in .6s cubic-bezier(.32,1,.4,1);
-      }
-      .auth-left-desc,
-      .auth-brand-tags,
-      .auth-left-footer,
-      .auth-panel-left-grid { display: none; }
-
-      /* Painel direito — scroll livre */
-      .auth-panel-right {
-        width: 100%;
-        flex: 1;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        align-items: flex-start;
-        padding: 32px 24px calc(40px + env(safe-area-inset-bottom));
-        background: #0f0f0f;
-      }
-      .auth-box { max-width: 100%; }
-      #authSubtitle { font-size: 26px !important; }
-    }
-
-    @media (max-width: 400px) {
-      .auth-panel-left { min-height: 160px; }
-      .auth-logo-main  { width: 72px; height: 72px; }
-      .auth-panel-right { padding: 24px 18px calc(40px + env(safe-area-inset-bottom)); }
-      #authSubtitle { font-size: 22px !important; }
-    }
-  </style>
 <style>
   /* Alertas de prazo — banner compacto */
   .deadline-alerts { border-bottom: 1px solid var(--border); }
@@ -425,11 +118,82 @@
     .hon-spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: hon-spin .7s linear infinite; }
     @keyframes hon-spin { to { transform: rotate(360deg); } }
     </style>
+  <style>
+    /* ══ AUTH SPLIT ══════════════════════════════════════════ */
+    #authScreen { padding:0!important; background:#0a0a0a!important; font-family:'DM Sans',sans-serif!important; }
+    .auth-split { display:flex; width:100%; min-height:100dvh; position:relative; }
+    .auth-panel-left { position:relative; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a0a; overflow:hidden; }
+    .auth-panel-left-bg { position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 40% 40%,rgba(255,255,255,.05) 0%,transparent 70%),radial-gradient(ellipse 60% 80% at 70% 70%,rgba(255,255,255,.03) 0%,transparent 60%); }
+    .auth-panel-left-grid { position:absolute; inset:0; background-image:radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px); background-size:36px 36px; mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%); }
+    .auth-left-content { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:20px; padding:40px; }
+    .auth-logo-main { width:180px; height:180px; border-radius:50%; object-fit:cover; box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 80px rgba(255,255,255,.06),0 32px 64px rgba(0,0,0,.7); animation:auth-logo-float 7s ease-in-out infinite,auth-logo-in .8s cubic-bezier(.32,1,.4,1); }
+    @keyframes auth-logo-in { from{transform:scale(.75) translateY(24px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+    @keyframes auth-logo-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+    .auth-brand-tags { display:flex; gap:8px; animation:auth-fade-up .5s .25s both; }
+    .auth-tag { padding:4px 13px; border:1px solid rgba(255,255,255,.12); border-radius:99px; font-size:10px; font-weight:600; color:rgba(255,255,255,.4); letter-spacing:.8px; text-transform:uppercase; }
+    .auth-left-desc { font-size:13px; color:rgba(255,255,255,.3); text-align:center; max-width:260px; line-height:1.8; animation:auth-fade-up .5s .4s both; }
+    @keyframes auth-fade-up { from{transform:translateY(10px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .auth-left-footer { position:absolute; bottom:20px; font-size:10px; color:rgba(255,255,255,.15); letter-spacing:.4px; }
+    .auth-split::after { content:''; position:absolute; left:50%; top:8%; height:84%; width:1px; background:linear-gradient(to bottom,transparent,rgba(255,255,255,.07) 25%,rgba(255,255,255,.07) 75%,transparent); pointer-events:none; }
+    .auth-panel-right { width:460px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#0f0f0f; padding:48px 44px; }
+    .auth-box { width:100%; background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important; max-width:100%!important; }
+    .auth-logo { margin-bottom:36px!important; text-align:center!important; }
+    #authSubtitle { font-family:'DM Serif Display',serif!important; font-size:32px!important; font-weight:400!important; color:#fff!important; line-height:1.15!important; margin:0!important; letter-spacing:-.3px!important; }
+    .auth-field { margin-bottom:16px!important; }
+    .auth-field label { display:block; font-family:'DM Sans',sans-serif!important; font-size:11px!important; font-weight:600!important; color:rgba(255,255,255,.38)!important; letter-spacing:.7px!important; text-transform:uppercase!important; margin-bottom:8px!important; }
+    .auth-field input { font-family:'DM Sans',sans-serif!important; background:rgba(255,255,255,.04)!important; border:1px solid rgba(255,255,255,.09)!important; border-radius:10px!important; color:#fff!important; font-size:15px!important; padding:13px 16px!important; transition:border-color .2s,background .2s!important; width:100%!important; }
+    .auth-field input::placeholder { color:rgba(255,255,255,.2)!important; }
+    .auth-field input:focus { border-color:rgba(255,255,255,.3)!important; background:rgba(255,255,255,.07)!important; outline:none!important; }
+    .auth-btn { font-family:'DM Sans',sans-serif!important; background:#fff!important; color:#0a0a0a!important; border-radius:10px!important; font-size:14px!important; font-weight:700!important; padding:14px!important; margin-top:6px!important; transition:opacity .2s,transform .1s!important; }
+    .auth-btn:hover{opacity:.88!important} .auth-btn:active{transform:scale(.99)!important} .auth-btn:disabled{opacity:.3!important}
+    .google-btn { font-family:'DM Sans',sans-serif!important; background:rgba(255,255,255,.05)!important; border:1px solid rgba(255,255,255,.1)!important; color:rgba(255,255,255,.75)!important; border-radius:10px!important; font-size:14px!important; font-weight:500!important; transition:background .2s!important; }
+    .google-btn:hover{background:rgba(255,255,255,.09)!important}
+    .auth-link-btn { font-family:'DM Sans',sans-serif!important; color:rgba(255,255,255,.3)!important; font-size:13px!important; text-decoration:none!important; }
+    .auth-link-btn:hover{color:rgba(255,255,255,.65)!important}
+    .auth-divider span { font-family:'DM Sans',sans-serif!important; color:rgba(255,255,255,.18)!important; background:#0f0f0f!important; }
+    .auth-divider::before,.auth-divider::after{background:rgba(255,255,255,.07)!important}
+    #termosAceiteLbl span{font-family:'DM Sans',sans-serif!important;color:rgba(255,255,255,.35)!important}
+    #termosAceiteLbl a{color:rgba(255,255,255,.65)!important}
+    #termosCheck{accent-color:#fff!important}
+    #termosErro{color:#fca5a5!important}
+    .auth-msg{font-family:'DM Sans',sans-serif!important;border-radius:10px!important}
+    .auth-msg.error{background:rgba(239,68,68,.12)!important;color:#fca5a5!important;border:1px solid rgba(239,68,68,.2)!important}
+    .auth-msg.success{background:rgba(16,185,129,.12)!important;color:#6ee7b7!important;border:1px solid rgba(16,185,129,.2)!important}
+    @media(max-width:768px){
+      .auth-split{flex-direction:column}
+      .auth-split::after{display:none}
+      .auth-panel-left{min-height:200px;flex:none}
+      .auth-logo-main{width:90px;height:90px;animation:auth-logo-in .6s cubic-bezier(.32,1,.4,1)}
+      .auth-left-desc,.auth-brand-tags,.auth-left-footer,.auth-panel-left-grid{display:none}
+      .auth-panel-right{width:100%;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:32px 24px calc(40px + env(safe-area-inset-bottom));background:#0f0f0f}
+      #authSubtitle{font-size:26px!important}
+    }
+    @media(max-width:400px){
+      .auth-panel-left{min-height:160px}
+      .auth-logo-main{width:72px;height:72px}
+      .auth-panel-right{padding:24px 18px calc(40px + env(safe-area-inset-bottom))}
+      #authSubtitle{font-size:22px!important}
+    }
+    /* Header some no mobile */
+    @media(max-width:600px){
+      header{display:none!important}
+    }
+  </style>
 </head>
 <body>
 <!-- TELA DE LOADING -->
-  <div id="loadingScreen" style="position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity 0.3s ease">
-    <div style="width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#000;border-radius:50%;animation:spin 0.75s linear infinite"></div>
+  <div id="loadingScreen" style="position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity 0.4s ease">
+    <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
+      alt="Fiscal365"
+      style="width:88px;height:88px;border-radius:50%;object-fit:cover;animation:splash-pulse 1.8s ease-in-out infinite;box-shadow:0 0 40px rgba(255,255,255,0.08)"
+      onerror="this.style.display='none'">
+    <div style="width:32px;height:2px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">
+      <div style="height:100%;background:rgba(255,255,255,0.4);border-radius:2px;animation:splash-bar 1.4s ease-in-out infinite"></div>
+    </div>
+    <style>
+      @keyframes splash-pulse { 0%,100%{opacity:.7;transform:scale(.97)} 50%{opacity:1;transform:scale(1)} }
+      @keyframes splash-bar { 0%{width:0;margin-left:0} 50%{width:100%;margin-left:0} 100%{width:0;margin-left:100%} }
+    </style>
   </div>
 
   <!-- MODAL DE CONFIRMAÇÃO -->
@@ -444,20 +208,17 @@
   </div>
 
   <!-- TELA DE AUTENTICAÇÃO -->
-    <div id="authScreen" class="hidden">
+  <div id="authScreen" class="hidden">
     <div class="auth-split">
 
-      <!-- LADO ESQUERDO — Logo + branding -->
+      <!-- PAINEL ESQUERDO -->
       <div class="auth-panel-left">
         <div class="auth-panel-left-bg"></div>
         <div class="auth-panel-left-grid"></div>
         <div class="auth-left-content">
-          <img
-            src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
-            alt="Fiscal365"
-            class="auth-logo-main"
-            onerror="this.style.display='none';document.getElementById('authLogoFallback').style.display='flex'"
-          >
+          <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
+            alt="Fiscal365" class="auth-logo-main"
+            onerror="this.style.display='none';document.getElementById('authLogoFallback').style.display='flex'">
           <div id="authLogoFallback" style="display:none;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.1);align-items:center;justify-content:center">
             <i data-lucide="shield-check" style="width:64px;height:64px;color:#fff"></i>
           </div>
@@ -471,100 +232,92 @@
         <div class="auth-left-footer">© 2026 Fiscal365 — Todos os direitos reservados</div>
       </div>
 
-      <!-- LADO DIREITO — Formulário -->
+      <!-- PAINEL DIREITO -->
       <div class="auth-panel-right">
         <div class="auth-box">
           <div class="auth-logo">
             <p id="authSubtitle">Bem-vindo de volta</p>
           </div>
 
-      <!-- LOGIN -->
-      <div id="loginForm">
-        <div class="auth-field">
-          <label>E-mail</label>
-          <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email" maxlength="254">
-        </div>
-        <div class="auth-field">
-          <label>Senha</label>
-          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
-            onkeypress="if(event.key==='Enter') doLogin()" maxlength="128">
-        </div>
-        <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
+          <!-- LOGIN -->
+          <div id="loginForm">
+            <div class="auth-field">
+              <label>E-mail</label>
+              <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email" maxlength="254">
+            </div>
+            <div class="auth-field">
+              <label>Senha</label>
+              <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
+                onkeypress="if(event.key==='Enter') doLogin()" maxlength="128">
+            </div>
+            <button class="auth-btn" onclick="doLogin()" id="loginBtn">Entrar</button>
+            <div class="auth-divider"><span>ou</span></div>
+            <button class="google-btn" onclick="doGoogleLogin()" type="button">
+              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.96 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+              Continuar com Google
+            </button>
+            <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
+            <div class="auth-msg" id="loginMsg"></div>
+            <label id="termosAceiteLbl" style="display:flex;align-items:flex-start;gap:10px;margin-top:16px;cursor:pointer">
+              <input type="checkbox" id="termosCheck" style="margin-top:2px;width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">
+              <span style="font-size:12px;color:var(--text-light);line-height:1.6">
+                Li e aceito os
+                <a href="#" onclick="abrirTermos();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Termos de Uso</a>
+                e a
+                <a href="#" onclick="abrirPrivacidade();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Política de Privacidade</a>
+              </span>
+            </label>
+            <div id="termosErro" style="display:none;font-size:11px;color:#dc2626;margin-top:6px;font-weight:600">
+              ⚠ Você precisa aceitar os termos para continuar.
+            </div>
+          </div>
 
-        <div class="auth-divider"><span>ou</span></div>
+          <!-- DEFINIR SENHA -->
+          <div id="setPasswordForm" style="display:none">
+            <div class="auth-field">
+              <label>Nova senha</label>
+              <input type="password" id="newPassword" placeholder="Mín. 8 caracteres" autocomplete="new-password" oninput="checkPasswordStrength(this.value)" maxlength="128">
+              <div class="pwd-strength"><div class="pwd-strength-bar" id="pwdBar"></div></div>
+              <div class="pwd-hint" id="pwdHint"></div>
+            </div>
+            <div class="auth-field">
+              <label>Confirmar senha</label>
+              <input type="password" id="confirmPassword" placeholder="Repita a senha" autocomplete="new-password"
+                onkeypress="if(event.key==='Enter') doSetPassword()" maxlength="128">
+            </div>
+            <button class="auth-btn" onclick="doSetPassword()" id="setPasswordBtn">Definir senha e entrar</button>
+            <div class="auth-msg" id="setPasswordMsg"></div>
+          </div>
 
-        <button class="google-btn" onclick="doGoogleLogin()" type="button">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.96 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-          Continuar com Google
-        </button>
-        <button class="auth-link-btn" onclick="showAuthState('reset')">Esqueci minha senha</button>
+          <!-- RECUPERAR SENHA -->
+          <div id="resetForm" style="display:none">
+            <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;line-height:1.6">
+              Digite seu e-mail e enviaremos um link para redefinir sua senha.
+            </p>
+            <div class="auth-field">
+              <label>E-mail</label>
+              <input type="email" id="resetEmail" placeholder="seu@email.com" autocomplete="email"
+                onkeypress="if(event.key==='Enter') doReset()" maxlength="254">
+            </div>
+            <button class="auth-btn" onclick="doReset()" id="resetBtn">Enviar link</button>
+            <button class="auth-link-btn" onclick="showAuthState('login')">← Voltar ao login</button>
+            <div class="auth-msg" id="resetMsg"></div>
+          </div>
 
-        <!-- LOGIN FACIAL -->
+          <!-- CONFIRMAÇÃO ENVIADA -->
+          <div id="confirmSentForm" style="display:none;text-align:center;padding:8px 0">
+            <div style="margin-bottom:16px"><i data-lucide="mail" style="width:48px;height:48px;color:var(--accent)"></i></div>
+            <p style="font-weight:600;margin-bottom:8px" id="confirmSentTitle">Link enviado!</p>
+            <p style="font-size:13px;color:var(--text-light);line-height:1.6" id="confirmSentText">
+              Verifique sua caixa de entrada e clique no link para continuar.
+            </p>
+            <button class="auth-link-btn" style="margin-top:16px" onclick="showAuthState('login')">← Voltar ao login</button>
+          </div>
 
-
-        <div class="auth-msg" id="loginMsg"></div>
-
-        <!-- Aceite de Termos -->
-        <label id="termosAceiteLbl" style="display:flex;align-items:flex-start;gap:10px;margin-top:16px;cursor:pointer">
-          <input type="checkbox" id="termosCheck"
-            style="margin-top:2px;width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">
-          <span style="font-size:12px;color:var(--text-light);line-height:1.6">
-            Li e aceito os
-            <a href="#" onclick="abrirTermos();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Termos de Uso</a>
-            e a
-            <a href="#" onclick="abrirPrivacidade();return false" style="color:var(--accent);text-decoration:none;font-weight:600">Política de Privacidade</a>
-          </span>
-        </label>
-        <div id="termosErro" style="display:none;font-size:11px;color:#dc2626;margin-top:6px;font-weight:600">
-          ⚠ Você precisa aceitar os termos para continuar.
-        </div>
-      </div>
-
-      <!-- DEFINIR SENHA (convite / primeiro acesso) -->
-      <div id="setPasswordForm" style="display:none">
-        <div class="auth-field">
-          <label>Nova senha</label>
-          <input type="password" id="newPassword" placeholder="Mín. 8 caracteres" autocomplete="new-password" oninput="checkPasswordStrength(this.value)" maxlength="128">
-          <div class="pwd-strength"><div class="pwd-strength-bar" id="pwdBar"></div></div>
-          <div class="pwd-hint" id="pwdHint"></div>
-        </div>
-        <div class="auth-field">
-          <label>Confirmar senha</label>
-          <input type="password" id="confirmPassword" placeholder="Repita a senha" autocomplete="new-password"
-            onkeypress="if(event.key==='Enter') doSetPassword()" maxlength="128">
-        </div>
-        <button class="auth-btn" onclick="doSetPassword()" id="setPasswordBtn">Definir senha e entrar</button>
-        <div class="auth-msg" id="setPasswordMsg"></div>
-      </div>
-
-      <!-- RECUPERAR SENHA -->
-      <div id="resetForm" style="display:none">
-        <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;line-height:1.6">
-          Digite seu e-mail e enviaremos um link para redefinir sua senha.
-        </p>
-        <div class="auth-field">
-          <label>E-mail</label>
-          <input type="email" id="resetEmail" placeholder="seu@email.com" autocomplete="email"
-            onkeypress="if(event.key==='Enter') doReset()" maxlength="254">
-        </div>
-        <button class="auth-btn" onclick="doReset()" id="resetBtn">Enviar link</button>
-        <button class="auth-link-btn" onclick="showAuthState('login')">← Voltar ao login</button>
-        <div class="auth-msg" id="resetMsg"></div>
-      </div>
-
-      <!-- CONFIRMAÇÃO ENVIADA -->
-      <div id="confirmSentForm" style="display:none;text-align:center;padding:8px 0">
-        <div style="margin-bottom:16px"><i data-lucide="mail" style="width:48px;height:48px;color:var(--accent)"></i></div>
-        <p style="font-weight:600;margin-bottom:8px" id="confirmSentTitle">Link enviado!</p>
-        <p style="font-size:13px;color:var(--text-light);line-height:1.6" id="confirmSentText">
-          Verifique sua caixa de entrada e clique no link para continuar.
-        </p>
-        <button class="auth-link-btn" style="margin-top:16px" onclick="showAuthState('login')">← Voltar ao login</button>
-      </div>
-    </div> <!-- fim auth-box -->
-      </div> <!-- fim auth-panel-right -->
-    </div> <!-- fim auth-split -->
-  </div> <!-- fim authScreen -->
+        </div><!-- fim auth-box -->
+      </div><!-- fim auth-panel-right -->
+    </div><!-- fim auth-split -->
+  </div><!-- fim authScreen -->
 
   <!-- MODAL DE CLIENTES -->
   <div id="clientModal" class="hidden" onclick="if(event.target===this)closeClientModal()">
@@ -1155,7 +908,11 @@
 
         <!-- Logo + título -->
         <div class="c-brand">
-          <i data-lucide="shield-check" class="c-brand-icon"></i>
+          <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
+            alt="Fiscal365"
+            class="c-brand-icon"
+            style="width:28px;height:28px;border-radius:50%;object-fit:cover"
+            onerror="this.outerHTML='<i data-lucide=\'shield-check\' class=\'c-brand-icon\'></i>'">
           <span class="c-title">Fiscal365</span>
         </div>
 
@@ -1319,21 +1076,6 @@
 
         <div class="toolbar-sep"></div>
 
-        <!-- Suporte WhatsApp -->
-        <a href="https://wa.me/5516999999999?text=Olá!%20Preciso%20de%20ajuda%20com%20o%20Fiscal365"
-           target="_blank" rel="noopener"
-           id="suporteBtn"
-           title="Suporte via WhatsApp"
-           style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;background:#25d366;color:#fff;text-decoration:none;font-size:12px;font-weight:600;transition:opacity .15s"
-           onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-          <span class="suporte-label desktop-only">Suporte</span>
-        </a>
-
-        <div class="toolbar-sep"></div>
-
         <!-- Tema -->
         <button class="tb-btn" onclick="toggleTheme()" title="Alternar tema" aria-label="Tema">
           <i data-lucide="moon" id="themeIcon"></i>
@@ -1393,7 +1135,7 @@
               <div class="kpi-icon" style="background:#dcfce7"><i data-lucide="file-check" style="color:#16a34a;width:18px;height:18px"></i></div>
               <div><div class="kpi-val" id="kpiDarfs">—</div><div class="kpi-lbl">DARFs gerados (mês)</div></div>
             </div>
-            <div class="kpi-card" style="cursor:default">
+            <div class="kpi-card" onclick="openAgenda()" style="cursor:pointer">
               <div class="kpi-icon" style="background:#fce7f3"><i data-lucide="alert-triangle" style="color:#db2777;width:18px;height:18px"></i></div>
               <div><div class="kpi-val" id="kpiVencidos">—</div><div class="kpi-lbl">Prazos vencidos</div></div>
             </div>
@@ -1430,11 +1172,10 @@
       <div class="inp-row">
         <input type="text" id="msgInput" placeholder="Digite sua dúvida fiscal..." maxlength="8000"
           onkeypress="if(event.key==='Enter' && !event.shiftKey) send()"
-          oninput="updateCharCount()" autocomplete="off">
+          autocomplete="off">
         <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="Anexar arquivos" data-perm="arquivos" style="display:none">
           <i data-lucide="paperclip"></i>
         </button>
-        <span id="charCount" style="font-size:11px;color:var(--text-light);align-self:center;white-space:nowrap;display:none">0/8000</span>
         <div class="dropdown-wrap" style="position:relative">
           <button class="icon-btn" id="docGenBtn" onclick="toggleDocGenMenu()" title="Gerar documento" data-perm="gerar_doc" style="display:none">
             <i data-lucide="file-down"></i>
@@ -1746,7 +1487,22 @@
             </div>
           </div>
 
-          
+          <!-- Seção: Suporte -->
+          <div style="margin-bottom:20px;">
+            <h4 style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.6px;margin:0 0 12px;">Suporte</h4>
+            <a href="https://wa.me/5516999999999?text=Olá!%20Preciso%20de%20ajuda%20com%20o%20Fiscal365"
+               target="_blank" rel="noopener"
+               style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:#f0fdf4;border:1px solid #bbf7d0;text-decoration:none;transition:opacity .15s"
+               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+              <div style="width:34px;height:34px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:#15803d">Suporte via WhatsApp</div>
+                <div style="font-size:11px;color:#16a34a;margin-top:1px">Atendimento em horário comercial</div>
+              </div>
+              <i data-lucide="external-link" style="width:14px;height:14px;color:#16a34a;margin-left:auto;flex-shrink:0"></i>
+            </a>
           </div>
 
         </div>
