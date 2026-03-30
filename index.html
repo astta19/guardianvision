@@ -182,16 +182,22 @@
 </head>
 <body>
 <!-- TELA DE LOADING -->
-  <div id="loadingScreen" style="position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity 0.4s ease">
-    <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
-      alt="Fiscal365"
-      style="width:88px;height:88px;border-radius:50%;object-fit:cover;animation:splash-pulse 1.8s ease-in-out infinite;box-shadow:0 0 40px rgba(255,255,255,0.08)"
-      onerror="this.style.display='none'">
-    <div style="width:32px;height:2px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden">
-      <div style="height:100%;background:rgba(255,255,255,0.4);border-radius:2px;animation:splash-bar 1.4s ease-in-out infinite"></div>
+  <div id="loadingScreen" style="position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:opacity 0.5s ease">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:20px;animation:splash-in .6s cubic-bezier(.32,1,.4,1) both">
+      <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
+        alt="Fiscal365"
+        style="width:120px;height:120px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 80px rgba(255,255,255,.1),0 24px 48px rgba(0,0,0,.8)"
+        onerror="this.style.display='none'">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        <span style="font-size:26px;font-weight:700;color:#fff;letter-spacing:-.5px;font-family:system-ui,sans-serif">Fiscal365</span>
+        <span style="font-size:12px;color:rgba(255,255,255,.3);letter-spacing:.6px;text-transform:uppercase;font-family:system-ui,sans-serif">Gestão Fiscal Inteligente</span>
+      </div>
+    </div>
+    <div style="position:absolute;bottom:48px;width:120px;height:2px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+      <div style="height:100%;background:rgba(255,255,255,.35);border-radius:2px;animation:splash-bar 1.6s ease-in-out infinite"></div>
     </div>
     <style>
-      @keyframes splash-pulse { 0%,100%{opacity:.7;transform:scale(.97)} 50%{opacity:1;transform:scale(1)} }
+      @keyframes splash-in  { from{transform:scale(.85) translateY(16px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
       @keyframes splash-bar { 0%{width:0;margin-left:0} 50%{width:100%;margin-left:0} 100%{width:0;margin-left:100%} }
     </style>
   </div>
@@ -906,14 +912,12 @@
           <i data-lucide="menu"></i>
         </button>
 
-        <!-- Logo + título -->
+        <!-- Logo -->
         <div class="c-brand">
           <img src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
             alt="Fiscal365"
-            class="c-brand-icon"
-            style="width:28px;height:28px;border-radius:50%;object-fit:cover"
+            style="width:30px;height:30px;border-radius:50%;object-fit:cover"
             onerror="this.outerHTML='<i data-lucide=\'shield-check\' class=\'c-brand-icon\'></i>'">
-          <span class="c-title">Fiscal365</span>
         </div>
 
         <!-- Empresa ativa — badge clicável -->
