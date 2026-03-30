@@ -3,24 +3,20 @@
    ============================================================ */
 
 
-/* reCAPTCHA badge — visível mas reposicionado para não sobrepor nada */
+/* reCAPTCHA badge — posicionado para não sobrepor botões */
 .grecaptcha-badge {
-  bottom: 72px !important;
-  right: 6px !important;
-  transform: scale(0.6) !important;
-  transform-origin: bottom right !important;
-  opacity: 0.5 !important;
+  opacity: 0.6 !important;
   transition: opacity .2s !important;
   z-index: 800 !important;
 }
-.grecaptcha-badge:hover {
-  opacity: 1 !important;
-}
-@media (min-width: 601px) {
+.grecaptcha-badge:hover { opacity: 1 !important; }
+
+@media (max-width: 600px) {
+  /* Mobile: acima do bottom nav */
   .grecaptcha-badge {
-    bottom: 16px !important;
-    right: 6px !important;
-    transform: scale(0.65) !important;
+    bottom: 68px !important;
+    right: 4px !important;
+    transform: scale(0.55) !important;
     transform-origin: bottom right !important;
   }
 }
