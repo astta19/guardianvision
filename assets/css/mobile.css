@@ -1,190 +1,42 @@
 /* ============================================================
-   MOBILE.CSS — UX nativa para mobile (≤ 600px)
-   Aplica fullscreen nos modais, botão voltar nativo,
-   bottom nav com safe area e sheet de módulos.
+   MOBILE.CSS v2 — UX nativa para mobile (≤ 600px)
    ============================================================ */
+
+/* ── reCAPTCHA badge — pequeno e fora do caminho ────────────── */
+.grecaptcha-badge {
+  transform: scale(0.65) !important;
+  transform-origin: bottom right !important;
+  opacity: 0.6 !important;
+  transition: opacity .3s !important;
+}
+.grecaptcha-badge:hover { opacity: 1 !important; }
+
+@media (min-width: 601px) {
+  #bottomNav    { display: none !important; }
+  #swipeZone    { display: none !important; }
+  .grecaptcha-badge {
+    bottom: 14px !important;
+    right: 14px !important;
+  }
+}
 
 @media (max-width: 600px) {
 
-  /* ── SAFE AREA & BODY ────────────────────────────────────── */
+  /* Badge acima do bottom nav */
+  .grecaptcha-badge {
+    bottom: 68px !important;
+    right: 4px !important;
+  }
+
+  /* ── BODY ────────────────────────────────────────────────── */
   body {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
     overflow-x: hidden;
-  }
-
-  /* ── HEADER ─────────────────────────────────────────────── */
-  header {
-    padding: 0 12px;
-    height: 52px;
-  }
-
-  /* ── MODAIS — FULLSCREEN EM MOBILE ──────────────────────── */
-  /* Todos os modais principais viram tela cheia */
-  #agendaModal,
-  #finModal,
-  #folhaModal,
-  #honModal,
-  #honPagoModal,
-  #docModal,
-  #profileModal,
-  #spedModal,
-  #empresaPerfilModal,
-  #permissoesModal,
-  #calcModal,
-  #statsModal,
-  #learningStatsModal,
-  #shareModal,
-  #portalAdminModal,
-  #convitesModal,
-  #pcModal,
-  #lcModal,
-  #balModal,
-  #dreModal,
-  #concModal,
-  #apurModal,
-  #clientModal {
-    padding: 0 !important;
-    align-items: flex-end !important;
-  }
-
-  /* Container interno do modal — ocupa tela cheia */
-  #agendaModal > div,
-  #finModal > div,
-  #folhaModal > div,
-  #honModal > div,
-  #honModal > div.dp-modal,
-  #honPagoModal > div,
-  #docModal > div,
-  #profileModal > div,
-  #spedModal > div,
-  #empresaPerfilModal > div,
-  #permissoesModal > div,
-  #calcModal > div,
-  #statsModal > div,
-  #learningStatsModal > div,
-  #shareModal > div,
-  #portalAdminModal > div,
-  #convitesModal > div,
-  #pcModal > div,
-  #lcModal > div,
-  #balModal > div,
-  #dreModal > div,
-  #concModal > div,
-  #apurModal > div,
-  #clientModal > div {
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: 96dvh !important;
-    height: 96dvh !important;
-    border-radius: 20px 20px 0 0 !important;
-    margin: 0 !important;
-    animation: slideUpModal .25s cubic-bezier(.32,1,.4,1);
-  }
-
-  @keyframes slideUpModal {
-    from { transform: translateY(60px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-  }
-
-  /* ── BOTÃO VOLTAR — substitui o X nos modais ─────────────── */
-  /* O botão circular com X vira um botão de voltar nativo */
-  #agendaModal    button[onclick*="closeAgenda"]        [data-lucide="x"],
-  #finModal       button[onclick*="closeFinanceiro"]    [data-lucide="x"],
-  #folhaModal     button[onclick*="closeFolha"]         [data-lucide="x"],
-  #honModal       button[onclick*="closeHonorarios"]    [data-lucide="x"],
-  #docModal       button[onclick*="closeDocumentos"]    [data-lucide="x"],
-  #profileModal   button[onclick*="closeProfile"]       [data-lucide="x"],
-  #spedModal      button[onclick*="closeSped"]          [data-lucide="x"],
-  #empresaPerfilModal button[onclick*="closeEmpresaPerfil"] [data-lucide="x"],
-  #permissoesModal    button[onclick*="fecharPermissoes"]   [data-lucide="x"],
-  #portalAdminModal   button[onclick*="fecharPortalAdmin"]  [data-lucide="x"],
-  #convitesModal      button[onclick*="fecharConvites"]     [data-lucide="x"],
-  #pcModal        button[onclick*="closePlanoConta"]    [data-lucide="x"],
-  #lcModal        button[onclick*="closeLancamentos"]   [data-lucide="x"],
-  #balModal       button[onclick*="closeBalancete"]     [data-lucide="x"],
-  #dreModal       button[onclick*="closeDRE"]           [data-lucide="x"],
-  #concModal      button[onclick*="closeConciliacao"]   [data-lucide="x"],
-  #apurModal      button[onclick*="closeApuracao"]      [data-lucide="x"] {
-    display: none !important;
-  }
-
-  /* Pseudo-conteúdo com chevron-left via botão pai */
-  #agendaModal    button[onclick*="closeAgenda"],
-  #finModal       button[onclick*="closeFinanceiro"],
-  #folhaModal     button[onclick*="closeFolha"],
-  #honModal       button[onclick*="closeHonorarios"],
-  #docModal       button[onclick*="closeDocumentos"],
-  #profileModal   button[onclick*="closeProfile"],
-  #spedModal      button[onclick*="closeSped"],
-  #empresaPerfilModal button[onclick*="closeEmpresaPerfil"],
-  #permissoesModal    button[onclick*="fecharPermissoes"],
-  #portalAdminModal   button[onclick*="fecharPortalAdmin"],
-  #convitesModal      button[onclick*="fecharConvites"],
-  #pcModal        button[onclick*="closePlanoConta"],
-  #lcModal        button[onclick*="closeLancamentos"],
-  #balModal       button[onclick*="closeBalancete"],
-  #dreModal       button[onclick*="closeDRE"],
-  #concModal      button[onclick*="closeConciliacao"],
-  #apurModal      button[onclick*="closeApuracao"] {
-    width: auto !important;
-    height: 36px !important;
-    border-radius: 10px !important;
-    padding: 0 12px 0 8px !important;
-    background: var(--sidebar-hover) !important;
-    color: var(--text) !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    gap: 4px !important;
-    display: flex !important;
-    align-items: center !important;
-  }
-
-  #agendaModal    button[onclick*="closeAgenda"]::before,
-  #finModal       button[onclick*="closeFinanceiro"]::before,
-  #folhaModal     button[onclick*="closeFolha"]::before,
-  #honModal       button[onclick*="closeHonorarios"]::before,
-  #docModal       button[onclick*="closeDocumentos"]::before,
-  #profileModal   button[onclick*="closeProfile"]::before,
-  #spedModal      button[onclick*="closeSped"]::before,
-  #empresaPerfilModal button[onclick*="closeEmpresaPerfil"]::before,
-  #permissoesModal    button[onclick*="fecharPermissoes"]::before,
-  #portalAdminModal   button[onclick*="fecharPortalAdmin"]::before,
-  #convitesModal      button[onclick*="fecharConvites"]::before,
-  #pcModal        button[onclick*="closePlanoConta"]::before,
-  #lcModal        button[onclick*="closeLancamentos"]::before,
-  #balModal       button[onclick*="closeBalancete"]::before,
-  #dreModal       button[onclick*="closeDRE"]::before,
-  #concModal      button[onclick*="closeConciliacao"]::before,
-  #apurModal      button[onclick*="closeApuracao"]::before {
-    content: "‹ Voltar";
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--accent);
-  }
-
-  /* Handle visual no topo do modal (barra cinza) */
-  #agendaModal > div::before,
-  #finModal > div::before,
-  #folhaModal > div::before,
-  #honModal > div::before,
-  #docModal > div::before,
-  #profileModal > div::before,
-  #spedModal > div::before,
-  #empresaPerfilModal > div::before,
-  #permissoesModal > div::before {
-    content: '';
-    display: block;
-    width: 40px;
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 10px auto 0;
-    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* ── BOTTOM NAV ─────────────────────────────────────────── */
   #bottomNav {
-    display: flex;
     position: fixed;
     bottom: 0;
     left: 0;
@@ -194,7 +46,8 @@
     background: var(--card);
     border-top: 1px solid var(--border);
     z-index: 4000;
-    box-shadow: 0 -2px 16px rgba(0,0,0,.08);
+    display: flex;
+    box-shadow: 0 -2px 12px rgba(0,0,0,.07);
   }
 
   .bn-item {
@@ -213,42 +66,38 @@
     padding: 6px 0;
     position: relative;
     transition: color .15s;
-    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
-  .bn-item.active {
-    color: var(--accent);
-  }
+  .bn-item.active { color: var(--accent); }
 
-  .bn-item i {
-    width: 22px;
-    height: 22px;
+  .bn-item svg, .bn-item i {
+    width: 22px !important;
+    height: 22px !important;
     transition: transform .15s;
   }
 
-  .bn-item.active i {
-    transform: scale(1.1);
-  }
+  .bn-item.active svg,
+  .bn-item.active i { transform: scale(1.1); }
 
-  /* Indicador ativo — bolinha no ícone */
   .bn-item.active::after {
     content: '';
     position: absolute;
-    top: 6px;
-    width: 28px;
+    top: 5px;
+    width: 36px;
     height: 28px;
     border-radius: 10px;
     background: var(--accent);
     opacity: .1;
-    z-index: -1;
+    pointer-events: none;
   }
 
   .bn-badge {
     position: absolute;
-    top: 4px;
-    right: calc(50% - 18px);
-    min-width: 16px;
-    height: 16px;
+    top: 3px;
+    right: calc(50% - 20px);
+    min-width: 15px;
+    height: 15px;
     background: #dc2626;
     color: #fff;
     border-radius: 99px;
@@ -259,7 +108,144 @@
     justify-content: center;
     padding: 0 3px;
     border: 2px solid var(--card);
+    pointer-events: none;
   }
+
+  /* ── MODAIS FULLSCREEN ──────────────────────────────────── */
+  #agendaModal, #finModal, #folhaModal, #honModal, #honPagoModal,
+  #docModal, #profileModal, #spedModal, #empresaPerfilModal,
+  #permissoesModal, #calcModal, #statsModal, #learningStatsModal,
+  #shareModal, #portalAdminModal, #convitesModal, #clientModal,
+  #pcModal, #lcModal, #balModal, #dreModal, #concModal, #apurModal {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  #agendaModal > div, #finModal > div, #folhaModal > div,
+  #honModal > div, #docModal > div, #profileModal > div,
+  #spedModal > div, #empresaPerfilModal > div, #permissoesModal > div,
+  #calcModal > div, #statsModal > div, #learningStatsModal > div,
+  #shareModal > div, #portalAdminModal > div, #convitesModal > div,
+  #clientModal > div, #pcModal > div, #lcModal > div, #balModal > div,
+  #dreModal > div, #concModal > div, #apurModal > div,
+  #honModal .dp-modal, #honPagoModal > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 94dvh !important;
+    max-height: 94dvh !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    animation: mbl-slide-up .28s cubic-bezier(.32,1,.4,1);
+  }
+
+  @keyframes mbl-slide-up {
+    from { transform: translateY(48px); opacity: .5; }
+    to   { transform: translateY(0);    opacity: 1;  }
+  }
+
+  /* Handle no topo */
+  #agendaModal > div::before, #finModal > div::before,
+  #folhaModal > div::before, #honModal .dp-modal::before,
+  #docModal > div::before, #profileModal > div::before,
+  #spedModal > div::before, #empresaPerfilModal > div::before,
+  #permissoesModal > div::before, #clientModal > div::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+  }
+
+  /* ── BOTÃO FECHAR → BOTÃO VOLTAR ────────────────────────── */
+  /* Esconde ícone X interno */
+  #agendaModal div[style*="space-between"] > button:last-child > *,
+  #finModal div[style*="space-between"] > button:last-child > *,
+  #folhaModal div[style*="space-between"] > button:last-child > *,
+  #docModal div[style*="space-between"] > button:last-child > *,
+  #profileModal div[style*="space-between"] > button:last-child > *,
+  #spedModal div[style*="space-between"] > button:last-child > *,
+  #empresaPerfilModal div[style*="space-between"] > button:last-child > *,
+  #permissoesModal div[style*="space-between"] > button:last-child > *,
+  #clientModal div[style*="space-between"] > button:last-child > *,
+  #honModal .dp-modal-hd > div:last-child > button:first-child > *,
+  #portalAdminModal div[style*="space-between"] > button:last-child > *,
+  #convitesModal div[style*="space-between"] > button:last-child > * {
+    display: none !important;
+  }
+
+  /* Estilo botão voltar */
+  #agendaModal div[style*="space-between"] > button:last-child,
+  #finModal div[style*="space-between"] > button:last-child,
+  #folhaModal div[style*="space-between"] > button:last-child,
+  #docModal div[style*="space-between"] > button:last-child,
+  #profileModal div[style*="space-between"] > button:last-child,
+  #spedModal div[style*="space-between"] > button:last-child,
+  #empresaPerfilModal div[style*="space-between"] > button:last-child,
+  #permissoesModal div[style*="space-between"] > button:last-child,
+  #clientModal div[style*="space-between"] > button:last-child,
+  #honModal .dp-modal-hd > div:last-child > button:first-child,
+  #portalAdminModal div[style*="space-between"] > button:last-child,
+  #convitesModal div[style*="space-between"] > button:last-child {
+    width: auto !important;
+    min-width: 76px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+    padding: 0 12px !important;
+    background: var(--sidebar-hover) !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Texto "‹ Voltar" */
+  #agendaModal div[style*="space-between"] > button:last-child::after,
+  #finModal div[style*="space-between"] > button:last-child::after,
+  #folhaModal div[style*="space-between"] > button:last-child::after,
+  #docModal div[style*="space-between"] > button:last-child::after,
+  #profileModal div[style*="space-between"] > button:last-child::after,
+  #spedModal div[style*="space-between"] > button:last-child::after,
+  #empresaPerfilModal div[style*="space-between"] > button:last-child::after,
+  #permissoesModal div[style*="space-between"] > button:last-child::after,
+  #clientModal div[style*="space-between"] > button:last-child::after,
+  #honModal .dp-modal-hd > div:last-child > button:first-child::after,
+  #portalAdminModal div[style*="space-between"] > button:last-child::after,
+  #convitesModal div[style*="space-between"] > button:last-child::after {
+    content: "‹ Voltar";
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    pointer-events: none;
+  }
+
+  /* ── SIDEBAR ────────────────────────────────────────────── */
+  #sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    bottom: 0;
+    width: 82vw;
+    max-width: 300px;
+    z-index: 3500;
+    transition: left .26s cubic-bezier(.32,1,.4,1);
+  }
+
+  #sidebar.on {
+    left: 0;
+    box-shadow: 6px 0 32px rgba(0,0,0,.22);
+  }
+
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.38);
+    z-index: 3400;
+  }
+  #overlay.on { display: block; }
 
   /* ── SHEET DE MÓDULOS ───────────────────────────────────── */
   #bnModulosSheet {
@@ -268,16 +254,18 @@
     z-index: 5000;
     opacity: 0;
     transition: opacity .2s;
+    pointer-events: none;
   }
 
   #bnModulosSheet.bn-sheet-open {
     opacity: 1;
+    pointer-events: auto;
   }
 
   #bnModulosOverlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,.4);
+    background: rgba(0,0,0,.42);
   }
 
   #bnModulosBox {
@@ -290,8 +278,9 @@
     padding: 0 16px calc(16px + env(safe-area-inset-bottom));
     max-height: 80dvh;
     overflow-y: auto;
-    transform: translateY(60px);
-    transition: transform .25s cubic-bezier(.32,1,.4,1);
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(40px);
+    transition: transform .26s cubic-bezier(.32,1,.4,1);
   }
 
   #bnModulosSheet.bn-sheet-open #bnModulosBox {
@@ -299,7 +288,7 @@
   }
 
   .bn-sheet-handle {
-    width: 40px;
+    width: 36px;
     height: 4px;
     background: var(--border);
     border-radius: 2px;
@@ -310,7 +299,7 @@
     font-size: 15px;
     font-weight: 700;
     color: var(--text);
-    padding: 14px 4px 10px;
+    padding: 14px 2px 8px;
   }
 
   .bn-sheet-grid {
@@ -324,26 +313,24 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 12px 4px;
+    gap: 5px;
+    padding: 10px 4px;
     border: none;
     background: var(--bg);
     border-radius: 14px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     color: var(--text);
-    -webkit-tap-highlight-color: transparent;
-    transition: background .15s;
+    touch-action: manipulation;
+    transition: background .12s;
   }
 
-  .bn-sheet-item:active {
-    background: var(--hover);
-  }
+  .bn-sheet-item:active { background: var(--hover); }
 
   .bn-sheet-icon {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
     border-radius: 12px;
     background: var(--sidebar-hover);
     display: flex;
@@ -352,53 +339,10 @@
     color: var(--accent);
   }
 
-  .bn-sheet-icon i {
-    width: 20px;
-    height: 20px;
+  .bn-sheet-icon i,
+  .bn-sheet-icon svg {
+    width: 18px !important;
+    height: 18px !important;
   }
 
-  /* ── SIDEBAR EM MOBILE ──────────────────────────────────── */
-  #sidebar {
-    position: fixed;
-    left: -100%;
-    top: 0;
-    bottom: 0;
-    width: 82vw;
-    max-width: 320px;
-    z-index: 3500;
-    transition: left .25s cubic-bezier(.32,1,.4,1);
-    box-shadow: none;
-  }
-
-  #sidebar.on {
-    left: 0;
-    box-shadow: 4px 0 32px rgba(0,0,0,.18);
-  }
-
-  #overlay.on {
-    display: block !important;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.4);
-    z-index: 3400;
-  }
-
-  /* ── CHAT ───────────────────────────────────────────────── */
-  #chat {
-    padding-bottom: 0;
-  }
-
-  #msgs {
-    padding-bottom: 16px;
-  }
-
-  /* ── ESCONDER ELEMENTOS DESNECESSÁRIOS EM MOBILE ─────── */
-  #bottomNav ~ * .tool-card-label { display: none; }
-}
-
-/* Desktop — esconder bottom nav */
-@media (min-width: 601px) {
-  #bottomNav { display: none !important; }
-  #swipeZone { display: none !important; }
-  #bnModulosSheet { display: none !important; }
-}
+} /* fim @media 600px */
