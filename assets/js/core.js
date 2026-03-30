@@ -221,6 +221,18 @@ function showAuthState(state) {
   const map = { login:'loginForm', reset:'resetForm', setPassword:'setPasswordForm', confirmSent:'confirmSentForm' };
   const target = document.getElementById(map[state] || state);
   if (target) target.style.display = '';
+
+  // Atualizar título do painel direito conforme o estado
+  const subtitle = document.getElementById('authSubtitle');
+  if (subtitle) {
+    const titles = {
+      login:       'Bem-vindo de volta',
+      reset:       'Recuperar acesso',
+      setPassword: window._primeiroAcesso ? 'Crie sua senha' : 'Definir nova senha',
+      confirmSent: 'Verifique seu e-mail',
+    };
+    subtitle.textContent = titles[state] || 'Bem-vindo de volta';
+  }
 }
 
 function setAuthMsg(msg, isError, formState) {
@@ -665,8 +677,19 @@ document.addEventListener('DOMContentLoaded', () => {
       showAuthState('setPassword');
       return;
     }
+    // Primeiro acesso via convite — Supabase dispara SIGNED_IN com user_metadata.invited_at
     if (event === 'SIGNED_IN') {
       if (session) currentUser = session.user;
+      // Detectar se é primeiro acesso (convidado mas sem senha definida)
+      const isInvite = session?.user?.app_metadata?.provider === 'email'
+        && session?.user?.user_metadata?.invited_at
+        && !session?.user?.last_sign_in_at;
+      if (isInvite) {
+        hideLoading();
+        window._primeiroAcesso = true;
+        showAuthState('setPassword');
+        return;
+      }
       if (typeof logInit === 'function') logInit(currentUser);
       _termosRegistrarAceite();
       showApp();
@@ -686,7 +709,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof logInit === 'function') logInit(currentUser);
       showApp();
     }
-    else { hideLoading(); showAuthScreen(); }
+    else {
+      hideLoading();
+      // Detectar convite na URL (?type=invite ou #type=invite no hash)
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+      const type = urlParams.get('type') || hashParams.get('type');
+      if (type === 'invite') {
+        window._primeiroAcesso = true;
+        showAuthScreen();
+        showAuthState('setPassword');
+      } else {
+        showAuthScreen();
+      }
+    }
   }).catch(() => { hideLoading(); showAuthScreen(); });
 
   // Failsafe 6s
