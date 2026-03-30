@@ -2,31 +2,20 @@
    MOBILE.CSS v2 — UX nativa para mobile (≤ 600px)
    ============================================================ */
 
-/* ── reCAPTCHA badge — pequeno e fora do caminho ────────────── */
+
+/* reCAPTCHA badge — escondido; texto obrigatório inserido no HTML do login */
 .grecaptcha-badge {
-  transform: scale(0.65) !important;
-  transform-origin: bottom right !important;
-  opacity: 0.6 !important;
-  transition: opacity .3s !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
-.grecaptcha-badge:hover { opacity: 1 !important; }
 
 @media (min-width: 601px) {
   #bottomNav    { display: none !important; }
   #swipeZone    { display: none !important; }
-  .grecaptcha-badge {
-    bottom: 14px !important;
-    right: 14px !important;
-  }
 }
 
 @media (max-width: 600px) {
-
-  /* Badge acima do bottom nav */
-  .grecaptcha-badge {
-    bottom: 68px !important;
-    right: 4px !important;
-  }
 
   /* ── BODY ────────────────────────────────────────────────── */
   body {
