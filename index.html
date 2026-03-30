@@ -160,19 +160,60 @@
     .auth-msg.error{background:rgba(239,68,68,.12)!important;color:#fca5a5!important;border:1px solid rgba(239,68,68,.2)!important}
     .auth-msg.success{background:rgba(16,185,129,.12)!important;color:#6ee7b7!important;border:1px solid rgba(16,185,129,.2)!important}
     @media(max-width:768px){
-      .auth-split{flex-direction:column}
-      .auth-split::after{display:none}
-      .auth-panel-left{min-height:200px;flex:none}
-      .auth-logo-main{width:110px;height:110px;animation:auth-logo-in .6s cubic-bezier(.32,1,.4,1)}
-      .auth-left-desc,.auth-brand-tags,.auth-left-footer,.auth-panel-left-grid{display:none}
-      .auth-panel-right{width:100%;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;align-items:flex-start;padding:32px 24px calc(40px + env(safe-area-inset-bottom));background:#0f0f0f}
-      #authSubtitle{font-size:26px!important}
+      /* Split vira coluna, ocupa exatamente a tela */
+      #authScreen { overflow:hidden; }
+      .auth-split { flex-direction:column; height:100dvh; overflow:hidden; }
+      .auth-split::after { display:none; }
+
+      /* Painel esquerdo — compacto, não encolhe */
+      .auth-panel-left { min-height:0; flex:none; height:180px; }
+      .auth-logo-main { width:100px; height:100px; animation:auth-logo-in .6s cubic-bezier(.32,1,.4,1); }
+      .auth-left-desc,.auth-brand-tags,.auth-left-footer,.auth-panel-left-grid { display:none; }
+
+      /* Painel direito — ocupa o restante e rola internamente */
+      .auth-panel-right {
+        width:100%;
+        flex:1;
+        min-height:0;
+        overflow-y:auto;
+        -webkit-overflow-scrolling:touch;
+        overscroll-behavior:contain;
+        align-items:flex-start;
+        padding:28px 24px calc(32px + env(safe-area-inset-bottom));
+        background:#0f0f0f;
+      }
+      .auth-box { padding-bottom:8px; }
+      #authSubtitle { font-size:24px!important; }
     }
-    @media(max-width:400px){
-      .auth-panel-left{min-height:160px}
-      .auth-logo-main{width:90px;height:90px}
-      .auth-panel-right{padding:24px 18px calc(40px + env(safe-area-inset-bottom))}
-      #authSubtitle{font-size:22px!important}
+
+    /* Landscape mobile — painel esquerdo some, só formulário */
+    @media(max-width:768px) and (orientation:landscape){
+      .auth-panel-left { display:none; }
+      .auth-panel-right {
+        width:100%;
+        height:100dvh;
+        flex:1;
+        justify-content:flex-start;
+        padding:20px 32px calc(16px + env(safe-area-inset-bottom));
+        overflow-y:auto;
+      }
+      .auth-logo { margin-bottom:20px!important; }
+      #authSubtitle { font-size:20px!important; }
+      .auth-field { margin-bottom:10px!important; }
+    }
+
+    /* Tablets (769px–1024px) — painel esquerdo menor */
+    @media(min-width:769px) and (max-width:1024px){
+      .auth-panel-right { width:380px; padding:40px 32px; }
+      .auth-logo-main { width:160px; height:160px; }
+    }
+
+    /* Telas muito pequenas */
+    @media(max-width:360px){
+      .auth-panel-left { height:140px; }
+      .auth-logo-main { width:80px; height:80px; }
+      .auth-panel-right { padding:20px 16px calc(28px + env(safe-area-inset-bottom)); }
+      #authSubtitle { font-size:20px!important; }
     }
     /* Header some no mobile */
     @media(max-width:600px){
