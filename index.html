@@ -28,6 +28,36 @@
   <!-- Estilos -->
   <link rel="stylesheet" href="assets/css/app.css?v=6">
   <link rel="stylesheet" href="assets/css/mobile.css?v=2">
+  <style>
+    /* ── Logo tela de login ─────────────────────────────── */
+    .auth-logo-img-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+    .auth-logo-img {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+      animation: auth-logo-in .5s cubic-bezier(.32,1,.4,1);
+    }
+    @keyframes auth-logo-in {
+      from { transform: scale(.7); opacity: 0; }
+      to   { transform: scale(1);  opacity: 1; }
+    }
+    .dark .auth-logo-img {
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    .auth-logo h2 {
+      font-size: 24px !important;
+      font-weight: 800 !important;
+      letter-spacing: -.5px;
+      margin-top: 12px !important;
+    }
+  </style>
 <style>
   /* Alertas de prazo — banner compacto */
   .deadline-alerts { border-bottom: 1px solid var(--border); }
@@ -139,8 +169,18 @@
     <div id="authScreen" class="hidden">
     <div class="auth-box">
       <div class="auth-logo">
-        <i data-lucide="shield-check" style="width:36px;height:36px;color:var(--accent)"></i>
-        <h2>Chat Fiscal Pro</h2>
+        <div class="auth-logo-img-wrap">
+          <img
+            src="https://myezzedahfyrelqcgsad.supabase.co/storage/v1/object/public/assets/logo_fiscal365.png"
+            alt="Fiscal365"
+            class="auth-logo-img"
+            onerror="this.style.display='none';document.getElementById('authLogoFallback').style.display='flex'"
+          >
+          <div id="authLogoFallback" style="display:none;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:var(--accent)">
+            <i data-lucide="shield-check" style="width:36px;height:36px;color:#fff"></i>
+          </div>
+        </div>
+        <h2>Fiscal365</h2>
         <p id="authSubtitle">Acesso exclusivo para colaboradores</p>
       </div>
 
