@@ -437,6 +437,9 @@ function showAuthScreen() {
   const msgs = document.getElementById('msgs');
   if (msgs) msgs.innerHTML = '<div class="empty"><i data-lucide="message-circle"></i><h3>Olá! Sou seu especialista fiscal</h3><p>Faça perguntas sobre tributos, CFOPs, cálculos e muito mais!</p></div>';
   if (window.lucide) lucide.createIcons();
+
+  // Inicializar reCAPTCHA apenas quando a tela de login é exibida
+  _initRecaptcha();
 }
 
 async function showApp() {
@@ -564,6 +567,35 @@ async function registrarAuditLog(acao, tabelaOuDetalhes, id, detalhes) {
       created_at: new Date().toISOString()
     });
   } catch (e) { /* silencioso */ }
+}
+
+// --- reCAPTCHA init — chamado quando tela de login é exibida ---
+let _recaptchaInitialized = false;
+async function _initRecaptcha() {
+  if (_recaptchaInitialized) return; // já carregado
+  _recaptchaInitialized = true;
+  window._recaptchaLoading = true;
+  try {
+    const r = await fetch('/api/recaptcha-config');
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !ct.includes('application/json')) return;
+    const { siteKey } = await r.json();
+    if (!siteKey) return;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://www.google.com/recaptcha/api.js?render=' + siteKey;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    await new Promise(resolve => grecaptcha.ready(resolve));
+    window.RECAPTCHA_SITE_KEY = siteKey;
+  } catch (e) {
+    _recaptchaInitialized = false; // permitir retry
+  } finally {
+    window._recaptchaLoading = false;
+  }
 }
 
 // --- Supabase proxy (admin) ---
