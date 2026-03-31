@@ -156,11 +156,14 @@ function switchDpTab(tab) {
   if (btn) btn.classList.add('active');
   const panel = document.getElementById('dpPanel_' + tab);
   if (panel) panel.style.display = 'block';
-  if (tab === 'folha')     dpPreencherSelect('folhaFuncSelect');
-  if (tab === 'ferias')    dpPreencherSelect('dpFeriasFuncSelect');
-  if (tab === 'decimo')    dpPreencherSelect('dp13FuncSelect');
-  if (tab === 'rescisao')  dpPreencherSelect('dpRescFuncSelect');
-  if (tab === 'relatorios') dpCarregarRelatorio();
+  if (tab === 'folha')       dpPreencherSelect('folhaFuncSelect');
+  if (tab === 'ferias')      dpPreencherSelect('dpFeriasFuncSelect');
+  if (tab === 'decimo')      dpPreencherSelect('dp13FuncSelect');
+  if (tab === 'rescisao')    dpPreencherSelect('dpRescFuncSelect');
+  if (tab === 'relatorios')  dpCarregarRelatorio();
+  if (tab === 'dependentes') { dpPreencherSelect('dpDepFuncSelect'); }
+  if (tab === 'rubricas')    dpCarregarRubricas();
+  if (tab === 'esocial')     { dpPreencherSelect('dpEsocialFuncSelect'); }
 }
 
 // ── FUNCIONÁRIOS ───────────────────────────────────────────────
@@ -251,16 +254,35 @@ function dpEditarFunc(id) {
   if (document.getElementById('dpFuncEmail'))    document.getElementById('dpFuncEmail').value    = f.email    || '';
   if (document.getElementById('dpFuncTelefone')) document.getElementById('dpFuncTelefone').value = f.telefone || '';
   if (document.getElementById('dpFuncJornada'))  document.getElementById('dpFuncJornada').value  = f.jornada_horas || 44;
-  if (document.getElementById('dpFuncRG'))        document.getElementById('dpFuncRG').value        = f.rg || '';
-  if (document.getElementById('dpFuncNasc'))      document.getElementById('dpFuncNasc').value      = f.data_nascimento || '';
-  if (document.getElementById('dpFuncEndereco'))  document.getElementById('dpFuncEndereco').value  = f.endereco || '';
-  if (document.getElementById('dpFuncObs'))       document.getElementById('dpFuncObs').value       = f.observacoes || '';
-  // Exibir foto atual no formulário
+  if (document.getElementById('dpFuncRG'))       document.getElementById('dpFuncRG').value       = f.rg || '';
+  if (document.getElementById('dpFuncNasc'))     document.getElementById('dpFuncNasc').value     = f.data_nascimento || '';
+  if (document.getElementById('dpFuncObs'))      document.getElementById('dpFuncObs').value      = f.observacoes || '';
+  // Novos campos
+  if (document.getElementById('dpFuncSexo'))           document.getElementById('dpFuncSexo').value           = f.sexo || '';
+  if (document.getElementById('dpFuncEstadoCivil'))     document.getElementById('dpFuncEstadoCivil').value     = f.estado_civil || '';
+  if (document.getElementById('dpFuncNomeMae'))         document.getElementById('dpFuncNomeMae').value         = f.nome_mae || '';
+  if (document.getElementById('dpFuncGrauInstrucao'))   document.getElementById('dpFuncGrauInstrucao').value   = f.grau_instrucao || '';
+  if (document.getElementById('dpFuncRacaCor'))         document.getElementById('dpFuncRacaCor').value         = f.raca_cor || '9';
+  if (document.getElementById('dpFuncCategoriaEsocial'))document.getElementById('dpFuncCategoriaEsocial').value= f.categoria_esocial || '101';
+  if (document.getElementById('dpFuncCBO'))             document.getElementById('dpFuncCBO').value             = f.cbo || '';
+  if (document.getElementById('dpFuncMatricula'))       document.getElementById('dpFuncMatricula').value       = f.matricula || '';
+  if (document.getElementById('dpFuncCentroCusto'))     document.getElementById('dpFuncCentroCusto').value     = f.centro_custo || '';
+  if (document.getElementById('dpFuncCEP'))             document.getElementById('dpFuncCEP').value             = f.cep || '';
+  if (document.getElementById('dpFuncLogradouro'))      document.getElementById('dpFuncLogradouro').value      = f.logradouro || '';
+  if (document.getElementById('dpFuncNumero'))          document.getElementById('dpFuncNumero').value          = f.numero || '';
+  if (document.getElementById('dpFuncComplemento'))     document.getElementById('dpFuncComplemento').value     = f.complemento || '';
+  if (document.getElementById('dpFuncBairro'))          document.getElementById('dpFuncBairro').value          = f.bairro || '';
+  if (document.getElementById('dpFuncCidade'))          document.getElementById('dpFuncCidade').value          = f.cidade || '';
+  if (document.getElementById('dpFuncUF'))              document.getElementById('dpFuncUF').value              = f.uf || '';
+  // Foto
   const prevFoto = document.getElementById('dpFuncFotoPreview');
   if (prevFoto) prevFoto.src = f.foto_base64 || f.foto_url || '';
   if (prevFoto) prevFoto.style.display = (f.foto_base64 || f.foto_url) ? 'block' : 'none';
   const titulo = document.getElementById('dpFuncFormTitulo');
   if (titulo) titulo.textContent = 'Editar Funcionário';
+  // Limpar validação anterior
+  const val = document.getElementById('dpFuncValidacao');
+  if (val) val.style.display = 'none';
   document.getElementById('dpFuncNome').focus();
 }
 
@@ -268,21 +290,28 @@ function dpNovoFunc() {
   dpFuncAtivo = null;
   ['dpFuncFormId','dpFuncNome','dpFuncCargo','dpFuncCPF','dpFuncCTPS','dpFuncPIS',
    'dpFuncAdmissao','dpFuncBanco','dpFuncAgencia','dpFuncConta',
-   'dpFuncEmail','dpFuncTelefone'].forEach(id => {
+   'dpFuncEmail','dpFuncTelefone','dpFuncRG','dpFuncNasc','dpFuncObs',
+   'dpFuncNomeMae','dpFuncCBO','dpFuncMatricula','dpFuncCentroCusto',
+   'dpFuncCEP','dpFuncLogradouro','dpFuncNumero','dpFuncComplemento',
+   'dpFuncBairro','dpFuncCidade'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('dpFuncSalario').value = '';
   document.getElementById('dpFuncTipo').value    = 'clt';
   document.getElementById('dpFuncDep').value     = 0;
-  if (document.getElementById('dpFuncJornada'))  document.getElementById('dpFuncJornada').value  = 44;
-  if (document.getElementById('dpFuncRG'))       document.getElementById('dpFuncRG').value       = '';
-  if (document.getElementById('dpFuncNasc'))     document.getElementById('dpFuncNasc').value     = '';
-  if (document.getElementById('dpFuncEndereco')) document.getElementById('dpFuncEndereco').value = '';
-  if (document.getElementById('dpFuncObs'))      document.getElementById('dpFuncObs').value      = '';
+  if (document.getElementById('dpFuncJornada'))         document.getElementById('dpFuncJornada').value         = 44;
+  if (document.getElementById('dpFuncSexo'))            document.getElementById('dpFuncSexo').value            = '';
+  if (document.getElementById('dpFuncEstadoCivil'))     document.getElementById('dpFuncEstadoCivil').value     = '';
+  if (document.getElementById('dpFuncGrauInstrucao'))   document.getElementById('dpFuncGrauInstrucao').value   = '';
+  if (document.getElementById('dpFuncRacaCor'))         document.getElementById('dpFuncRacaCor').value         = '9';
+  if (document.getElementById('dpFuncCategoriaEsocial'))document.getElementById('dpFuncCategoriaEsocial').value= '101';
+  if (document.getElementById('dpFuncUF'))              document.getElementById('dpFuncUF').value              = '';
   const prevFoto = document.getElementById('dpFuncFotoPreview');
   if (prevFoto) { prevFoto.src = ''; prevFoto.style.display = 'none'; }
   window._dpFuncFotoBase64 = null;
+  const val = document.getElementById('dpFuncValidacao');
+  if (val) val.style.display = 'none';
   const titulo = document.getElementById('dpFuncFormTitulo');
   if (titulo) titulo.textContent = 'Cadastrar Funcionário';
   document.getElementById('dpFuncNome').focus();
@@ -315,13 +344,29 @@ async function dpSalvarFunc() {
     dependentes:   parseInt(document.getElementById('dpFuncDep').value)    || 0,
     banco:         document.getElementById('dpFuncBanco')?.value.trim()    || null,
     agencia:       document.getElementById('dpFuncAgencia')?.value.trim()  || null,
-    conta:          document.getElementById('dpFuncConta')?.value.trim()     || null,
-    rg:             document.getElementById('dpFuncRG')?.value.trim()         || null,
-    data_nascimento:document.getElementById('dpFuncNasc')?.value              || null,
-    endereco:       document.getElementById('dpFuncEndereco')?.value.trim()   || null,
-    observacoes:    document.getElementById('dpFuncObs')?.value.trim()        || null,
-    foto_base64:    window._dpFuncFotoBase64 || undefined,
-    atualizado_em:  new Date().toISOString(),
+    conta:         document.getElementById('dpFuncConta')?.value.trim()    || null,
+    rg:            document.getElementById('dpFuncRG')?.value.trim()       || null,
+    data_nascimento: document.getElementById('dpFuncNasc')?.value          || null,
+    observacoes:   document.getElementById('dpFuncObs')?.value.trim()      || null,
+    // Novos campos
+    sexo:             document.getElementById('dpFuncSexo')?.value              || null,
+    estado_civil:     document.getElementById('dpFuncEstadoCivil')?.value       || null,
+    nome_mae:         document.getElementById('dpFuncNomeMae')?.value.trim()    || null,
+    grau_instrucao:   document.getElementById('dpFuncGrauInstrucao')?.value     || null,
+    raca_cor:         document.getElementById('dpFuncRacaCor')?.value           || '9',
+    categoria_esocial:document.getElementById('dpFuncCategoriaEsocial')?.value  || '101',
+    cbo:              document.getElementById('dpFuncCBO')?.value.trim()        || null,
+    matricula:        document.getElementById('dpFuncMatricula')?.value.trim()  || null,
+    centro_custo:     document.getElementById('dpFuncCentroCusto')?.value.trim()|| null,
+    cep:              document.getElementById('dpFuncCEP')?.value.replace(/\D/g,'') || null,
+    logradouro:       document.getElementById('dpFuncLogradouro')?.value.trim() || null,
+    numero:           document.getElementById('dpFuncNumero')?.value.trim()     || null,
+    complemento:      document.getElementById('dpFuncComplemento')?.value.trim()|| null,
+    bairro:           document.getElementById('dpFuncBairro')?.value.trim()     || null,
+    cidade:           document.getElementById('dpFuncCidade')?.value.trim()     || null,
+    uf:               document.getElementById('dpFuncUF')?.value                || null,
+    foto_base64:   window._dpFuncFotoBase64 || undefined,
+    atualizado_em: new Date().toISOString(),
   };
   // Remover foto_base64 se não houve alteração
   if (payload.foto_base64 === undefined) delete payload.foto_base64;
@@ -2081,3 +2126,37 @@ CREATE TABLE IF NOT EXISTS dp_historico (
 ALTER TABLE dp_historico ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "own" ON dp_historico USING (user_id = auth.uid());
 */
+
+// ── Função helper para aba eSocial ─────────────────────────────
+function dpVisualizarS2200FromSelect() {
+  const funcId = document.getElementById('dpEsocialFuncSelect')?.value;
+  if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
+  const s2200 = dpGerarS2200(funcId);
+  if (!s2200) return;
+  const faltando = s2200.dados._incompleto;
+  const el = document.getElementById('dpEsocialTabPreview');
+  if (!el) return;
+  let html = `<div style="font-weight:700;margin-bottom:8px">S-2200 — ${escapeHtml(dpFuncionarios.find(f=>f.id===funcId)?.nome||'')}</div>`;
+  if (faltando.length) {
+    html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:10px;margin-bottom:10px">
+      <strong>⚠ ${faltando.length} campo(s) obrigatório(s) faltando:</strong>
+      <ul style="margin:4px 0 0 16px">${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul>
+    </div>`;
+  } else {
+    html += `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px;margin-bottom:10px">✅ Dados completos para geração do XML.</div>`;
+  }
+  html += `<pre style="font-size:11px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">${escapeHtml(JSON.stringify(s2200.dados, null, 2))}</pre>`;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+// Preencher select eSocial ao abrir a aba
+const _origSwitchDpTab = typeof switchDpTab === 'function' ? switchDpTab : null;
+// Monkey-patch para popular o select de eSocial
+(function() {
+  const _orig = window.switchDpTab;
+  window.switchDpTab = function(tab) {
+    _orig && _orig(tab);
+    if (tab === 'esocial') dpPreencherSelect('dpEsocialFuncSelect');
+  };
+})();
