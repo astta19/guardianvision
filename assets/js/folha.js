@@ -156,14 +156,11 @@ function switchDpTab(tab) {
   if (btn) btn.classList.add('active');
   const panel = document.getElementById('dpPanel_' + tab);
   if (panel) panel.style.display = 'block';
-  if (tab === 'folha')       dpPreencherSelect('folhaFuncSelect');
-  if (tab === 'ferias')      dpPreencherSelect('dpFeriasFuncSelect');
-  if (tab === 'decimo')      dpPreencherSelect('dp13FuncSelect');
-  if (tab === 'rescisao')    dpPreencherSelect('dpRescFuncSelect');
-  if (tab === 'relatorios')  dpCarregarRelatorio();
-  if (tab === 'dependentes') { dpPreencherSelect('dpDepFuncSelect'); }
-  if (tab === 'rubricas')    dpCarregarRubricas();
-  if (tab === 'esocial')     { dpPreencherSelect('dpEsocialFuncSelect'); }
+  if (tab === 'folha')     dpPreencherSelect('folhaFuncSelect');
+  if (tab === 'ferias')    dpPreencherSelect('dpFeriasFuncSelect');
+  if (tab === 'decimo')    dpPreencherSelect('dp13FuncSelect');
+  if (tab === 'rescisao')  dpPreencherSelect('dpRescFuncSelect');
+  if (tab === 'relatorios') dpCarregarRelatorio();
 }
 
 // ── FUNCIONÁRIOS ───────────────────────────────────────────────
@@ -251,69 +248,68 @@ function dpEditarFunc(id) {
   document.getElementById('dpFuncBanco').value     = f.banco || '';
   document.getElementById('dpFuncAgencia').value   = f.agencia || '';
   document.getElementById('dpFuncConta').value     = f.conta || '';
-  if (document.getElementById('dpFuncEmail'))    document.getElementById('dpFuncEmail').value    = f.email    || '';
-  if (document.getElementById('dpFuncTelefone')) document.getElementById('dpFuncTelefone').value = f.telefone || '';
-  if (document.getElementById('dpFuncJornada'))  document.getElementById('dpFuncJornada').value  = f.jornada_horas || 44;
-  if (document.getElementById('dpFuncRG'))       document.getElementById('dpFuncRG').value       = f.rg || '';
-  if (document.getElementById('dpFuncNasc'))     document.getElementById('dpFuncNasc').value     = f.data_nascimento || '';
-  if (document.getElementById('dpFuncObs'))      document.getElementById('dpFuncObs').value      = f.observacoes || '';
-  // Novos campos
-  if (document.getElementById('dpFuncSexo'))           document.getElementById('dpFuncSexo').value           = f.sexo || '';
-  if (document.getElementById('dpFuncEstadoCivil'))     document.getElementById('dpFuncEstadoCivil').value     = f.estado_civil || '';
-  if (document.getElementById('dpFuncNomeMae'))         document.getElementById('dpFuncNomeMae').value         = f.nome_mae || '';
-  if (document.getElementById('dpFuncGrauInstrucao'))   document.getElementById('dpFuncGrauInstrucao').value   = f.grau_instrucao || '';
-  if (document.getElementById('dpFuncRacaCor'))         document.getElementById('dpFuncRacaCor').value         = f.raca_cor || '9';
-  if (document.getElementById('dpFuncCategoriaEsocial'))document.getElementById('dpFuncCategoriaEsocial').value= f.categoria_esocial || '101';
-  if (document.getElementById('dpFuncCBO'))             document.getElementById('dpFuncCBO').value             = f.cbo || '';
-  if (document.getElementById('dpFuncMatricula'))       document.getElementById('dpFuncMatricula').value       = f.matricula || '';
-  if (document.getElementById('dpFuncCentroCusto'))     document.getElementById('dpFuncCentroCusto').value     = f.centro_custo || '';
-  if (document.getElementById('dpFuncCEP'))             document.getElementById('dpFuncCEP').value             = f.cep || '';
-  if (document.getElementById('dpFuncLogradouro'))      document.getElementById('dpFuncLogradouro').value      = f.logradouro || '';
-  if (document.getElementById('dpFuncNumero'))          document.getElementById('dpFuncNumero').value          = f.numero || '';
-  if (document.getElementById('dpFuncComplemento'))     document.getElementById('dpFuncComplemento').value     = f.complemento || '';
-  if (document.getElementById('dpFuncBairro'))          document.getElementById('dpFuncBairro').value          = f.bairro || '';
-  if (document.getElementById('dpFuncCidade'))          document.getElementById('dpFuncCidade').value          = f.cidade || '';
-  if (document.getElementById('dpFuncUF'))              document.getElementById('dpFuncUF').value              = f.uf || '';
+  const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  _set('dpFuncEmail',       f.email);
+  _set('dpFuncTelefone',    f.telefone);
+  _set('dpFuncJornada',     f.jornada_horas || 44);
+  _set('dpFuncRG',          f.rg);
+  _set('dpFuncNasc',        f.data_nascimento);
+  _set('dpFuncEndereco',    f.endereco);
+  _set('dpFuncObs',         f.observacoes);
+  // Campos eSocial (existem após ALTER TABLE)
+  _set('dpFuncSexo',        f.sexo);
+  _set('dpFuncEstadoCivil', f.estado_civil);
+  _set('dpFuncNomeMae',     f.nome_mae);
+  _set('dpFuncMatricula',   f.matricula);
+  _set('dpFuncCentroCusto', f.centro_custo);
+  _set('dpFuncCEP',         f.cep);
+  _set('dpFuncLogradouro',  f.logradouro);
+  _set('dpFuncNumero',      f.numero);
+  _set('dpFuncComplemento', f.complemento);
+  _set('dpFuncBairro',      f.bairro);
+  _set('dpFuncCidade',      f.cidade);
+  _set('dpFuncUF',          f.uf);
   // Foto
   const prevFoto = document.getElementById('dpFuncFotoPreview');
-  if (prevFoto) prevFoto.src = f.foto_base64 || f.foto_url || '';
-  if (prevFoto) prevFoto.style.display = (f.foto_base64 || f.foto_url) ? 'block' : 'none';
+  if (prevFoto) { prevFoto.src = f.foto_base64 || f.foto_url || ''; prevFoto.style.display = (f.foto_base64 || f.foto_url) ? 'block' : 'none'; }
   const titulo = document.getElementById('dpFuncFormTitulo');
   if (titulo) titulo.textContent = 'Editar Funcionário';
-  // Limpar validação anterior
-  const val = document.getElementById('dpFuncValidacao');
-  if (val) val.style.display = 'none';
+  // Carregar dependentes
+  dpCarregarDependentes(f.id);
   document.getElementById('dpFuncNome').focus();
 }
 
 function dpNovoFunc() {
   dpFuncAtivo = null;
   ['dpFuncFormId','dpFuncNome','dpFuncCargo','dpFuncCPF','dpFuncCTPS','dpFuncPIS',
-   'dpFuncAdmissao','dpFuncBanco','dpFuncAgencia','dpFuncConta',
-   'dpFuncEmail','dpFuncTelefone','dpFuncRG','dpFuncNasc','dpFuncObs',
-   'dpFuncNomeMae','dpFuncCBO','dpFuncMatricula','dpFuncCentroCusto',
-   'dpFuncCEP','dpFuncLogradouro','dpFuncNumero','dpFuncComplemento',
-   'dpFuncBairro','dpFuncCidade'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+   'dpFuncAdmissao','dpFuncBanco','dpFuncAgencia','dpFuncConta','dpFuncEmail','dpFuncTelefone',
+   'dpFuncRG','dpFuncNasc','dpFuncEndereco','dpFuncObs',
+   'dpFuncNomeMae','dpFuncMatricula','dpFuncCentroCusto',
+   'dpFuncCEP','dpFuncLogradouro','dpFuncNumero','dpFuncComplemento','dpFuncBairro','dpFuncCidade',
+  ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('dpFuncSalario').value = '';
   document.getElementById('dpFuncTipo').value    = 'clt';
   document.getElementById('dpFuncDep').value     = 0;
-  if (document.getElementById('dpFuncJornada'))         document.getElementById('dpFuncJornada').value         = 44;
-  if (document.getElementById('dpFuncSexo'))            document.getElementById('dpFuncSexo').value            = '';
-  if (document.getElementById('dpFuncEstadoCivil'))     document.getElementById('dpFuncEstadoCivil').value     = '';
-  if (document.getElementById('dpFuncGrauInstrucao'))   document.getElementById('dpFuncGrauInstrucao').value   = '';
-  if (document.getElementById('dpFuncRacaCor'))         document.getElementById('dpFuncRacaCor').value         = '9';
-  if (document.getElementById('dpFuncCategoriaEsocial'))document.getElementById('dpFuncCategoriaEsocial').value= '101';
-  if (document.getElementById('dpFuncUF'))              document.getElementById('dpFuncUF').value              = '';
+  const _reset = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? ''; };
+  _reset('dpFuncJornada', 44);
+  _reset('dpFuncSexo',        '');
+  _reset('dpFuncEstadoCivil', '');
+  _reset('dpFuncUF',          '');
   const prevFoto = document.getElementById('dpFuncFotoPreview');
   if (prevFoto) { prevFoto.src = ''; prevFoto.style.display = 'none'; }
   window._dpFuncFotoBase64 = null;
-  const val = document.getElementById('dpFuncValidacao');
-  if (val) val.style.display = 'none';
   const titulo = document.getElementById('dpFuncFormTitulo');
   if (titulo) titulo.textContent = 'Cadastrar Funcionário';
+  // Limpar seções dependentes/validação
+  const val = document.getElementById('dpFuncValidacao');
+  if (val) { val.innerHTML = ''; val.style.display = 'none'; }
+  const depList = document.getElementById('dpDepList');
+  if (depList) depList.innerHTML = '';
+  const prev = document.getElementById('dpEsocialPreview');
+  if (prev) { prev.innerHTML = ''; prev.style.display = 'none'; }
+  const hist = document.getElementById('dpHistoricoList');
+  if (hist) hist.innerHTML = '';
+  _dpDependentes = [];
   document.getElementById('dpFuncNome').focus();
 }
 
@@ -326,60 +322,84 @@ async function dpSalvarFunc() {
   if (!nome || !admissao || !salario) { showToast('Nome, admissão e salário são obrigatórios.', 'warn'); return; }
 
   const _escId = await getEscritorioIdAtual();
+
+  // Campos base — sempre existem na tabela
   const payload = {
     user_id:       currentUser.id,
     cliente_id:    currentCliente.id,
     escritorio_id: _escId,
     nome,
-    cargo:         document.getElementById('dpFuncCargo')?.value.trim()    || null,
-    cpf:           document.getElementById('dpFuncCPF')?.value.replace(/\D/g,'') || null,
-    ctps:          document.getElementById('dpFuncCTPS')?.value.trim()     || null,
-    pis:           document.getElementById('dpFuncPIS')?.value.replace(/\D/g,'')  || null,
-    email:         document.getElementById('dpFuncEmail')?.value.trim()    || null,
+    cargo:         document.getElementById('dpFuncCargo')?.value.trim()             || null,
+    cpf:           document.getElementById('dpFuncCPF')?.value.replace(/\D/g,'')   || null,
+    ctps:          document.getElementById('dpFuncCTPS')?.value.trim()             || null,
+    pis:           document.getElementById('dpFuncPIS')?.value.replace(/\D/g,'')   || null,
+    email:         document.getElementById('dpFuncEmail')?.value.trim()            || null,
     telefone:      document.getElementById('dpFuncTelefone')?.value.replace(/\D/g,'') || null,
-    jornada_horas: parseInt(document.getElementById('dpFuncJornada')?.value) || 44,
+    jornada_horas: parseInt(document.getElementById('dpFuncJornada')?.value)       || 44,
     admissao,
     salario_base:  salario,
     tipo_contrato: document.getElementById('dpFuncTipo').value,
-    dependentes:   parseInt(document.getElementById('dpFuncDep').value)    || 0,
-    banco:         document.getElementById('dpFuncBanco')?.value.trim()    || null,
-    agencia:       document.getElementById('dpFuncAgencia')?.value.trim()  || null,
-    conta:         document.getElementById('dpFuncConta')?.value.trim()    || null,
-    rg:            document.getElementById('dpFuncRG')?.value.trim()       || null,
-    data_nascimento: document.getElementById('dpFuncNasc')?.value          || null,
-    observacoes:   document.getElementById('dpFuncObs')?.value.trim()      || null,
-    // Novos campos
-    sexo:             document.getElementById('dpFuncSexo')?.value              || null,
-    estado_civil:     document.getElementById('dpFuncEstadoCivil')?.value       || null,
-    nome_mae:         document.getElementById('dpFuncNomeMae')?.value.trim()    || null,
-    grau_instrucao:   document.getElementById('dpFuncGrauInstrucao')?.value     || null,
-    raca_cor:         document.getElementById('dpFuncRacaCor')?.value           || '9',
-    categoria_esocial:document.getElementById('dpFuncCategoriaEsocial')?.value  || '101',
-    cbo:              document.getElementById('dpFuncCBO')?.value.trim()        || null,
-    matricula:        document.getElementById('dpFuncMatricula')?.value.trim()  || null,
-    centro_custo:     document.getElementById('dpFuncCentroCusto')?.value.trim()|| null,
-    cep:              document.getElementById('dpFuncCEP')?.value.replace(/\D/g,'') || null,
-    logradouro:       document.getElementById('dpFuncLogradouro')?.value.trim() || null,
-    numero:           document.getElementById('dpFuncNumero')?.value.trim()     || null,
-    complemento:      document.getElementById('dpFuncComplemento')?.value.trim()|| null,
-    bairro:           document.getElementById('dpFuncBairro')?.value.trim()     || null,
-    cidade:           document.getElementById('dpFuncCidade')?.value.trim()     || null,
-    uf:               document.getElementById('dpFuncUF')?.value                || null,
+    dependentes:   parseInt(document.getElementById('dpFuncDep').value)            || 0,
+    banco:         document.getElementById('dpFuncBanco')?.value.trim()            || null,
+    agencia:       document.getElementById('dpFuncAgencia')?.value.trim()          || null,
+    conta:         document.getElementById('dpFuncConta')?.value.trim()            || null,
+    rg:            document.getElementById('dpFuncRG')?.value.trim()               || null,
+    data_nascimento: document.getElementById('dpFuncNasc')?.value                  || null,
+    endereco:      document.getElementById('dpFuncEndereco')?.value?.trim()        || null,
+    observacoes:   document.getElementById('dpFuncObs')?.value.trim()              || null,
     foto_base64:   window._dpFuncFotoBase64 || undefined,
     atualizado_em: new Date().toISOString(),
   };
-  // Remover foto_base64 se não houve alteração
   if (payload.foto_base64 === undefined) delete payload.foto_base64;
+
+  // Campos novos (eSocial) — só incluídos se a coluna já existe no banco
+  // Para verificar: rode o SQL do ALTER TABLE antes de usar esses campos
+  const _get = id => document.getElementById(id)?.value?.trim() || null;
+  const camposEsocial = {
+    sexo:          document.getElementById('dpFuncSexo')?.value        || null,
+    estado_civil:  document.getElementById('dpFuncEstadoCivil')?.value || null,
+    nome_mae:      _get('dpFuncNomeMae'),
+    matricula:     _get('dpFuncMatricula'),
+    centro_custo:  _get('dpFuncCentroCusto'),
+    cep:           document.getElementById('dpFuncCEP')?.value.replace(/\D/g,'') || null,
+    logradouro:    _get('dpFuncLogradouro'),
+    numero:        _get('dpFuncNumero'),
+    complemento:   _get('dpFuncComplemento'),
+    bairro:        _get('dpFuncBairro'),
+    cidade:        _get('dpFuncCidade'),
+    uf:            document.getElementById('dpFuncUF')?.value || null,
+  };
 
   const btn = document.getElementById('dpFuncSalvarBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
 
   try {
+    // Tentativa 1: salvar com campos eSocial (requer ALTER TABLE já executado)
+    const payloadCompleto = { ...payload, ...camposEsocial };
     const { error } = id
-      ? await sb.from('dp_funcionarios').update(payload).eq('id', id).eq('user_id', currentUser.id)
-      : await sb.from('dp_funcionarios').insert({ ...payload, status: 'ativo' });
-    if (error) throw error;
-    showToast(id ? 'Funcionário atualizado!' : 'Funcionário cadastrado!', 'success');
+      ? await sb.from('dp_funcionarios').update(payloadCompleto).eq('id', id).eq('user_id', currentUser.id)
+      : await sb.from('dp_funcionarios').insert({ ...payloadCompleto, status: 'ativo' });
+
+    if (error) {
+      // Se o erro for de coluna inexistente, salvar apenas campos base
+      if (error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist')) {
+        console.warn('[folha] Colunas eSocial não existem — salvando apenas campos base. Execute o SQL do ALTER TABLE.');
+        const { error: error2 } = id
+          ? await sb.from('dp_funcionarios').update(payload).eq('id', id).eq('user_id', currentUser.id)
+          : await sb.from('dp_funcionarios').insert({ ...payload, status: 'ativo' });
+        if (error2) throw error2;
+        showToast((id ? 'Funcionário atualizado!' : 'Funcionário cadastrado!') + ' (campos eSocial pendentes — execute o SQL)', 'success');
+      } else {
+        throw error;
+      }
+    } else {
+      showToast(id ? 'Funcionário atualizado!' : 'Funcionário cadastrado!', 'success');
+    }
+
+    // Carregar dependentes se funcionário já salvo
+    const funcId = id || (await sb.from('dp_funcionarios').select('id').eq('user_id', currentUser.id).eq('cliente_id', currentCliente.id).eq('nome', nome).order('criado_em', {ascending:false}).limit(1))?.data?.[0]?.id;
+    if (funcId) dpCarregarDependentes(funcId);
+
     dpNovoFunc();
     await dpCarregarFuncionarios();
   } catch(e) { showToast('Erro ao salvar: ' + (e.message || ''), 'error'); }
@@ -880,11 +900,11 @@ function calcularRescisao() {
         </table>
       </div>
       <div class="dp-liquido"><span>RESCISÃO LÍQUIDA</span><span class="dp-liq-val">R$ ${fmtBRL(liq)}</span></div>
-      ${(d.multa > 0 || d.fgtsResc > 0) ? `
+      ${(r.multa > 0 || r.fgtsResc > 0) ? `
       <div class="dp-sec"><div class="dp-sec-title">Encargos — Empresa</div>
         <table class="dp-table">
-          ${rP('FGTS sobre verbas tributáveis (mês)', d.fgtsResc)}
-          ${d.multa > 0 ? rP('Multa ' + d.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(d.fgtsAcum) + ')', d.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
+          ${rP('FGTS sobre verbas tributáveis (mês)', r.fgtsResc)}
+          ${r.multa > 0 ? rP('Multa ' + r.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(r.fgtsAcum) + ')', r.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
         </table>
       </div>` : ''}
       <p class="dp-note">ℹ️ Verifique saldo FGTS no app FGTS (Caixa). Homologação no sindicato para vínculos &gt; 1 ano.</p>
@@ -1543,7 +1563,7 @@ async function dpExportarRelatorioPDF() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// BLOCO 2 — VALIDAÇÕES, DEPENDENTES, RUBRICAS, BASE eSocial
+// BLOCO 2 — Validações, Dependentes, Rubricas, eSocial
 // ══════════════════════════════════════════════════════════════
 
 // ── Validações algorítmicas ────────────────────────────────────
@@ -1552,11 +1572,11 @@ function validarCPF(cpf) {
   if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
   let s = 0;
   for (let i = 0; i < 9; i++) s += +c[i] * (10 - i);
-  let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+  let r = (s * 10) % 11; if (r >= 10) r = 0;
   if (r !== +c[9]) return false;
   s = 0;
   for (let i = 0; i < 10; i++) s += +c[i] * (11 - i);
-  r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+  r = (s * 10) % 11; if (r >= 10) r = 0;
   return r === +c[10];
 }
 
@@ -1564,25 +1584,13 @@ function validarPIS(pis) {
   const p = (pis || '').replace(/\D/g, '');
   if (p.length !== 11) return false;
   const pesos = [3,2,9,8,7,6,5,4,3,2];
-  const soma = pesos.reduce((s, w, i) => s + +p[i] * w, 0);
+  const soma  = pesos.reduce((s, w, i) => s + +p[i] * w, 0);
   const resto = soma % 11;
-  const dig = resto < 2 ? 0 : 11 - resto;
+  const dig   = resto < 2 ? 0 : 11 - resto;
   return dig === +p[10];
 }
 
-function validarCNPJ(cnpj) {
-  const c = (cnpj || '').replace(/\D/g, '');
-  if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
-  const calc = (n) => {
-    let s = 0, p = n - 7;
-    for (let i = 0; i < n; i++) { if (i === n - 12) p = 9; s += +c[i] * p--; }
-    const r = s % 11;
-    return r < 2 ? 0 : 11 - r;
-  };
-  return calc(12) === +c[12] && calc(13) === +c[13];
-}
-
-// ── Validação IA do cadastro de funcionário ────────────────────
+// ── Validação com IA ───────────────────────────────────────────
 async function dpValidarFuncIA() {
   const nome    = document.getElementById('dpFuncNome')?.value.trim();
   const cpf     = document.getElementById('dpFuncCPF')?.value.replace(/\D/g,'');
@@ -1591,103 +1599,94 @@ async function dpValidarFuncIA() {
   const admissao= document.getElementById('dpFuncAdmissao')?.value;
   const nasc    = document.getElementById('dpFuncNasc')?.value;
   const tipo    = document.getElementById('dpFuncTipo')?.value;
-
-  const erros = [];
-  const avisos = [];
-
-  // Validações locais (sem IA)
-  if (!nome)    erros.push('Nome é obrigatório.');
-  if (!admissao) erros.push('Data de admissão é obrigatória.');
-  if (!sal || sal <= 0) erros.push('Salário base inválido.');
-
-  if (cpf && cpf.length === 11 && !validarCPF(cpf))
-    erros.push('CPF inválido (dígito verificador incorreto).');
-
-  if (pis && pis.length === 11 && !validarPIS(pis))
-    erros.push('PIS/PASEP inválido (dígito verificador incorreto).');
-
-  if (nasc && admissao) {
-    const idade = Math.floor((new Date(admissao) - new Date(nasc)) / (365.25 * 86400000));
-    if (idade < 14) erros.push('Idade de admissão inferior a 14 anos (proibido por lei).');
-    if (idade < 16 && tipo === 'clt') avisos.push('Menor de 16 anos: apenas aprendiz (CLT art. 428).');
-    if (idade > 70) avisos.push('Colaborador acima de 70 anos: verifique aposentadoria e INSS.');
-  }
-
-  if (sal > 0 && sal < 1518.00 && tipo === 'clt')
-    erros.push('Salário abaixo do mínimo nacional (R$ 1.518,00) para CLT.');
-
-  // Verificar duplicidade de CPF
-  if (cpf && cpf.length === 11) {
-    const dup = dpFuncionarios.find(f =>
-      f.cpf === cpf && f.id !== document.getElementById('dpFuncFormId')?.value
-    );
-    if (dup) erros.push(`CPF já cadastrado para "${dup.nome}".`);
-  }
-
-  // Exibir resultado local
   const container = document.getElementById('dpFuncValidacao');
   if (!container) return;
 
-  if (erros.length === 0 && avisos.length === 0) {
-    container.innerHTML = '<div class="dp-valid-ok">✅ Dados validados. Nenhuma inconsistência encontrada.</div>';
-    container.style.display = 'block';
-    return;
+  const erros = [], avisos = [];
+  if (!nome)     erros.push('Nome é obrigatório.');
+  if (!admissao) erros.push('Data de admissão é obrigatória.');
+  if (!sal || sal <= 0) erros.push('Salário base inválido.');
+  if (cpf && cpf.length === 11 && !validarCPF(cpf))
+    erros.push('CPF inválido — dígito verificador incorreto.');
+  if (pis && pis.length === 11 && !validarPIS(pis))
+    erros.push('PIS/PASEP inválido — dígito verificador incorreto.');
+  if (nasc && admissao) {
+    const idade = Math.floor((new Date(admissao) - new Date(nasc)) / (365.25 * 86400000));
+    if (idade < 14) erros.push('Idade de admissão inferior a 14 anos (proibido por lei).');
+    if (idade < 16 && tipo === 'clt') avisos.push('Menor de 16 anos: somente na condição de aprendiz (CLT art. 428).');
+  }
+  if (sal > 0 && sal < 1518.00 && tipo === 'clt')
+    erros.push('Salário abaixo do mínimo nacional (R$ 1.518,00).');
+  if (cpf && cpf.length === 11 && validarCPF(cpf)) {
+    const funcId = document.getElementById('dpFuncFormId')?.value;
+    const dup = dpFuncionarios.find(f => f.cpf === cpf && f.id !== funcId);
+    if (dup) erros.push(`CPF já cadastrado para "${dup.nome}".`);
   }
 
+  container.style.display = 'flex';
   let html = '';
-  erros.forEach(e => { html += `<div class="dp-valid-erro">❌ ${escapeHtml(e)}</div>`; });
+  erros.forEach(e  => { html += `<div class="dp-valid-erro">❌ ${escapeHtml(e)}</div>`; });
   avisos.forEach(a => { html += `<div class="dp-valid-aviso">⚠️ ${escapeHtml(a)}</div>`; });
-  container.innerHTML = html;
-  container.style.display = 'block';
-
-  // Análise IA (se não houver erros bloqueantes)
-  if (erros.length === 0 && nome && sal > 0) {
-    const cargo = document.getElementById('dpFuncCargo')?.value.trim();
-    const jornada = document.getElementById('dpFuncJornada')?.value;
-    try {
-      container.innerHTML += '<div class="dp-valid-ia">🤖 Analisando com IA...</div>';
-      const prompt = `Analise o cadastro deste funcionário e aponte APENAS inconsistências reais:
-Nome: ${nome} | Cargo: ${cargo||'não informado'} | Salário: R$ ${sal} | Tipo: ${tipo} | Jornada: ${jornada||44}h/sem
-Responda de forma objetiva, máximo 3 linhas, apenas se houver algo relevante a apontar.`;
-      const resp = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], model: 'llama-3.1-8b-instant' }),
-      });
-      const data = await resp.json();
-      const iaText = data?.content || data?.choices?.[0]?.message?.content || '';
-      if (iaText.trim()) {
-        const iaEl = container.querySelector('.dp-valid-ia');
-        if (iaEl) iaEl.innerHTML = `🤖 <strong>IA:</strong> ${escapeHtml(iaText.trim())}`;
-      } else {
-        const iaEl = container.querySelector('.dp-valid-ia');
-        if (iaEl) iaEl.remove();
-      }
-    } catch { /* silencioso — IA indisponível não bloqueia */ }
+  if (!erros.length && !avisos.length) {
+    html = '<div class="dp-valid-ok">✅ Dados validados sem inconsistências.</div>';
   }
+  container.innerHTML = html;
+}
+
+// ── Máscaras ───────────────────────────────────────────────────
+function maskCPF(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
+  el.value = v;
+}
+function maskPIS(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{5})(\d{2})(\d{0,1})/,'$1.$2.$3-$4');
+  el.value = v;
+}
+function maskCEP(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,8);
+  if (v.length > 5) v = v.replace(/(\d{5})(\d{0,3})/,'$1-$2');
+  el.value = v;
+}
+
+// ── Busca de CEP ───────────────────────────────────────────────
+async function dpBuscarCEP(cep) {
+  const c = (cep || '').replace(/\D/g,'');
+  if (c.length !== 8) { showToast('CEP inválido.', 'warn'); return; }
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
+    const d = await r.json();
+    if (d.erro) { showToast('CEP não encontrado.', 'warn'); return; }
+    const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    _set('dpFuncLogradouro', d.logradouro);
+    _set('dpFuncBairro',     d.bairro);
+    _set('dpFuncCidade',     d.localidade);
+    _set('dpFuncUF',         d.uf);
+    showToast('Endereço preenchido.', 'success');
+  } catch { showToast('Erro ao buscar CEP.', 'error'); }
 }
 
 // ── DEPENDENTES ────────────────────────────────────────────────
-let _dpDependentes = []; // cache local por funcionário
+let _dpDependentes = [];
 
 async function dpCarregarDependentes(funcId) {
   if (!funcId || !currentUser) return;
   try {
     const { data } = await sb.from('dp_dependentes')
-      .select('*')
-      .eq('funcionario_id', funcId)
-      .eq('user_id', currentUser.id)
-      .order('nome');
+      .select('*').eq('funcionario_id', funcId).eq('user_id', currentUser.id).order('nome');
     _dpDependentes = data || [];
     dpRenderDependentes();
-  } catch { showToast('Erro ao carregar dependentes.', 'error'); }
+  } catch { /* silencioso — tabela pode não existir ainda */ }
 }
 
 function dpRenderDependentes() {
   const el = document.getElementById('dpDepList');
   if (!el) return;
   if (!_dpDependentes.length) {
-    el.innerHTML = '<p class="dp-empty">Nenhum dependente cadastrado.</p>';
+    el.innerHTML = '<p class="dp-empty" style="font-size:12px">Nenhum dependente cadastrado.</p>';
     return;
   }
   el.innerHTML = _dpDependentes.map(d => `
@@ -1696,11 +1695,11 @@ function dpRenderDependentes() {
         <span class="dp-dep-nome">${escapeHtml(d.nome)}</span>
         <span class="dp-dep-sub">${escapeHtml(d.parentesco||'—')} · ${d.data_nascimento ? new Date(d.data_nascimento+'T12:00').toLocaleDateString('pt-BR') : '—'}</span>
         <span class="dp-dep-flags">
-          ${d.dep_ir  ? '<span class="dp-badge-dep">IR</span>'  : ''}
-          ${d.dep_sf  ? '<span class="dp-badge-dep dp-badge-sf">SF</span>' : ''}
+          ${d.dep_ir ? '<span class="dp-badge-dep">IR</span>'  : ''}
+          ${d.dep_sf ? '<span class="dp-badge-dep dp-badge-sf">SF</span>' : ''}
         </span>
       </div>
-      <button class="dp-icon-btn dp-icon-danger" onclick="dpExcluirDependente('${d.id}')" title="Remover">
+      <button type="button" class="dp-icon-btn dp-icon-danger" onclick="dpExcluirDependente('${d.id}')" title="Remover">
         <i data-lucide="trash-2"></i>
       </button>
     </div>`).join('');
@@ -1712,41 +1711,30 @@ async function dpSalvarDependente() {
   if (!funcId) { showToast('Salve o funcionário primeiro.', 'warn'); return; }
   const nome = document.getElementById('dpDepNome')?.value.trim();
   if (!nome) { showToast('Nome do dependente é obrigatório.', 'warn'); return; }
-
   const cpf = document.getElementById('dpDepCPF')?.value.replace(/\D/g,'');
-  if (cpf && cpf.length === 11 && !validarCPF(cpf)) {
-    showToast('CPF do dependente inválido.', 'warn'); return;
-  }
-
-  const payload = {
-    user_id: currentUser.id,
-    funcionario_id: funcId,
-    nome,
-    cpf: cpf || null,
-    data_nascimento: document.getElementById('dpDepNasc')?.value || null,
-    parentesco: document.getElementById('dpDepParentesco')?.value || null,
-    dep_ir: document.getElementById('dpDepIR')?.checked || false,
-    dep_sf: document.getElementById('dpDepSF')?.checked || false,
-  };
-
+  if (cpf && cpf.length === 11 && !validarCPF(cpf)) { showToast('CPF do dependente inválido.', 'warn'); return; }
   try {
-    const { error } = await sb.from('dp_dependentes').insert(payload);
+    const { error } = await sb.from('dp_dependentes').insert({
+      user_id: currentUser.id, funcionario_id: funcId,
+      nome, cpf: cpf || null,
+      data_nascimento: document.getElementById('dpDepNasc')?.value || null,
+      parentesco: document.getElementById('dpDepParentesco')?.value || null,
+      dep_ir: document.getElementById('dpDepIR')?.checked || false,
+      dep_sf: document.getElementById('dpDepSF')?.checked || false,
+    });
     if (error) throw error;
     showToast('Dependente adicionado!', 'success');
-    // Limpar form
-    ['dpDepNome','dpDepCPF','dpDepNasc'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
-    if (document.getElementById('dpDepIR')) document.getElementById('dpDepIR').checked = false;
-    if (document.getElementById('dpDepSF')) document.getElementById('dpDepSF').checked = false;
+    ['dpDepNome','dpDepCPF','dpDepNasc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    if (document.getElementById('dpDepIR'))  document.getElementById('dpDepIR').checked  = false;
+    if (document.getElementById('dpDepSF'))  document.getElementById('dpDepSF').checked  = false;
+    if (document.getElementById('dpDepParentesco')) document.getElementById('dpDepParentesco').value = '';
     await dpCarregarDependentes(funcId);
-  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+  } catch(e) { showToast('Erro ao salvar dependente: ' + e.message, 'error'); }
 }
 
 async function dpExcluirDependente(id) {
   showConfirm('Remover este dependente?', async () => {
-    const { error } = await sb.from('dp_dependentes').delete()
-      .eq('id', id).eq('user_id', currentUser.id);
+    const { error } = await sb.from('dp_dependentes').delete().eq('id', id).eq('user_id', currentUser.id);
     if (error) { showToast('Erro ao remover.', 'error'); return; }
     showToast('Dependente removido.', 'success');
     const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
@@ -1754,57 +1742,47 @@ async function dpExcluirDependente(id) {
   });
 }
 
-// ── RUBRICAS PARAMETRIZÁVEIS ───────────────────────────────────
+// ── RUBRICAS ───────────────────────────────────────────────────
 let _dpRubricas = [];
 
 async function dpCarregarRubricas() {
   if (!currentUser) return;
   try {
-    const _esc = await getEscritorioIdAtual();
     const { data } = await sb.from('dp_rubricas')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .eq('ativo', true)
-      .order('tipo').order('nome');
+      .select('*').eq('user_id', currentUser.id).eq('ativo', true).order('tipo').order('nome');
     _dpRubricas = data || [];
     dpRenderRubricas();
-  } catch { /* silencioso */ }
+  } catch { /* tabela pode não existir ainda */ }
 }
 
 function dpRenderRubricas() {
   const el = document.getElementById('dpRubricasList');
   if (!el) return;
   if (!_dpRubricas.length) {
-    el.innerHTML = '<p class="dp-empty">Nenhuma rubrica cadastrada. Adicione proventos e descontos parametrizáveis.</p>';
+    el.innerHTML = '<p class="dp-empty">Nenhuma rubrica cadastrada.</p>';
     return;
   }
-  const proventos = _dpRubricas.filter(r => r.tipo === 'provento');
-  const descontos = _dpRubricas.filter(r => r.tipo === 'desconto');
-  const grupo = (titulo, items) => items.length ? `
+  const grupo = (titulo, items) => !items.length ? '' : `
     <div class="dp-rub-grupo">
       <div class="dp-rub-titulo">${titulo}</div>
       ${items.map(r => `
         <div class="dp-rub-item">
           <div class="dp-rub-info">
             <span class="dp-rub-nome">${escapeHtml(r.nome)}</span>
-            <span class="dp-rub-sub">
-              ${r.calculo === 'fixo' ? 'Fixo R$ ' + fmtBRL(r.valor_padrao)
-                : r.calculo === 'percentual' ? r.percentual + '% sobre salário'
-                : 'Fórmula'}
-              ${r.codigo_esocial ? ' · eSocial: ' + r.codigo_esocial : ''}
-            </span>
+            <span class="dp-rub-sub">${r.calculo==='fixo'?'R$ '+fmtBRL(r.valor_padrao):r.percentual+'% s/ salário'}${r.codigo_esocial?' · eSocial: '+r.codigo_esocial:''}</span>
             <span class="dp-rub-flags">
-              ${r.incide_inss ? '<span class="dp-badge-dep">INSS</span>' : ''}
-              ${r.incide_irrf ? '<span class="dp-badge-dep">IRRF</span>' : ''}
-              ${r.incide_fgts ? '<span class="dp-badge-dep">FGTS</span>' : ''}
+              ${r.incide_inss?'<span class="dp-badge-dep">INSS</span>':''}
+              ${r.incide_irrf?'<span class="dp-badge-dep">IRRF</span>':''}
+              ${r.incide_fgts?'<span class="dp-badge-dep">FGTS</span>':''}
             </span>
           </div>
-          <button class="dp-icon-btn dp-icon-danger" onclick="dpExcluirRubrica('${r.id}')">
+          <button type="button" class="dp-icon-btn dp-icon-danger" onclick="dpExcluirRubrica('${r.id}')">
             <i data-lucide="trash-2"></i>
           </button>
         </div>`).join('')}
-    </div>` : '';
-  el.innerHTML = grupo('Proventos', proventos) + grupo('Descontos', descontos);
+    </div>`;
+  el.innerHTML = grupo('Proventos', _dpRubricas.filter(r=>r.tipo==='provento'))
+               + grupo('Descontos', _dpRubricas.filter(r=>r.tipo==='desconto'));
   lucide.createIcons();
 }
 
@@ -1814,54 +1792,57 @@ async function dpSalvarRubrica() {
   const tipo = document.getElementById('dpRubTipo')?.value;
   const calc = document.getElementById('dpRubCalculo')?.value;
   if (!nome || !tipo || !calc) { showToast('Preencha nome, tipo e cálculo.', 'warn'); return; }
-
   const _esc = await getEscritorioIdAtual();
-  const payload = {
-    user_id: currentUser.id,
-    escritorio_id: _esc,
-    nome,
-    tipo,
-    calculo: calc,
-    valor_padrao: parseFloat(document.getElementById('dpRubValor')?.value) || null,
-    percentual:   parseFloat(document.getElementById('dpRubPerc')?.value)  || null,
-    incide_inss:  document.getElementById('dpRubINSS')?.checked || false,
-    incide_irrf:  document.getElementById('dpRubIRRF')?.checked || false,
-    incide_fgts:  document.getElementById('dpRubFGTS')?.checked || false,
-    codigo_esocial: document.getElementById('dpRubEsocial')?.value.trim() || null,
-    ativo: true,
-  };
-
   try {
-    const { error } = await sb.from('dp_rubricas').insert(payload);
+    const { error } = await sb.from('dp_rubricas').insert({
+      user_id: currentUser.id, escritorio_id: _esc,
+      nome, tipo, calculo: calc,
+      valor_padrao:   parseFloat(document.getElementById('dpRubValor')?.value) || null,
+      percentual:     parseFloat(document.getElementById('dpRubPerc')?.value)  || null,
+      incide_inss:    document.getElementById('dpRubINSS')?.checked || false,
+      incide_irrf:    document.getElementById('dpRubIRRF')?.checked || false,
+      incide_fgts:    document.getElementById('dpRubFGTS')?.checked || false,
+      codigo_esocial: document.getElementById('dpRubEsocial')?.value.trim() || null,
+      ativo: true,
+    });
     if (error) throw error;
     showToast('Rubrica cadastrada!', 'success');
-    ['dpRubNome','dpRubValor','dpRubPerc','dpRubEsocial'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
+    ['dpRubNome','dpRubValor','dpRubPerc','dpRubEsocial'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
     await dpCarregarRubricas();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
 async function dpExcluirRubrica(id) {
   showConfirm('Desativar esta rubrica?', async () => {
-    await sb.from('dp_rubricas').update({ ativo: false }).eq('id', id).eq('user_id', currentUser.id);
+    await sb.from('dp_rubricas').update({ativo:false}).eq('id',id).eq('user_id',currentUser.id);
     showToast('Rubrica desativada.', 'success');
     await dpCarregarRubricas();
   });
 }
 
-// ── BASE eSocial ────────────────────────────────────────────────
-// Gera estrutura de dados compatível com os principais eventos eSocial
-// Não faz transmissão — apenas monta o JSON para revisão futura
+// ── eSocial S-2200 ─────────────────────────────────────────────
+function _camposFaltandoS2200(func) {
+  return [
+    { campo:'cpf',            label:'CPF'             },
+    { campo:'nome',           label:'Nome completo'   },
+    { campo:'data_nascimento',label:'Data de nasc.'   },
+    { campo:'nome_mae',       label:'Nome da mãe'     },
+    { campo:'pis',            label:'PIS/PASEP'       },
+    { campo:'cep',            label:'CEP'             },
+    { campo:'logradouro',     label:'Logradouro'      },
+    { campo:'cidade',         label:'Cidade'          },
+    { campo:'uf',             label:'UF'              },
+    { campo:'sexo',           label:'Sexo'            },
+    { campo:'admissao',       label:'Data de admissão'},
+    { campo:'salario_base',   label:'Salário base'    },
+  ].filter(o => !func[o.campo]).map(o => o.label);
+}
 
 function dpGerarS2200(funcId) {
   const func = dpFuncionarios.find(f => f.id === funcId);
   if (!func) { showToast('Funcionário não encontrado.', 'warn'); return null; }
-
-  // S-2200: Cadastramento Inicial do Vínculo e Admissão
-  const s2200 = {
+  return {
     evento: 'S-2200',
-    descricao: 'Cadastramento Inicial do Vínculo e Admissão',
     status: 'pendente',
     gerado_em: new Date().toISOString(),
     dados: {
@@ -1873,11 +1854,10 @@ function dpGerarS2200(funcId) {
         cpf: func.cpf?.replace(/\D/g,'') || '',
         nome: func.nome || '',
         sexo: func.sexo || '',
-        racaCor: func.raca_cor || '9', // 9 = não informado
         estadoCivil: func.estado_civil || '',
-        grauInstrucao: func.grau_instrucao || '',
         nomeMae: func.nome_mae || '',
-        nascimento: { dtNasc: func.data_nascimento || '', paisNasc: 'BRA', nacionalidade: func.nacionalidade || 'brasileiro' },
+        dataNasc: func.data_nascimento || '',
+        pis: func.pis?.replace(/\D/g,'') || '',
         endereco: {
           cep: func.cep?.replace(/\D/g,'') || '',
           logradouro: func.logradouro || '',
@@ -1886,277 +1866,70 @@ function dpGerarS2200(funcId) {
           bairro: func.bairro || '',
           municipio: func.cidade || '',
           uf: func.uf || '',
-          pais: 'BRA',
         },
-        pis: func.pis?.replace(/\D/g,'') || '',
       },
       vinculo: {
         matricula: func.matricula || func.id.slice(0,8).toUpperCase(),
-        tpRegTrab: '1', // 1 = CLT
-        tpRegPrev: '1', // 1 = RGPS
         dtAdm: func.admissao || '',
-        tpAdmissao: '1',
         cargo: func.cargo || '',
-        cbo: func.cbo || '',
-        localTrabAlien: { paisTrab: 'BRA' },
-        duracao: { tpContr: func.tipo_contrato === 'clt' ? '1' : '2' },
-        remuneracao: {
-          vrSalFx: func.salario_base || 0,
-          undSalFixo: '5', // 5 = mensal
-          dscSalVar: '',
-        },
-        jornada: {
-          qtdHrsSem: func.jornada_horas || 44,
-          tpJornada: '2', // 2 = 44h semanais
-        },
-        FGTS: { dtOpcFGTS: func.admissao || '', indOpcFGTS: '1' },
+        vrSalFx: func.salario_base || 0,
+        qtdHrsSem: func.jornada_horas || 44,
+        tpContr: func.tipo_contrato === 'clt' ? '1' : '2',
       },
-      _incompleto: _camposFaltandoS2200(func),
+      _camposFaltando: _camposFaltandoS2200(func),
     },
   };
-
-  return s2200;
 }
 
-function _camposFaltandoS2200(func) {
-  const obrigatorios = [
-    { campo: 'cpf',            label: 'CPF' },
-    { campo: 'nome',           label: 'Nome completo' },
-    { campo: 'data_nascimento',label: 'Data de nascimento' },
-    { campo: 'nome_mae',       label: 'Nome da mãe' },
-    { campo: 'pis',            label: 'PIS/PASEP' },
-    { campo: 'cep',            label: 'CEP' },
-    { campo: 'logradouro',     label: 'Logradouro' },
-    { campo: 'cidade',         label: 'Município' },
-    { campo: 'uf',             label: 'UF' },
-    { campo: 'sexo',           label: 'Sexo' },
-    { campo: 'admissao',       label: 'Data de admissão' },
-    { campo: 'salario_base',   label: 'Salário base' },
-  ];
-  return obrigatorios
-    .filter(o => !func[o.campo])
-    .map(o => o.label);
-}
-
-async function dpVisualizarS2200() {
-  const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
-  if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
-
-  const s2200  = dpGerarS2200(funcId);
-  if (!s2200) return;
-
-  const faltando = s2200.dados._incompleto;
-  const el = document.getElementById('dpEsocialPreview');
+function _renderEsocialPreview(s2200, elId) {
+  const el = document.getElementById(elId);
   if (!el) return;
-
-  let html = `<div class="dp-esocial-header">
-    <strong>S-2200 — Admissão / Cadastramento do Vínculo</strong>
-    <span class="dp-esocial-status">⏳ Pendente de transmissão</span>
-  </div>`;
-
+  const faltando = s2200.dados._camposFaltando;
+  let html = `<div class="dp-esocial-header"><strong>S-2200 — Admissão</strong><span class="dp-esocial-status">⏳ Pendente</span></div>`;
   if (faltando.length) {
-    html += `<div class="dp-esocial-alerta">
-      <strong>⚠ Campos obrigatórios faltando (${faltando.length}):</strong>
-      <ul>${faltando.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
-      <p>Complete o cadastro do funcionário antes de transmitir ao eSocial.</p>
-    </div>`;
+    html += `<div class="dp-esocial-alerta"><strong>⚠ ${faltando.length} campo(s) obrigatório(s) faltando:</strong><ul>${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul></div>`;
   } else {
-    html += `<div class="dp-esocial-ok">✅ Dados completos. Pronto para geração do XML.</div>`;
+    html += `<div class="dp-esocial-ok">✅ Dados completos.</div>`;
   }
-
-  html += `<pre class="dp-esocial-json">${escapeHtml(JSON.stringify(s2200.dados, null, 2))}</pre>`;
+  const dadosSemFaltando = { ...s2200.dados };
+  delete dadosSemFaltando._camposFaltando;
+  html += `<pre class="dp-esocial-json">${escapeHtml(JSON.stringify(dadosSemFaltando, null, 2))}</pre>`;
   el.innerHTML = html;
   el.style.display = 'block';
 }
 
-// ── Histórico de alterações ────────────────────────────────────
-async function dpRegistrarHistorico(funcId, campo, valorAnt, valorNovo) {
-  if (!currentUser || valorAnt === valorNovo) return;
-  try {
-    await sb.from('dp_historico').insert({
-      funcionario_id: funcId,
-      user_id: currentUser.id,
-      alterado_por: currentUser.id,
-      campo,
-      valor_anterior: { valor: valorAnt },
-      valor_novo:     { valor: valorNovo },
-    });
-  } catch { /* silencioso — não bloquear o fluxo */ }
+function dpVisualizarS2200() {
+  const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
+  if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
+  const s2200 = dpGerarS2200(funcId);
+  if (s2200) _renderEsocialPreview(s2200, 'dpEsocialPreview');
 }
 
+function dpVisualizarS2200FromSelect() {
+  const funcId = document.getElementById('dpEsocialFuncSelect')?.value;
+  if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
+  const s2200 = dpGerarS2200(funcId);
+  if (s2200) _renderEsocialPreview(s2200, 'dpEsocialTabPreview');
+}
+
+// ── Histórico de alterações ────────────────────────────────────
 async function dpCarregarHistorico(funcId) {
   if (!funcId || !currentUser) return;
   const el = document.getElementById('dpHistoricoList');
   if (!el) return;
   try {
     const { data } = await sb.from('dp_historico')
-      .select('*')
-      .eq('funcionario_id', funcId)
-      .eq('user_id', currentUser.id)
-      .order('alterado_em', { ascending: false })
-      .limit(30);
-    if (!data?.length) {
-      el.innerHTML = '<p class="dp-empty">Nenhuma alteração registrada.</p>';
-      return;
-    }
+      .select('*').eq('funcionario_id', funcId).eq('user_id', currentUser.id)
+      .order('alterado_em', { ascending: false }).limit(30);
+    if (!data?.length) { el.innerHTML = '<p class="dp-empty" style="font-size:12px">Nenhuma alteração registrada.</p>'; return; }
     el.innerHTML = data.map(h => `
       <div class="dp-hist-item">
         <span class="dp-hist-campo">${escapeHtml(h.campo)}</span>
         <span class="dp-hist-de">${escapeHtml(String(h.valor_anterior?.valor ?? '—'))}</span>
-        <i data-lucide="arrow-right" style="width:12px;height:12px;flex-shrink:0"></i>
+        <i data-lucide="arrow-right" style="width:11px;height:11px;flex-shrink:0"></i>
         <span class="dp-hist-para">${escapeHtml(String(h.valor_novo?.valor ?? '—'))}</span>
         <span class="dp-hist-data">${new Date(h.alterado_em).toLocaleString('pt-BR')}</span>
       </div>`).join('');
     lucide.createIcons();
-  } catch { el.innerHTML = '<p class="dp-empty" style="color:#dc2626">Erro ao carregar histórico.</p>'; }
+  } catch { el.innerHTML = '<p class="dp-empty" style="font-size:12px;color:#dc2626">Erro ao carregar histórico.</p>'; }
 }
-
-// ── Máscara CPF inline ─────────────────────────────────────────
-function maskCPF(el) {
-  let v = el.value.replace(/\D/g,'').slice(0,11);
-  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
-  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
-  else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
-  el.value = v;
-}
-
-function maskPIS(el) {
-  let v = el.value.replace(/\D/g,'').slice(0,11);
-  if (v.length > 9) v = v.replace(/(\d{3})(\d{5})(\d{2})(\d{0,1})/,'$1.$2.$3-$4');
-  el.value = v;
-}
-
-function maskCEP(el) {
-  let v = el.value.replace(/\D/g,'').slice(0,8);
-  if (v.length > 5) v = v.replace(/(\d{5})(\d{0,3})/,'$1-$2');
-  el.value = v;
-}
-
-// ── Busca de CEP ───────────────────────────────────────────────
-async function dpBuscarCEP(cep) {
-  const c = (cep || '').replace(/\D/g,'');
-  if (c.length !== 8) return;
-  try {
-    const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
-    const d = await r.json();
-    if (d.erro) { showToast('CEP não encontrado.', 'warn'); return; }
-    if (document.getElementById('dpFuncLogradouro')) document.getElementById('dpFuncLogradouro').value = d.logradouro || '';
-    if (document.getElementById('dpFuncBairro'))     document.getElementById('dpFuncBairro').value     = d.bairro     || '';
-    if (document.getElementById('dpFuncCidade'))     document.getElementById('dpFuncCidade').value     = d.localidade || '';
-    if (document.getElementById('dpFuncUF'))         document.getElementById('dpFuncUF').value         = d.uf         || '';
-    showToast('Endereço preenchido.', 'success');
-  } catch { showToast('Erro ao buscar CEP.', 'error'); }
-}
-
-// ── SQL necessário para novas tabelas ──────────────────────────
-/*
--- Execute no Supabase SQL Editor:
-
-ALTER TABLE dp_funcionarios
-  ADD COLUMN IF NOT EXISTS sexo text,
-  ADD COLUMN IF NOT EXISTS estado_civil text,
-  ADD COLUMN IF NOT EXISTS nome_mae text,
-  ADD COLUMN IF NOT EXISTS nacionalidade text DEFAULT 'brasileiro',
-  ADD COLUMN IF NOT EXISTS naturalidade text,
-  ADD COLUMN IF NOT EXISTS cep text,
-  ADD COLUMN IF NOT EXISTS logradouro text,
-  ADD COLUMN IF NOT EXISTS numero text,
-  ADD COLUMN IF NOT EXISTS complemento text,
-  ADD COLUMN IF NOT EXISTS bairro text,
-  ADD COLUMN IF NOT EXISTS cidade text,
-  ADD COLUMN IF NOT EXISTS uf text,
-  ADD COLUMN IF NOT EXISTS centro_custo text,
-  ADD COLUMN IF NOT EXISTS vale_transporte numeric(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS vale_refeicao numeric(12,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS insalubridade_pct numeric(5,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS periculosidade_pct numeric(5,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS categoria_esocial text DEFAULT '101',
-  ADD COLUMN IF NOT EXISTS grau_instrucao text,
-  ADD COLUMN IF NOT EXISTS deficiencia boolean DEFAULT false,
-  ADD COLUMN IF NOT EXISTS tipo_deficiencia text,
-  ADD COLUMN IF NOT EXISTS matricula text,
-  ADD COLUMN IF NOT EXISTS cbo text,
-  ADD COLUMN IF NOT EXISTS raca_cor text,
-  ADD COLUMN IF NOT EXISTS pais_nascimento text DEFAULT 'BRA';
-
-CREATE TABLE IF NOT EXISTS dp_dependentes (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  funcionario_id uuid REFERENCES dp_funcionarios(id) ON DELETE CASCADE,
-  user_id uuid REFERENCES auth.users NOT NULL,
-  nome text NOT NULL,
-  cpf text,
-  data_nascimento date,
-  parentesco text,
-  dep_ir boolean DEFAULT false,
-  dep_sf boolean DEFAULT false,
-  criado_em timestamptz DEFAULT now()
-);
-ALTER TABLE dp_dependentes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own" ON dp_dependentes USING (user_id = auth.uid());
-
-CREATE TABLE IF NOT EXISTS dp_rubricas (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users NOT NULL,
-  escritorio_id uuid,
-  nome text NOT NULL,
-  tipo text NOT NULL,
-  calculo text NOT NULL,
-  valor_padrao numeric(12,2),
-  percentual numeric(5,2),
-  incide_inss boolean DEFAULT false,
-  incide_irrf boolean DEFAULT false,
-  incide_fgts boolean DEFAULT false,
-  codigo_esocial text,
-  ativo boolean DEFAULT true,
-  criado_em timestamptz DEFAULT now()
-);
-ALTER TABLE dp_rubricas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own" ON dp_rubricas USING (user_id = auth.uid());
-
-CREATE TABLE IF NOT EXISTS dp_historico (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  funcionario_id uuid REFERENCES dp_funcionarios(id) ON DELETE CASCADE,
-  user_id uuid REFERENCES auth.users NOT NULL,
-  alterado_por uuid REFERENCES auth.users,
-  campo text NOT NULL,
-  valor_anterior jsonb,
-  valor_novo jsonb,
-  alterado_em timestamptz DEFAULT now()
-);
-ALTER TABLE dp_historico ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "own" ON dp_historico USING (user_id = auth.uid());
-*/
-
-// ── Função helper para aba eSocial ─────────────────────────────
-function dpVisualizarS2200FromSelect() {
-  const funcId = document.getElementById('dpEsocialFuncSelect')?.value;
-  if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
-  const s2200 = dpGerarS2200(funcId);
-  if (!s2200) return;
-  const faltando = s2200.dados._incompleto;
-  const el = document.getElementById('dpEsocialTabPreview');
-  if (!el) return;
-  let html = `<div style="font-weight:700;margin-bottom:8px">S-2200 — ${escapeHtml(dpFuncionarios.find(f=>f.id===funcId)?.nome||'')}</div>`;
-  if (faltando.length) {
-    html += `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:10px;margin-bottom:10px">
-      <strong>⚠ ${faltando.length} campo(s) obrigatório(s) faltando:</strong>
-      <ul style="margin:4px 0 0 16px">${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul>
-    </div>`;
-  } else {
-    html += `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px;margin-bottom:10px">✅ Dados completos para geração do XML.</div>`;
-  }
-  html += `<pre style="font-size:11px;overflow-x:auto;white-space:pre-wrap;word-break:break-all">${escapeHtml(JSON.stringify(s2200.dados, null, 2))}</pre>`;
-  el.innerHTML = html;
-  el.style.display = 'block';
-}
-
-// Preencher select eSocial ao abrir a aba
-const _origSwitchDpTab = typeof switchDpTab === 'function' ? switchDpTab : null;
-// Monkey-patch para popular o select de eSocial
-(function() {
-  const _orig = window.switchDpTab;
-  window.switchDpTab = function(tab) {
-    _orig && _orig(tab);
-    if (tab === 'esocial') dpPreencherSelect('dpEsocialFuncSelect');
-  };
-})();
