@@ -835,11 +835,11 @@ function calcularRescisao() {
         </table>
       </div>
       <div class="dp-liquido"><span>RESCISÃO LÍQUIDA</span><span class="dp-liq-val">R$ ${fmtBRL(liq)}</span></div>
-      ${(r.multa > 0 || r.fgtsResc > 0) ? `
+      ${(d.multa > 0 || d.fgtsResc > 0) ? `
       <div class="dp-sec"><div class="dp-sec-title">Encargos — Empresa</div>
         <table class="dp-table">
-          ${rP('FGTS sobre verbas tributáveis (mês)', r.fgtsResc)}
-          ${r.multa > 0 ? rP('Multa ' + r.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(r.fgtsAcum) + ')', r.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
+          ${rP('FGTS sobre verbas tributáveis (mês)', d.fgtsResc)}
+          ${d.multa > 0 ? rP('Multa ' + d.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(d.fgtsAcum) + ')', d.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
         </table>
       </div>` : ''}
       <p class="dp-note">ℹ️ Verifique saldo FGTS no app FGTS (Caixa). Homologação no sindicato para vínculos &gt; 1 ano.</p>
@@ -1496,3 +1496,588 @@ async function dpExportarRelatorioPDF() {
   showToast('PDF da folha gerado.', 'success');
   } catch(e) { showToast('Erro ao gerar PDF: ' + (e.message || ''), 'error'); logErro(e, {modulo:'folha'}); }
 }
+
+// ══════════════════════════════════════════════════════════════
+// BLOCO 2 — VALIDAÇÕES, DEPENDENTES, RUBRICAS, BASE eSocial
+// ══════════════════════════════════════════════════════════════
+
+// ── Validações algorítmicas ────────────────────────────────────
+function validarCPF(cpf) {
+  const c = (cpf || '').replace(/\D/g, '');
+  if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
+  let s = 0;
+  for (let i = 0; i < 9; i++) s += +c[i] * (10 - i);
+  let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+  if (r !== +c[9]) return false;
+  s = 0;
+  for (let i = 0; i < 10; i++) s += +c[i] * (11 - i);
+  r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+  return r === +c[10];
+}
+
+function validarPIS(pis) {
+  const p = (pis || '').replace(/\D/g, '');
+  if (p.length !== 11) return false;
+  const pesos = [3,2,9,8,7,6,5,4,3,2];
+  const soma = pesos.reduce((s, w, i) => s + +p[i] * w, 0);
+  const resto = soma % 11;
+  const dig = resto < 2 ? 0 : 11 - resto;
+  return dig === +p[10];
+}
+
+function validarCNPJ(cnpj) {
+  const c = (cnpj || '').replace(/\D/g, '');
+  if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
+  const calc = (n) => {
+    let s = 0, p = n - 7;
+    for (let i = 0; i < n; i++) { if (i === n - 12) p = 9; s += +c[i] * p--; }
+    const r = s % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return calc(12) === +c[12] && calc(13) === +c[13];
+}
+
+// ── Validação IA do cadastro de funcionário ────────────────────
+async function dpValidarFuncIA() {
+  const nome    = document.getElementById('dpFuncNome')?.value.trim();
+  const cpf     = document.getElementById('dpFuncCPF')?.value.replace(/\D/g,'');
+  const pis     = document.getElementById('dpFuncPIS')?.value.replace(/\D/g,'');
+  const sal     = parseFloat(document.getElementById('dpFuncSalario')?.value);
+  const admissao= document.getElementById('dpFuncAdmissao')?.value;
+  const nasc    = document.getElementById('dpFuncNasc')?.value;
+  const tipo    = document.getElementById('dpFuncTipo')?.value;
+
+  const erros = [];
+  const avisos = [];
+
+  // Validações locais (sem IA)
+  if (!nome)    erros.push('Nome é obrigatório.');
+  if (!admissao) erros.push('Data de admissão é obrigatória.');
+  if (!sal || sal <= 0) erros.push('Salário base inválido.');
+
+  if (cpf && cpf.length === 11 && !validarCPF(cpf))
+    erros.push('CPF inválido (dígito verificador incorreto).');
+
+  if (pis && pis.length === 11 && !validarPIS(pis))
+    erros.push('PIS/PASEP inválido (dígito verificador incorreto).');
+
+  if (nasc && admissao) {
+    const idade = Math.floor((new Date(admissao) - new Date(nasc)) / (365.25 * 86400000));
+    if (idade < 14) erros.push('Idade de admissão inferior a 14 anos (proibido por lei).');
+    if (idade < 16 && tipo === 'clt') avisos.push('Menor de 16 anos: apenas aprendiz (CLT art. 428).');
+    if (idade > 70) avisos.push('Colaborador acima de 70 anos: verifique aposentadoria e INSS.');
+  }
+
+  if (sal > 0 && sal < 1518.00 && tipo === 'clt')
+    erros.push('Salário abaixo do mínimo nacional (R$ 1.518,00) para CLT.');
+
+  // Verificar duplicidade de CPF
+  if (cpf && cpf.length === 11) {
+    const dup = dpFuncionarios.find(f =>
+      f.cpf === cpf && f.id !== document.getElementById('dpFuncFormId')?.value
+    );
+    if (dup) erros.push(`CPF já cadastrado para "${dup.nome}".`);
+  }
+
+  // Exibir resultado local
+  const container = document.getElementById('dpFuncValidacao');
+  if (!container) return;
+
+  if (erros.length === 0 && avisos.length === 0) {
+    container.innerHTML = '<div class="dp-valid-ok">✅ Dados validados. Nenhuma inconsistência encontrada.</div>';
+    container.style.display = 'block';
+    return;
+  }
+
+  let html = '';
+  erros.forEach(e => { html += `<div class="dp-valid-erro">❌ ${escapeHtml(e)}</div>`; });
+  avisos.forEach(a => { html += `<div class="dp-valid-aviso">⚠️ ${escapeHtml(a)}</div>`; });
+  container.innerHTML = html;
+  container.style.display = 'block';
+
+  // Análise IA (se não houver erros bloqueantes)
+  if (erros.length === 0 && nome && sal > 0) {
+    const cargo = document.getElementById('dpFuncCargo')?.value.trim();
+    const jornada = document.getElementById('dpFuncJornada')?.value;
+    try {
+      container.innerHTML += '<div class="dp-valid-ia">🤖 Analisando com IA...</div>';
+      const prompt = `Analise o cadastro deste funcionário e aponte APENAS inconsistências reais:
+Nome: ${nome} | Cargo: ${cargo||'não informado'} | Salário: R$ ${sal} | Tipo: ${tipo} | Jornada: ${jornada||44}h/sem
+Responda de forma objetiva, máximo 3 linhas, apenas se houver algo relevante a apontar.`;
+      const resp = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], model: 'llama-3.1-8b-instant' }),
+      });
+      const data = await resp.json();
+      const iaText = data?.content || data?.choices?.[0]?.message?.content || '';
+      if (iaText.trim()) {
+        const iaEl = container.querySelector('.dp-valid-ia');
+        if (iaEl) iaEl.innerHTML = `🤖 <strong>IA:</strong> ${escapeHtml(iaText.trim())}`;
+      } else {
+        const iaEl = container.querySelector('.dp-valid-ia');
+        if (iaEl) iaEl.remove();
+      }
+    } catch { /* silencioso — IA indisponível não bloqueia */ }
+  }
+}
+
+// ── DEPENDENTES ────────────────────────────────────────────────
+let _dpDependentes = []; // cache local por funcionário
+
+async function dpCarregarDependentes(funcId) {
+  if (!funcId || !currentUser) return;
+  try {
+    const { data } = await sb.from('dp_dependentes')
+      .select('*')
+      .eq('funcionario_id', funcId)
+      .eq('user_id', currentUser.id)
+      .order('nome');
+    _dpDependentes = data || [];
+    dpRenderDependentes();
+  } catch { showToast('Erro ao carregar dependentes.', 'error'); }
+}
+
+function dpRenderDependentes() {
+  const el = document.getElementById('dpDepList');
+  if (!el) return;
+  if (!_dpDependentes.length) {
+    el.innerHTML = '<p class="dp-empty">Nenhum dependente cadastrado.</p>';
+    return;
+  }
+  el.innerHTML = _dpDependentes.map(d => `
+    <div class="dp-dep-item">
+      <div class="dp-dep-info">
+        <span class="dp-dep-nome">${escapeHtml(d.nome)}</span>
+        <span class="dp-dep-sub">${escapeHtml(d.parentesco||'—')} · ${d.data_nascimento ? new Date(d.data_nascimento+'T12:00').toLocaleDateString('pt-BR') : '—'}</span>
+        <span class="dp-dep-flags">
+          ${d.dep_ir  ? '<span class="dp-badge-dep">IR</span>'  : ''}
+          ${d.dep_sf  ? '<span class="dp-badge-dep dp-badge-sf">SF</span>' : ''}
+        </span>
+      </div>
+      <button class="dp-icon-btn dp-icon-danger" onclick="dpExcluirDependente('${d.id}')" title="Remover">
+        <i data-lucide="trash-2"></i>
+      </button>
+    </div>`).join('');
+  lucide.createIcons();
+}
+
+async function dpSalvarDependente() {
+  const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
+  if (!funcId) { showToast('Salve o funcionário primeiro.', 'warn'); return; }
+  const nome = document.getElementById('dpDepNome')?.value.trim();
+  if (!nome) { showToast('Nome do dependente é obrigatório.', 'warn'); return; }
+
+  const cpf = document.getElementById('dpDepCPF')?.value.replace(/\D/g,'');
+  if (cpf && cpf.length === 11 && !validarCPF(cpf)) {
+    showToast('CPF do dependente inválido.', 'warn'); return;
+  }
+
+  const payload = {
+    user_id: currentUser.id,
+    funcionario_id: funcId,
+    nome,
+    cpf: cpf || null,
+    data_nascimento: document.getElementById('dpDepNasc')?.value || null,
+    parentesco: document.getElementById('dpDepParentesco')?.value || null,
+    dep_ir: document.getElementById('dpDepIR')?.checked || false,
+    dep_sf: document.getElementById('dpDepSF')?.checked || false,
+  };
+
+  try {
+    const { error } = await sb.from('dp_dependentes').insert(payload);
+    if (error) throw error;
+    showToast('Dependente adicionado!', 'success');
+    // Limpar form
+    ['dpDepNome','dpDepCPF','dpDepNasc'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    if (document.getElementById('dpDepIR')) document.getElementById('dpDepIR').checked = false;
+    if (document.getElementById('dpDepSF')) document.getElementById('dpDepSF').checked = false;
+    await dpCarregarDependentes(funcId);
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function dpExcluirDependente(id) {
+  showConfirm('Remover este dependente?', async () => {
+    const { error } = await sb.from('dp_dependentes').delete()
+      .eq('id', id).eq('user_id', currentUser.id);
+    if (error) { showToast('Erro ao remover.', 'error'); return; }
+    showToast('Dependente removido.', 'success');
+    const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
+    if (funcId) await dpCarregarDependentes(funcId);
+  });
+}
+
+// ── RUBRICAS PARAMETRIZÁVEIS ───────────────────────────────────
+let _dpRubricas = [];
+
+async function dpCarregarRubricas() {
+  if (!currentUser) return;
+  try {
+    const _esc = await getEscritorioIdAtual();
+    const { data } = await sb.from('dp_rubricas')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('ativo', true)
+      .order('tipo').order('nome');
+    _dpRubricas = data || [];
+    dpRenderRubricas();
+  } catch { /* silencioso */ }
+}
+
+function dpRenderRubricas() {
+  const el = document.getElementById('dpRubricasList');
+  if (!el) return;
+  if (!_dpRubricas.length) {
+    el.innerHTML = '<p class="dp-empty">Nenhuma rubrica cadastrada. Adicione proventos e descontos parametrizáveis.</p>';
+    return;
+  }
+  const proventos = _dpRubricas.filter(r => r.tipo === 'provento');
+  const descontos = _dpRubricas.filter(r => r.tipo === 'desconto');
+  const grupo = (titulo, items) => items.length ? `
+    <div class="dp-rub-grupo">
+      <div class="dp-rub-titulo">${titulo}</div>
+      ${items.map(r => `
+        <div class="dp-rub-item">
+          <div class="dp-rub-info">
+            <span class="dp-rub-nome">${escapeHtml(r.nome)}</span>
+            <span class="dp-rub-sub">
+              ${r.calculo === 'fixo' ? 'Fixo R$ ' + fmtBRL(r.valor_padrao)
+                : r.calculo === 'percentual' ? r.percentual + '% sobre salário'
+                : 'Fórmula'}
+              ${r.codigo_esocial ? ' · eSocial: ' + r.codigo_esocial : ''}
+            </span>
+            <span class="dp-rub-flags">
+              ${r.incide_inss ? '<span class="dp-badge-dep">INSS</span>' : ''}
+              ${r.incide_irrf ? '<span class="dp-badge-dep">IRRF</span>' : ''}
+              ${r.incide_fgts ? '<span class="dp-badge-dep">FGTS</span>' : ''}
+            </span>
+          </div>
+          <button class="dp-icon-btn dp-icon-danger" onclick="dpExcluirRubrica('${r.id}')">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>`).join('')}
+    </div>` : '';
+  el.innerHTML = grupo('Proventos', proventos) + grupo('Descontos', descontos);
+  lucide.createIcons();
+}
+
+async function dpSalvarRubrica() {
+  if (!currentUser) return;
+  const nome = document.getElementById('dpRubNome')?.value.trim();
+  const tipo = document.getElementById('dpRubTipo')?.value;
+  const calc = document.getElementById('dpRubCalculo')?.value;
+  if (!nome || !tipo || !calc) { showToast('Preencha nome, tipo e cálculo.', 'warn'); return; }
+
+  const _esc = await getEscritorioIdAtual();
+  const payload = {
+    user_id: currentUser.id,
+    escritorio_id: _esc,
+    nome,
+    tipo,
+    calculo: calc,
+    valor_padrao: parseFloat(document.getElementById('dpRubValor')?.value) || null,
+    percentual:   parseFloat(document.getElementById('dpRubPerc')?.value)  || null,
+    incide_inss:  document.getElementById('dpRubINSS')?.checked || false,
+    incide_irrf:  document.getElementById('dpRubIRRF')?.checked || false,
+    incide_fgts:  document.getElementById('dpRubFGTS')?.checked || false,
+    codigo_esocial: document.getElementById('dpRubEsocial')?.value.trim() || null,
+    ativo: true,
+  };
+
+  try {
+    const { error } = await sb.from('dp_rubricas').insert(payload);
+    if (error) throw error;
+    showToast('Rubrica cadastrada!', 'success');
+    ['dpRubNome','dpRubValor','dpRubPerc','dpRubEsocial'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    await dpCarregarRubricas();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function dpExcluirRubrica(id) {
+  showConfirm('Desativar esta rubrica?', async () => {
+    await sb.from('dp_rubricas').update({ ativo: false }).eq('id', id).eq('user_id', currentUser.id);
+    showToast('Rubrica desativada.', 'success');
+    await dpCarregarRubricas();
+  });
+}
+
+// ── BASE eSocial ────────────────────────────────────────────────
+// Gera estrutura de dados compatível com os principais eventos eSocial
+// Não faz transmissão — apenas monta o JSON para revisão futura
+
+function dpGerarS2200(funcId) {
+  const func = dpFuncionarios.find(f => f.id === funcId);
+  if (!func) { showToast('Funcionário não encontrado.', 'warn'); return null; }
+
+  // S-2200: Cadastramento Inicial do Vínculo e Admissão
+  const s2200 = {
+    evento: 'S-2200',
+    descricao: 'Cadastramento Inicial do Vínculo e Admissão',
+    status: 'pendente',
+    gerado_em: new Date().toISOString(),
+    dados: {
+      ideEmpregador: {
+        cnpj: currentCliente?.cnpj?.replace(/\D/g,'') || '',
+        razaoSocial: currentCliente?.razao_social || '',
+      },
+      trabalhador: {
+        cpf: func.cpf?.replace(/\D/g,'') || '',
+        nome: func.nome || '',
+        sexo: func.sexo || '',
+        racaCor: func.raca_cor || '9', // 9 = não informado
+        estadoCivil: func.estado_civil || '',
+        grauInstrucao: func.grau_instrucao || '',
+        nomeMae: func.nome_mae || '',
+        nascimento: { dtNasc: func.data_nascimento || '', paisNasc: 'BRA', nacionalidade: func.nacionalidade || 'brasileiro' },
+        endereco: {
+          cep: func.cep?.replace(/\D/g,'') || '',
+          logradouro: func.logradouro || '',
+          numero: func.numero || '',
+          complemento: func.complemento || '',
+          bairro: func.bairro || '',
+          municipio: func.cidade || '',
+          uf: func.uf || '',
+          pais: 'BRA',
+        },
+        pis: func.pis?.replace(/\D/g,'') || '',
+      },
+      vinculo: {
+        matricula: func.matricula || func.id.slice(0,8).toUpperCase(),
+        tpRegTrab: '1', // 1 = CLT
+        tpRegPrev: '1', // 1 = RGPS
+        dtAdm: func.admissao || '',
+        tpAdmissao: '1',
+        cargo: func.cargo || '',
+        cbo: func.cbo || '',
+        localTrabAlien: { paisTrab: 'BRA' },
+        duracao: { tpContr: func.tipo_contrato === 'clt' ? '1' : '2' },
+        remuneracao: {
+          vrSalFx: func.salario_base || 0,
+          undSalFixo: '5', // 5 = mensal
+          dscSalVar: '',
+        },
+        jornada: {
+          qtdHrsSem: func.jornada_horas || 44,
+          tpJornada: '2', // 2 = 44h semanais
+        },
+        FGTS: { dtOpcFGTS: func.admissao || '', indOpcFGTS: '1' },
+      },
+      _incompleto: _camposFaltandoS2200(func),
+    },
+  };
+
+  return s2200;
+}
+
+function _camposFaltandoS2200(func) {
+  const obrigatorios = [
+    { campo: 'cpf',            label: 'CPF' },
+    { campo: 'nome',           label: 'Nome completo' },
+    { campo: 'data_nascimento',label: 'Data de nascimento' },
+    { campo: 'nome_mae',       label: 'Nome da mãe' },
+    { campo: 'pis',            label: 'PIS/PASEP' },
+    { campo: 'cep',            label: 'CEP' },
+    { campo: 'logradouro',     label: 'Logradouro' },
+    { campo: 'cidade',         label: 'Município' },
+    { campo: 'uf',             label: 'UF' },
+    { campo: 'sexo',           label: 'Sexo' },
+    { campo: 'admissao',       label: 'Data de admissão' },
+    { campo: 'salario_base',   label: 'Salário base' },
+  ];
+  return obrigatorios
+    .filter(o => !func[o.campo])
+    .map(o => o.label);
+}
+
+async function dpVisualizarS2200() {
+  const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
+  if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
+
+  const s2200  = dpGerarS2200(funcId);
+  if (!s2200) return;
+
+  const faltando = s2200.dados._incompleto;
+  const el = document.getElementById('dpEsocialPreview');
+  if (!el) return;
+
+  let html = `<div class="dp-esocial-header">
+    <strong>S-2200 — Admissão / Cadastramento do Vínculo</strong>
+    <span class="dp-esocial-status">⏳ Pendente de transmissão</span>
+  </div>`;
+
+  if (faltando.length) {
+    html += `<div class="dp-esocial-alerta">
+      <strong>⚠ Campos obrigatórios faltando (${faltando.length}):</strong>
+      <ul>${faltando.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
+      <p>Complete o cadastro do funcionário antes de transmitir ao eSocial.</p>
+    </div>`;
+  } else {
+    html += `<div class="dp-esocial-ok">✅ Dados completos. Pronto para geração do XML.</div>`;
+  }
+
+  html += `<pre class="dp-esocial-json">${escapeHtml(JSON.stringify(s2200.dados, null, 2))}</pre>`;
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+// ── Histórico de alterações ────────────────────────────────────
+async function dpRegistrarHistorico(funcId, campo, valorAnt, valorNovo) {
+  if (!currentUser || valorAnt === valorNovo) return;
+  try {
+    await sb.from('dp_historico').insert({
+      funcionario_id: funcId,
+      user_id: currentUser.id,
+      alterado_por: currentUser.id,
+      campo,
+      valor_anterior: { valor: valorAnt },
+      valor_novo:     { valor: valorNovo },
+    });
+  } catch { /* silencioso — não bloquear o fluxo */ }
+}
+
+async function dpCarregarHistorico(funcId) {
+  if (!funcId || !currentUser) return;
+  const el = document.getElementById('dpHistoricoList');
+  if (!el) return;
+  try {
+    const { data } = await sb.from('dp_historico')
+      .select('*')
+      .eq('funcionario_id', funcId)
+      .eq('user_id', currentUser.id)
+      .order('alterado_em', { ascending: false })
+      .limit(30);
+    if (!data?.length) {
+      el.innerHTML = '<p class="dp-empty">Nenhuma alteração registrada.</p>';
+      return;
+    }
+    el.innerHTML = data.map(h => `
+      <div class="dp-hist-item">
+        <span class="dp-hist-campo">${escapeHtml(h.campo)}</span>
+        <span class="dp-hist-de">${escapeHtml(String(h.valor_anterior?.valor ?? '—'))}</span>
+        <i data-lucide="arrow-right" style="width:12px;height:12px;flex-shrink:0"></i>
+        <span class="dp-hist-para">${escapeHtml(String(h.valor_novo?.valor ?? '—'))}</span>
+        <span class="dp-hist-data">${new Date(h.alterado_em).toLocaleString('pt-BR')}</span>
+      </div>`).join('');
+    lucide.createIcons();
+  } catch { el.innerHTML = '<p class="dp-empty" style="color:#dc2626">Erro ao carregar histórico.</p>'; }
+}
+
+// ── Máscara CPF inline ─────────────────────────────────────────
+function maskCPF(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{0,3})/,'$1.$2');
+  el.value = v;
+}
+
+function maskPIS(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{5})(\d{2})(\d{0,1})/,'$1.$2.$3-$4');
+  el.value = v;
+}
+
+function maskCEP(el) {
+  let v = el.value.replace(/\D/g,'').slice(0,8);
+  if (v.length > 5) v = v.replace(/(\d{5})(\d{0,3})/,'$1-$2');
+  el.value = v;
+}
+
+// ── Busca de CEP ───────────────────────────────────────────────
+async function dpBuscarCEP(cep) {
+  const c = (cep || '').replace(/\D/g,'');
+  if (c.length !== 8) return;
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${c}/json/`);
+    const d = await r.json();
+    if (d.erro) { showToast('CEP não encontrado.', 'warn'); return; }
+    if (document.getElementById('dpFuncLogradouro')) document.getElementById('dpFuncLogradouro').value = d.logradouro || '';
+    if (document.getElementById('dpFuncBairro'))     document.getElementById('dpFuncBairro').value     = d.bairro     || '';
+    if (document.getElementById('dpFuncCidade'))     document.getElementById('dpFuncCidade').value     = d.localidade || '';
+    if (document.getElementById('dpFuncUF'))         document.getElementById('dpFuncUF').value         = d.uf         || '';
+    showToast('Endereço preenchido.', 'success');
+  } catch { showToast('Erro ao buscar CEP.', 'error'); }
+}
+
+// ── SQL necessário para novas tabelas ──────────────────────────
+/*
+-- Execute no Supabase SQL Editor:
+
+ALTER TABLE dp_funcionarios
+  ADD COLUMN IF NOT EXISTS sexo text,
+  ADD COLUMN IF NOT EXISTS estado_civil text,
+  ADD COLUMN IF NOT EXISTS nome_mae text,
+  ADD COLUMN IF NOT EXISTS nacionalidade text DEFAULT 'brasileiro',
+  ADD COLUMN IF NOT EXISTS naturalidade text,
+  ADD COLUMN IF NOT EXISTS cep text,
+  ADD COLUMN IF NOT EXISTS logradouro text,
+  ADD COLUMN IF NOT EXISTS numero text,
+  ADD COLUMN IF NOT EXISTS complemento text,
+  ADD COLUMN IF NOT EXISTS bairro text,
+  ADD COLUMN IF NOT EXISTS cidade text,
+  ADD COLUMN IF NOT EXISTS uf text,
+  ADD COLUMN IF NOT EXISTS centro_custo text,
+  ADD COLUMN IF NOT EXISTS vale_transporte numeric(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS vale_refeicao numeric(12,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS insalubridade_pct numeric(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS periculosidade_pct numeric(5,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS categoria_esocial text DEFAULT '101',
+  ADD COLUMN IF NOT EXISTS grau_instrucao text,
+  ADD COLUMN IF NOT EXISTS deficiencia boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS tipo_deficiencia text,
+  ADD COLUMN IF NOT EXISTS matricula text,
+  ADD COLUMN IF NOT EXISTS cbo text,
+  ADD COLUMN IF NOT EXISTS raca_cor text,
+  ADD COLUMN IF NOT EXISTS pais_nascimento text DEFAULT 'BRA';
+
+CREATE TABLE IF NOT EXISTS dp_dependentes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  funcionario_id uuid REFERENCES dp_funcionarios(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users NOT NULL,
+  nome text NOT NULL,
+  cpf text,
+  data_nascimento date,
+  parentesco text,
+  dep_ir boolean DEFAULT false,
+  dep_sf boolean DEFAULT false,
+  criado_em timestamptz DEFAULT now()
+);
+ALTER TABLE dp_dependentes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own" ON dp_dependentes USING (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS dp_rubricas (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users NOT NULL,
+  escritorio_id uuid,
+  nome text NOT NULL,
+  tipo text NOT NULL,
+  calculo text NOT NULL,
+  valor_padrao numeric(12,2),
+  percentual numeric(5,2),
+  incide_inss boolean DEFAULT false,
+  incide_irrf boolean DEFAULT false,
+  incide_fgts boolean DEFAULT false,
+  codigo_esocial text,
+  ativo boolean DEFAULT true,
+  criado_em timestamptz DEFAULT now()
+);
+ALTER TABLE dp_rubricas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own" ON dp_rubricas USING (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS dp_historico (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  funcionario_id uuid REFERENCES dp_funcionarios(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users NOT NULL,
+  alterado_por uuid REFERENCES auth.users,
+  campo text NOT NULL,
+  valor_anterior jsonb,
+  valor_novo jsonb,
+  alterado_em timestamptz DEFAULT now()
+);
+ALTER TABLE dp_historico ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own" ON dp_historico USING (user_id = auth.uid());
+*/
