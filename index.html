@@ -1690,7 +1690,7 @@
   <script src="assets/js/profile.js?v=10"></script>
   <script src="assets/js/documents.js?v=12"></script>
   <script src="assets/js/sped.js?v=6"></script>
-  <script src="assets/js/folha.js?v=7"></script>
+  <script src="assets/js/folha.js?v=8"></script>
 
   <!-- MODAL PERMISSÕES DE USUÁRIOS (admin only) -->
   <div id="permissoesModal" style="display:none;position:fixed;inset:0;z-index:8600;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;" onclick="if(event.target===this)fecharPermissoesModal()">
@@ -1938,7 +1938,7 @@
         <button class="dp-tab-btn" data-tab="rubricas" onclick="switchDpTab('rubricas');dpCarregarRubricas()" role="tab" title="Rubricas">
           <i data-lucide="list"></i><span>Rubricas</span>
         </button>
-        <button class="dp-tab-btn" data-tab="esocial" onclick="switchDpTab('esocial')" role="tab" title="eSocial">
+        <button class="dp-tab-btn" data-tab="esocial" onclick="switchDpTab('esocial');dpPreencherSelect('dpEsocialFuncSelect')" role="tab" title="eSocial">
           <i data-lucide="send"></i><span>eSocial</span>
         </button>
       </div>
@@ -1974,29 +1974,16 @@
                 <input type="text" id="dpFuncNome" class="c-inp" placeholder="Ex: Maria da Silva" autocomplete="name">
               </div>
               <div class="dp-field">
-                <label class="dp-lbl">Cargo / Função</label>
-                <input type="text" id="dpFuncCargo" class="c-inp" placeholder="Ex: Auxiliar Administrativo">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Tipo de Contrato</label>
-                <select id="dpFuncTipo" class="c-inp">
-                  <option value="clt">CLT — Carteira Assinada</option>
-                  <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
-                  <option value="autonomo_rpa">Autônomo / RPA (Pessoa Física)</option>
-                  <option value="estagio">Estagiário (Lei 11.788/2008)</option>
-                </select>
-              </div>
-              <div class="dp-field">
                 <label class="dp-lbl">CPF</label>
                 <input type="text" id="dpFuncCPF" class="c-inp" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="maskCPF(this)">
               </div>
               <div class="dp-field">
-                <label class="dp-lbl">PIS / PASEP</label>
-                <input type="text" id="dpFuncPIS" class="c-inp" placeholder="000.00000.00-0" inputmode="numeric" oninput="maskPIS(this)">
-              </div>
-              <div class="dp-field">
                 <label class="dp-lbl">RG</label>
                 <input type="text" id="dpFuncRG" class="c-inp" placeholder="00.000.000-0">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">PIS / PASEP</label>
+                <input type="text" id="dpFuncPIS" class="c-inp" placeholder="000.00000.00-0" inputmode="numeric" oninput="maskPIS(this)">
               </div>
               <div class="dp-field">
                 <label class="dp-lbl">CTPS (nº · série)</label>
@@ -2016,7 +2003,7 @@
               </div>
               <div class="dp-field">
                 <label class="dp-lbl">Estado Civil</label>
-                <select id="dpFuncEstCivil" class="c-inp">
+                <select id="dpFuncEstadoCivil" class="c-inp">
                   <option value="">— Selecione —</option>
                   <option value="solteiro">Solteiro(a)</option>
                   <option value="casado">Casado(a)</option>
@@ -2026,16 +2013,8 @@
                 </select>
               </div>
               <div class="dp-field span2">
-                <label class="dp-lbl">Nome da Mãe <span style="font-size:10px;color:var(--text-light)">(obrigatório eSocial)</span></label>
+                <label class="dp-lbl">Nome da Mãe <small style="color:var(--text-light)">(obrigatório eSocial)</small></label>
                 <input type="text" id="dpFuncNomeMae" class="c-inp" placeholder="Nome completo da mãe">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Matrícula Interna</label>
-                <input type="text" id="dpFuncMatricula" class="c-inp" placeholder="Ex: 0001">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Centro de Custo</label>
-                <input type="text" id="dpFuncCentroCusto" class="c-inp" placeholder="Ex: ADM, PROD, VENDAS">
               </div>
               <div class="dp-field">
                 <label class="dp-lbl">E-mail</label>
@@ -2050,6 +2029,19 @@
             <!-- Seção: Contrato & Remuneração -->
             <div class="dp-section-lbl">Contrato &amp; Remuneração</div>
             <div class="dp-grid2">
+              <div class="dp-field">
+                <label class="dp-lbl">Cargo / Função</label>
+                <input type="text" id="dpFuncCargo" class="c-inp" placeholder="Ex: Auxiliar Administrativo">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Tipo de Contrato</label>
+                <select id="dpFuncTipo" class="c-inp">
+                  <option value="clt">CLT — Carteira Assinada</option>
+                  <option value="pj">PJ — Pessoa Jurídica (CNPJ)</option>
+                  <option value="autonomo_rpa">Autônomo / RPA (Pessoa Física)</option>
+                  <option value="estagio">Estagiário (Lei 11.788/2008)</option>
+                </select>
+              </div>
               <div class="dp-field">
                 <label class="dp-lbl">Data de Admissão *</label>
                 <input type="date" id="dpFuncAdmissao" class="c-inp">
@@ -2072,10 +2064,65 @@
                   <option value="20">20h — Estágio</option>
                 </select>
               </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Matrícula Interna</label>
+                <input type="text" id="dpFuncMatricula" class="c-inp" placeholder="Ex: 0001">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Centro de Custo</label>
+                <input type="text" id="dpFuncCentroCusto" class="c-inp" placeholder="Ex: ADM, PROD">
+              </div>
+            </div>
+
+            <!-- Seção: Endereço -->
+            <div class="dp-section-lbl">Endereço <small style="color:var(--text-light);font-weight:400">(obrigatório eSocial)</small></div>
+            <div class="dp-grid2">
+              <div class="dp-field">
+                <label class="dp-lbl">CEP</label>
+                <div style="display:flex;gap:6px">
+                  <input type="text" id="dpFuncCEP" class="c-inp" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="maskCEP(this)" style="flex:1">
+                  <button type="button" onclick="dpBuscarCEP(document.getElementById('dpFuncCEP').value)" class="dp-btn-sec" style="padding:0 10px;white-space:nowrap">
+                    <i data-lucide="search" style="width:13px;height:13px"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">UF</label>
+                <select id="dpFuncUF" class="c-inp">
+                  <option value="">—</option>
+                  <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
+                  <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+                  <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+                  <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
+                  <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+                  <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+                  <option>SP</option><option>SE</option><option>TO</option>
+                </select>
+              </div>
+              <div class="dp-field span2">
+                <label class="dp-lbl">Logradouro</label>
+                <input type="text" id="dpFuncLogradouro" class="c-inp" placeholder="Rua, Avenida...">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Número</label>
+                <input type="text" id="dpFuncNumero" class="c-inp" placeholder="123 ou S/N">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Complemento</label>
+                <input type="text" id="dpFuncComplemento" class="c-inp" placeholder="Apto, Bloco...">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Bairro</label>
+                <input type="text" id="dpFuncBairro" class="c-inp" placeholder="Bairro">
+              </div>
+              <div class="dp-field">
+                <label class="dp-lbl">Cidade</label>
+                <input type="text" id="dpFuncCidade" class="c-inp" placeholder="Município">
+              </div>
             </div>
 
             <!-- Seção: Dados Bancários -->
-            <div class="dp-section-lbl">Dados Bancários <span style="font-weight:400;color:var(--text-light)">(para pagamento)</span></div>
+            <div class="dp-section-lbl">Dados Bancários</div>
             <div class="dp-grid2">
               <div class="dp-field">
                 <label class="dp-lbl">Banco</label>
@@ -2098,98 +2145,40 @@
                 <img id="dpFuncFotoPreview" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:50%;border:2px solid var(--border)">
                 <div>
                   <input type="file" id="dpFuncFotoInput" accept="image/*" style="display:none" onchange="dpFotoSelecionada(this)">
-                  <button onclick="document.getElementById('dpFuncFotoInput').click()" class="dp-btn-sec" style="font-size:12px;padding:6px 12px">
+                  <button type="button" onclick="document.getElementById('dpFuncFotoInput').click()" class="dp-btn-sec" style="font-size:12px;padding:6px 12px">
                     <i data-lucide="camera" style="width:13px;height:13px"></i> Escolher foto
                   </button>
-                  <button onclick="dpFotoRemover()" class="dp-link-btn" style="font-size:12px;margin-left:8px;color:var(--text-light)">Remover</button>
+                  <button type="button" onclick="dpFotoRemover()" class="dp-link-btn" style="font-size:12px;margin-left:8px;color:var(--text-light)">Remover</button>
                 </div>
               </div>
             </div>
 
-            <!-- Seção: Endereço -->
-            <div class="dp-section-lbl">Endereço <span style="font-weight:400;color:var(--text-light)">(obrigatório eSocial)</span></div>
-            <div class="dp-grid2">
-              <div class="dp-field">
-                <label class="dp-lbl">CEP</label>
-                <div style="display:flex;gap:6px">
-                  <input type="text" id="dpFuncCEP" class="c-inp" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="maskCEP(this)" style="flex:1">
-                  <button onclick="dpBuscarCEP(document.getElementById('dpFuncCEP').value)" class="dp-btn-sec" style="padding:0 10px;font-size:12px;white-space:nowrap">
-                    <i data-lucide="search" style="width:13px;height:13px"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">UF</label>
-                <select id="dpFuncUF" class="c-inp">
-                  <option value="">—</option>
-                  <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
-                  <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
-                  <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
-                  <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
-                  <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
-                  <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
-                  <option selected>SP</option><option>SE</option><option>TO</option>
-                </select>
-              </div>
-              <div class="dp-field span2">
-                <label class="dp-lbl">Logradouro</label>
-                <input type="text" id="dpFuncLogradouro" class="c-inp" placeholder="Rua, Avenida, Travessa...">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Número</label>
-                <input type="text" id="dpFuncNumero" class="c-inp" placeholder="Ex: 123 ou S/N">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Complemento</label>
-                <input type="text" id="dpFuncComplemento" class="c-inp" placeholder="Apto, Bloco...">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Bairro</label>
-                <input type="text" id="dpFuncBairro" class="c-inp" placeholder="Bairro">
-              </div>
-              <div class="dp-field">
-                <label class="dp-lbl">Cidade</label>
-                <input type="text" id="dpFuncCidade" class="c-inp" placeholder="Município">
-              </div>
+            <!-- Observações -->
+            <div class="dp-field-group" style="margin-top:8px">
+              <label class="dp-label">Observações</label>
+              <textarea id="dpFuncObs" class="c-inp" rows="2" style="resize:vertical" placeholder="Observações internas"></textarea>
             </div>
-
-            <!-- Seção: Foto de Perfil -->
-            <div class="dp-section-lbl">Foto de Perfil</div>
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-              <img id="dpFuncFotoPreview" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:50%;border:2px solid var(--border)">
-              <div>
-                <input type="file" id="dpFuncFotoInput" accept="image/*" style="display:none" onchange="dpFotoSelecionada(this)">
-                <button onclick="document.getElementById('dpFuncFotoInput').click()" class="dp-btn-sec" style="font-size:12px;padding:6px 12px">
-                  <i data-lucide="camera" style="width:13px;height:13px"></i> Escolher foto
-                </button>
-                <button onclick="dpFotoRemover()" class="dp-link-btn" style="font-size:12px;margin-left:8px;color:var(--text-light)">Remover</button>
-              </div>
-            </div>
-
-            <!-- Seção: Observações -->
-            <div class="dp-section-lbl">Observações</div>
-            <textarea id="dpFuncObs" class="c-inp" rows="2" style="resize:vertical;width:100%;margin-bottom:12px" placeholder="Observações internas sobre o funcionário"></textarea>
 
             <!-- Validação IA -->
-            <div id="dpFuncValidacao" style="display:none;margin-bottom:12px;font-size:12px;display:flex;flex-direction:column;gap:4px"></div>
+            <div id="dpFuncValidacao" style="display:none;margin:8px 0;display:flex;flex-direction:column;gap:4px"></div>
 
             <div class="dp-form-actions">
-              <button onclick="dpNovoFunc()" class="dp-btn-sec">Cancelar</button>
-              <button onclick="dpValidarFuncIA()" class="dp-btn-sec" title="Validar dados antes de salvar">
+              <button type="button" onclick="dpNovoFunc()" class="dp-btn-sec">Cancelar</button>
+              <button type="button" onclick="dpValidarFuncIA()" class="dp-btn-sec" title="Validar antes de salvar">
                 <i data-lucide="shield-check" style="width:13px;height:13px"></i> Validar
               </button>
-              <button id="dpFuncSalvarBtn" onclick="dpSalvarFunc()" class="dp-btn-pri">
+              <button type="button" id="dpFuncSalvarBtn" onclick="dpSalvarFunc()" class="dp-btn-pri">
                 <i data-lucide="save" style="width:13px;height:13px"></i> Salvar Funcionário
               </button>
             </div>
 
-            <!-- ── Dependentes (aparece após salvar) ── -->
+            <!-- Dependentes — visível após funcionário selecionado -->
             <div id="dpDepSection" style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
-              <div class="dp-section-lbl">Dependentes <span style="font-weight:400;color:var(--text-light)">(IR e Salário-Família)</span></div>
-              <div id="dpDepList" style="margin-bottom:12px"></div>
+              <div class="dp-section-lbl">Dependentes <small style="font-weight:400;color:var(--text-light)">(IR e Salário-Família)</small></div>
+              <div id="dpDepList" style="margin-bottom:10px"></div>
               <div class="dp-grid2" style="margin-bottom:8px">
                 <div class="dp-field span2">
-                  <label class="dp-lbl">Nome do Dependente</label>
+                  <label class="dp-lbl">Nome</label>
                   <input type="text" id="dpDepNome" class="c-inp" placeholder="Nome completo">
                 </div>
                 <div class="dp-field">
@@ -2197,7 +2186,7 @@
                   <input type="text" id="dpDepCPF" class="c-inp" placeholder="000.000.000-00" oninput="maskCPF(this)">
                 </div>
                 <div class="dp-field">
-                  <label class="dp-lbl">Data de Nascimento</label>
+                  <label class="dp-lbl">Nascimento</label>
                   <input type="date" id="dpDepNasc" class="c-inp">
                 </div>
                 <div class="dp-field">
@@ -2208,11 +2197,10 @@
                     <option value="conjuge">Cônjuge / Companheiro(a)</option>
                     <option value="pai">Pai / Mãe</option>
                     <option value="enteado">Enteado(a)</option>
-                    <option value="tutelado">Tutelado(a)</option>
                     <option value="outro">Outro</option>
                   </select>
                 </div>
-                <div class="dp-field" style="display:flex;align-items:center;gap:16px;padding-top:20px">
+                <div class="dp-field" style="display:flex;align-items:center;gap:16px;padding-top:18px">
                   <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
                     <input type="checkbox" id="dpDepIR" style="accent-color:var(--accent)"> Dep. IRRF
                   </label>
@@ -2221,31 +2209,31 @@
                   </label>
                 </div>
               </div>
-              <button onclick="dpSalvarDependente()" class="dp-btn-sec" style="font-size:12px">
+              <button type="button" onclick="dpSalvarDependente()" class="dp-btn-sec" style="font-size:12px">
                 <i data-lucide="plus" style="width:12px;height:12px"></i> Adicionar Dependente
               </button>
             </div>
 
-            <!-- ── Preview eSocial S-2200 ── -->
-            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+            <!-- eSocial S-2200 preview -->
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <div class="dp-section-lbl" style="margin:0">eSocial S-2200 — Admissão</div>
-                <button onclick="dpVisualizarS2200()" class="dp-btn-sec" style="font-size:11px;padding:4px 10px">
-                  <i data-lucide="eye" style="width:12px;height:12px"></i> Visualizar evento
+                <span class="dp-section-lbl" style="margin:0">eSocial — S-2200 Admissão</span>
+                <button type="button" onclick="dpVisualizarS2200()" class="dp-btn-sec" style="font-size:11px;padding:4px 10px">
+                  <i data-lucide="eye" style="width:12px;height:12px"></i> Visualizar
                 </button>
               </div>
-              <div id="dpEsocialPreview" style="display:none;font-size:12px;background:var(--sidebar-hover);border-radius:8px;padding:12px;border:1px solid var(--border)"></div>
+              <div id="dpEsocialPreview" style="display:none"></div>
             </div>
 
-            <!-- ── Histórico de alterações ── -->
-            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+            <!-- Histórico de alterações -->
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <div class="dp-section-lbl" style="margin:0">Histórico de Alterações</div>
-                <button onclick="dpCarregarHistorico(document.getElementById('dpFuncFormId').value)" class="dp-link-btn" style="font-size:11px">
+                <span class="dp-section-lbl" style="margin:0">Histórico de Alterações</span>
+                <button type="button" onclick="dpCarregarHistorico(document.getElementById('dpFuncFormId').value)" class="dp-link-btn" style="font-size:11px">
                   <i data-lucide="clock" style="width:12px;height:12px"></i> Carregar
                 </button>
               </div>
-              <div id="dpHistoricoList" style="font-size:12px;display:flex;flex-direction:column;gap:6px"></div>
+              <div id="dpHistoricoList" style="display:flex;flex-direction:column;gap:6px"></div>
             </div>
 
           </div><!-- /dp-form-section -->
@@ -2565,37 +2553,34 @@
           </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: RUBRICAS PARAMETRIZÁVEIS
-        ══════════════════════════════════════════════════════ -->
+        <!-- PAINEL: RUBRICAS -->
         <div id="dpPanel_rubricas" class="dp-panel" style="display:none">
           <div class="dp-section-lbl">Rubricas cadastradas</div>
           <div id="dpRubricasList" style="margin-bottom:16px">
-            <p class="dp-empty">Carregando...</p>
+            <p class="dp-empty">Nenhuma rubrica cadastrada.</p>
           </div>
-
           <div class="dp-section-lbl">Nova Rubrica</div>
           <div class="dp-grid2">
             <div class="dp-field span2">
-              <label class="dp-lbl">Nome da Rubrica</label>
-              <input type="text" id="dpRubNome" class="c-inp" placeholder="Ex: Vale Alimentação, Comissão, Insalubridade...">
+              <label class="dp-lbl">Nome</label>
+              <input type="text" id="dpRubNome" class="c-inp" placeholder="Ex: Vale Alimentação, Comissão...">
             </div>
             <div class="dp-field">
               <label class="dp-lbl">Tipo</label>
               <select id="dpRubTipo" class="c-inp">
-                <option value="provento">Provento (soma ao bruto)</option>
-                <option value="desconto">Desconto (reduz líquido)</option>
+                <option value="provento">Provento</option>
+                <option value="desconto">Desconto</option>
               </select>
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Tipo de Cálculo</label>
+              <label class="dp-lbl">Cálculo</label>
               <select id="dpRubCalculo" class="c-inp">
                 <option value="fixo">Valor fixo (R$)</option>
                 <option value="percentual">Percentual sobre salário (%)</option>
               </select>
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Valor Padrão (R$)</label>
+              <label class="dp-lbl">Valor padrão (R$)</label>
               <input type="number" id="dpRubValor" class="c-inp" placeholder="0,00" step="0.01" min="0">
             </div>
             <div class="dp-field">
@@ -2606,7 +2591,7 @@
               <label class="dp-lbl">Código eSocial</label>
               <input type="text" id="dpRubEsocial" class="c-inp" placeholder="Ex: 1000, 9000">
             </div>
-            <div class="dp-field" style="display:flex;align-items:center;gap:16px;padding-top:20px">
+            <div class="dp-field span2" style="display:flex;gap:20px;align-items:center;padding-top:4px">
               <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
                 <input type="checkbox" id="dpRubINSS" style="accent-color:var(--accent)"> Incide INSS
               </label>
@@ -2619,66 +2604,57 @@
             </div>
           </div>
           <div class="dp-form-actions" style="margin-top:8px">
-            <button onclick="dpSalvarRubrica()" class="dp-btn-pri">
+            <button type="button" onclick="dpSalvarRubrica()" class="dp-btn-pri">
               <i data-lucide="plus" style="width:13px;height:13px"></i> Cadastrar Rubrica
             </button>
           </div>
         </div>
 
-        <!-- ══════════════════════════════════════════════════════
-             PAINEL: eSocial
-        ══════════════════════════════════════════════════════ -->
+        <!-- PAINEL: eSocial -->
         <div id="dpPanel_esocial" class="dp-panel" style="display:none">
-          <div style="background:var(--sidebar-hover);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid var(--border)">
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px">🏛 eSocial — Base de Eventos</div>
-            <p style="font-size:12px;color:var(--text-light);margin:0;line-height:1.6">
-              Esta aba centraliza a geração e revisão dos eventos do eSocial.
-              Os dados são montados a partir do cadastro dos funcionários.
-              A transmissão direta ainda não está disponível — gere o JSON para revisão e importe no sistema do governo.
-            </p>
+          <div class="dp-kpi" style="margin-bottom:16px;background:var(--sidebar-hover)">
+            <span class="dp-kpi-ico">🏛</span>
+            <div>
+              <div style="font-weight:700;font-size:13px;margin-bottom:2px">eSocial — Base de Eventos</div>
+              <div style="font-size:12px;color:var(--text-light)">Gere e revise os eventos antes de transmitir ao sistema do governo.</div>
+            </div>
           </div>
-
-          <div class="dp-section-lbl">Eventos disponíveis</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px">
-            <div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--card)">
+          <div class="dp-section-lbl">Status dos eventos</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px">
+            <div class="dp-rel-bloco" style="padding:12px">
               <div style="font-weight:700;font-size:13px">S-2200</div>
-              <div style="font-size:11px;color:var(--text-light);margin:4px 0 10px">Admissão / Cadastramento do Vínculo</div>
-              <div style="font-size:11px;color:#d97706;background:#fef3c7;padding:3px 8px;border-radius:6px;display:inline-block">Em preparação</div>
+              <div style="font-size:11px;color:var(--text-light);margin:3px 0 8px">Admissão / Cadastramento</div>
+              <span class="dp-badge-tipo" style="background:#fef3c7;color:#92400e">Em preparação</span>
             </div>
-            <div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--card)">
+            <div class="dp-rel-bloco" style="padding:12px">
               <div style="font-weight:700;font-size:13px">S-2206</div>
-              <div style="font-size:11px;color:var(--text-light);margin:4px 0 10px">Alteração de Contrato de Trabalho</div>
-              <div style="font-size:11px;color:#6b7280;background:var(--sidebar-hover);padding:3px 8px;border-radius:6px;display:inline-block">Planejado</div>
+              <div style="font-size:11px;color:var(--text-light);margin:3px 0 8px">Alteração de Contrato</div>
+              <span class="dp-badge-tipo" style="background:var(--sidebar-hover);color:var(--text-light)">Planejado</span>
             </div>
-            <div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--card)">
+            <div class="dp-rel-bloco" style="padding:12px">
               <div style="font-weight:700;font-size:13px">S-2299</div>
-              <div style="font-size:11px;color:var(--text-light);margin:4px 0 10px">Desligamento</div>
-              <div style="font-size:11px;color:#6b7280;background:var(--sidebar-hover);padding:3px 8px;border-radius:6px;display:inline-block">Planejado</div>
+              <div style="font-size:11px;color:var(--text-light);margin:3px 0 8px">Desligamento</div>
+              <span class="dp-badge-tipo" style="background:var(--sidebar-hover);color:var(--text-light)">Planejado</span>
             </div>
-            <div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--card)">
+            <div class="dp-rel-bloco" style="padding:12px">
               <div style="font-weight:700;font-size:13px">S-1000</div>
-              <div style="font-size:11px;color:var(--text-light);margin:4px 0 10px">Informações do Empregador</div>
-              <div style="font-size:11px;color:#6b7280;background:var(--sidebar-hover);padding:3px 8px;border-radius:6px;display:inline-block">Planejado</div>
-            </div>
-            <div style="padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--card)">
-              <div style="font-weight:700;font-size:13px">S-1010</div>
-              <div style="font-size:11px;color:var(--text-light);margin:4px 0 10px">Tabela de Rubricas</div>
-              <div style="font-size:11px;color:#6b7280;background:var(--sidebar-hover);padding:3px 8px;border-radius:6px;display:inline-block">Planejado</div>
+              <div style="font-size:11px;color:var(--text-light);margin:3px 0 8px">Dados do Empregador</div>
+              <span class="dp-badge-tipo" style="background:var(--sidebar-hover);color:var(--text-light)">Planejado</span>
             </div>
           </div>
-
-          <div class="dp-section-lbl">Gerar S-2200 — Selecione o funcionário</div>
+          <div class="dp-section-lbl">Gerar S-2200</div>
           <div class="dp-grid2">
             <div class="dp-field span2">
+              <label class="dp-lbl">Funcionário</label>
               <select id="dpEsocialFuncSelect" class="c-inp">
-                <option value="">— Selecione o funcionário —</option>
+                <option value="">— Selecione —</option>
               </select>
             </div>
           </div>
-          <button onclick="dpVisualizarS2200FromSelect()" class="dp-btn-pri" style="margin-top:8px">
-            <i data-lucide="file-json" style="width:13px;height:13px"></i> Gerar evento S-2200
+          <button type="button" onclick="dpVisualizarS2200FromSelect()" class="dp-btn-pri" style="margin-top:8px">
+            <i data-lucide="file-code-2" style="width:13px;height:13px"></i> Gerar evento S-2200
           </button>
-          <div id="dpEsocialTabPreview" style="display:none;margin-top:16px;font-size:12px;background:var(--sidebar-hover);border-radius:8px;padding:12px;border:1px solid var(--border)"></div>
+          <div id="dpEsocialTabPreview" style="display:none;margin-top:16px"></div>
         </div>
 
       </div><!-- /dp-body -->
