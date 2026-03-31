@@ -4787,3 +4787,226 @@ input[type="checkbox"], input[type="radio"] {
     overscroll-behavior-y: contain;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DP — Novos componentes: validação, dependentes, rubricas,
+   histórico, eSocial (adicionado junto ao folha.js v2)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Validação IA ──────────────────────────────────────────── */
+.dp-valid-ok {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #15803d;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.dp-valid-erro {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.dp-valid-aviso {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.dp-valid-ia {
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+[data-theme="dark"] .dp-valid-ok   { background: rgba(22,163,74,.1);   border-color: rgba(22,163,74,.3);   color: #86efac; }
+[data-theme="dark"] .dp-valid-erro  { background: rgba(220,38,38,.1);  border-color: rgba(220,38,38,.3);   color: #fca5a5; }
+[data-theme="dark"] .dp-valid-aviso { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3);  color: #fde68a; }
+
+/* ── Dependentes ───────────────────────────────────────────── */
+.dp-dep-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.dp-dep-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.dp-dep-nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dp-dep-sub {
+  font-size: 11px;
+  color: var(--text-light);
+}
+.dp-dep-flags {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+.dp-badge-dep {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--user-text);
+}
+.dp-badge-sf {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* ── Rubricas ──────────────────────────────────────────────── */
+.dp-rub-grupo {
+  margin-bottom: 16px;
+}
+.dp-rub-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-light);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.dp-rub-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 5px;
+}
+.dp-rub-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.dp-rub-nome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.dp-rub-sub {
+  font-size: 11px;
+  color: var(--text-light);
+}
+.dp-rub-flags {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+/* ── Histórico de alterações ───────────────────────────────── */
+.dp-hist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--sidebar-hover);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.dp-hist-campo {
+  font-weight: 700;
+  color: var(--text);
+  min-width: 80px;
+}
+.dp-hist-de {
+  color: #dc2626;
+  text-decoration: line-through;
+}
+.dp-hist-para {
+  color: #16a34a;
+  font-weight: 600;
+}
+.dp-hist-data {
+  color: var(--text-light);
+  margin-left: auto;
+  white-space: nowrap;
+}
+[data-theme="dark"] .dp-hist-de   { color: #fca5a5; }
+[data-theme="dark"] .dp-hist-para { color: #86efac; }
+
+/* ── eSocial preview ───────────────────────────────────────── */
+.dp-esocial-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.dp-esocial-status {
+  font-size: 11px;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.dp-esocial-alerta {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #78350f;
+  margin-bottom: 10px;
+}
+.dp-esocial-alerta ul {
+  margin: 6px 0 0 16px;
+}
+.dp-esocial-ok {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #15803d;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.dp-esocial-json {
+  font-size: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  color: var(--text);
+}
+[data-theme="dark"] .dp-esocial-alerta { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); color: #fde68a; }
+[data-theme="dark"] .dp-esocial-ok     { background: rgba(22,163,74,.1);  border-color: rgba(22,163,74,.3);  color: #86efac; }
