@@ -424,11 +424,25 @@ function closeConfirm(confirmed) {
 
 // --- Telas principal ---
 function showAuthScreen() {
-  ['confirmModal','clientModal','docModal','profileModal','calcModal',
-   'statsModal','learningStatsModal','shareModal'].forEach(id => {
+  // Fechar TODOS os modais e sheets sem exceção
+  [
+    'confirmModal','clientModal','docModal','profileModal','calcModal',
+    'statsModal','learningStatsModal','shareModal',
+    'folhaModal','finModal','agendaModal',
+    'honModal','honPagoModal',
+    'spedModal','empresaPerfilModal',
+    'permissoesModal','convitesModal','portalAdminModal',
+    'pcModal','lcModal','balModal','dreModal','concModal','apurModal',
+    'bnModulosSheet',
+  ].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+    if (!el) return;
+    el.style.display = 'none';
+    el.classList.add('hidden');
+    el.classList.remove('bn-sheet-open', 'modal-app-open');
   });
+  // Restaurar scroll do body
+  document.body.style.overflow = '';
   ['sidebar','chat','overlay'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
