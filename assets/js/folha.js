@@ -1885,11 +1885,18 @@ function _renderEsocialPreview(s2200, elId) {
   const el = document.getElementById(elId);
   if (!el) return;
   const faltando = s2200.dados._camposFaltando;
-  let html = `<div class="dp-esocial-header"><strong>S-2200 — Admissão</strong><span class="dp-esocial-status">⏳ Pendente</span></div>`;
+  let html = `
+    <div class="dp-esocial-header">
+      <strong>S-2200 — Admissão / Cadastramento do Vínculo</strong>
+      <span class="dp-esocial-status">⏳ Revisão local</span>
+    </div>
+    <div class="dp-valid-aviso" style="margin-bottom:8px;font-size:11px">
+      ⚠️ <strong>Apenas revisão.</strong> Este JSON não é transmitido ao governo. A integração real com o webservice do eSocial requer certificado digital A1/A3 e será implementada em etapa futura.
+    </div>`;
   if (faltando.length) {
-    html += `<div class="dp-esocial-alerta"><strong>⚠ ${faltando.length} campo(s) obrigatório(s) faltando:</strong><ul>${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul></div>`;
+    html += `<div class="dp-esocial-alerta"><strong>❌ ${faltando.length} campo(s) obrigatório(s) faltando:</strong><ul style="margin:6px 0 0 16px">${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul><p style="margin:6px 0 0">Complete o cadastro antes de prosseguir.</p></div>`;
   } else {
-    html += `<div class="dp-esocial-ok">✅ Dados completos.</div>`;
+    html += `<div class="dp-esocial-ok">✅ Dados completos. Pronto para geração do XML quando a integração estiver disponível.</div>`;
   }
   const dadosSemFaltando = { ...s2200.dados };
   delete dadosSemFaltando._camposFaltando;
