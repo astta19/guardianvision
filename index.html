@@ -2612,11 +2612,16 @@
 
         <!-- PAINEL: eSocial -->
         <div id="dpPanel_esocial" class="dp-panel" style="display:none">
+          <!-- Aviso explícito: não há transmissão real -->
+          <div class="dp-esocial-alerta" style="margin-bottom:16px">
+            <strong>⚠️ Este módulo NÃO transmite dados ao governo.</strong>
+            <p style="margin:6px 0 0">Os eventos gerados aqui são apenas <strong>JSON de revisão local</strong>. A transmissão real ao eSocial exige certificado digital A1/A3, assinatura de XML e integração com o webservice do governo — funcionalidade planejada para uma próxima etapa do sistema.</p>
+          </div>
           <div class="dp-kpi" style="margin-bottom:16px;background:var(--sidebar-hover)">
             <span class="dp-kpi-ico">🏛</span>
             <div>
-              <div style="font-weight:700;font-size:13px;margin-bottom:2px">eSocial — Base de Eventos</div>
-              <div style="font-size:12px;color:var(--text-light)">Gere e revise os eventos antes de transmitir ao sistema do governo.</div>
+              <div style="font-weight:700;font-size:13px;margin-bottom:2px">eSocial — Pré-visualização de Eventos</div>
+              <div style="font-size:12px;color:var(--text-light)">Gere, revise e corrija os dados antes da futura transmissão.</div>
             </div>
           </div>
           <div class="dp-section-lbl">Status dos eventos</div>
