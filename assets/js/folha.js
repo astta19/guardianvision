@@ -900,11 +900,11 @@ function calcularRescisao() {
         </table>
       </div>
       <div class="dp-liquido"><span>RESCISÃO LÍQUIDA</span><span class="dp-liq-val">R$ ${fmtBRL(liq)}</span></div>
-      ${(r.multa > 0 || r.fgtsResc > 0) ? `
+      ${(d.multa > 0 || d.fgtsResc > 0) ? `
       <div class="dp-sec"><div class="dp-sec-title">Encargos — Empresa</div>
         <table class="dp-table">
-          ${rP('FGTS sobre verbas tributáveis (mês)', r.fgtsResc)}
-          ${r.multa > 0 ? rP('Multa ' + r.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(r.fgtsAcum) + ')', r.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
+          ${rP('FGTS sobre verbas tributáveis (mês)', d.fgtsResc)}
+          ${d.multa > 0 ? rP('Multa ' + d.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(d.fgtsAcum) + ')', d.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
         </table>
       </div>` : ''}
       <p class="dp-note">ℹ️ Verifique saldo FGTS no app FGTS (Caixa). Homologação no sindicato para vínculos &gt; 1 ano.</p>
