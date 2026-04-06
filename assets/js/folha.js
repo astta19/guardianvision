@@ -1881,42 +1881,155 @@ function dpGerarS2200(funcId) {
   };
 }
 
-function _renderEsocialPreview(s2200, elId) {
+async function _renderEsocialPreview(s2200, elId, funcId) {
   const el = document.getElementById(elId);
   if (!el) return;
   const faltando = s2200.dados._camposFaltando;
+  const podeTransmitir = faltando.length === 0;
+
   let html = `
     <div class="dp-esocial-header">
       <strong>S-2200 — Admissão / Cadastramento do Vínculo</strong>
       <span class="dp-esocial-status">⏳ Revisão local</span>
     </div>
     <div class="dp-valid-aviso" style="margin-bottom:8px;font-size:11px">
-      ⚠️ <strong>Apenas revisão.</strong> Este JSON não é transmitido ao governo. A integração real com o webservice do eSocial requer certificado digital A1/A3 e será implementada em etapa futura.
+      ⚠️ A transmissão usa o certificado A1 configurado no servidor.
+      Configure <strong>ESOCIAL_CERT_PFX_B64</strong> e <strong>ESOCIAL_CERT_SENHA</strong>
+      nas variáveis de ambiente do Vercel antes de transmitir.
     </div>`;
+
   if (faltando.length) {
-    html += `<div class="dp-esocial-alerta"><strong>❌ ${faltando.length} campo(s) obrigatório(s) faltando:</strong><ul style="margin:6px 0 0 16px">${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul><p style="margin:6px 0 0">Complete o cadastro antes de prosseguir.</p></div>`;
+    html += `<div class="dp-esocial-alerta">
+      <strong>❌ ${faltando.length} campo(s) obrigatório(s) faltando:</strong>
+      <ul style="margin:6px 0 0 16px">${faltando.map(f=>`<li>${escapeHtml(f)}</li>`).join('')}</ul>
+      <p style="margin:6px 0 0">Complete o cadastro antes de transmitir.</p>
+    </div>`;
   } else {
-    html += `<div class="dp-esocial-ok">✅ Dados completos. Pronto para geração do XML quando a integração estiver disponível.</div>`;
+    html += `<div class="dp-esocial-ok" style="margin-bottom:10px">
+      ✅ Dados completos — pronto para transmissão.
+      <span class="dp-esocial-protocolo"></span>
+    </div>`;
   }
+
+  // Botão de transmissão
+  if (funcId) {
+    html += `<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button type="button" id="dpBtnTransmitir_${funcId}"
+        onclick="dpTransmitirS2200('${funcId}')"
+        class="dp-btn-pri" style="font-size:12px"
+        ${podeTransmitir ? '' : 'disabled title="Preencha os campos obrigatórios primeiro"'}>
+        <i data-lucide="send" style="width:12px;height:12px"></i> Transmitir ao eSocial
+      </button>
+    </div>`;
+  }
+
+  // Logs anteriores
+  if (funcId) {
+    const logs = await dpCarregarLogsEsocial(funcId);
+    if (logs.length) {
+      html += `<div class="dp-section-lbl" style="margin-bottom:6px">Transmissões anteriores</div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+          ${logs.map(l => `
+            <div class="dp-hist-item">
+              <span class="dp-hist-campo">${escapeHtml(l.evento)}</span>
+              <span class="${l.status==='enviado'?'dp-hist-para':'dp-hist-de'}">${l.status==='enviado'?'✅ Enviado':'❌ Erro'}</span>
+              ${l.protocolo?`<span style="font-size:10px;color:var(--text-light)">Prot: ${escapeHtml(l.protocolo)}</span>`:''}
+              <span class="dp-hist-data">${new Date(l.criado_em).toLocaleString('pt-BR')}</span>
+            </div>`).join('')}
+        </div>`;
+    }
+  }
+
+  // JSON para revisão
   const dadosSemFaltando = { ...s2200.dados };
   delete dadosSemFaltando._camposFaltando;
-  html += `<pre class="dp-esocial-json">${escapeHtml(JSON.stringify(dadosSemFaltando, null, 2))}</pre>`;
+  html += `<details style="margin-top:4px">
+    <summary style="font-size:12px;cursor:pointer;color:var(--text-light);padding:4px 0">
+      Ver JSON do evento
+    </summary>
+    <pre class="dp-esocial-json">${escapeHtml(JSON.stringify(dadosSemFaltando, null, 2))}</pre>
+  </details>`;
+
   el.innerHTML = html;
   el.style.display = 'block';
+  if (window.lucide) lucide.createIcons();
 }
 
 function dpVisualizarS2200() {
   const funcId = document.getElementById('dpFuncFormId')?.value || dpFuncAtivo?.id;
   if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
   const s2200 = dpGerarS2200(funcId);
-  if (s2200) _renderEsocialPreview(s2200, 'dpEsocialPreview');
+  if (s2200) _renderEsocialPreview(s2200, 'dpEsocialPreview', funcId);
 }
 
 function dpVisualizarS2200FromSelect() {
   const funcId = document.getElementById('dpEsocialFuncSelect')?.value;
   if (!funcId) { showToast('Selecione um funcionário.', 'warn'); return; }
   const s2200 = dpGerarS2200(funcId);
-  if (s2200) _renderEsocialPreview(s2200, 'dpEsocialTabPreview');
+  if (s2200) _renderEsocialPreview(s2200, 'dpEsocialTabPreview', funcId);
+}
+
+// ── Transmissão real ao eSocial ────────────────────────────────
+async function dpTransmitirS2200(funcId) {
+  const func = dpFuncionarios.find(f => f.id === funcId);
+  if (!func) { showToast('Funcionário não encontrado.', 'warn'); return; }
+  if (!currentCliente?.cnpj) { showToast('CNPJ da empresa não cadastrado.', 'warn'); return; }
+
+  const faltando = _camposFaltandoS2200(func);
+  if (faltando.length) {
+    showToast(`Preencha antes de transmitir: ${faltando.join(', ')}.`, 'warn');
+    return;
+  }
+
+  const btn = document.getElementById(`dpBtnTransmitir_${funcId}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Transmitindo...'; }
+
+  try {
+    const resp = await fetch('/api/esocial-transmitir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        evento: 'S-2200',
+        cnpjEmpregador: currentCliente.cnpj,
+        dados: {
+          ...func,
+          funcionario_id: func.id,
+        },
+      }),
+    });
+
+    const data = await resp.json();
+
+    if (data.ok) {
+      showToast(`✅ S-2200 enviado! Protocolo: ${data.protocolo}`, 'success');
+      // Atualizar preview com protocolo
+      const el = document.getElementById('dpEsocialTabPreview');
+      if (el) {
+        const proto = el.querySelector('.dp-esocial-protocolo');
+        if (proto) proto.textContent = `Protocolo: ${data.protocolo}`;
+      }
+    } else {
+      showToast(`❌ Erro na transmissão: ${data.erro || data.mensagem}`, 'error');
+      console.error('[eSocial]', data);
+    }
+  } catch(e) {
+    showToast('Erro ao transmitir: ' + e.message, 'error');
+    console.error('[eSocial transmitir]', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📡 Transmitir ao eSocial'; }
+  }
+}
+
+async function dpCarregarLogsEsocial(funcId) {
+  if (!funcId || !currentUser) return;
+  try {
+    const { data } = await sb.from('dp_esocial_logs')
+      .select('evento,status,protocolo,ambiente,criado_em')
+      .eq('funcionario_id', funcId)
+      .order('criado_em', { ascending: false })
+      .limit(10);
+    return data || [];
+  } catch { return []; }
 }
 
 // ── Histórico de alterações ────────────────────────────────────
