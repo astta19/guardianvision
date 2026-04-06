@@ -1,0 +1,13 @@
+{
+  "name": "fiscal365",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "xml-crypto": "^6.1.2",
+    "xmlbuilder2": "^4.0.3",
+    "node-forge": "^1.4.0"
+  }
+}
