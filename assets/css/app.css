@@ -5010,3 +5010,40 @@ input[type="checkbox"], input[type="radio"] {
 }
 [data-theme="dark"] .dp-esocial-alerta { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); color: #fde68a; }
 [data-theme="dark"] .dp-esocial-ok     { background: rgba(22,163,74,.1);  border-color: rgba(22,163,74,.3);  color: #86efac; }
+
+/* ══════════════════════════════════════════════════════════════
+   DP — Alertas e badges de rescisão
+   ══════════════════════════════════════════════════════════════ */
+
+.dp-resc-alerta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.dp-resc-alerta-item {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  line-height: 1.5;
+}
+.dp-resc-alerta-erro {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+.dp-resc-alerta-aviso {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.dp-resc-alerta-info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+[data-theme="dark"] .dp-resc-alerta-erro  { background: rgba(220,38,38,.1);   border-color: rgba(220,38,38,.3);   color: #fca5a5; }
+[data-theme="dark"] .dp-resc-alerta-aviso { background: rgba(245,158,11,.1);  border-color: rgba(245,158,11,.3);  color: #fde68a; }
+[data-theme="dark"] .dp-resc-alerta-info  { background: rgba(59,130,246,.1);  border-color: rgba(59,130,246,.3);  color: #93c5fd; }
