@@ -822,97 +822,165 @@ async function dpSalvarDecimo() {
 }
 
 // ── RESCISÃO ───────────────────────────────────────────────────
-function calcularRescisao() {
+async function calcularRescisao() {
   const funcId   = document.getElementById('dpRescFuncSelect')?.value;
   const dtDeslig = document.getElementById('dpRescData')?.value;
   const motivo   = document.getElementById('dpRescMotivo')?.value || 'sem_justa_causa';
-  const saldoDias= parseInt(document.getElementById('dpRescSaldoDias')?.value) || 0;
-  const mesesFer = parseInt(document.getElementById('dpRescFerProp')?.value) || 0;
-  const meses13  = parseInt(document.getElementById('dpRescDecProp')?.value) || 0;
   const avisoPrev= document.getElementById('dpRescAviso')?.checked;
   const func     = dpFuncionarios.find(f => f.id === funcId);
   if (!func || !dtDeslig) { showToast('Selecione o funcionário e a data de desligamento.', 'warn'); return; }
 
-  const sal         = func.salario_base;
-  const tipo        = func.tipo_contrato || 'clt';
-  const dep         = func.dependentes || 0;
-  const fgtsAcum    = parseFloat(document.getElementById('dpRescFgtsAcum')?.value) || 0;
-  const vDia        = r2(sal / 30);
-  const saldo       = r2(saldoDias * vDia);
-  // Aviso: sem_justa_causa = 100%; acordo_mutuo = 50% (art. 484-A); outros = 0
-  const aviso       = motivo === 'sem_justa_causa' && avisoPrev ? sal
-                    : motivo === 'acordo_mutuo'    && avisoPrev ? r2(sal * 0.5)
-                    : 0;
-  const ferProp     = r2(sal * mesesFer / 12);
-  const umTerco     = r2(ferProp / 3);
-  const dec13       = r2(sal * meses13 / 12);
-  const bruto       = r2(saldo + aviso + ferProp + umTerco + dec13);
+  const btn = document.querySelector('#dpPanel_rescisao .dp-btn-pri');
+  if (btn) { btn.disabled = true; btn.textContent = 'Calculando...'; }
 
-  // INSS: incide apenas sobre saldo + aviso (Súmula 173 STJ)
-  // PJ/autônomo não tem INSS CLT; estágio sem INSS
-  const baseInss    = (tipo === 'clt') ? r2(saldo + aviso) : 0;
-  const inss        = calcularINSS(baseInss);
-  // IRRF: base = bruto - inss - dependentes (isenções rescisórias não computadas aqui)
-  const baseIRRF    = Math.max(0, bruto - inss - dep * IRRF_DEP);
-  const irrf        = calcularIRRF(baseIRRF);
-  // FGTS rescisório: sobre verbas tributáveis do mês (não é a multa)
-  const fgtsResc    = tipo === 'clt' ? r2(baseInss * 0.08) : 0;
-  // Multa: 40% sobre SALDO ACUMULADO (sem justa causa) ou 20% (acordo mútuo)
-  const pctMulta    = motivo === 'sem_justa_causa' ? 0.40 : motivo === 'acordo_mutuo' ? 0.20 : 0;
-  const multa       = fgtsAcum > 0 ? r2(fgtsAcum * pctMulta) : 0;
-  const liq         = r2(bruto - inss - irrf);
+  try {
+    const sal  = func.salario_base;
+    const tipo = func.tipo_contrato || 'clt';
+    const dep  = func.dependentes || 0;
 
-  const MOTIVOS = {
-    sem_justa_causa: 'Demissão Sem Justa Causa',
-    justa_causa:     'Demissão por Justa Causa',
-    pedido_demissao: 'Pedido de Demissão',
-    acordo_mutuo:    'Acordo Mútuo (§ 15, art. 484-A CLT)',
-  };
+    // ── 1. Calcular proporcionais automaticamente ──────────────
+    const prop = calcularMesesProporcionais(func.admissao, dtDeslig);
 
-  const d = {
-    funcId: func.id, nomeFuncionario: func.nome, cargo: func.cargo,
-    empresa: currentCliente?.razao_social || '', cnpj: currentCliente?.cnpj || '',
-    dtDeslig, motivo, saldoDias, mesesFer, meses13, avisoPrev,
-    sal, saldo, aviso, ferProp, umTerco, dec13, bruto,
-    baseInss, inss, baseIRRF, irrf, fgtsResc, multa, fgtsAcum,
-    pctMulta: pctMulta * 100, liq, tipo: 'rescisao',
-  };
+    // ── 2. Preencher campos do formulário automaticamente ──────
+    const _set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    _set('dpRescSaldoDias', prop.diasTrabalhados);
+    _set('dpRescFerProp',   prop.mesesFerias);
+    _set('dpRescDecProp',   prop.meses13);
 
-  const el = document.getElementById('dpRescResult');
-  if (el) {
-    const rP = (desc, v) => v > 0
-      ? `<tr><td class="dp-td">${desc}</td><td class="dp-td r dp-green">R$ ${fmtBRL(v)}</td></tr>` : '';
-    el.innerHTML = `<div class="dp-recibo">
-      <div class="dp-recibo-hd">
-        <span class="dp-recibo-nm">${escapeHtml(func.nome)} — Rescisão</span>
-        <span class="dp-recibo-sub">${MOTIVOS[motivo]||motivo} · ${new Date(dtDeslig+'T12:00').toLocaleDateString('pt-BR')}</span>
-      </div>
-      <div class="dp-sec"><div class="dp-sec-title">Verbas Rescisórias</div>
-        <table class="dp-table">
-          ${rP(`Saldo de Salário (${saldoDias} dias)`, saldo)}
-          ${rP('Aviso Prévio Indenizado', aviso)}
-          ${rP(`Férias Proporcionais (${mesesFer}/12)`, ferProp)}
-          ${rP('1/3 Constitucional s/ Férias', umTerco)}
-          ${rP(`13º Proporcional (${meses13}/12)`, dec13)}
-          <tr class="dp-tr-tot"><td class="dp-td bold">Total Bruto</td><td class="dp-td r bold">R$ ${fmtBRL(bruto)}</td></tr>
-          <tr><td class="dp-td">INSS (saldo + aviso)</td><td class="dp-td r dp-red">- R$ ${fmtBRL(inss)}</td></tr>
-          <tr><td class="dp-td">IRRF</td><td class="dp-td r dp-red">- R$ ${fmtBRL(irrf)}</td></tr>
-        </table>
-      </div>
-      <div class="dp-liquido"><span>RESCISÃO LÍQUIDA</span><span class="dp-liq-val">R$ ${fmtBRL(liq)}</span></div>
-      ${(d.multa > 0 || d.fgtsResc > 0) ? `
-      <div class="dp-sec"><div class="dp-sec-title">Encargos — Empresa</div>
-        <table class="dp-table">
-          ${rP('FGTS sobre verbas tributáveis (mês)', d.fgtsResc)}
-          ${d.multa > 0 ? rP('Multa ' + d.pctMulta + '% s/ FGTS acumulado (R$ ' + fmtBRL(d.fgtsAcum) + ')', d.multa) : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS acumulado para calcular a multa.</td></tr>'}
-        </table>
-      </div>` : ''}
-      <p class="dp-note">ℹ️ Verifique saldo FGTS no app FGTS (Caixa). Homologação no sindicato para vínculos &gt; 1 ano.</p>
-    </div>`;
-    el.style.display = 'block';
+    // ── 3. Buscar saldo FGTS e médias de HE ───────────────────
+    const [fgtsAcum, medias] = await Promise.all([
+      buscarSaldoFGTS(funcId),
+      calcularMediasRescisao(funcId),
+    ]);
+    if (fgtsAcum > 0) _set('dpRescFgtsAcum', fgtsAcum.toFixed(2));
+    const fgtsAcumFinal = fgtsAcum || parseFloat(document.getElementById('dpRescFgtsAcum')?.value) || 0;
+
+    // ── 4. Aviso prévio proporcional (art. 487 + Lei 12.506/2011) ──
+    const diasAviso = calcularDiasAvisoPrevio(func.admissao, dtDeslig, motivo);
+    const aviso     = calcularAvisoPrevio(sal, motivo, avisoPrev, diasAviso);
+
+    // ── 5. Saldo de salário ────────────────────────────────────
+    const saldo = calcularSaldoSalario(sal, prop.diasTrabalhados);
+
+    // ── 6. Férias proporcionais + 1/3 ─────────────────────────
+    const ferProp = r2(sal * prop.mesesFerias / 12);
+    const umTerco = r2(ferProp / 3);
+
+    // ── 7. Férias vencidas (períodos aquisitivos completos) ────
+    const ferVenc = calcularFeriasVencidas(sal, prop.periodosVencidos);
+
+    // ── 8. 13º proporcional ────────────────────────────────────
+    const dec13 = r2(sal * prop.meses13 / 12);
+
+    // ── 9. Médias de HE e adicional noturno ───────────────────
+    const vlMediaHE50  = r2(medias.he50  * (sal / 220) * 1.50);
+    const vlMediaHE100 = r2(medias.he100 * (sal / 220) * 2.00);
+    const vlMediaAnot  = r2(medias.anot  * (sal / 220) * 0.20);
+    const totalMedias  = r2(vlMediaHE50 + vlMediaHE100 + vlMediaAnot);
+
+    // ── 10. Total bruto ────────────────────────────────────────
+    const bruto = r2(saldo + aviso + ferProp + umTerco + ferVenc.total + dec13 + totalMedias);
+
+    // ── 11. INSS (incide sobre saldo + aviso — Súmula 173 STJ) ─
+    const baseInss = tipo === 'clt' ? r2(saldo + aviso) : 0;
+    const inss     = calcularINSS(baseInss);
+
+    // ── 12. IRRF ───────────────────────────────────────────────
+    const baseIRRF = Math.max(0, bruto - inss - dep * IRRF_DEP);
+    const irrf     = calcularIRRF(baseIRRF);
+
+    // ── 13. FGTS do mês rescisório + multa ────────────────────
+    const fgtsResc = tipo === 'clt' ? r2(baseInss * 0.08) : 0;
+    const multa    = calcularMultaFGTS(fgtsAcumFinal, motivo);
+    const pctMulta = motivo === 'sem_justa_causa' ? 40 : motivo === 'acordo_mutuo' ? 20 : 0;
+
+    // ── 14. Líquido ────────────────────────────────────────────
+    const liq = r2(bruto - inss - irrf);
+
+    const MOTIVOS = {
+      sem_justa_causa: 'Demissão Sem Justa Causa',
+      justa_causa:     'Demissão por Justa Causa',
+      pedido_demissao: 'Pedido de Demissão',
+      acordo_mutuo:    'Acordo Mútuo (§ 15, art. 484-A CLT)',
+    };
+
+    const d = {
+      funcId: func.id, nomeFuncionario: func.nome, cargo: func.cargo,
+      empresa: currentCliente?.razao_social || '', cnpj: currentCliente?.cnpj || '',
+      dtDeslig, motivo, avisoPrev, diasAviso,
+      sal, saldo, saldoDias: prop.diasTrabalhados,
+      aviso, ferProp, umTerco, mesesFer: prop.mesesFerias,
+      ferVencValor: ferVenc.valor, ferVencTerco: ferVenc.umTerco, ferVencTotal: ferVenc.total,
+      periodosVencidos: prop.periodosVencidos,
+      dec13, meses13: prop.meses13,
+      mediaHE50: medias.he50, mediaHE100: medias.he100, mediaAnot: medias.anot,
+      vlMediaHE50, vlMediaHE100, vlMediaAnot, totalMedias,
+      bruto, baseInss, inss, baseIRRF, irrf,
+      fgtsResc, multa, fgtsAcum: fgtsAcumFinal, pctMulta,
+      liq, tipo: 'rescisao',
+      tempoServico: prop.tempoServico,
+    };
+
+    // ── 15. Renderizar recibo ──────────────────────────────────
+    const el = document.getElementById('dpRescResult');
+    if (el) {
+      const rP = (desc, v) => v > 0
+        ? `<tr><td class="dp-td">${escapeHtml(desc)}</td><td class="dp-td r dp-green">R$ ${fmtBRL(v)}</td></tr>` : '';
+
+      el.innerHTML = `
+        <div class="dp-recibo">
+          <div class="dp-recibo-hd">
+            <span class="dp-recibo-nm">${escapeHtml(func.nome)} — Rescisão</span>
+            <span class="dp-recibo-sub">${escapeHtml(MOTIVOS[motivo]||motivo)} · ${new Date(dtDeslig+'T12:00').toLocaleDateString('pt-BR')} · ${escapeHtml(prop.tempoServico)}</span>
+          </div>
+
+          <div class="dp-sec"><div class="dp-sec-title">Verbas Rescisórias</div>
+            <table class="dp-table">
+              ${rP(`Saldo de Salário (${prop.diasTrabalhados} dias)`, saldo)}
+              ${rP(`Aviso Prévio Indenizado (${diasAviso} dias)`, aviso)}
+              ${rP(`Férias Proporcionais (${prop.mesesFerias}/12)`, ferProp)}
+              ${rP('1/3 Constitucional s/ Férias Proporcionais', umTerco)}
+              ${ferVenc.total > 0 ? rP(`Férias Vencidas (${prop.periodosVencidos} período${prop.periodosVencidos>1?'s':''}) + 1/3`, ferVenc.total) : ''}
+              ${rP(`13º Proporcional (${prop.meses13}/12)`, dec13)}
+              ${totalMedias > 0 ? rP('Médias: HE + Adic. Noturno (últ. 12m)', totalMedias) : ''}
+              <tr class="dp-tr-tot"><td class="dp-td bold">Total Bruto</td><td class="dp-td r bold">R$ ${fmtBRL(bruto)}</td></tr>
+              <tr><td class="dp-td">INSS (saldo + aviso — Súmula 173 STJ)</td><td class="dp-td r dp-red">- R$ ${fmtBRL(inss)}</td></tr>
+              <tr><td class="dp-td">IRRF</td><td class="dp-td r dp-red">- R$ ${fmtBRL(irrf)}</td></tr>
+            </table>
+          </div>
+
+          <div class="dp-liquido"><span>RESCISÃO LÍQUIDA</span><span class="dp-liq-val">R$ ${fmtBRL(liq)}</span></div>
+
+          <div class="dp-sec"><div class="dp-sec-title">Encargos — Empresa</div>
+            <table class="dp-table">
+              ${fgtsResc > 0 ? rP('FGTS sobre verbas tributáveis (mês)', fgtsResc) : ''}
+              ${multa > 0
+                ? rP(`Multa ${pctMulta}% s/ FGTS acumulado (R$ ${fmtBRL(fgtsAcumFinal)})`, multa)
+                : `<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS para calcular a multa.</td></tr>`}
+            </table>
+          </div>
+
+          ${totalMedias > 0 ? `
+          <div class="dp-sec"><div class="dp-sec-title">Detalhamento Médias (últimos 12 meses)</div>
+            <table class="dp-table">
+              ${rP(`HE 50% — média ${fmtBRL(medias.he50)}h/mês`, vlMediaHE50)}
+              ${rP(`HE 100% — média ${fmtBRL(medias.he100)}h/mês`, vlMediaHE100)}
+              ${rP(`Adic. Noturno — média ${fmtBRL(medias.anot)}h/mês`, vlMediaAnot)}
+            </table>
+          </div>` : ''}
+        </div>`;
+      el.style.display = 'block';
+    }
+
+    // ── 16. Alertas ────────────────────────────────────────────
+    mostrarAlertasRescisao(d);
+
+    document.getElementById('dpRescActions') && (document.getElementById('dpRescActions').style.display = 'flex');
+    window._dpRescData = d;
+
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="calculator" style="width:13px;height:13px"></i> Calcular Rescisão'; lucide.createIcons(); }
   }
-  document.getElementById('dpRescActions') && (document.getElementById('dpRescActions').style.display = 'flex');
-  window._dpRescData = d;
 }
 
 async function dpSalvarRescisao() {
@@ -2052,4 +2120,187 @@ async function dpCarregarHistorico(funcId) {
       </div>`).join('');
     lucide.createIcons();
   } catch { el.innerHTML = '<p class="dp-empty" style="font-size:12px;color:#dc2626">Erro ao carregar histórico.</p>'; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// BLOCO 3 — Funções auxiliares de rescisão
+// ══════════════════════════════════════════════════════════════
+
+// ── Calcular meses proporcionais e períodos vencidos ──────────
+function calcularMesesProporcionais(dataAdmissao, dataDemissao) {
+  if (!dataAdmissao || !dataDemissao) {
+    return { mesesFerias:0, meses13:0, diasTrabalhados:0, periodosVencidos:0, tempoServico:'—' };
+  }
+
+  const adm    = new Date(dataAdmissao + 'T12:00');
+  const deslig = new Date(dataDemissao + 'T12:00');
+
+  // Meses completos entre admissão e desligamento
+  const totalMeses = (deslig.getFullYear() - adm.getFullYear()) * 12
+                   + (deslig.getMonth()    - adm.getMonth());
+
+  // Férias: meses no período aquisitivo atual (resto de 12)
+  // Dia >= 15 conta o mês corrente como trabalhado
+  const diasDeslig = deslig.getDate();
+  const mesesExtra = diasDeslig >= 15 ? 1 : 0;
+  const mesesFerias = Math.min((totalMeses % 12) + mesesExtra, 11);
+
+  // 13º: meses no ano corrente + fracionado pelo dia
+  const meses13 = Math.min(deslig.getMonth() + mesesExtra, 12);
+
+  // Dias trabalhados no mês do desligamento
+  const diasTrabalhados = diasDeslig;
+
+  // Períodos aquisitivos completos (12 meses) não gozados
+  const anosCompletos = Math.floor(totalMeses / 12);
+  // Supõe que funcionário não gozou férias — em produção,
+  // idealmente consultar tabela de férias gozadas
+  const periodosVencidos = Math.max(0, anosCompletos - 1); // 1 período já conta nas proporcionais
+
+  // Tempo de serviço formatado
+  const anos  = Math.floor(totalMeses / 12);
+  const meses = totalMeses % 12;
+  const tempoServico = (anos  ? anos  + ' ano'  + (anos  > 1 ? 's' : '') + ' ' : '')
+                     + (meses ? meses + ' mês'  + (meses > 1 ? 'es' : '') : '')
+                     || 'menos de 1 mês';
+
+  return { mesesFerias, meses13, diasTrabalhados, periodosVencidos, tempoServico, totalMeses };
+}
+
+// ── Calcular dias de aviso prévio (art. 487 CLT + Lei 12.506/2011) ──
+function calcularDiasAvisoPrevio(dataAdmissao, dataDemissao, motivo) {
+  // Justa causa e pedido de demissão: não tem aviso indenizado obrigatório pela empresa
+  if (motivo === 'justa_causa') return 0;
+
+  if (!dataAdmissao) return 30;
+  const adm    = new Date(dataAdmissao + 'T12:00');
+  const deslig = new Date((dataDemissao || new Date().toISOString().slice(0,10)) + 'T12:00');
+  const anos   = (deslig - adm) / (365.25 * 86400000);
+
+  // Base: 30 dias + 3 dias por ano completado, máximo 90 dias
+  const dias = Math.min(30 + Math.floor(anos) * 3, 90);
+  return dias;
+}
+
+// ── Calcular valor do aviso prévio ────────────────────────────
+function calcularAvisoPrevio(salario, motivo, avisoPrev, diasAviso) {
+  if (!avisoPrev) return 0;
+  if (motivo === 'justa_causa' || motivo === 'pedido_demissao') return 0;
+  if (motivo === 'acordo_mutuo') return r2(salario * (diasAviso / 30) * 0.5);
+  // sem_justa_causa: proporcional aos dias
+  return r2(salario * (diasAviso / 30));
+}
+
+// ── Calcular saldo de salário ─────────────────────────────────
+function calcularSaldoSalario(salario, diasTrabalhados) {
+  return r2(salario * diasTrabalhados / 30);
+}
+
+// ── Calcular férias vencidas (períodos completos não gozados) ─
+function calcularFeriasVencidas(salario, periodosVencidos) {
+  if (!periodosVencidos || periodosVencidos <= 0) return { valor: 0, umTerco: 0, total: 0 };
+  const valor   = r2(salario * periodosVencidos);
+  const umTerco = r2(valor / 3);
+  const total   = r2(valor + umTerco);
+  return { valor, umTerco, total };
+}
+
+// ── Calcular multa FGTS ───────────────────────────────────────
+function calcularMultaFGTS(saldoFGTS, motivo) {
+  if (!saldoFGTS || saldoFGTS <= 0) return 0;
+  if (motivo === 'sem_justa_causa') return r2(saldoFGTS * 0.40);
+  if (motivo === 'acordo_mutuo')    return r2(saldoFGTS * 0.20);
+  return 0;
+}
+
+// ── Buscar saldo FGTS no Supabase (tabela dp_fgts_saldo) ──────
+async function buscarSaldoFGTS(funcionarioId) {
+  if (!funcionarioId || !currentUser) return 0;
+  try {
+    const { data } = await sb.from('dp_fgts_saldo')
+      .select('saldo')
+      .eq('funcionario_id', funcionarioId)
+      .eq('user_id', currentUser.id)
+      .order('competencia', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data?.saldo ? parseFloat(data.saldo) : 0;
+  } catch { return 0; } // tabela pode não existir — silencioso
+}
+
+// ── Calcular médias de HE dos últimos 12 meses ────────────────
+async function calcularMediasRescisao(funcionarioId) {
+  const zero = { he50: 0, he100: 0, anot: 0 };
+  if (!funcionarioId || !currentUser) return zero;
+  try {
+    const { data } = await sb.from('dp_holerites')
+      .select('he50_horas, he100_horas, adic_noturno_horas')
+      .eq('funcionario_id', funcionarioId)
+      .eq('user_id', currentUser.id)
+      .order('competencia', { ascending: false })
+      .limit(12);
+    if (!data?.length) return zero;
+    const n = data.length;
+    return {
+      he50:  r2(data.reduce((s, h) => s + (+h.he50_horas  || 0), 0) / n),
+      he100: r2(data.reduce((s, h) => s + (+h.he100_horas || 0), 0) / n),
+      anot:  r2(data.reduce((s, h) => s + (+h.adic_noturno_horas || 0), 0) / n),
+    };
+  } catch { return zero; }
+}
+
+// ── Validar prazos legais da rescisão (CLT art. 477) ──────────
+function validarPrazosRescisao(dataDemissao, motivo) {
+  if (!dataDemissao) return [];
+  const deslig = new Date(dataDemissao + 'T12:00');
+  const hoje   = new Date();
+  const alertas = [];
+
+  // Prazo de pagamento: 10 dias corridos após o término do aviso
+  // (art. 477 § 6º CLT — sem justa causa/acordo: 10 dias; pedido/justa causa: 1º dia útil)
+  const diasPrazo = (motivo === 'pedido_demissao' || motivo === 'justa_causa') ? 1 : 10;
+  const prazo = new Date(deslig);
+  prazo.setDate(prazo.getDate() + diasPrazo);
+  const diasRestantes = Math.ceil((prazo - hoje) / 86400000);
+
+  if (diasRestantes < 0) {
+    alertas.push({ tipo: 'erro', texto: `Prazo de pagamento vencido há ${Math.abs(diasRestantes)} dia(s). Multa de 1 salário (art. 477 § 8º CLT).` });
+  } else if (diasRestantes <= 3) {
+    alertas.push({ tipo: 'aviso', texto: `Prazo de pagamento vence em ${diasRestantes} dia(s) (${prazo.toLocaleDateString('pt-BR')}).` });
+  } else {
+    alertas.push({ tipo: 'info', texto: `Pagamento até ${prazo.toLocaleDateString('pt-BR')} (${diasRestantes} dias).` });
+  }
+
+  return alertas;
+}
+
+// ── Exibir alertas no painel de rescisão ──────────────────────
+function mostrarAlertasRescisao(d) {
+  // Remover alertas anteriores
+  document.querySelectorAll('.dp-resc-alerta').forEach(el => el.remove());
+
+  const container = document.getElementById('dpRescResult');
+  if (!container) return;
+
+  const alertas = validarPrazosRescisao(d.dtDeslig, d.motivo);
+
+  // Homologação sindical
+  if (d.tempoServico && d.totalMeses >= 12 && d.motivo === 'sem_justa_causa') {
+    alertas.unshift({ tipo: 'aviso', texto: '⚖️ Vínculo > 1 ano: homologação sindical obrigatória (CLT art. 477).' });
+  }
+
+  // Aviso prévio proporcional > 30 dias
+  if (d.diasAviso > 30) {
+    alertas.push({ tipo: 'info', texto: `ℹ️ Aviso prévio proporcional: ${d.diasAviso} dias (Lei 12.506/2011).` });
+  }
+
+  if (!alertas.length) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'dp-resc-alerta';
+  wrapper.innerHTML = alertas.map(a => `
+    <div class="dp-resc-alerta-item dp-resc-alerta-${a.tipo}">
+      ${escapeHtml(a.texto)}
+    </div>`).join('');
+  container.insertAdjacentElement('beforebegin', wrapper);
 }
