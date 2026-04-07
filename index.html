@@ -2270,8 +2270,22 @@
               <input type="number" id="folhaDias" class="c-inp" value="30" min="1" max="31" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Dependentes (IRRF)</label>
+              <label class="dp-lbl">Jornada (h/semana) <small style="color:var(--text-light)">define valor hora</small></label>
+              <select id="folhaJornada" class="c-inp" onchange="calcularFolha()">
+                <option value="44">44h — padrão CLT</option>
+                <option value="40">40h</option>
+                <option value="36">36h</option>
+                <option value="30">30h</option>
+                <option value="20">20h — Estágio</option>
+              </select>
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Dependentes IRRF</label>
               <input type="number" id="folhaDependentes" class="c-inp" value="0" min="0" max="20" oninput="calcularFolha()">
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Dep. Salário-Família <small style="color:var(--text-light)">até 14 anos</small></label>
+              <input type="number" id="folhaDepIdade" class="c-inp" value="0" min="0" max="20" oninput="calcularFolha()" title="Dependentes até 14 anos para Salário-Família (CLT ≤ R$1.869,58)">
             </div>
           </div>
 
@@ -2321,8 +2335,12 @@
               <input type="number" id="folhaPensao" class="c-inp" placeholder="0,00" step="0.01" min="0" oninput="calcularFolha()">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Vale Transporte — % desc. (máx 6%)</label>
+              <label class="dp-lbl">Vale Transporte — % desc. s/ sal. base <small style="color:var(--text-light)">(máx 6%)</small></label>
               <input type="number" id="folhaVTPerc" class="c-inp" placeholder="6" step="0.5" min="0" max="6" oninput="calcularFolha()">
+            </div>
+            <div class="dp-field">
+              <label class="dp-lbl">RAT % <small style="color:var(--text-light)">acidente trabalho — ver CNAE (0,5 a 6%)</small></label>
+              <input type="number" id="folhaRAT" class="c-inp" value="2" step="0.5" min="0.5" max="6" oninput="calcularFolha()">
             </div>
             <div class="dp-field span2" id="folhaPjRetencoes" style="display:none">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -2504,25 +2522,29 @@
           <div class="dp-section-lbl">Verbas Rescisórias</div>
           <div class="dp-grid2">
             <div class="dp-field">
-              <label class="dp-lbl">Saldo de Dias no Mês <small style="color:var(--text-light)">(auto)</small></label>
+              <label class="dp-lbl">Saldo de Dias no Mês</label>
               <input type="number" id="dpRescSaldoDias" class="c-inp" placeholder="0" min="0" max="31">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">Férias Proporcionais (meses) <small style="color:var(--text-light)">(auto)</small></label>
+              <label class="dp-lbl">Férias Proporcionais (meses)</label>
               <input type="number" id="dpRescFerProp" class="c-inp" placeholder="0" min="0" max="12">
             </div>
             <div class="dp-field">
-              <label class="dp-lbl">13º Proporcional (meses) <small style="color:var(--text-light)">(auto)</small></label>
+              <label class="dp-lbl">13º Proporcional (meses)</label>
               <input type="number" id="dpRescDecProp" class="c-inp" placeholder="0" min="0" max="12">
             </div>
             <div class="dp-field" style="padding-top:6px">
               <label class="dp-lbl" style="display:flex;align-items:center;gap:10px;cursor:pointer">
                 <input type="checkbox" id="dpRescAviso" checked style="width:16px;height:16px;cursor:pointer">
-                <span>Aviso Prévio Indenizado <small style="color:var(--text-light)">(proporcional auto)</small></span>
+                <span>Aviso Prévio Indenizado</span>
               </label>
             </div>
+            <div class="dp-field">
+              <label class="dp-lbl">Dias de aviso <small style="color:var(--text-light)">(Lei 12.506 — auto)</small></label>
+              <input type="number" id="dpRescDiasAviso" class="c-inp" value="30" min="1" max="90">
+            </div>
             <div class="dp-field span2">
-              <label class="dp-lbl">Saldo FGTS Acumulado (R$) <small style="color:var(--text-light)">buscado automaticamente · confirme pelo app FGTS</small></label>
+              <label class="dp-lbl">Saldo FGTS Acumulado (R$) <small style="color:var(--text-light)">consultar app FGTS — base da multa 40%/20%</small></label>
               <input type="number" id="dpRescFgtsAcum" class="c-inp" placeholder="0,00" step="0.01" min="0">
             </div>
           </div>
