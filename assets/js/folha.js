@@ -486,9 +486,9 @@ function calcularFolha() {
   }
 
   // Jornada real do funcionário (44h → 220h/mês; 40h → 173,33h; 36h → 156h; 30h → 130h; 20h → 86,67h)
-  // Fórmula: (jornada_semanal / 6) × 30  — CLT art. 58
+  // Fórmula CLT art. 64: jornada_semanal × 52 semanas / 12 meses
   const jornadaSemanal = parseFloat(document.getElementById('folhaJornada')?.value) || (dpFuncAtivo?.jornada_horas || 44);
-  const horasMes = r2(jornadaSemanal * (30 / 7));   // meses = semanas×dias / 7
+  const horasMes = r2(jornadaSemanal * 52 / 12);
   const vh = sal / horasMes;
 
   // Proventos
@@ -516,27 +516,31 @@ function calcularFolha() {
     ? r2(depIdade * SF_VALOR) : 0;
   const brutoComSF = r2(brutoFinal + salFamilia);
 
-  // VT: desconto máximo 6% sobre salário BASE (Lei 7.418/85 art. 9°)
+  // VT: desconto máximo 6% sobre salário BASE (Lei 7.418/85 art. 9°) — apenas CLT
   const vtPerc = parseFloat(document.getElementById('folhaVTPerc')?.value) || 0;
-  const vlVT   = r2(sal * Math.min(vtPerc / 100, 0.06));
+  const vlVT   = tipo === 'clt' ? r2(sal * Math.min(vtPerc / 100, 0.06)) : 0;
 
   // RAT: alíquota configurável por empresa (0,5% a 6% × FAP)
   // Padrão 2% se não configurado — contador ajusta pelo CNAE
   const ratAliq = parseFloat(document.getElementById('folhaRAT')?.value) || 2;
 
-  let inss = 0, irrf = 0, baseIRRF = 0, fgts = 0, pat = 0, rat = 0, obs = [];
+  let inss = 0, irrf = 0, baseIRRF = 0, fgts = 0, pat = 0, rat = 0, terceiros = 0, obs = [];
 
   if (tipo === 'clt') {
-    inss     = calcularINSS(brutoComSF);
-    fgts     = r2(brutoComSF * 0.08);
-    baseIRRF = Math.max(0, brutoComSF - inss - dep * IRRF_DEP - pen);
-    irrf     = calcularIRRF(baseIRRF);
-    pat      = r2(brutoComSF * 0.20);
-    rat      = r2(brutoComSF * (ratAliq / 100));
-    obs      = [
-      `INSS progressivo · FGTS 8% · Patronal 20% · RAT ${ratAliq}%`,
-      `VH = R$ ${fmtBRL(vh)} (${jornadaSemanal}h/sem = ${fmtBRL(horasMes)}h/mês)`,
+    inss      = calcularINSS(brutoComSF);
+    fgts      = r2(brutoComSF * 0.08);
+    baseIRRF  = Math.max(0, brutoComSF - inss - dep * IRRF_DEP - pen);
+    irrf      = calcularIRRF(baseIRRF);
+    pat       = r2(brutoComSF * 0.20);
+    rat       = r2(brutoComSF * (ratAliq / 100));
+    // Contribuições a terceiros: Sesc/Senac/Sebrae/Incra/Salário-Educ. (~5,8% comércio, varia por CNAE)
+    const tercAliq = parseFloat(document.getElementById('folhaTerceiros')?.value) || 5.8;
+    terceiros = r2(brutoComSF * (tercAliq / 100));
+    obs       = [
+      `INSS progressivo · FGTS 8% · Patronal 20% · RAT ${ratAliq}% · Terceiros ${tercAliq}%`,
+      `VH = R$ ${fmtBRL(vh)} (${jornadaSemanal}h/sem = ${fmtBRL(horasMes)}h/mês — CLT art. 64)`,
       'Não inclui: 13º (1/12), férias (1/3+1/3)',
+      'RAT e Terceiros variam por CNAE — ajuste conforme a empresa.',
     ];
   } else if (tipo === 'autonomo_rpa') {
     inss     = Math.min(r2(Math.min(brutoComSF, 8157.41) * 0.20), INSS_TETO);
@@ -561,9 +565,9 @@ function calcularFolha() {
     obs      = ['Estágio (Lei 11.788/2008): sem INSS e sem FGTS.'];
   }
 
-  const totD = r2(inss + irrf + pen + outD + vlVT);
-  const liq  = Math.max(0, r2(brutoComSF - totD));
-  const custo = r2(brutoComSF + fgts + pat + rat);
+  const totD  = r2(inss + irrf + pen + outD + vlVT);
+  const liq   = Math.max(0, r2(brutoComSF - totD));
+  const custo = r2(brutoComSF + fgts + pat + rat + terceiros);
   const func  = dpFuncAtivo || {};
 
   const d = {
@@ -577,12 +581,11 @@ function calcularFolha() {
     totalBruto: brutoComSF,
     inss, irrf, fgts, baseIRRF, dependentes: dep, pensaoAlim: pen,
     valeTransporte: vlVT, vtPerc, outrosDescontos: outD, totalDescontos: totD,
-    salarioLiquido: liq, inssPatronal: pat, rat, ratAliq, custoTotal: custo,
+    salarioLiquido: liq, inssPatronal: pat, rat, ratAliq, terceiros, custoTotal: custo,
     tipoContrato: tipo, observacoes: obs,
   };
 
   renderFolhaResult(d);
-}
 
 // Helper: calcular insalubridade por grau
 function calcInsalubridade(grau, salMin) {
@@ -642,6 +645,7 @@ function renderFolhaResult(r) {
           ${rP('FGTS (8%)', r.fgts)}
           ${rP('INSS Patronal (20%)', r.inssPatronal)}
           ${rP(`RAT — Acidente Trabalho (${r.ratAliq||2}%)`, r.rat)}
+          ${rP('Contribuições a Terceiros', r.terceiros)}
           <tr class="dp-tr-tot"><td class="dp-td bold">Custo Total Empresa</td><td class="dp-td r bold">R$ ${fmtBRL(r.custoTotal)}</td></tr>
         </table>
       </div>` : ''}
@@ -712,7 +716,8 @@ function calcularFerias() {
   const baseInss = r2(base + umTerco);      // abono excluído da base INSS
   const bruto    = r2(baseInss + abonoV);
   const inss     = tipo === 'estagio' ? 0 : calcularINSS(baseInss);
-  const baseIRRF = Math.max(0, bruto - inss - (func.dependentes || 0) * IRRF_DEP);
+  // IRRF incide apenas sobre baseInss (férias + 1/3) — abono pecuniário é isento (Lei 7.713/88 art. 6°, V)
+  const baseIRRF = Math.max(0, baseInss - inss - (func.dependentes || 0) * IRRF_DEP);
   const irrf     = calcularIRRF(baseIRRF);
   const liq      = r2(bruto - inss - irrf);
 
@@ -862,15 +867,29 @@ function calcularRescisao() {
   const dep  = func.dependentes || 0;
   const fgtsAcum = parseFloat(document.getElementById('dpRescFgtsAcum')?.value) || 0;
 
-  // ── Verbas ─────────────────────────────────────────────────
-  const vDia    = r2(sal / 30);
-  const saldo   = r2(saldoDias * vDia);                     // TRIBUTÁVEL pelo IRRF
+  // ── Aviso prévio proporcional automático (CLT art. 487 §1°) ──
+  // 30 dias + 3 dias por ano completo trabalhado, máximo 90 dias
+  const admissao = func.admissao ? new Date(func.admissao + 'T12:00') : null;
+  const dtDesligDate = new Date(dtDeslig + 'T12:00');
+  const anosCompletos = admissao
+    ? Math.floor((dtDesligDate - admissao) / (365.25 * 86400000))
+    : 0;
+  const diasAvisoProporcional = Math.min(30 + anosCompletos * 3, 90);
+  // Se campo manual preenchido, usar esse valor; senão, usar o calculado
+  const diasAvisoInput = parseInt(document.getElementById('dpRescDiasAviso')?.value) || 0;
+  const diasAviso = diasAvisoInput > 0 ? diasAvisoInput : diasAvisoProporcional;
+  // Atualizar campo na UI com o valor calculado para transparência
+  const elDiasAviso = document.getElementById('dpRescDiasAviso');
+  if (elDiasAviso && !diasAvisoInput) elDiasAviso.value = diasAviso;
 
-  // Aviso proporcional: sem_justa_causa proporcional aos dias; acordo_mútuo 50%
-  const diasAviso = parseInt(document.getElementById('dpRescDiasAviso')?.value) || 30;
-  const aviso   = motivo === 'sem_justa_causa' && avisoPrev ? r2(sal * diasAviso / 30)
-                : motivo === 'acordo_mutuo'    && avisoPrev ? r2(sal * diasAviso / 30 * 0.5)
-                : 0;                                         // ISENTO de IRRF (art. 6°, V, Lei 7.713/88)
+  // ── Verbas ─────────────────────────────────────────────────
+  const vDia  = r2(sal / 30);
+  const saldo = r2(saldoDias * vDia);                      // TRIBUTÁVEL pelo IRRF
+
+  // Aviso: sem_justa_causa proporcional; acordo_mútuo 50%; justa_causa = 0
+  const aviso = motivo === 'sem_justa_causa' && avisoPrev ? r2(sal * diasAviso / 30)
+              : motivo === 'acordo_mutuo'    && avisoPrev ? r2(sal * diasAviso / 30 * 0.5)
+              : 0;                                          // ISENTO de IRRF (art. 6°, V, Lei 7.713/88)
 
   const ferProp = r2(sal * mesesFer / 12);                   // ISENTO de IRRF
   const umTerco = r2(ferProp / 3);                           // ISENTO de IRRF
@@ -905,7 +924,7 @@ function calcularRescisao() {
   const d = {
     funcId: func.id, nomeFuncionario: func.nome, cargo: func.cargo,
     empresa: currentCliente?.razao_social || '', cnpj: currentCliente?.cnpj || '',
-    dtDeslig, motivo, saldoDias, diasAviso, mesesFer, meses13, avisoPrev,
+    dtDeslig, motivo, saldoDias, diasAviso, diasAvisoProporcional, anosCompletos, mesesFer, meses13, avisoPrev,
     sal, saldo, aviso, ferProp, umTerco, dec13, bruto,
     baseInss, inss, baseTributavelIRRF, baseIRRF, irrf,
     fgtsResc, multa, fgtsAcum, pctMulta: pctMulta * 100, liq, tipo: 'rescisao',
@@ -919,7 +938,7 @@ function calcularRescisao() {
     el.innerHTML = `<div class="dp-recibo">
       <div class="dp-recibo-hd">
         <span class="dp-recibo-nm">${escapeHtml(func.nome)} — Rescisão</span>
-        <span class="dp-recibo-sub">${escapeHtml(MOTIVOS[motivo]||motivo)} · ${new Date(dtDeslig+'T12:00').toLocaleDateString('pt-BR')}</span>
+        <span class="dp-recibo-sub">${escapeHtml(MOTIVOS[motivo]||motivo)} · ${new Date(dtDeslig+'T12:00').toLocaleDateString('pt-BR')}${anosCompletos > 0 ? ` · ${anosCompletos} ano(s) — aviso ${diasAvisoProporcional} dias (art. 487 §1°)` : ''}</span>
       </div>
       <div class="dp-sec"><div class="dp-sec-title">Verbas Rescisórias</div>
         <table class="dp-table">
@@ -942,7 +961,7 @@ function calcularRescisao() {
             : '<tr><td class="dp-td dp-obs" colspan="2">⚠ Informe o saldo FGTS para calcular a multa.</td></tr>'}
         </table>
       </div>
-      <p class="dp-note">ℹ️ IRRF incide apenas sobre saldo + 13° (Lei 7.713/88 art. 6°, V). Verifique saldo FGTS no app FGTS (Caixa). Homologação sindical para vínculos &gt; 1 ano.</p>
+      <p class="dp-note">ℹ️ IRRF incide apenas sobre saldo + 13° (Lei 7.713/88 art. 6°, V). Verifique saldo FGTS no app FGTS (Caixa). Homologação sindical para vínculos &gt; 1 ano. Aviso calculado automaticamente: 30 dias + 3 dias/ano trabalhado, máx. 90 dias (CLT art. 487 §1°).</p>
     </div>`;
     el.style.display = 'block';
   }
