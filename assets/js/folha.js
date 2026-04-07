@@ -1098,12 +1098,12 @@ async function dpCarregarRelatorio() {
 
     // Composição do custo
     if (totalCusto > 0) {
-      const composicao = [
-        { lbl: 'Salário Bruto',   val: totalBruto, cls: 'bruto' },
-        { lbl: 'INSS Patronal',   val: totalPat,   cls: 'pat'   },
-        { lbl: 'FGTS',            val: totalFGTS,  cls: 'fgts'  },
-        { lbl: 'INSS Empregado',  val: totalINSS,  cls: 'inss'  },
-        { lbl: 'IRRF',            val: totalIRRF,  cls: 'irrf'  },
+    const composicao = [
+        { lbl: 'Salário Bruto',          val: totalBruto, cls: 'bruto' },
+        { lbl: 'INSS Patronal',          val: totalPat,   cls: 'pat'   },
+        { lbl: 'FGTS',                   val: totalFGTS,  cls: 'fgts'  },
+        { lbl: 'INSS Empregado',         val: totalINSS,  cls: 'inss'  },
+        { lbl: 'IRRF',                   val: totalIRRF,  cls: 'irrf'  },
       ];
       html += '<div class="dp-rel-bloco">';
       html += '<div class="dp-rel-title">Composição do Custo Acumulado</div>';
@@ -1271,11 +1271,14 @@ function dpRescAutoPreench() {
   const deslig = dtDesl ? new Date(dtDesl+'T12:00') : new Date();
   const meses  = adm ? Math.floor((deslig - adm) / (30.44 * 86400000)) : null;
   const saldo  = dtDesl ? deslig.getDate() : null;
-  const mFer   = meses !== null ? (meses % 12 || 0) : null;
 
-  // 13°: meses no ano corrente (dia ≥15 conta o mês)
+  // Férias proporcionais: meses desde o último aniversário do contrato (período aquisitivo)
+  // Cada 12 meses completos = 1 período. O restante é o proporcional.
+  const mFer = meses !== null ? (meses % 12) : null;
+
+  // 13°: meses no ano corrente (jan=1...dez=12). Dia ≥ 15 conta o mês (CLT art. 1° Lei 4.090/62)
   const mesesExtra = (dtDesl && deslig.getDate() >= 15) ? 1 : 0;
-  const m13    = dtDesl ? Math.min(deslig.getMonth() + mesesExtra, 12) : null;
+  const m13 = dtDesl ? Math.min(deslig.getMonth() + mesesExtra, 12) : null;
 
   // Dias de aviso: 30 + 3/ano (Lei 12.506/2011), máx 90
   const anos = adm ? Math.floor((deslig - adm) / (365.25 * 86400000)) : 0;
@@ -1283,7 +1286,7 @@ function dpRescAutoPreench() {
 
   const _set = (id, v) => { const el = document.getElementById(id); if (el && !el.value) el.value = v; };
   if (saldo !== null) _set('dpRescSaldoDias', saldo);
-  if (mFer  !== null) { const el = document.getElementById('dpRescFerProp');  if (el) el.value = Math.min(mFer, 11); }
+  if (mFer  !== null) { const el = document.getElementById('dpRescFerProp');  if (el) el.value = mFer; }
   if (m13   !== null) { const el = document.getElementById('dpRescDecProp');  if (el) el.value = m13; }
   { const el = document.getElementById('dpRescDiasAviso'); if (el) el.value = diasAviso; }
 
@@ -1460,7 +1463,8 @@ async function exportarFolhaPDF() {
     row('Salário Bruto', d.totalBruto);
     row('FGTS (8%)', d.fgts);
     row('INSS Patronal (20%)', d.inssPatronal);
-    if (d.rat > 0) row('RAT (~2%)', d.rat);
+    if (d.rat      > 0) row(`RAT (${d.ratAliq||2}%)`, d.rat);
+    if (d.terceiros > 0) row('Contribuições a Terceiros', d.terceiros);
     doc.line(M, y, W-M, y); y += 3; row('CUSTO TOTAL', d.custoTotal, true); y += 6;
   }
 
