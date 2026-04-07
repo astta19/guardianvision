@@ -586,6 +586,7 @@ function calcularFolha() {
   };
 
   renderFolhaResult(d);
+} // fim calcularFolha
 
 // Helper: calcular insalubridade por grau
 function calcInsalubridade(grau, salMin) {
@@ -768,7 +769,7 @@ async function dpSalvarFerias() {
     });
     if (error) throw error;
     showToast('Férias salvas no banco!', 'success');
-  } catch { showToast('Erro ao salvar férias.', 'error'); }
+  } catch(e) { showToast('Erro ao salvar férias: ' + (e?.message || ''), 'error'); console.error('[férias]', e); }
 }
 
 // ── 13º SALÁRIO ────────────────────────────────────────────────
@@ -986,7 +987,7 @@ async function dpSalvarRescisao() {
     if (error) throw error;
     showToast('Rescisão salva. Funcionário marcado como rescindido.', 'success');
     await dpCarregarFuncionarios();
-  } catch { showToast('Erro ao salvar rescisão.', 'error'); }
+  } catch(e) { showToast('Erro ao salvar rescisão: ' + (e?.message || ''), 'error'); console.error('[rescisão]', e); }
 }
 
 // ── RELATÓRIOS ─────────────────────────────────────────────────
@@ -1056,7 +1057,12 @@ async function dpCarregarRelatorio() {
     const maxFCusto = funcRank[0]?.custo || 1;
 
     // Últimos 6 meses para gráfico
-    const ultimos6 = [...comps].reverse().slice(-6);
+    // Ordenar por competência real (MM/AAAA → AAAA/MM para sort correto)
+    const compsOrdenadas = [...comps].sort((a, b) => {
+      const toISO = s => { const [m,y] = (s||'').split('/'); return (y||'0') + (m||'0'); };
+      return toISO(a.comp).localeCompare(toISO(b.comp));
+    });
+    const ultimos6 = compsOrdenadas.slice(-6);
     const maxBar   = Math.max(...ultimos6.map(c=>c.custo), 1);
 
     // Montar HTML por partes (evita template literals profundos)
@@ -1278,7 +1284,7 @@ function dpRescAutoPreench() {
 
   // 13°: meses no ano corrente (jan=1...dez=12). Dia ≥ 15 conta o mês (CLT art. 1° Lei 4.090/62)
   const mesesExtra = (dtDesl && deslig.getDate() >= 15) ? 1 : 0;
-  const m13 = dtDesl ? Math.min(deslig.getMonth() + mesesExtra, 12) : null;
+  const m13 = dtDesl ? Math.min(deslig.getMonth() + 1 + mesesExtra, 12) : null;
 
   // Dias de aviso: 30 + 3/ano (Lei 12.506/2011), máx 90
   const anos = adm ? Math.floor((deslig - adm) / (365.25 * 86400000)) : 0;
@@ -1286,9 +1292,9 @@ function dpRescAutoPreench() {
 
   const _set = (id, v) => { const el = document.getElementById(id); if (el && !el.value) el.value = v; };
   if (saldo !== null) _set('dpRescSaldoDias', saldo);
-  if (mFer  !== null) { const el = document.getElementById('dpRescFerProp');  if (el) el.value = mFer; }
-  if (m13   !== null) { const el = document.getElementById('dpRescDecProp');  if (el) el.value = m13; }
-  { const el = document.getElementById('dpRescDiasAviso'); if (el) el.value = diasAviso; }
+  if (mFer  !== null) { const el = document.getElementById('dpRescFerProp');  if (el && !el.value) el.value = mFer; }
+  if (m13   !== null) { const el = document.getElementById('dpRescDecProp');  if (el && !el.value) el.value = m13; }
+  { const el = document.getElementById('dpRescDiasAviso'); if (el && !el.value) el.value = diasAviso; }
 
   if (meses !== null) {
     const anos_ = Math.floor(meses / 12);
@@ -1469,12 +1475,16 @@ async function exportarFolhaPDF() {
   if (d.vlHE50  > 0) row(`HE 50% (${d.horasExtras50}h)`,  d.vlHE50);
   if (d.vlHE100 > 0) row(`HE 100% (${d.horasExtras100}h)`, d.vlHE100);
   if (d.vlAdicNot > 0) row(`Adic. Noturno (${d.adicNoturno}h)`, d.vlAdicNot);
+  if (d.insalubridade > 0) row('Insalubridade', d.insalubridade);
+  if (d.periculosidade > 0) row('Periculosidade (30%)', d.periculosidade);
+  if (d.salFamilia > 0) row('Salário-Família', d.salFamilia);
   if (d.outrosAcrescimos > 0) row('Outros acréscimos', d.outrosAcrescimos);
   doc.line(M, y, W-M, y); y += 3; row('TOTAL PROVENTOS', d.totalBruto, true); y += 4;
 
   hdr([220,38,38], 'DESCONTOS');
   if (d.inss > 0) row(`INSS (tabela progressiva)`, d.inss);
   if (d.irrf > 0) row(`IRRF (base R$ ${fmtBRL(d.baseIRRF)})`, d.irrf);
+  if (d.valeTransporte > 0) row('Vale Transporte (' + (d.vtPerc||0) + '%)', d.valeTransporte);
   if (d.pensaoAlim > 0) row('Pensão Alimentícia', d.pensaoAlim);
   if (d.outrosDescontos > 0) row('Outros Descontos', d.outrosDescontos);
   doc.line(M, y, W-M, y); y += 3; row('TOTAL DESCONTOS', d.totalDescontos, true); y += 6;
@@ -1512,12 +1522,12 @@ async function exportarFolhaPDF() {
 // ── Exportar Excel session ─────────────────────────────────────
 function exportarFolhaExcel() {
   if (!folhaFuncionarios.length) { showToast('Calcule ao menos um holerite.', 'warn'); return; }
-  const cab = ['Funcionário','Cargo','Comp.','Dias','Bruto','INSS','IRRF','Pensão','OutrosD','TotalD','Líquido','FGTS','Patronal','RAT','Custo Total'];
+  const cab = ['Funcionário','Cargo','Comp.','Dias','Bruto','INSS','IRRF','Pensão','OutrosD','TotalD','Líquido','FGTS','Patronal','RAT','Terceiros','Custo Total'];
   const rows = folhaFuncionarios.map(f => [
     f.nomeFuncionario, f.cargo||'', f.competencia, f.diasTrabalhados,
     +r2(f.totalBruto), +r2(f.inss), +r2(f.irrf),
     +r2(f.pensaoAlim||0), +r2(f.outrosDescontos||0), +r2(f.totalDescontos),
-    +r2(f.salarioLiquido), +r2(f.fgts), +r2(f.inssPatronal), +r2(f.rat||0), +r2(f.custoTotal),
+    +r2(f.salarioLiquido), +r2(f.fgts), +r2(f.inssPatronal), +r2(f.rat||0), +r2(f.terceiros||0), +r2(f.custoTotal),
   ]);
   const ws = XLSX.utils.aoa_to_sheet([
     [`FOLHA — ${folhaFuncionarios[0]?.empresa||''}`],
@@ -2116,7 +2126,7 @@ async function dpTransmitirS2200(funcId) {
 }
 
 async function dpCarregarLogsEsocial(funcId) {
-  if (!funcId || !currentUser) return;
+  if (!funcId || !currentUser) return [];
   try {
     const { data } = await sb.from('dp_esocial_logs')
       .select('evento,status,protocolo,ambiente,criado_em')
