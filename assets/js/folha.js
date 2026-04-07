@@ -848,7 +848,7 @@ async function dpSalvarDecimo() {
     });
     if (error) throw error;
     showToast('13º salvo no banco!', 'success');
-  } catch { showToast('Erro ao salvar 13º.', 'error'); }
+  } catch(e) { showToast('Erro ao salvar 13º: ' + (e?.message || ''), 'error'); console.error('[13º]', e); }
 }
 
 // ── RESCISÃO ───────────────────────────────────────────────────
@@ -974,9 +974,7 @@ async function dpSalvarRescisao() {
   const d = window._dpRescData;
   if (!d || !currentUser) { showToast('Calcule a rescisão primeiro.', 'warn'); return; }
   try {
-    await sb.from('dp_funcionarios')
-      .update({ status: 'rescindido', atualizado_em: new Date().toISOString() })
-      .eq('id', d.funcId).eq('user_id', currentUser.id);
+    // Salvar evento PRIMEIRO — só marcar rescindido se o evento for salvo com sucesso
     const _escResc = await getEscritorioIdAtual();
     const { error } = await sb.from('dp_eventos').insert({
       user_id: currentUser.id, cliente_id: currentCliente?.id,
@@ -985,6 +983,10 @@ async function dpSalvarRescisao() {
       competencia: d.dtDeslig?.slice(0, 7), dados: d,
     });
     if (error) throw error;
+    // Só atualiza status depois que o evento foi salvo
+    await sb.from('dp_funcionarios')
+      .update({ status: 'rescindido', atualizado_em: new Date().toISOString() })
+      .eq('id', d.funcId).eq('user_id', currentUser.id);
     showToast('Rescisão salva. Funcionário marcado como rescindido.', 'success');
     await dpCarregarFuncionarios();
   } catch(e) { showToast('Erro ao salvar rescisão: ' + (e?.message || ''), 'error'); console.error('[rescisão]', e); }
@@ -1253,7 +1255,7 @@ async function dpExportarRelatorioExcel() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Folha DP');
     XLSX.writeFile(wb, `dp-${(currentCliente.cnpj||'').replace(/\D/g,'')}-${new Date().toISOString().slice(0,7)}.xlsx`);
-  } catch { showToast('Erro ao exportar.', 'error'); }
+  } catch(e) { showToast('Erro ao exportar: ' + (e?.message || ''), 'error'); console.error('[exportar relatório excel]', e); }
 }
 
 // ── Formatar campo de competência ─────────────────────────────
@@ -1631,7 +1633,10 @@ async function dpExportarRelatorioPDF() {
     cx.bruto+=+h.total_bruto||0; cx.inss+=+h.inss||0; cx.irrf+=+h.irrf||0;
     cx.fgts+=+h.fgts||0; cx.pat+=+h.inss_patronal||0; cx.custo+=+h.custo_total||0; cx.liq+=+h.salario_liquido||0; cx.qtd++;
   }
-  const comps = Object.values(porComp).sort((a,b)=>b.comp.localeCompare(a.comp));
+  const comps = Object.values(porComp).sort((a, b) => {
+    const toISO = s => { const [m, y] = (s||'').split('/'); return (y||'0') + (m||'0'); };
+    return toISO(b.comp).localeCompare(toISO(a.comp));
+  });
   const tot = { bruto:0, inss:0, irrf:0, fgts:0, pat:0, custo:0 };
   comps.forEach(cx => { tot.bruto+=cx.bruto; tot.inss+=cx.inss; tot.irrf+=cx.irrf; tot.fgts+=cx.fgts; tot.pat+=cx.pat; tot.custo+=cx.custo; });
 
