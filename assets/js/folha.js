@@ -1367,14 +1367,41 @@ function dpExportarEventoPDF(tipo) {
     row((d.parcela==='1'?'1ª Parcela (50%)':'2ª Parcela (saldo)'), d.bruto, true);
     if (d.inss > 0) { sep('DESCONTOS'); row('INSS', d.inss); row('IRRF', d.irrf); }
   } else {
+    // Motivo e data de desligamento no subtítulo
+    const MOTIVOS_PDF = {
+      sem_justa_causa: 'Demissão Sem Justa Causa',
+      justa_causa:     'Demissão por Justa Causa',
+      pedido_demissao: 'Pedido de Demissão',
+      acordo_mutuo:    'Acordo Mútuo (art. 484-A CLT)',
+    };
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+    doc.text((MOTIVOS_PDF[d.motivo] || d.motivo || '—') +
+      (d.dtDeslig ? '  ·  Desligamento: ' + new Date(d.dtDeslig+'T12:00').toLocaleDateString('pt-BR') : '') +
+      (d.anosCompletos > 0 ? '  ·  ' + d.anosCompletos + ' ano(s)' : ''), M, y);
+    y += 8; doc.setTextColor(0,0,0);
+
     sep('VERBAS RESCISÓRIAS');
-    if (d.saldo   > 0) row('Saldo de Salário ('+d.saldoDias+' dias)', d.saldo, true);
-    if (d.aviso   > 0) row('Aviso Prévio Indenizado', d.aviso, true);
-    if (d.ferProp > 0) row('Férias Proporcionais ('+d.mesesFer+'/12)', d.ferProp, true);
-    if (d.umTerco > 0) row('1/3 Constitucional', d.umTerco, true);
-    if (d.dec13   > 0) row('13º Proporcional ('+d.meses13+'/12)', d.dec13, true);
-    sep('DESCONTOS'); row('INSS', d.inss); row('IRRF', d.irrf);
-    if (d.multa40 > 0) { sep('ENCARGOS EMPRESA'); row('Multa 40% FGTS', d.multa40); }
+    if (d.saldo   > 0) row('Saldo de Salário ('+d.saldoDias+' dias) — tributável', d.saldo, true);
+    if (d.aviso   > 0) row('Aviso Prévio Indenizado ('+d.diasAviso+' dias) — isento IRRF', d.aviso, true);
+    if (d.ferProp > 0) row('Férias Proporcionais ('+d.mesesFer+'/12) — isento IRRF', d.ferProp, true);
+    if (d.umTerco > 0) row('1/3 Constitucional — isento IRRF', d.umTerco, true);
+    if (d.dec13   > 0) row('13º Proporcional ('+d.meses13+'/12) — tributável', d.dec13, true);
+    // Total bruto antes dos descontos
+    doc.setFont('helvetica','bold');
+    doc.text('Total Bruto', M+1, y);
+    doc.text('R$ ' + fmtBRL(d.bruto), W-M, y, { align:'right' });
+    doc.setFont('helvetica','normal'); y += 8;
+
+    sep('DESCONTOS');
+    if (d.inss > 0) row('INSS (saldo + aviso — Súm. 173 STJ)', d.inss);
+    if (d.irrf > 0) row('IRRF (base R$ ' + fmtBRL(d.baseTributavelIRRF||0) + ')', d.irrf);
+
+    // Bug corrigido: d.multa40 não existe — campo correto é d.multa
+    if ((d.multa||0) > 0) {
+      sep('ENCARGOS EMPRESA');
+      row('Multa ' + (d.pctMulta||40) + '% s/ FGTS acumulado (R$ ' + fmtBRL(d.fgtsAcum||0) + ')', d.multa);
+      if ((d.fgtsResc||0) > 0) row('FGTS s/ verbas do mês', d.fgtsResc);
+    }
   }
 
   y += 4;
