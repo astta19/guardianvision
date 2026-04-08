@@ -492,8 +492,8 @@ function calcularFolha() {
   const vh = sal / horasMes;
 
   // Proventos
-  const prop    = r2(dias / 30);
-  const salProp = r2(sal * prop);
+  const prop    = r2(dias / 30);          // usado só para exibição de proporção
+  const salProp = r2(sal * dias / 30);    // calculado direto para evitar erro de arredondamento intermediário
   const vlHE50  = r2(he50  * vh * 1.50);
   const vlHE100 = r2(he100 * vh * 2.00);
   const vlAnot  = r2(anot  * vh * 0.20);
@@ -710,7 +710,7 @@ function calcularFerias() {
   }
 
   const sal      = func.salario_base;
-  const base     = r2(sal * (dias / 30));
+  const base     = r2(sal * dias / 30);   // direto para evitar erro de arredondamento intermediário
   const umTerco  = r2(base / 3);
   // INSS NÃO incide sobre abono pecuniário (art. 144 CTN / IN RFB 2.110/2022)
   const abonoV   = abono ? r2(sal * (10 / 30)) : 0;
@@ -884,8 +884,8 @@ function calcularRescisao() {
   if (elDiasAviso && !diasAvisoInput) elDiasAviso.value = diasAviso;
 
   // ── Verbas ─────────────────────────────────────────────────
-  const vDia  = r2(sal / 30);
-  const saldo = r2(saldoDias * vDia);                      // TRIBUTÁVEL pelo IRRF
+  const vDia  = r2(sal / 30);                              // valor-dia para exibição
+  const saldo = r2(sal * saldoDias / 30);                  // TRIBUTÁVEL — calculado direto para precisão
 
   // Aviso: sem_justa_causa proporcional; acordo_mútuo 50%; justa_causa = 0
   const aviso = motivo === 'sem_justa_causa' && avisoPrev ? r2(sal * diasAviso / 30)
