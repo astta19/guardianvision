@@ -1,4 +1,4 @@
-// api/backup.js — Debug progressivo
+// api/backup.js — Com tratamento específico para variáveis
 module.exports = async function handler(req, res) {
   console.log('🚀 [1/10] Iniciando backup');
   
@@ -12,129 +12,101 @@ module.exports = async function handler(req, res) {
   }
   console.log('✅ [2/10] Autenticação OK');
 
+  // --- PROBLEMA ESTÁ AQUI ---
+  // Vamos debugar cada variável individualmente
+  console.log('🔍 [2.1] Lendo SUPABASE_URL');
   const SUPABASE_URL = process.env.SUPABASE_URL;
+  console.log('🔍 [2.2] SUPABASE_URL existe?', SUPABASE_URL ? 'SIM' : 'NÃO');
+  console.log('🔍 [2.3] Valor (primeiros 20 chars):', SUPABASE_URL ? SUPABASE_URL.substring(0, 20) : 'undefined');
+  
+  console.log('🔍 [2.4] Lendo SUPABASE_SERVICE_KEY');
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+  console.log('🔍 [2.5] SUPABASE_SERVICE_KEY existe?', SUPABASE_SERVICE_KEY ? 'SIM' : 'NÃO');
+  
+  console.log('🔍 [2.6] Lendo GITHUB_TOKEN');
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+  console.log('🔍 [2.7] GITHUB_TOKEN existe?', GITHUB_TOKEN ? 'SIM' : 'NÃO');
+  
+  console.log('🔍 [2.8] Lendo GITHUB_REPO');
   const GITHUB_REPO = process.env.GITHUB_REPO || 'astta19/guardianvision';
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return res.status(500).json({ error: 'SUPABASE_URL ou SUPABASE_SERVICE_KEY ausentes' });
+  console.log('🔍 [2.9] GITHUB_REPO:', GITHUB_REPO);
+  
+  // Verificações com mensagens específicas
+  if (!SUPABASE_URL) {
+    console.error('❌ ERRO: SUPABASE_URL não encontrada nas variáveis de ambiente');
+    return res.status(500).json({ error: 'SUPABASE_URL ausente. Verifique as Environment Variables no Vercel.' });
   }
+  
+  if (!SUPABASE_SERVICE_KEY) {
+    console.error('❌ ERRO: SUPABASE_SERVICE_KEY não encontrada nas variáveis de ambiente');
+    return res.status(500).json({ error: 'SUPABASE_SERVICE_KEY ausente. Verifique as Environment Variables no Vercel.' });
+  }
+  
   if (!GITHUB_TOKEN) {
-    return res.status(500).json({ error: 'GITHUB_TOKEN ausente' });
+    console.error('❌ ERRO: GITHUB_TOKEN não encontrada nas variáveis de ambiente');
+    return res.status(500).json({ error: 'GITHUB_TOKEN ausente. Verifique as Environment Variables no Vercel.' });
   }
+  
   console.log('✅ [3/10] Variáveis OK');
 
-  // Tabelas reduzidas para teste (só 2 tabelas)
-  const TABELAS = ['clientes', 'dp_funcionarios'];
-
-  const sbHeaders = {
-    'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-    'Content-Type': 'application/json',
-    'Prefer': 'count=none',
-  };
-
-  const PAGE_SIZE = 1000;
-  console.log('✅ [4/10] Configurações OK');
-
-  // Função fetchTabela simplificada (sem paginação complexa)
-  async function fetchTabela(tabela) {
-    console.log(`  🔍 Buscando ${tabela}...`);
-    const url = `${SUPABASE_URL}/rest/v1/${tabela}?select=*&limit=${PAGE_SIZE}`;
+  // Se chegou aqui, continua com o backup (versão simplificada para teste)
+  try {
+    const tabelas = ['clientes'];
     
-    const r = await fetch(url, { headers: sbHeaders });
+    const sbHeaders = {
+      'apikey': SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    };
     
-    if (r.status === 404) {
-      console.log(`  ⚠️ Tabela ${tabela} não encontrada`);
-      return { dados: [], aviso: `tabela ${tabela} não encontrada` };
+    console.log('🔍 Testando conexão com Supabase...');
+    const testUrl = `${SUPABASE_URL}/rest/v1/clientes?select=id&limit=1`;
+    const testFetch = await fetch(testUrl, { headers: sbHeaders });
+    
+    if (!testFetch.ok) {
+      throw new Error(`Supabase respondeu com status ${testFetch.status}`);
+    }
+    console.log('✅ Conexão Supabase OK');
+    
+    // Backup simples
+    const agora = new Date();
+    const dataStr = agora.toISOString().slice(0, 10);
+    const horaStr = agora.toISOString().slice(11, 16).replace(':', '');
+    const filename = `backups/backup_test_${dataStr}_${horaStr}.json`;
+    
+    const payload = {
+      teste: true,
+      data: agora.toISOString(),
+      mensagem: 'Backup funcionou!'
+    };
+    
+    const content = Buffer.from(JSON.stringify(payload)).toString('base64');
+    
+    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${filename}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: `teste: ${dataStr}`,
+        content,
+      }),
+    });
+    
+    if (!ghRes.ok) {
+      const err = await ghRes.json();
+      throw new Error(`GitHub: ${err.message || ghRes.status}`);
     }
     
-    if (!r.ok) {
-      const txt = await r.text();
-      console.log(`  ❌ Erro ${tabela}: ${r.status}`);
-      return { dados: [], erro: `HTTP ${r.status}` };
-    }
+    console.log('✅ Backup salvo com sucesso!');
+    return res.status(200).json({ 
+      ok: true, 
+      message: 'Backup funcionou!',
+      arquivo: filename 
+    });
     
-    const dados = await r.json();
-    console.log(`  ✅ ${tabela}: ${dados.length} registros`);
-    return { dados };
+  } catch (error) {
+    console.error('❌ Erro no backup:', error.message);
+    return res.status(500).json({ error: error.message });
   }
-
-  console.log('✅ [5/10] Função fetchTabela definida');
-
-  // Executar backup
-  const backupData = {};
-  const metadados = {};
-  let totalRegistros = 0;
-  let tabelasOk = 0;
-  let tabelasErro = 0;
-
-  for (const tabela of TABELAS) {
-    console.log(`📋 Processando ${tabela}...`);
-    const resultado = await fetchTabela(tabela);
-    backupData[tabela] = resultado.dados;
-    totalRegistros += resultado.dados.length;
-    
-    if (resultado.erro) {
-      tabelasErro++;
-    } else {
-      tabelasOk++;
-    }
-  }
-  console.log(`✅ [6/10] Backup concluído: ${totalRegistros} registros`);
-
-  // Montar payload
-  const agora = new Date();
-  const dataStr = agora.toISOString().slice(0, 10);
-  const horaStr = agora.toISOString().slice(11, 16).replace(':', '');
-  const filename = `backups/backup_${dataStr}_${horaStr}.json`;
-  
-  const payload = {
-    _meta: {
-      gerado_em: agora.toISOString(),
-      total_registros: totalRegistros,
-      tabelas_ok: tabelasOk,
-      tabelas_erro: tabelasErro,
-      versao: 'debug',
-    },
-    ...backupData,
-  };
-
-  const conteudoJSON = JSON.stringify(payload);
-  const content = Buffer.from(conteudoJSON).toString('base64');
-  console.log(`✅ [7/10] Payload pronto: ${(conteudoJSON.length / 1024).toFixed(1)}KB`);
-
-  // Salvar no GitHub
-  console.log(`💾 [8/10] Salvando no GitHub: ${filename}`);
-  const ghBody = {
-    message: `backup: ${dataStr} ${horaStr} — ${totalRegistros} registros`,
-    content,
-  };
-
-  const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${filename}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Fiscal365-Backup',
-    },
-    body: JSON.stringify(ghBody),
-  });
-
-  if (!ghRes.ok) {
-    const err = await ghRes.json().catch(() => ({}));
-    console.error('❌ [9/10] GitHub error:', err);
-    return res.status(500).json({ error: 'Falha ao salvar no GitHub', detail: err });
-  }
-  console.log('✅ [9/10] GitHub OK');
-
-  console.log('✅ [10/10] Backup completo!');
-  return res.status(200).json({
-    ok: true,
-    arquivo: filename,
-    registros: totalRegistros,
-    tabelas_ok: tabelasOk,
-    tabelas_erro: tabelasErro,
-  });
 };
