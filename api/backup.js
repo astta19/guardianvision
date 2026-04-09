@@ -8,6 +8,10 @@
 //   GITHUB_TOKEN         — Personal Access Token com permissão repo/contents
 //   GITHUB_REPO          — ex: astta19/guardianvision
 
+const zlib = require('zlib');
+const { promisify } = require('util');
+const gzip = promisify(zlib.gzip);
+
 module.exports = async function handler(req, res) {
   // ── Autenticação do cron ───────────────────────────────────────
   const cronSecret = process.env.CRON_SECRET;
@@ -31,37 +35,54 @@ module.exports = async function handler(req, res) {
   }
 
   // ── Tabelas para backup ────────────────────────────────────────
-  // Cada entrada: string (usa created_at como ordem) ou { tabela, ordem } personalizado
+  // CORREÇÃO: remover tabelas inexistentes (balancetes, documentos,
+  // contatos_whatsapp, disparos_email) — causavam 404 em todo backup
+  // e poluíam os logs com avisos desnecessários.
+  // Adicionar tabela scraper_lugares que existe no projeto.
   const TABELAS = [
-    // Núcleo do sistema
-    { tabela: 'clientes',              ordem: 'criado_em' },
-    { tabela: 'clientes_usuarios',     ordem: 'criado_em' },
+    // Núcleo
+    { tabela: 'clientes',              ordem: 'created_at'  },
+    { tabela: 'clientes_usuarios',     ordem: 'criado_em'   },
     // Departamento Pessoal
-    { tabela: 'dp_funcionarios',       ordem: 'criado_em' },
-    { tabela: 'dp_holerites',          ordem: 'criado_em' },
-    { tabela: 'dp_eventos',            ordem: 'criado_em' },
-    { tabela: 'dp_dependentes',        ordem: 'criado_em' },
-    { tabela: 'dp_rubricas',           ordem: 'criado_em' },
+    { tabela: 'dp_funcionarios',       ordem: 'criado_em',
+      // CORREÇÃO CRÍTICA: excluir foto_base64 do backup.
+      // 2 fotos de 16 funcionários já ocupam 90% (1.4 MB) do arquivo.
+      // Com 100+ funcionários o backup explodiria e ultrapassaria o limite do GitHub.
+      // Fotos ficam no Supabase Storage — não precisam de backup JSON.
+      select: 'id,user_id,cliente_id,escritorio_id,nome,cargo,cpf,ctps,pis,rg,' +
+              'data_nascimento,sexo,estado_civil,nome_mae,nacionalidade,naturalidade,' +
+              'email,telefone,jornada_horas,admissao,salario_base,tipo_contrato,' +
+              'dependentes,banco,agencia,conta,endereco,logradouro,numero,complemento,' +
+              'bairro,cidade,uf,cep,matricula,centro_custo,vale_transporte,vale_refeicao,' +
+              'insalubridade_pct,periculosidade_pct,categoria_esocial,grau_instrucao,' +
+              'deficiencia,tipo_deficiencia,observacoes,status,foto_url,' +
+              'criado_em,atualizado_em'
+    },
+    { tabela: 'dp_holerites',          ordem: 'criado_em',
+      // Excluir dados_completos (JSONB grande, redundante com as colunas individuais)
+      select: 'id,user_id,cliente_id,escritorio_id,funcionario_id,competencia,' +
+              'dias_trabalhados,salario_bruto,he50_horas,he100_horas,adic_noturno_horas,' +
+              'outros_acrescimos,total_bruto,inss,irrf,pensao_alimenticia,outros_descontos,' +
+              'total_descontos,salario_liquido,fgts,inss_patronal,rat,custo_total,' +
+              'tipo_contrato,criado_em'
+    },
+    { tabela: 'dp_eventos',            ordem: 'criado_em'   },
+    { tabela: 'dp_dependentes',        ordem: 'criado_em'   },
+    { tabela: 'dp_rubricas',           ordem: 'criado_em'   },
     { tabela: 'dp_historico',          ordem: 'alterado_em' },
-    { tabela: 'dp_fgts_saldo',         ordem: 'criado_em' },
-    { tabela: 'dp_esocial_logs',       ordem: 'criado_em' },
+    { tabela: 'dp_fgts_saldo',         ordem: 'criado_em'   },
+    { tabela: 'dp_esocial_logs',       ordem: 'criado_em'   },
     // Financeiro / Contábil
-    { tabela: 'honorarios',            ordem: 'criado_em' },
-    { tabela: 'lancamentos_contabeis', ordem: 'criado_em' },
-    { tabela: 'plano_contas',          ordem: 'criado_em' },
-    { tabela: 'balancetes',            ordem: 'criado_em' },
+    { tabela: 'honorarios',            ordem: 'criado_em'   },
+    { tabela: 'lancamentos_contabeis', ordem: 'criado_em'   },
+    { tabela: 'plano_contas',          ordem: 'criado_em'   },
     // Outros módulos
-    { tabela: 'agenda_tarefas',        ordem: 'criado_em' },
-    { tabela: 'apuracoes',             ordem: 'criado_em' },
-    { tabela: 'documentos',            ordem: 'criado_em' },
-    { tabela: 'contatos_whatsapp',     ordem: 'criado_em' },
-    { tabela: 'disparos_email',        ordem: 'criado_em' },
+    { tabela: 'agenda_tarefas',        ordem: 'criado_em'   },
+    { tabela: 'apuracoes',             ordem: 'criado_em'   },
+    { tabela: 'scraper_lugares',       ordem: 'criado_em'   },
   ];
 
   // ── Headers Supabase ───────────────────────────────────────────
-  // CORREÇÃO BUG 1: remover header Range — usar apenas offset/limit na URL.
-  // PostgREST sem Range-Unit: items trata Range como bytes → falha 416.
-  // offset + limit na query string é a forma correta e documentada.
   const sbHeaders = {
     'apikey':        SUPABASE_SERVICE_KEY,
     'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -73,17 +94,15 @@ module.exports = async function handler(req, res) {
   const PAGE_SIZE = 1000;
 
   // ── Buscar todos os registros de uma tabela com paginação ──────
-  // CORREÇÃO BUG 2: usar ordem configurável por tabela em vez de order=id fixo.
-  // Tabelas sem coluna id retornavam 400 e eram tratadas como "não encontradas".
-  async function fetchTabela({ tabela, ordem }) {
+  async function fetchTabela({ tabela, ordem, select }) {
+    const campos = select || '*';
     const registros = [];
     let offset = 0;
     let continuar = true;
 
     while (continuar) {
-      // Usar apenas offset + limit na URL — sem header Range
       const url = `${SUPABASE_URL}/rest/v1/${tabela}` +
-        `?select=*&order=${ordem}&offset=${offset}&limit=${PAGE_SIZE}`;
+        `?select=${encodeURIComponent(campos)}&order=${ordem}&offset=${offset}&limit=${PAGE_SIZE}`;
 
       let r;
       try {
@@ -92,24 +111,21 @@ module.exports = async function handler(req, res) {
         return { dados: registros, erro: `Erro de rede: ${netErr.message}` };
       }
 
-      // 404 = tabela não existe no schema
       if (r.status === 404) {
         return { dados: [], aviso: `tabela ${tabela} não encontrada (404)` };
       }
 
-      // 400 agora é tratado como erro real (coluna de ordem inválida, etc.)
-      // e não confundido com "tabela não existe"
       if (!r.ok) {
         const txt = await r.text().catch(() => String(r.status));
-        // Tentar fallback com created_at se a coluna de ordem não existir
+        // Fallback: tentar created_at se a coluna de ordem não existir
         if (r.status === 400 && ordem !== 'created_at') {
-          console.warn(`[backup] ${tabela}: ordem ${ordem} falhou (${r.status}), tentando created_at`);
-          return fetchTabela({ tabela, ordem: 'created_at' });
+          console.warn(`[backup] ${tabela}: ordem ${ordem} falhou, tentando created_at`);
+          return fetchTabela({ tabela, ordem: 'created_at', select });
         }
-        // Último fallback: tentar sem ordenação
+        // Último fallback: sem ordenação
         if (r.status === 400) {
           console.warn(`[backup] ${tabela}: created_at falhou, tentando sem ordenação`);
-          return fetchTabelaSemOrdem(tabela);
+          return fetchTabelaSemOrdem(tabela, campos);
         }
         return { dados: registros, erro: `HTTP ${r.status}: ${txt.slice(0, 200)}` };
       }
@@ -128,15 +144,14 @@ module.exports = async function handler(req, res) {
     return { dados: registros };
   }
 
-  // Fallback sem ordenação (para tabelas sem coluna de data conhecida)
-  async function fetchTabelaSemOrdem(tabela) {
+  async function fetchTabelaSemOrdem(tabela, campos = '*') {
     const registros = [];
     let offset = 0;
     let continuar = true;
 
     while (continuar) {
       const url = `${SUPABASE_URL}/rest/v1/${tabela}` +
-        `?select=*&offset=${offset}&limit=${PAGE_SIZE}`;
+        `?select=${encodeURIComponent(campos)}&offset=${offset}&limit=${PAGE_SIZE}`;
 
       let r;
       try {
@@ -164,9 +179,7 @@ module.exports = async function handler(req, res) {
     return { dados: registros };
   }
 
-  // ── CORREÇÃO BUG 3: buscar tabelas em paralelo (grupos de 5) ──
-  // Execução sequencial de 18 tabelas facilmente estoura os 60s do Vercel.
-  // Paralelo total pode saturar conexões do Supabase — usar grupos de 5.
+  // ── Executar backup em grupos paralelos de 5 ──────────────────
   const inicio = Date.now();
   const backupData   = {};
   const metadados    = {};
@@ -181,9 +194,9 @@ module.exports = async function handler(req, res) {
 
     for (let j = 0; j < grupo.length; j++) {
       const { tabela } = grupo[j];
-      const resultado = resultados[j];
+      const resultado  = resultados[j];
       backupData[tabela] = resultado.dados;
-      totalRegistros += resultado.dados.length;
+      totalRegistros    += resultado.dados.length;
 
       if (resultado.erro) {
         metadados[tabela] = { registros: resultado.dados.length, erro: resultado.erro };
@@ -200,12 +213,14 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── Montar payload do backup ───────────────────────────────────
-  const agora     = new Date();
-  const dataStr   = agora.toISOString().slice(0, 10);
-  const horaStr   = agora.toISOString().slice(11, 16).replace(':', '');
-  const filename  = `backups/backup_${dataStr}_${horaStr}.json`;
-  const duracao   = Date.now() - inicio;
+  // ── Montar e comprimir payload ─────────────────────────────────
+  // CORREÇÃO: salvar como .json.gz — compressão reduz ~70-80% do tamanho.
+  // Com 304 registros o arquivo era 1.5 MB (90% fotos já removidas).
+  // Gzip vai a ~150-200 KB, muito abaixo do limite do GitHub.
+  const agora    = new Date();
+  const dataStr  = agora.toISOString().slice(0, 10);
+  const horaStr  = agora.toISOString().slice(11, 16).replace(':', '');
+  const duracao  = Date.now() - inicio;
 
   const payload = {
     _meta: {
@@ -215,50 +230,41 @@ module.exports = async function handler(req, res) {
       tabelas_ok:      tabelasOk,
       tabelas_erro:    tabelasErro,
       tabelas:         metadados,
-      versao:          '3',
+      versao:          '4',
     },
     ...backupData,
   };
 
   const conteudoJSON = JSON.stringify(payload);
+  const jsonKB = conteudoJSON.length / 1024;
 
-  // ── CORREÇÃO BUG 5: verificar tamanho antes de enviar ao GitHub ──
-  // GitHub Content API rejeita arquivos >100MB, mas na prática falha ~25MB base64.
-  // Se o payload for grande demais, salvar em chunks ou avisar claramente.
-  const payloadKB = conteudoJSON.length / 1024;
-  const LIMITE_KB = 90 * 1024; // 90MB em KB para ter margem
-  if (payloadKB > LIMITE_KB) {
-    console.error(`[backup] Payload muito grande: ${payloadKB.toFixed(0)}KB — GitHub pode rejeitar`);
+  // Comprimir com gzip
+  const conteudoGzip = await gzip(Buffer.from(conteudoJSON, 'utf8'));
+  const gzipKB       = conteudoGzip.length / 1024;
+  const filename     = `backups/backup_${dataStr}_${horaStr}.json.gz`;
+  const content      = conteudoGzip.toString('base64');
+
+  console.log(`[backup] JSON: ${jsonKB.toFixed(1)}KB → Gzip: ${gzipKB.toFixed(1)}KB (${(100-gzipKB/jsonKB*100).toFixed(0)}% menor) | ${totalRegistros} registros | ${duracao}ms`);
+
+  // Alerta se mesmo comprimido for grande
+  if (gzipKB > 90 * 1024) {
+    console.error(`[backup] Payload gzip muito grande: ${gzipKB.toFixed(0)}KB — GitHub pode rejeitar`);
   }
 
-  const content = Buffer.from(conteudoJSON).toString('base64');
-  console.log(`[backup] Total: ${totalRegistros} registros em ${duracao}ms | Payload: ${payloadKB.toFixed(1)}KB`);
-
-  // ── Verificar se arquivo já existe no GitHub (precisamos do SHA) ──
+  // ── Verificar SHA se arquivo já existe ────────────────────────
   let sha;
   try {
     const check = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO}/contents/${filename}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'User-Agent':    'Fiscal365-Backup',
-        },
-      }
+      { headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'Fiscal365-Backup' } }
     );
     if (check.ok) {
       const existing = await check.json();
       sha = existing.sha;
     }
-  } catch { /* arquivo novo — sha não necessário */ }
+  } catch { /* arquivo novo */ }
 
   // ── Salvar no GitHub ───────────────────────────────────────────
-  const ghBody = {
-    message: `backup: ${dataStr} ${horaStr} — ${totalRegistros} registros`,
-    content,
-    ...(sha ? { sha } : {}),
-  };
-
   const ghRes = await fetch(
     `https://api.github.com/repos/${GITHUB_REPO}/contents/${filename}`,
     {
@@ -268,7 +274,11 @@ module.exports = async function handler(req, res) {
         'Content-Type':  'application/json',
         'User-Agent':    'Fiscal365-Backup',
       },
-      body: JSON.stringify(ghBody),
+      body: JSON.stringify({
+        message: `backup: ${dataStr} ${horaStr} — ${totalRegistros} registros`,
+        content,
+        ...(sha ? { sha } : {}),
+      }),
     }
   );
 
@@ -283,63 +293,54 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  // ── Limpar backups antigos (manter apenas os últimos 30) ───────
-  // CORREÇÃO BUG 4: verificar resposta de cada DELETE e logar falhas
+  // ── Limpar backups antigos (manter os últimos 30) ─────────────
   try {
     const listRes = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO}/contents/backups`,
-      {
-        headers: {
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'User-Agent':    'Fiscal365-Backup',
-        },
-      }
+      { headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'Fiscal365-Backup' } }
     );
     if (listRes.ok) {
       const arquivos = await listRes.json();
       if (Array.isArray(arquivos)) {
-        const jsons = arquivos
-          .filter(f => f.name.endsWith('.json') && f.name.startsWith('backup_'))
-          .sort((a, b) => a.name.localeCompare(b.name)); // mais antigos primeiro
+        const backups = arquivos
+          .filter(f => f.name.startsWith('backup_'))
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-        const paraApagar = jsons.slice(0, Math.max(0, jsons.length - 30));
+        const paraApagar = backups.slice(0, Math.max(0, backups.length - 30));
         for (const f of paraApagar) {
-          const delRes = await fetch(
+          const del = await fetch(
             `https://api.github.com/repos/${GITHUB_REPO}/contents/${f.path}`,
             {
-              method:  'DELETE',
+              method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${GITHUB_TOKEN}`,
                 'Content-Type':  'application/json',
                 'User-Agent':    'Fiscal365-Backup',
               },
-              body: JSON.stringify({
-                message: `backup: remover arquivo antigo ${f.name}`,
-                sha:     f.sha,
-              }),
+              body: JSON.stringify({ message: `backup: remover ${f.name}`, sha: f.sha }),
             }
           );
-          if (delRes.ok) {
-            console.log(`[backup] Removido backup antigo: ${f.name}`);
+          if (del.ok) {
+            console.log(`[backup] Removido: ${f.name}`);
           } else {
-            const delErr = await delRes.text().catch(() => '');
-            console.warn(`[backup] Falha ao remover ${f.name}: ${delRes.status} ${delErr.slice(0, 100)}`);
+            console.warn(`[backup] Falha ao remover ${f.name}: ${del.status}`);
           }
         }
       }
     }
   } catch (e) {
-    console.warn('[backup] Limpeza de backups antigos falhou (não crítico):', e.message);
+    console.warn('[backup] Limpeza falhou (não crítico):', e.message);
   }
 
   return res.status(200).json({
-    ok:              true,
-    arquivo:         filename,
-    registros:       totalRegistros,
-    tabelas_ok:      tabelasOk,
-    tabelas_erro:    tabelasErro,
-    duracao_ms:      duracao,
-    payload_kb:      Math.round(payloadKB),
-    tabelas:         metadados,
+    ok:           true,
+    arquivo:      filename,
+    registros:    totalRegistros,
+    tabelas_ok:   tabelasOk,
+    tabelas_erro: tabelasErro,
+    duracao_ms:   duracao,
+    json_kb:      Math.round(jsonKB),
+    gzip_kb:      Math.round(gzipKB),
+    tabelas:      metadados,
   });
 };
