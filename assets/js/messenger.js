@@ -17,6 +17,8 @@ let _msnDigTimer = null;
 let _msnDigMap   = {};
 let _msnFp       = new Set();
 let _msnRenderizando = false;
+let _msnInitialized = false;
+let _msnSubscribing = false;
 
 // ── Áudio ─────────────────────────────────────────────────────
 let _msnAudio = null;
@@ -40,21 +42,56 @@ function _msnBeep() {
 
 // ── Init ──────────────────────────────────────────────────────
 async function msnInit() {
-  if (!currentUser) return;
-  const temPerm = isAdmin() || (currentUser?.user_metadata?.permissions || []).includes('chat_interno');
-  if (!temPerm) return;
+
+  if (_msnInitialized) {
+    console.log('[msn] já inicializado');
+    return;
+  }
+
+  _msnInitialized = true;
+
+  if (!currentUser) {
+    _msnInitialized = false;
+    return;
+  }
+
+  const temPerm =
+    isAdmin() ||
+    (currentUser?.user_metadata?.permissions || [])
+      .includes('chat_interno');
+
+  if (!temPerm) {
+    _msnInitialized = false;
+    return;
+  }
 
   try {
     _msnEscId = await getEscritorioIdAtual();
-    if (!_msnEscId) return;
-  } catch { return; }
+
+    if (!_msnEscId) {
+      _msnInitialized = false;
+      return;
+    }
+  } catch (e) {
+    console.error('[msn] erro ao obter escritório:', e);
+    _msnInitialized = false;
+    return;
+  }
 
   await _msnCarregarContatos();
   await _msnContarNaoLidas();
+
   _msnRenderBadge();
-  _msnSubscribe();
+
+  if (!_msnPg && !_msnBc && !_msnPr) {
+    _msnSubscribe();
+  }
+
   const btn = document.getElementById('msnBtnHeader');
-  if (btn) btn.style.display = 'flex';
+
+  if (btn) {
+    btn.style.display = 'flex';
+  }
 }
 
 function msnReset() {
@@ -118,34 +155,102 @@ async function _msnCarregarContatos() {
 
 // ── Realtime ──────────────────────────────────────────────────
 function _msnSubscribe() {
-  _msnBc = sb.channel(`msn_bc_${_msnEscId}`, { config: { broadcast: { self: false } } })
-    .on('broadcast', { event: 'msn_msg'    }, ({ payload }) => _msnOnMsg(payload))
-    .on('broadcast', { event: 'msn_typing' }, ({ payload }) => _msnOnTyping(payload))
-    .on('broadcast', { event: 'msn_read'   }, ({ payload }) => _msnOnRead(payload))
-    .on('broadcast', { event: 'msn_del'    }, ({ payload }) => _msnOnDel(payload))
-    .subscribe();
 
-  _msnPg = sb.channel(`msn_pg_${_msnEscId}`)
-    .on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'messenger_mensagens',
-      filter: `receiver_id=eq.${currentUser.id}`,
-    }, ({ new: row }) => {
-      if (!_msnFp.has(row.id)) _msnOnMsg(row);
-    })
-    .subscribe();
+  if (_msnSubscribing) {
+    console.log('[msn] inscrição já em andamento');
+    return;
+  }
 
-  _msnPr = sb.channel(`msn_pr_${_msnEscId}`, { config: { presence: { key: currentUser.id } } })
-    .on('presence', { event: 'sync'  }, _msnSyncPresence)
-    .on('presence', { event: 'join'  }, _msnSyncPresence)
-    .on('presence', { event: 'leave' }, _msnSyncPresence)
-    .subscribe(async s => {
-      if (s !== 'SUBSCRIBED') return;
-      await _msnPr.track({
-        user_id:    currentUser.id,
-        nome:       _msnPerfis[currentUser.id]?.nome,
-        avatar_url: _msnPerfis[currentUser.id]?.avatar_url,
+  if (_msnBc || _msnPg || _msnPr) {
+    console.log('[msn] canais já ativos');
+    return;
+  }
+
+  _msnSubscribing = true;
+
+  try {
+
+    _msnBc = sb
+      .channel(`msn_bc_${_msnEscId}`, {
+        config: {
+          broadcast: {
+            self: false
+          }
+        }
+      })
+      .on('broadcast', { event: 'msn_msg' }, ({ payload }) => {
+        _msnOnMsg(payload);
+      })
+      .on('broadcast', { event: 'msn_typing' }, ({ payload }) => {
+        _msnOnTyping(payload);
+      })
+      .on('broadcast', { event: 'msn_read' }, ({ payload }) => {
+        _msnOnRead(payload);
+      })
+      .on('broadcast', { event: 'msn_del' }, ({ payload }) => {
+        _msnOnDel(payload);
+      })
+      .subscribe();
+
+    _msnPg = sb
+      .channel(`msn_pg_${_msnEscId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messenger_mensagens',
+          filter: `receiver_id=eq.${currentUser.id}`
+        },
+        ({ new: row }) => {
+          if (!_msnFp.has(row.id)) {
+            _msnOnMsg(row);
+          }
+        }
+      )
+      .subscribe();
+
+    _msnPr = sb
+      .channel(`msn_pr_${_msnEscId}`, {
+        config: {
+          presence: {
+            key: currentUser.id
+          }
+        }
+      })
+      .on('presence', { event: 'sync' }, _msnSyncPresence)
+      .on('presence', { event: 'join' }, _msnSyncPresence)
+      .on('presence', { event: 'leave' }, _msnSyncPresence)
+      .subscribe(async status => {
+
+        if (status !== 'SUBSCRIBED') {
+          return;
+        }
+
+        try {
+          await _msnPr.track({
+            user_id: currentUser.id,
+            nome: _msnPerfis[currentUser.id]?.nome,
+            avatar_url: _msnPerfis[currentUser.id]?.avatar_url
+          });
+        } catch (err) {
+          console.error('[msn] erro track presence:', err);
+        }
+
       });
-    });
+
+    console.log('[msn] realtime conectado');
+
+  } catch (err) {
+    console.error('[msn] erro subscribe:', err);
+
+    _msnBc = null;
+    _msnPg = null;
+    _msnPr = null;
+
+  } finally {
+    _msnSubscribing = false;
+  }
 }
 
 function _msnSyncPresence() {
