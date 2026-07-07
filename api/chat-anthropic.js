@@ -1,95 +1,72 @@
-// api/chat-anthropic.js — SSE proxy com rate limit persistente no Supabase
-const MAX_PER_DAY = 50;
-const SB_URL      = process.env.SUPABASE_URL;
-const SB_SERVICE  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// api/chat-anthropic.js — Vercel Serverless
+// Proxy para Anthropic Claude API — usado pelo ai_provider.js
 
-// Rate limit persistente — funciona entre instâncias serverless e deploys
-async function checkRateLimit(uid) {
-  if (!SB_URL || !SB_SERVICE) return { allowed: true, count: 0 };
-
-  const today   = new Date().toISOString().slice(0, 10);
-  const headers = {
-    'apikey':        SB_SERVICE,
-    'Authorization': `Bearer ${SB_SERVICE}`,
-    'Content-Type':  'application/json',
-  };
-
-  try {
-    const res = await fetch(`${SB_URL}/rest/v1/rpc/incrementar_uso_diario`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ p_user_id: uid, p_data: today }),
-    });
-    if (!res.ok) return { allowed: true, count: 0 };
-    const count = await res.json();
-    return { allowed: count <= MAX_PER_DAY, count };
-  } catch {
-    return { allowed: true, count: 0 };
+module.exports = async function handler(req, res) {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(204).end();
   }
-}
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método não permitido. Use POST.' });
+  }
 
-  const uid = req.headers['x-user-id'] || req.headers['x-forwarded-for']?.split(',')[0] || 'anon';
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!ANTHROPIC_API_KEY) {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada.' });
+  }
 
-  const { allowed, count } = await checkRateLimit(uid);
-  if (!allowed) {
-    return res.status(429).json({ error: 'limite_diario', limite: MAX_PER_DAY, count });
+  const {
+    model    = 'claude-sonnet-4-20250514',
+    messages,
+    system,
+    max_tokens = 1000,
+    temperature = 0.7,
+    stream = false,
+  } = req.body || {};
+
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'Campo messages é obrigatório.' });
   }
 
   try {
-    const body       = { ...req.body };
-    const wantStream = body.stream === true;
+    const body = {
+      model,
+      max_tokens,
+      temperature,
+      messages,
+      ...(system ? { system } : {}),
+    };
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key':         process.env.ANTHROPIC_KEY,
+        'Content-Type':      'application/json',
+        'x-api-key':         ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'anthropic-beta':    'prompt-caching-2024-07-31',
-        'content-type':      'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(25000),
     });
 
-    if (!wantStream) {
-      const data = await upstream.json();
-      res.setHeader('X-Requests-Today', count);
-      res.setHeader('X-Requests-Max',   MAX_PER_DAY);
-      return res.status(upstream.status).json(data);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error('[chat-anthropic] Anthropic error:', response.status, err);
+      return res.status(response.status).json({
+        error:   err?.error?.message || 'Erro na API Anthropic',
+        type:    err?.error?.type || 'api_error',
+        status:  response.status,
+      });
     }
 
-    res.setHeader('Content-Type',      'text/event-stream');
-    res.setHeader('Cache-Control',     'no-cache');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('X-Requests-Today',  count);
-    res.setHeader('X-Requests-Max',    MAX_PER_DAY);
-
-    if (!upstream.ok) {
-      const err = await upstream.json().catch(() => ({}));
-      res.write(`data: ${JSON.stringify({ type: 'error', error: err })}\n\n`);
-      res.end();
-      return;
-    }
-
-    const reader  = upstream.body.getReader();
-    const decoder = new TextDecoder();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        res.write(decoder.decode(value, { stream: true }));
-      }
-    } finally {
-      res.end();
-    }
+    const data = await response.json();
+    return res.status(200).json(data);
 
   } catch (e) {
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'upstream_error', message: e.message });
-    } else {
-      res.end();
-    }
+    console.error('[chat-anthropic] Erro:', e.message);
+    return res.status(500).json({ error: e.message });
   }
 }
