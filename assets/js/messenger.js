@@ -161,9 +161,13 @@ function _msnSubscribe() {
     return;
   }
 
+  // Remover canais anteriores antes de criar novos — evita o erro
+  // "cannot add postgres_changes callbacks after subscribe()"
   if (_msnBc || _msnPg || _msnPr) {
-    console.log('[msn] canais já ativos');
-    return;
+    [_msnBc, _msnPg, _msnPr].forEach(ch => {
+      try { if (ch) sb.removeChannel(ch); } catch {}
+    });
+    _msnBc = _msnPg = _msnPr = null;
   }
 
   _msnSubscribing = true;
