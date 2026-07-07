@@ -120,7 +120,7 @@ async function concCarregar() {
   if (elRes) elRes.innerHTML = '<div class="dp-loading"><div class="dp-spin"></div> Carregando...</div>';
 
   const compIni = `${_concAno}-${String(_concMes + 1).padStart(2, '0')}-01`;
-  const compFim = `${_concAno}-${String(_concMes + 1).padStart(2, '0')}-31`;
+  const compFim = new Date(_concAno, _concMes + 1, 0).toISOString().slice(0, 10);
   const comp    = `${_concAno}-${String(_concMes + 1).padStart(2, '0')}`;
 
   // Carregar extrato e lançamentos em paralelo
