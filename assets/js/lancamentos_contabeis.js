@@ -36,11 +36,12 @@ function closeLancamentosContabeis() {
 
 // ── Carregar plano de contas (para os selects) ────────────────
 async function _lcCarregarContas() {
+  const _escId = await getEscritorioIdAtual();
   const { data } = await sb
     .from('plano_contas')
     .select('id, codigo, descricao, tipo, natureza, grau')
-    .eq('user_id', currentUser.id)
     .eq('cliente_id', currentCliente.id)
+    .eq('escritorio_id', _escId)
     .eq('ativo', true)
     .order('codigo');
   _lcContasCache = data || [];
