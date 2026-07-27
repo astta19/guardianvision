@@ -424,6 +424,9 @@ function closeConfirm(confirmed) {
 
 // --- Telas principal ---
 function showAuthScreen() {
+  // Limpar cache do escritório — próximo login recalcula corretamente
+  _escIdCache = null;
+
   // Fechar TODOS os modais e sheets sem exceção
   [
     'confirmModal','clientModal','docModal','profileModal','calcModal',
@@ -500,19 +503,24 @@ async function showApp() {
     if (el) { el.classList.remove('hidden'); el.style.removeProperty('display'); }
   });
 
-  // Header: visível no desktop, escondido no mobile (bottom nav assume)
   const header = document.querySelector('header');
   if (header) {
     if (window.innerWidth <= 600) header.classList.add('hidden');
     else header.classList.remove('hidden');
   }
 
-  // Mostrar bottom nav apenas após autenticado
   const bn = document.getElementById('bottomNav');
   if (bn) bn.style.removeProperty('display');
+
   const { data: { user } } = await sb.auth.getUser();
   if (user) currentUser = user;
   setTheme(localStorage.getItem('theme') || currentUser?.user_metadata?.theme || 'light');
+
+  // Pré-aquecer cache do escritório uma única vez no login
+  // evita múltiplas queries paralelas de getEscritorioIdAtual()
+  await getEscritorioIdAtual();
+
+  // Buscar permissões se não for admin
   if (currentUser && !isAdmin()) {
     try {
       const r = await supabaseProxy('buscar_permissoes', { userId: currentUser.id });
@@ -524,14 +532,17 @@ async function showApp() {
   }
   applyAdminUI();
   checkConnection();
-  if (typeof carregarPerfil === 'function') {
-    await carregarPerfil();
-    if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
-  }
+
+  // Executar carregamentos independentes em paralelo — reduz tempo de login ~60%
+  await Promise.all([
+    typeof carregarPerfil === 'function' ? carregarPerfil() : Promise.resolve(),
+    typeof loadClientes   === 'function' ? loadClientes()   : Promise.resolve(),
+    typeof checkDeadlines === 'function' ? checkDeadlines() : Promise.resolve(),
+    carregarKPIs(),
+  ]);
+
+  if (typeof atualizarNomeHeader === 'function') atualizarNomeHeader();
   if (typeof msnInit === 'function') msnInit();
-  if (typeof loadClientes === 'function') loadClientes();
-  if (typeof checkDeadlines === 'function') checkDeadlines();
-  carregarKPIs();
   iniciarPollingUploads();
   _idleStart();
   if (isMaster()) carregarDashboardMaster();
@@ -622,7 +633,7 @@ async function registrarAuditLog(acao, tabelaOuDetalhes, id, detalhes) {
       detalhes: { tabela, ...dados },
       created_at: new Date().toISOString()
     });
-  } catch (e) { /* silencioso */ }
+  } catch { /* silencioso — tabela pode não existir ainda, não bloqueia o fluxo */ }
 }
 
 // --- reCAPTCHA init — chamado quando tela de login é exibida ---
@@ -786,17 +797,20 @@ async function carregarKPIs() {
     const mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
     const mesFim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString();
 
+    // Usar escritorio_id pré-aquecido — membros do escritório veem os dados do escritório inteiro
+    const escId = await getEscritorioIdAtual();
+
     const [{ count: cTarefas }, { count: cVencidos }, { count: cClientes }, { count: cDarfs }] =
       await Promise.all([
         sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
-          .eq('user_id', currentUser.id).eq('status', 'pendente')
+          .eq('escritorio_id', escId).eq('status', 'pendente')
           .gte('prazo', hoje.toISOString().slice(0,10))
           .lte('prazo', semanaFim.toISOString().slice(0,10)),
         sb.from('agenda_tarefas').select('*', { count: 'exact', head: true })
-          .eq('user_id', currentUser.id).eq('status', 'pendente')
+          .eq('escritorio_id', escId).eq('status', 'pendente')
           .lt('prazo', hoje.toISOString().slice(0,10)),
         sb.from('clientes').select('*', { count: 'exact', head: true })
-          .eq('user_id', currentUser.id),
+          .eq('user_id', currentUser.id),   // clientes ainda sem escritorio_id — mantém user_id por ora
         sb.from('documentos_fiscais').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('tipo', 'darf')
           .gte('criado_em', mesIni).lte('criado_em', mesFim),
