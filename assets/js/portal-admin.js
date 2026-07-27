@@ -31,11 +31,12 @@ async function portalCarregarLinks() {
   const el = document.getElementById('portalLinksList');
   el.innerHTML = '<p style="font-size:13px;color:var(--text-light);text-align:center;padding:20px">Carregando...</p>';
 
+  const _escId = await getEscritorioIdAtual();
   const { data, error } = await sb
     .from('portal_tokens')
     .select('*')
     .eq('cliente_id', currentCliente.id)
-    .eq('user_id', currentUser.id)
+    .eq('escritorio_id', _escId)
     .order('criado_em', { ascending: false });
 
   if (error || !data?.length) {
