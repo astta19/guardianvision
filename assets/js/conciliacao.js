@@ -228,10 +228,11 @@ function _concRenderResultado() {
 // ── Conciliar item ────────────────────────────────────────────
 async function concConciliar(extratoId) {
   if (!currentUser?.id) return;
+  const _escId = await getEscritorioIdAtual();
   const { error } = await sb.from('extratos_bancarios')
     .update({ conciliado: true })
     .eq('id', extratoId)
-    .eq('user_id', currentUser.id)
+    .eq('escritorio_id', _escId)
     .eq('cliente_id', currentCliente.id);
   if (error) { showToast('Erro: ' + error.message, 'error'); return; }
   const item = _concExtrato.find(e => e.id === extratoId);
